@@ -2237,6 +2237,12 @@ export class InteractiveMode {
 				await this.handleReloadCommand();
 				return;
 			}
+			if (text === "/hooks" || text.startsWith("/hooks ")) {
+				const args = text.startsWith("/hooks ") ? text.slice(7) : "";
+				this.editor.setText("");
+				await this.handleHooksCommand(args);
+				return;
+			}
 			if (text === "/debug") {
 				this.handleDebugCommand();
 				this.editor.setText("");
@@ -4077,6 +4083,19 @@ export class InteractiveMode {
 	// =========================================================================
 	// Command handlers
 	// =========================================================================
+
+	private async handleHooksCommand(args: string): Promise<void> {
+		const { runHooksCommand } = await import("../../core/slash-commands.js");
+		const result = await runHooksCommand(args, {
+			settings: this.settingsManager,
+			cwd: this.sessionManager.getCwd(),
+		});
+		this.chatContainer.addChild(new Spacer(1));
+		this.chatContainer.addChild(
+			new Text(result.exitCode === 0 ? result.output : theme.fg("warning", result.output), 1, 0),
+		);
+		this.ui.requestRender();
+	}
 
 	private async handleReloadCommand(): Promise<void> {
 		if (this.session.isStreaming) {

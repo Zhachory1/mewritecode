@@ -54,6 +54,43 @@ export interface RtkSettings {
 	enabled?: boolean; // default: true
 }
 
+/** First-run onboarding state (WS11). Persisted in the global settings file. */
+export interface OnboardingSettings {
+	hasCompletedOnboarding?: boolean; // default: false
+	completedAt?: string; // ISO timestamp
+	completedVersion?: string; // version string at the time of completion
+}
+
+/** Telemetry config. WS11 mandates default OFF. */
+export interface TelemetrySettings {
+	enabled?: boolean; // default: false (off-by-default)
+}
+
+/** Self-update channel. */
+export type UpdateChannel = "stable" | "beta" | "canary";
+
+export interface UpdateSettings {
+	channel?: UpdateChannel; // default: "stable"
+	autoCheck?: boolean; // default: true (check once per 24h)
+	lastCheckedAt?: string; // ISO timestamp of last GitHub releases poll
+	lastNotifiedVersion?: string; // version we last surfaced to the user
+}
+
+/**
+ * Hooks settings — Claude Code v2.1.119-compatible.
+ *
+ * Schema source of truth: https://code.claude.com/docs/en/hooks
+ * (settings.json `hooks` key).
+ *
+ * The structured `HooksConfig` shape lives in `core/hooks/events.ts`.
+ * Here we keep the value typed as `unknown`-record so this file does not
+ * import from `core/hooks/` (which would create a cycle once WS5 wires
+ * skills + commands through settings) and so unknown Claude Code event
+ * names are preserved verbatim for forward-compat. Use
+ * `HooksRegistry.setLayer()` to validate before consumption.
+ */
+export type HooksSettings = Record<string, unknown>;
+
 export type TransportSetting = Transport;
 
 /**
@@ -109,6 +146,13 @@ export interface Settings {
 	sessionDir?: string; // Custom session storage directory (same format as --session-dir CLI flag)
 	caveMode?: CaveModeSettings;
 	rtk?: RtkSettings;
+	onboarding?: OnboardingSettings;
+	telemetry?: TelemetrySettings;
+	update?: UpdateSettings;
+	/** Claude Code-compatible lifecycle hooks. See `core/hooks/events.ts` for shape. */
+	hooks?: HooksSettings;
+	/** When true, all hooks are skipped regardless of `hooks` content. */
+	disableAllHooks?: boolean;
 }
 
 /** Deep merge settings: project/overrides take precedence, nested objects merge recursively */
@@ -1052,6 +1096,133 @@ export class SettingsManager {
 		}
 		this.globalSettings.rtk.enabled = enabled;
 		this.markModified("rtk", "enabled");
+		this.save();
+	}
+
+	// --- WS11: onboarding / telemetry / update settings ---
+
+	getHasCompletedOnboarding(): boolean {
+		return this.settings.onboarding?.hasCompletedOnboarding ?? false;
+	}
+
+	markOnboardingCompleted(version: string): void {
+		if (!this.globalSettings.onboarding) {
+			this.globalSettings.onboarding = {};
+		}
+		this.globalSettings.onboarding.hasCompletedOnboarding = true;
+		this.globalSettings.onboarding.completedAt = new Date().toISOString();
+		this.globalSettings.onboarding.completedVersion = version;
+		this.markModified("onboarding", "hasCompletedOnboarding");
+		this.markModified("onboarding", "completedAt");
+		this.markModified("onboarding", "completedVersion");
+		this.save();
+	}
+
+	getTelemetryEnabled(): boolean {
+		// WS11: telemetry is off by default. The user must opt-in explicitly.
+		return this.settings.telemetry?.enabled === true;
+	}
+
+	setTelemetryEnabled(enabled: boolean): void {
+		if (!this.globalSettings.telemetry) {
+			this.globalSettings.telemetry = {};
+		}
+		this.globalSettings.telemetry.enabled = enabled;
+		this.markModified("telemetry", "enabled");
+		this.save();
+	}
+
+	getUpdateChannel(): UpdateChannel {
+		return this.settings.update?.channel ?? "stable";
+	}
+
+	setUpdateChannel(channel: UpdateChannel): void {
+		if (!this.globalSettings.update) {
+			this.globalSettings.update = {};
+		}
+		this.globalSettings.update.channel = channel;
+		this.markModified("update", "channel");
+		this.save();
+	}
+
+	getUpdateAutoCheck(): boolean {
+		return this.settings.update?.autoCheck ?? true;
+	}
+
+	setUpdateAutoCheck(enabled: boolean): void {
+		if (!this.globalSettings.update) {
+			this.globalSettings.update = {};
+		}
+		this.globalSettings.update.autoCheck = enabled;
+		this.markModified("update", "autoCheck");
+		this.save();
+	}
+
+	getUpdateLastCheckedAt(): string | undefined {
+		return this.settings.update?.lastCheckedAt;
+	}
+
+	setUpdateLastCheckedAt(iso: string): void {
+		if (!this.globalSettings.update) {
+			this.globalSettings.update = {};
+		}
+		this.globalSettings.update.lastCheckedAt = iso;
+		this.markModified("update", "lastCheckedAt");
+		this.save();
+	}
+
+	getUpdateLastNotifiedVersion(): string | undefined {
+		return this.settings.update?.lastNotifiedVersion;
+	}
+
+	setUpdateLastNotifiedVersion(version: string): void {
+		if (!this.globalSettings.update) {
+			this.globalSettings.update = {};
+		}
+		this.globalSettings.update.lastNotifiedVersion = version;
+		this.markModified("update", "lastNotifiedVersion");
+		this.save();
+	}
+
+	// =========================================================================
+	// Hooks (WS4) — Claude Code-compatible lifecycle hooks
+	// =========================================================================
+
+	/** Merged `hooks` block (project overrides global). May be undefined. */
+	getHooks(): HooksSettings | undefined {
+		return this.settings.hooks;
+	}
+
+	/** Global-scope `hooks` block, used by HooksRegistry.setLayer("global", ...). */
+	getGlobalHooks(): HooksSettings | undefined {
+		return this.globalSettings.hooks;
+	}
+
+	/** Project-scope `hooks` block, used by HooksRegistry.setLayer("project", ...). */
+	getProjectHooks(): HooksSettings | undefined {
+		return this.projectSettings.hooks;
+	}
+
+	setGlobalHooks(hooks: HooksSettings | undefined): void {
+		this.globalSettings.hooks = hooks;
+		this.markModified("hooks");
+		this.save();
+	}
+
+	setProjectHooks(hooks: HooksSettings | undefined): void {
+		const projectSettings = structuredClone(this.projectSettings);
+		projectSettings.hooks = hooks;
+		this.markProjectModified("hooks");
+		this.saveProjectSettings(projectSettings);
+	}
+
+	getDisableAllHooks(): boolean {
+		return this.settings.disableAllHooks ?? false;
+	}
+
+	setDisableAllHooks(disabled: boolean): void {
+		this.globalSettings.disableAllHooks = disabled;
+		this.markModified("disableAllHooks");
 		this.save();
 	}
 }
