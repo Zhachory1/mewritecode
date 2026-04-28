@@ -90,6 +90,7 @@ export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 	{ name: "reload", description: "Reload keybindings, extensions, skills, prompts, and themes" },
 	{ name: "hooks", description: "List, test, and manage Claude Code-compatible lifecycle hooks (WS4)" },
 	{ name: "mcp", description: "Manage MCP servers (list, doctor, login, reload). See: cave mcp --help." },
+	{ name: "sandbox", description: "Show or change the sandbox policy (WS3, experimental)" },
 	{ name: "quit", description: "Quit pi" },
 ];
 
@@ -465,3 +466,6 @@ export {
 	buildRegistryFromSettings as buildHooksRegistryFromSettings,
 	buildManagerFromSettings as buildHooksManagerFromSettings,
 } from "./slash-commands/hooks.js";
+
+// WS3: re-export the sandbox command handlers for CLI dispatch.
+export { handleSandboxCommand, isSandboxFlagEnabled } from "./slash-commands/sandbox.js";

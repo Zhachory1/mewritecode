@@ -2,7 +2,15 @@
 //
 // Landlock requires kernel 5.13+. On older kernels we fall back to
 // a permissive wrapper and emit a one-time warning at startup.
+//
+// WS3 extension: `landlockFromPolicy()` accepts a SandboxPolicy IR. The real
+// implementation will spawn `bwrap` (bubblewrap) with bind mounts derived from
+// the policy + a Landlock ruleset attached via prctl. Today we ship a marker
+// wrapper as a placeholder; tests assert the IR plumbing.
+//
+// TODO(ws3-linux): replace `wrap()` body with bubblewrap + landlock helper.
 
+import type { SandboxPolicy } from "./policy.js";
 import type { SandboxAllow, SandboxProfile, SandboxResult } from "./types.js";
 
 export interface KernelInfo {
@@ -37,11 +45,25 @@ export function __resetLandlockCache(): void {
 	CACHED_SUPPORT = undefined;
 }
 
-export function landlockSandbox(
-	workdir: string,
-	allow: SandboxAllow = {},
-	supported = true,
-): SandboxResult {
+/** WS3: build a landlock-bubblewrap wrapper from a SandboxPolicy IR. */
+export function landlockFromPolicy(policy: SandboxPolicy, supported = true): SandboxResult {
+	if (policy.kind === "danger_full_access") {
+		return {
+			profile: {
+				kind: "permissive",
+				workdir: policy.workdir,
+				allow: {},
+				permissiveReason: "danger_full_access",
+			},
+			wrap: (command) => command,
+		};
+	}
+	const allow: SandboxAllow =
+		policy.kind === "workspace_write" ? { writes: policy.extraWritableRoots, network: policy.allowAllNetwork } : {};
+	return landlockSandbox(policy.workdir, allow, supported);
+}
+
+export function landlockSandbox(workdir: string, allow: SandboxAllow = {}, supported = true): SandboxResult {
 	const profile: SandboxProfile = {
 		kind: supported ? "landlock" : "permissive",
 		workdir,

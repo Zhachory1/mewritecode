@@ -8,7 +8,7 @@
 import { resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { type ImageContent, modelsAreEqual, supportsXhigh } from "@cave/ai";
-import { detectTerminalIdentity, probeTerminal, ProcessTerminal, setKeybindings, TUI } from "@cave/tui";
+import { detectTerminalIdentity, ProcessTerminal, probeTerminal, setKeybindings, TUI } from "@cave/tui";
 import chalk from "chalk";
 import { type Args, type Mode, parseArgs, printHelp } from "./cli/args.js";
 import { processFileArguments } from "./cli/file-processor.js";
@@ -37,6 +37,7 @@ import {
 } from "./core/session-cwd.js";
 import { SessionManager } from "./core/session-manager.js";
 import { SettingsManager } from "./core/settings-manager.js";
+import { handleSandboxCommand } from "./core/slash-commands/sandbox.js";
 import { printTimings, resetTimings, time } from "./core/timings.js";
 import { allTools } from "./core/tools/index.js";
 import { runMigrations, showDeprecationWarnings } from "./migrations.js";
@@ -487,6 +488,11 @@ export async function main(args: string[]) {
 	}
 
 	if (await handleConfigCommand(args)) {
+		return;
+	}
+
+	// WS3: cave sandbox / cave debug sandbox / cave execpolicy check.
+	if (handleSandboxCommand(args)) {
 		return;
 	}
 
