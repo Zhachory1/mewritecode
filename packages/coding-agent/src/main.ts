@@ -754,6 +754,7 @@ export async function main(args: string[]) {
 			// upgrades to ApprovalPromptUI once the TUI is built (see
 			// modes/interactive/interactive-mode.ts).
 			permissionUI: new HeadlessPromptUI(),
+			permissionMode: parsed.permissionMode,
 		});
 		const cliThinkingOverride = parsed.thinking !== undefined || cliThinkingFromModel;
 		if (created.session.model && cliThinkingOverride) {

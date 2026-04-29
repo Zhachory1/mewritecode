@@ -77,6 +77,11 @@ export interface CreateAgentSessionOptions {
 	 * `ApprovalPromptUI(tui)`; headless / -p hosts pass `HeadlessPromptUI()`.
 	 */
 	permissionUI?: import("./permission-prompt.js").PromptUI;
+	/**
+	 * Initial permission mode (passed via `--permission-mode` or set programmatically).
+	 * Drives the SandboxPolicy reducer + subagent plan-mode tool gating.
+	 */
+	permissionMode?: import("@cave/agent").PermissionMode;
 }
 
 /** Result from createAgentSession */
@@ -247,7 +252,11 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		thinkingLevel = "off";
 	}
 
-	const defaultActiveToolNames: ToolName[] = ["read", "bash", "edit", "write"];
+	// Subagent fan-out (`task`) and single-agent invocation (`agent`) are
+	// part of the default loadout — without them the model can never reach
+	// `.cave/agents/<name>.md` definitions. Mirrors Claude Code's Task tool
+	// being on by default.
+	const defaultActiveToolNames: ToolName[] = ["read", "bash", "edit", "write", "task", "agent"];
 	const initialActiveToolNames: ToolName[] = options.tools
 		? options.tools.map((t) => t.name).filter((n): n is ToolName => n in allTools)
 		: defaultActiveToolNames;
@@ -359,6 +368,7 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		extensionRunnerRef,
 		sessionStartEvent: options.sessionStartEvent,
 		permissionUI: options.permissionUI,
+		permissionMode: options.permissionMode,
 	});
 	const extensionsResult = resourceLoader.getExtensions();
 

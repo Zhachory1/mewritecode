@@ -2,7 +2,7 @@
  * CLI argument parsing and help display
  */
 
-import type { ThinkingLevel } from "@cave/agent";
+import type { PermissionMode, ThinkingLevel } from "@cave/agent";
 import chalk from "chalk";
 import { APP_NAME, CONFIG_DIR_NAME, ENV_AGENT_DIR, ENV_PACKAGE_DIR, ENV_SHARE_VIEWER_URL } from "../config.js";
 import type { ExtensionFlag } from "../core/extensions/types.js";
@@ -35,6 +35,8 @@ export interface Args {
 	models?: string[];
 	tools?: ToolName[];
 	noTools?: boolean;
+	/** Permission mode for the session — drives the sandbox policy + subagent plan-mode flow. */
+	permissionMode?: PermissionMode;
 	extensions?: string[];
 	noExtensions?: boolean;
 	print?: boolean;
@@ -58,6 +60,18 @@ export interface Args {
 }
 
 const VALID_THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh"] as const;
+
+const VALID_PERMISSION_MODES: readonly PermissionMode[] = [
+	"default",
+	"plan",
+	"acceptEdits",
+	"auto",
+	"bypassPermissions",
+];
+
+function isValidPermissionMode(value: string): value is PermissionMode {
+	return (VALID_PERMISSION_MODES as readonly string[]).includes(value);
+}
 
 export function isValidThinkingLevel(level: string): level is ThinkingLevel {
 	return VALID_THINKING_LEVELS.includes(level as ThinkingLevel);
@@ -129,6 +143,16 @@ export function parseArgs(args: string[]): Args {
 			result.planModel = args[++i];
 		} else if (arg === "--edit-model" && i + 1 < args.length) {
 			result.editModel = args[++i];
+		} else if (arg === "--permission-mode" && i + 1 < args.length) {
+			const mode = args[++i];
+			if (isValidPermissionMode(mode)) {
+				result.permissionMode = mode;
+			} else {
+				result.diagnostics.push({
+					type: "warning",
+					message: `Invalid permission mode "${mode}". Valid values: ${VALID_PERMISSION_MODES.join(", ")}`,
+				});
+			}
 		} else if (arg === "--thinking" && i + 1 < args.length) {
 			const level = args[++i];
 			if (isValidThinkingLevel(level)) {
@@ -254,6 +278,8 @@ ${chalk.bold("Options:")}
   --tools <tools>                Comma-separated list of tools to enable (default: read,bash,edit,write)
                                  Available: read, bash, edit, write, grep, find, ls
   --thinking <level>             Set thinking level: off, minimal, low, medium, high, xhigh
+  --permission-mode <mode>       Sandbox/permission mode: default, plan, acceptEdits, auto, bypassPermissions
+                                 plan = read-only exploration (Read/Grep/Find/Ls + curated bash subset)
   --extension, -e <path>         Load an extension file (can be used multiple times)
   --no-extensions, -ne           Disable extension discovery (explicit -e paths still work)
   --skill <path>                 Load a skill file or directory (can be used multiple times)

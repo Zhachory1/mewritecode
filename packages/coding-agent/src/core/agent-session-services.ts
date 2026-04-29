@@ -57,6 +57,8 @@ export interface CreateAgentSessionFromServicesOptions {
 	customTools?: ToolDefinition[];
 	/** WS3 PromptUI for tool permission prompts (interactive: ApprovalPromptUI; -p: HeadlessPromptUI). */
 	permissionUI?: import("./permission-prompt.js").PromptUI;
+	/** Initial session permission mode (default | plan | acceptEdits | auto | bypassPermissions). */
+	permissionMode?: import("@cave/agent").PermissionMode;
 }
 
 /**
@@ -196,5 +198,6 @@ export async function createAgentSessionFromServices(
 		customTools: options.customTools,
 		sessionStartEvent: options.sessionStartEvent,
 		permissionUI: options.permissionUI,
+		permissionMode: options.permissionMode,
 	});
 }

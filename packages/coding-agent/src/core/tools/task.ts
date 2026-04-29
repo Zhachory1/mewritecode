@@ -43,6 +43,20 @@ import type { ToolDefinition } from "../extensions/types.js";
 
 const MAX_CONCURRENCY = 4;
 
+/**
+ * Hard cap on subagent recursion depth. Tracked via the `CAVE_SUBAGENT_DEPTH`
+ * env var, incremented by each spawn. Without a cap a subagent that itself has
+ * the `task` tool active can fan out indefinitely.
+ */
+const MAX_SUBAGENT_DEPTH = 3;
+const SUBAGENT_DEPTH_ENV = "CAVE_SUBAGENT_DEPTH";
+
+function currentSubagentDepth(): number {
+	const raw = process.env[SUBAGENT_DEPTH_ENV];
+	const n = raw ? Number.parseInt(raw, 10) : 0;
+	return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
 // ─── Schema ───────────────────────────────────────────────────────────────
 
 const TaskItemSchema = Type.Object({
@@ -86,6 +100,15 @@ interface SpawnOptions {
 	caveBin?: string;
 	/** Inject a fake spawner for tests. */
 	mockSpawn?: typeof spawn;
+	/**
+	 * Resolve the model to actually spawn the subagent with. If the agent's
+	 * frontmatter model isn't reachable (e.g. the user has no Anthropic key
+	 * but the agent says `model: claude-haiku-4-5`), this callback returns
+	 * the parent's current model so the child inherits a working provider.
+	 * Returning `undefined` drops the `--model` flag entirely (child uses
+	 * settings default).
+	 */
+	resolveModel?: (agentModel: string | undefined) => string | undefined;
 }
 
 interface SpawnResult {
@@ -123,11 +146,24 @@ function resolveCaveInvocation(args: string[], caveBin?: string): { command: str
  * P0: relies on JSON-mode events. P1 (deferred): structured tool-call telemetry
  * with live updates back to the parent renderer.
  */
+// Thinking levels that map directly from agent.md `effort:`. Anything else is dropped.
+const VALID_EFFORT_LEVELS = new Set(["off", "minimal", "low", "medium", "high", "xhigh"]);
+
 async function spawnSubagent(opts: SpawnOptions): Promise<SpawnResult> {
 	const args: string[] = ["--mode", "json", "-p", "--no-session"];
-	if (opts.agent.model) args.push("--model", opts.agent.model);
-	if (opts.agent.tools && opts.agent.tools.length > 0) args.push("--tools", opts.agent.tools.join(","));
+	const effectiveModel = opts.resolveModel ? opts.resolveModel(opts.agent.model) : opts.agent.model;
+	if (effectiveModel) args.push("--model", effectiveModel);
+	// Tool scoping: respect `tools:` (allow-list); `disallowedTools:` is filtered
+	// out below since the child cave's `--tools` flag is allow-list only.
+	if (opts.agent.tools && opts.agent.tools.length > 0) {
+		const blocked = new Set(opts.agent.disallowedTools ?? []);
+		const filtered = opts.agent.tools.filter((t) => !blocked.has(t));
+		if (filtered.length > 0) args.push("--tools", filtered.join(","));
+	}
 	if (opts.agent.permissionMode) args.push("--permission-mode", opts.agent.permissionMode);
+	if (typeof opts.agent.effort === "string" && VALID_EFFORT_LEVELS.has(opts.agent.effort)) {
+		args.push("--thinking", opts.agent.effort);
+	}
 
 	let tmpDir: string | null = null;
 	let promptPath: string | null = null;
@@ -147,11 +183,18 @@ async function spawnSubagent(opts: SpawnOptions): Promise<SpawnResult> {
 	let stderr = "";
 	let finalText = "";
 
+	const childDepth = currentSubagentDepth() + 1;
+	const childEnv: NodeJS.ProcessEnv = {
+		...process.env,
+		[SUBAGENT_DEPTH_ENV]: String(childDepth),
+	};
+
 	const exitCode = await new Promise<number>((resolve) => {
 		const child = spawner(invocation.command, invocation.args, {
 			cwd: opts.cwd,
 			shell: false,
 			stdio: ["ignore", "pipe", "pipe"],
+			env: childEnv,
 		});
 		let buf = "";
 		const flushLine = (line: string) => {
@@ -273,7 +316,12 @@ async function runOne(
 	parentCwd: string,
 	cwdOverride: string | undefined,
 	signal: AbortSignal | undefined,
-	options: { caveBin?: string; mockSpawn?: typeof spawn; idSuffix?: string } = {},
+	options: {
+		caveBin?: string;
+		mockSpawn?: typeof spawn;
+		idSuffix?: string;
+		resolveModel?: SpawnOptions["resolveModel"];
+	} = {},
 ): Promise<SubagentResult> {
 	const found = findAgentDef(loaded, agentName);
 	if (!found) {
@@ -299,6 +347,7 @@ async function runOne(
 			signal,
 			caveBin: options.caveBin,
 			mockSpawn: options.mockSpawn,
+			resolveModel: options.resolveModel,
 		});
 	} catch (err) {
 		const cleaned = await maybeCleanupWorktree(parentCwd, wt.worktree);
@@ -356,6 +405,19 @@ export interface TaskToolOptions {
 	mockSpawn?: typeof spawn;
 	/** Override the loader (test injection). */
 	loader?: () => LoadAgentDefsResult;
+	/**
+	 * Resolve which model the spawned cave child should use.
+	 *
+	 * Receives the agent's frontmatter `model` (may be undefined) and returns
+	 * a model id to pass via `--model`, or `undefined` to drop the flag and
+	 * let the child cave use its settings default.
+	 *
+	 * The standard wiring (in agent-session.ts) returns the agent's preferred
+	 * model when the parent has auth for it, otherwise falls back to the
+	 * parent's currently-running model — that way users on a non-Anthropic
+	 * provider can still invoke agents whose .md files pin a Claude tier.
+	 */
+	resolveModel?: SpawnOptions["resolveModel"];
 }
 
 export function createTaskToolDefinition(
@@ -363,19 +425,56 @@ export function createTaskToolDefinition(
 	options?: TaskToolOptions,
 ): ToolDefinition<typeof TaskSchema, TaskToolDetails | undefined> {
 	const loader = options?.loader ?? (() => loadAgentDefs({ cwd }));
+
+	// Render the agent menu into the tool's description so the model sees it
+	// in the tool spec, not just in the registry. Without this, the model has
+	// no idea which agents exist and falls back to running grep/find itself.
+	const loadedAtBuild = (() => {
+		try {
+			return loader();
+		} catch {
+			return { agents: [], diagnostics: [] } as LoadAgentDefsResult;
+		}
+	})();
+	const agentMenu =
+		loadedAtBuild.agents.length === 0
+			? ""
+			: `\n\nAvailable agent types and what they do:\n${loadedAtBuild.agents
+					.map((a) => `  - ${a.def.name}: ${a.def.description}`)
+					.join("\n")}`;
+
 	return {
 		name: "task",
 		label: "Task",
 		description: [
-			"Delegate work to specialized subagents loaded from .cave/agents/<name>.md.",
-			"Modes: single (agent + task), parallel (tasks: [{agent,task}]), chain (chain: [{agent,task}], {previous} substituted).",
-			`Up to ${MAX_PARALLEL_SUBAGENTS} parallel subagents.`,
-			"Subagents inherit cwd by default; agents with `isolation: worktree` get a fresh git worktree.",
-			"Subagents run with their own permission mode (e.g. `plan` for read-only exploration).",
+			"Launch a subagent for delegated work. Each agent type has a specialized role and (often) its own tool subset, model tier, and permission mode.",
+			"Use this WHEN: the work is exploratory or research-heavy (prefer the `explore` agent over running grep/find/read manually); the work is a multi-step task that benefits from a focused subagent (review, critique, test-writing); independent units of work can run in parallel.",
+			"Do NOT use for: trivial single-file lookups where one Read or Grep would do; tasks the parent is already in the middle of and needs synchronous control over.",
+			`Modes (exactly one per call): single (agent + task), parallel (tasks: [{agent,task}], up to ${MAX_PARALLEL_SUBAGENTS}), chain (chain: [{agent,task}], "{previous}" substituted with prior step's output).`,
+			"Subagents inherit cwd; agents with `isolation: worktree` run in a fresh git worktree. Plan-mode agents are read-only.",
+			agentMenu,
 		].join(" "),
-		promptSnippet: `Spawn up to ${MAX_PARALLEL_SUBAGENTS} parallel subagents`,
+		promptSnippet: "Delegate to a subagent (use `explore` for codebase reconnaissance instead of running grep/find yourself)",
+		promptGuidelines: [
+			"For codebase exploration ('where is X', 'how does Y work', 'what files touch Z'), prefer launching the `explore` subagent over running grep/find/read sequentially yourself.",
+			"For independent units of work, launch them in parallel via `task({ tasks: [...] })` rather than serially.",
+			"Always pick the most specific agent for the job; fall back to `explore` only when no specialist fits.",
+		],
 		parameters: TaskSchema,
 		async execute(_id, params: TaskToolInput, signal) {
+			if (currentSubagentDepth() >= MAX_SUBAGENT_DEPTH) {
+				return {
+					content: [
+						{
+							type: "text" as const,
+							text:
+								`Task tool refused: subagent recursion depth ${currentSubagentDepth()} ≥ cap ${MAX_SUBAGENT_DEPTH}. ` +
+								`Subagents may not chain Task calls beyond ${MAX_SUBAGENT_DEPTH} levels deep.`,
+						},
+					],
+					details: undefined,
+				};
+			}
 			const loaded = loader();
 			const hasSingle = !!(params.agent && params.task);
 			const hasParallel = !!(params.tasks && params.tasks.length > 0);
@@ -411,6 +510,7 @@ export function createTaskToolDefinition(
 				const r = await runOne(loaded, params.agent!, params.task!, cwd, params.cwd, signal, {
 					caveBin: options?.caveBin,
 					mockSpawn: options?.mockSpawn,
+					resolveModel: options?.resolveModel,
 				});
 				const text =
 					r.exitCode === 0
@@ -428,6 +528,7 @@ export function createTaskToolDefinition(
 						caveBin: options?.caveBin,
 						mockSpawn: options?.mockSpawn,
 						idSuffix: String(idx),
+						resolveModel: options?.resolveModel,
 					}),
 				);
 				const ok = results.filter((r) => r.exitCode === 0).length;
@@ -455,6 +556,7 @@ export function createTaskToolDefinition(
 					caveBin: options?.caveBin,
 					mockSpawn: options?.mockSpawn,
 					idSuffix: `chain-${i}`,
+					resolveModel: options?.resolveModel,
 				});
 				results.push(r);
 				if (r.exitCode !== 0) {

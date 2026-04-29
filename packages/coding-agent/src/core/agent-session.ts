@@ -16,7 +16,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import type { Agent, AgentEvent, AgentMessage, AgentState, AgentTool, ThinkingLevel } from "@cave/agent";
-import { LLMLinguaMiddleware } from "@cave/agent";
+import { LLMLinguaMiddleware, PLAN_MODE_TOOLS } from "@cave/agent";
 import type { AssistantMessage, ImageContent, Message, Model, TextContent } from "@cave/ai";
 import { isContextOverflow, modelsAreEqual, resetApiProviders, supportsXhigh } from "@cave/ai";
 import { getDocsPath } from "../config.js";
@@ -173,6 +173,11 @@ export interface AgentSessionConfig {
 	 * so non-interactive runs do not block.
 	 */
 	permissionUI?: PromptUI;
+	/**
+	 * Initial permission mode. Drives the SandboxPolicy reducer and the
+	 * subagent runner's plan-mode tool gating. Defaults to "default".
+	 */
+	permissionMode?: import("@cave/agent").PermissionMode;
 }
 
 export interface ExtensionBindings {
@@ -288,6 +293,7 @@ export class AgentSession {
 	// or headless). The session is rebuilt when permission mode changes.
 	private _permissionUI: PromptUI | undefined;
 	private _permissionSession: PermissionSession | undefined;
+	private _permissionMode: import("@cave/agent").PermissionMode = "default";
 
 	private _resourceLoader: ResourceLoader;
 	private _customTools: ToolDefinition[];
@@ -336,6 +342,9 @@ export class AgentSession {
 		this._baseToolsOverride = config.baseToolsOverride;
 		this._sessionStartEvent = config.sessionStartEvent ?? { type: "session_start", reason: "startup" };
 		this._permissionUI = config.permissionUI;
+		if (config.permissionMode) {
+			this._permissionMode = config.permissionMode;
+		}
 
 		// Always subscribe to agent events for internal handling
 		// (session persistence, extensions, auto-compaction, retry logic)
@@ -2511,28 +2520,49 @@ export class AgentSession {
 			// Lazy import to keep module load time clean for headless runs that
 			// never touch the policy primitives.
 			const { defaultPolicyForMode } = require("@cave/agent");
-			const mode = (((this.settingsManager as any).getPermissionMode?.() as string | undefined) ?? "default") as
-				import("@cave/agent").PermissionMode;
 			this._permissionSession = new PermissionSession({
 				cwd: this._cwd,
-				policy: defaultPolicyForMode(mode, this._cwd),
-				mode,
+				policy: defaultPolicyForMode(this._permissionMode, this._cwd),
+				mode: this._permissionMode,
 				ui: this._permissionUI,
 			});
 		}
 		return this._permissionSession;
 	}
 
+	/** Current permission mode for this session. */
+	get permissionMode(): import("@cave/agent").PermissionMode {
+		return this._permissionMode;
+	}
+
 	/** Rebuild the PermissionSession with a new permission mode. */
 	setPermissionMode(mode: import("@cave/agent").PermissionMode): void {
-		if (!this._permissionUI) return;
-		const { defaultPolicyForMode } = require("@cave/agent");
-		this._permissionSession = new PermissionSession({
-			cwd: this._cwd,
-			policy: defaultPolicyForMode(mode, this._cwd),
-			mode,
-			ui: this._permissionUI,
-		});
+		const previous = this._permissionMode;
+		this._permissionMode = mode;
+		if (this._permissionUI) {
+			const { defaultPolicyForMode } = require("@cave/agent");
+			this._permissionSession = new PermissionSession({
+				cwd: this._cwd,
+				policy: defaultPolicyForMode(mode, this._cwd),
+				mode,
+				ui: this._permissionUI,
+			});
+		} else {
+			// No UI yet — the next permissionSession access will build with the new mode.
+			this._permissionSession = undefined;
+		}
+		// Re-filter the active tool list when entering or leaving plan mode so
+		// mutating tools (edit/write/bash) actually disappear during plan.
+		// When LEAVING plan mode we pass `undefined` so `_buildRuntime` restores
+		// the full default set rather than re-filtering the already-narrowed
+		// list.
+		if (previous !== mode && (previous === "plan" || mode === "plan")) {
+			const activeToolNames = mode === "plan" ? this.getActiveToolNames() : undefined;
+			void this._buildRuntime({
+				activeToolNames,
+				includeAllExtensionTools: true,
+			});
+		}
 	}
 
 	private async _buildRuntime(options: {
@@ -2560,6 +2590,27 @@ export class AgentSession {
 			: createAllToolDefinitions(this._cwd, {
 					read: { autoResizeImages },
 					bash: { commandPrefix: shellCommandPrefix, spawnHook: rtkSpawnHook },
+					task: {
+						// Subagents whose frontmatter pins a model the parent has no auth
+						// for (e.g. "claude-haiku-4-5" on a non-Anthropic provider) fall
+						// back to the parent's currently-running model so they actually
+						// run instead of failing at child-process startup.
+						resolveModel: (agentModel) => {
+							const parentModel = this.agent.state.model;
+							// Canonicalise to `provider/id` so the child cave's resolver
+							// doesn't have to guess which provider to use — critical when
+							// the parent runs on a non-default provider (Codex, Azure
+							// OpenAI Responses, GitHub Copilot, etc.) but the agent.md
+							// frontmatter pins a model id that exists across providers.
+							const parentRef = parentModel ? `${parentModel.provider}/${parentModel.id}` : undefined;
+							if (!agentModel) return parentRef;
+							const authed = this._modelRegistry.getAvailable();
+							const authedMatch =
+								authed.find((m) => `${m.provider}/${m.id}` === agentModel) ??
+								authed.find((m) => m.id === agentModel);
+							return authedMatch ? `${authedMatch.provider}/${authedMatch.id}` : parentRef;
+						},
+					},
 				});
 
 		this._baseToolDefinitions = new Map(
@@ -2603,8 +2654,14 @@ export class AgentSession {
 
 		const defaultActiveToolNames = this._baseToolsOverride
 			? Object.keys(this._baseToolsOverride)
-			: ["read", "bash", "edit", "write"];
-		const baseActiveToolNames = options.activeToolNames ?? defaultActiveToolNames;
+			: ["read", "bash", "edit", "write", "task", "agent"];
+		const requestedActive = options.activeToolNames ?? defaultActiveToolNames;
+		// In plan mode, hard-restrict the active set to read-only tools so the
+		// model can never reach `edit`/`write`/`bash` (mutating). Bash itself
+		// is allowed but separately gated by `isPlanModeBashCommand` at exec
+		// time.
+		const baseActiveToolNames =
+			this._permissionMode === "plan" ? requestedActive.filter((t) => PLAN_MODE_TOOLS.has(t)) : requestedActive;
 		this._refreshToolRegistry({
 			activeToolNames: baseActiveToolNames,
 			includeAllExtensionTools: options.includeAllExtensionTools,

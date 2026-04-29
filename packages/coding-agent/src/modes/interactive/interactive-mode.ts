@@ -2184,6 +2184,46 @@ export class InteractiveMode {
 		this.defaultEditor.onPasteImage = () => {
 			this.handleClipboardImagePaste();
 		};
+
+		// Transcript scroll keys — intercepted before the editor / overlays see them
+		// so users can scroll back through the chat without losing focus on the input.
+		this.ui.addInputListener((data) => {
+			// Don't hijack scroll keys while an overlay is up — they may want them.
+			if (this.ui.hasOverlay()) return undefined;
+			const kb = this.keybindings;
+			if (kb.matches(data, "tui.chat.scrollUp")) {
+				this.ui.scrollChatBy(-1);
+				return { consume: true };
+			}
+			if (kb.matches(data, "tui.chat.scrollDown")) {
+				this.ui.scrollChatBy(1);
+				return { consume: true };
+			}
+			if (kb.matches(data, "tui.chat.pageUp")) {
+				this.ui.scrollChatPageUp();
+				return { consume: true };
+			}
+			if (kb.matches(data, "tui.chat.pageDown")) {
+				this.ui.scrollChatPageDown();
+				return { consume: true };
+			}
+			if (kb.matches(data, "tui.chat.toTop")) {
+				this.ui.scrollChatToTop();
+				return { consume: true };
+			}
+			if (kb.matches(data, "tui.chat.toBottom")) {
+				this.ui.scrollChatToBottom();
+				return { consume: true };
+			}
+			// Pressing Escape while scrolled back snaps to live tail before the editor
+			// gets a chance to interpret it (so the empty-editor double-escape behavior
+			// is unaffected at tail).
+			if (this.ui.isChatScrolledBack() && matchesKey(data, "escape")) {
+				this.ui.scrollChatToBottom();
+				return { consume: true };
+			}
+			return undefined;
+		});
 	}
 
 	private async handleClipboardImagePaste(): Promise<void> {

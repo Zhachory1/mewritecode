@@ -13,6 +13,7 @@ import type { spawn } from "node:child_process";
 import type { SubagentResult } from "@cave/agent";
 import { Text } from "@cave/tui";
 import { type Static, Type } from "@sinclair/typebox";
+import { type LoadAgentDefsResult, loadAgentDefs } from "../agent-defs/loader.js";
 import type { ToolDefinition } from "../extensions/types.js";
 import { createTaskToolDefinition, type TaskToolOptions } from "./task.js";
 
@@ -35,15 +36,34 @@ export function createAgentToolDefinition(
 	options?: AgentToolOptions,
 ): ToolDefinition<typeof AgentSchema, AgentToolDetails | undefined> {
 	const taskTool = createTaskToolDefinition(cwd, options);
+
+	// Same dynamic-menu trick as `task`: render the agent list into the
+	// description so the model picks from a real menu instead of guessing.
+	const loader = options?.loader ?? (() => loadAgentDefs({ cwd }));
+	const loadedAtBuild = (() => {
+		try {
+			return loader();
+		} catch {
+			return { agents: [], diagnostics: [] } as LoadAgentDefsResult;
+		}
+	})();
+	const agentMenu =
+		loadedAtBuild.agents.length === 0
+			? ""
+			: `\n\nAvailable agent types and what they do:\n${loadedAtBuild.agents
+					.map((a) => `  - ${a.def.name}: ${a.def.description}`)
+					.join("\n")}`;
+
 	return {
 		name: "agent",
 		label: "Agent",
 		description: [
-			"Invoke a single named subagent on a task.",
-			"For multi-agent fan-out, use the `task` tool's parallel/chain modes instead.",
-			"Subagent definitions live at `.cave/agents/<name>.md`.",
+			"Invoke a single named subagent on a task. Use this when delegating to a specialist (e.g. the `explore` agent for codebase reconnaissance instead of running grep/find/read manually).",
+			"For parallel fan-out across multiple agents, use the `task` tool with `tasks: [...]` instead.",
+			"Subagent definitions live at `.cave/agents/<name>.md`; bundled defaults ship with cave.",
+			agentMenu,
 		].join(" "),
-		promptSnippet: "Run one named subagent",
+		promptSnippet: "Invoke one named subagent (prefer `explore` over manual grep for codebase questions)",
 		parameters: AgentSchema,
 		async execute(id, params: AgentToolInput, signal, _onUpdate, ctx) {
 			// Delegate to Task's single mode.

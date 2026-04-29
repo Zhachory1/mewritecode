@@ -39,6 +39,13 @@ export interface Keybindings {
 	"tui.select.pageDown": true;
 	"tui.select.confirm": true;
 	"tui.select.cancel": true;
+	// Transcript scroll (main chat region above the editor)
+	"tui.chat.scrollUp": true;
+	"tui.chat.scrollDown": true;
+	"tui.chat.pageUp": true;
+	"tui.chat.pageDown": true;
+	"tui.chat.toTop": true;
+	"tui.chat.toBottom": true;
 }
 
 export type Keybinding = keyof Keybindings;
@@ -130,6 +137,30 @@ export const TUI_KEYBINDINGS = {
 	"tui.select.cancel": {
 		defaultKeys: ["escape", "ctrl+c"],
 		description: "Cancel selection",
+	},
+	"tui.chat.scrollUp": {
+		defaultKeys: "shift+up",
+		description: "Scroll transcript up",
+	},
+	"tui.chat.scrollDown": {
+		defaultKeys: "shift+down",
+		description: "Scroll transcript down",
+	},
+	"tui.chat.pageUp": {
+		defaultKeys: ["shift+pageUp", "ctrl+pageUp"],
+		description: "Transcript page up",
+	},
+	"tui.chat.pageDown": {
+		defaultKeys: ["shift+pageDown", "ctrl+pageDown"],
+		description: "Transcript page down",
+	},
+	"tui.chat.toTop": {
+		defaultKeys: ["shift+home", "ctrl+home"],
+		description: "Transcript to top",
+	},
+	"tui.chat.toBottom": {
+		defaultKeys: ["shift+end", "ctrl+end"],
+		description: "Transcript to live tail",
 	},
 } as const satisfies KeybindingDefinitions;
 
