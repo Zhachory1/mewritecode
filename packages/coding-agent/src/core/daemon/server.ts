@@ -5,13 +5,6 @@
  * - WS endpoint per session implements JSON-RPC 2.0 for low-latency token
  *   streaming. Tokens are coalesced into ~16ms ticks before write to keep
  *   throughput high without burning context-switch budget.
- *
- * Provenance:
- *  - daemon-with-attach pattern: opencode (sst/opencode, MIT).
- *  - JSON-RPC over WS for streaming: Codex app-server (Apache-2.0).
- *  - Pi-check: no `pi-serve`, `pi-daemon`, `pi-app-server`, `pi-rpc` package
- *    found in the pi-* npm scope; no equivalent in pi-code upstream packages.
- *    Built from scratch; no upstream to vendor.
  */
 
 import { randomUUID } from "node:crypto";

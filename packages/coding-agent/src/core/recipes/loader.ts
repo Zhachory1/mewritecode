@@ -139,7 +139,7 @@ export interface FlattenIncludesOptions {
  *   - `tools`, `disallowedTools`, `include` from sub-recipes are merged into arrays.
  *   - `env` from sub-recipes is merged (root values win on key collision).
  *   - `inputs` from sub-recipes are merged (root values win).
- *   - `model`, `effort`, `permissionMode` from the root recipe win.
+ *   - `model`, `effort` from the root recipe win.
  */
 export async function flattenIncludes(
 	recipe: Recipe,

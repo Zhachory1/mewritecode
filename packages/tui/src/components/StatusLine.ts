@@ -16,11 +16,6 @@
  * terminal width). The schema is identical to Claude Code so a user pasting
  * `~/.claude/settings.json#statusLine` into `~/.cave/settings.json` Just
  * Works.
- *
- * Provenance: pi-code does not ship a configurable status line. Cave's
- * markdown-preview package has an internal one-off "statusLine" string but
- * it's a different thing (preview-only). This is a fresh implementation
- * that mirrors Claude Code's schema verbatim.
  */
 import type { Component } from "../tui.js";
 import { truncateToWidth, visibleWidth } from "../utils.js";

@@ -102,6 +102,8 @@ export interface AgentOptions {
 	onPayload?: SimpleStreamOptions["onPayload"];
 	beforeToolCall?: (context: BeforeToolCallContext, signal?: AbortSignal) => Promise<BeforeToolCallResult | undefined>;
 	afterToolCall?: (context: AfterToolCallContext, signal?: AbortSignal) => Promise<AfterToolCallResult | undefined>;
+	getSystemPrompt?: (context: AgentContext) => Promise<string> | string;
+	toolFilter?: (tools: AgentTool<any>[], context: AgentContext) => AgentTool<any>[];
 	steeringMode?: QueueMode;
 	followUpMode?: QueueMode;
 	sessionId?: string;
@@ -109,6 +111,8 @@ export interface AgentOptions {
 	transport?: Transport;
 	maxRetryDelayMs?: number;
 	toolExecution?: ToolExecutionMode;
+	/** Hard cap on assistant turns within a single run. */
+	maxTurns?: number;
 	/** Optional model router for resolving models per outbound LLM call. */
 	router?: ModelRouter;
 	/** Current role for routing decisions. Required when router is set. */
@@ -179,6 +183,8 @@ export class Agent {
 		context: AfterToolCallContext,
 		signal?: AbortSignal,
 	) => Promise<AfterToolCallResult | undefined>;
+	public getSystemPrompt?: (context: AgentContext) => Promise<string> | string;
+	public toolFilter?: (tools: AgentTool<any>[], context: AgentContext) => AgentTool<any>[];
 	private activeRun?: ActiveRun;
 	/** Session identifier forwarded to providers for cache-aware backends. */
 	public sessionId?: string;
@@ -194,6 +200,8 @@ export class Agent {
 	public router?: ModelRouter;
 	/** Current role for routing decisions. Required when router is set. */
 	public role?: Role;
+	/** Optional cap on assistant turns within a single run. */
+	public maxTurns?: number;
 
 	constructor(options: AgentOptions = {}) {
 		this._state = createMutableAgentState(options.initialState);
@@ -204,6 +212,8 @@ export class Agent {
 		this.onPayload = options.onPayload;
 		this.beforeToolCall = options.beforeToolCall;
 		this.afterToolCall = options.afterToolCall;
+		this.getSystemPrompt = options.getSystemPrompt;
+		this.toolFilter = options.toolFilter;
 		this.steeringQueue = new PendingMessageQueue(options.steeringMode ?? "one-at-a-time");
 		this.followUpQueue = new PendingMessageQueue(options.followUpMode ?? "one-at-a-time");
 		this.sessionId = options.sessionId;
@@ -213,6 +223,7 @@ export class Agent {
 		this.toolExecution = options.toolExecution ?? "parallel";
 		this.router = options.router;
 		this.role = options.role;
+		this.maxTurns = options.maxTurns;
 	}
 
 	/**
@@ -429,8 +440,11 @@ export class Agent {
 			thinkingBudgets: this.thinkingBudgets,
 			maxRetryDelayMs: this.maxRetryDelayMs,
 			toolExecution: this.toolExecution,
+			maxTurns: this.maxTurns,
 			beforeToolCall: this.beforeToolCall,
 			afterToolCall: this.afterToolCall,
+			getSystemPrompt: this.getSystemPrompt,
+			toolFilter: this.toolFilter,
 			convertToLlm: this.convertToLlm,
 			transformContext: this.transformContext,
 			getApiKey: this.getApiKey,

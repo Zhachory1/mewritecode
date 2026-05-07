@@ -5,8 +5,6 @@
  * agent on this task" — useful for skills and slash commands that always
  * invoke exactly one agent. The implementation delegates to Task's `single`
  * mode so behaviour stays identical.
- *
- * Provenance: thin shim over the WS6 Task tool. Same provenance as task.ts.
  */
 
 import type { spawn } from "node:child_process";

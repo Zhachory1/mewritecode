@@ -5,11 +5,6 @@
  * SQLite at `~/.cave/daemon/sessions.db`. Multi-client safe: any number of
  * `cave attach` clients (or `@cave/sdk`-using applications) can connect to
  * the same session over WS.
- *
- * Provenance:
- *  - opencode (sst/opencode, MIT) — daemon-with-attach.
- *  - Codex app-server (Apache-2.0) — JSON-RPC over WebSocket.
- *  - Pi-check: nothing equivalent in pi-code upstream / pi-* npm scope.
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";

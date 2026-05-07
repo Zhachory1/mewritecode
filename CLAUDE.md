@@ -7,10 +7,12 @@ Minimal terminal coding agent + multi-provider LLM toolkit. TypeScript monorepo.
 | Package | CLI | Purpose |
 |---------|-----|---------|
 **v2 core (load-bearing):**
-| `packages/coding-agent` | `cave` | Coding agent: sessions, extensions, skills, themes |
+| `packages/coding-agent` | `cave` | Coding agent: sessions, extensions, skills, themes, slash commands, subagents |
 | `packages/ai` | `pi-ai` | Unified LLM API: OpenAI, Anthropic, Google, more |
-| `packages/agent` | — | Agent runtime: tool calling, state management |
-| `packages/tui` | — | Terminal UI: differential rendering |
+| `packages/agent` | — | Agent runtime: tool calling, loop, state, system-prompt/toolFilter/maxTurns |
+| `packages/tui` | — | Terminal UI: differential rendering, chord input, notifications |
+| `packages/sdk` | — | `@cave/sdk` — TS client for cave daemon HTTP+WS API (openapi-generated) |
+| `packages/markdown-preview` | — | Markdown renderer used by TUI |
 
 **Out of scope for v2 (separate product surfaces, kept independent):**
 | `packages/web-ui` | — | Web components for AI chat |
@@ -38,11 +40,34 @@ Legacy CaveKit kits/plans/impl have been moved to `context/archive/`.
 - Package scope: `@cave/*` (all packages). Main CLI package: `cave` (unscoped).
 - Node.js 20+.
 
+## Current State (2026-05-01)
+
+- **No permission system.** Sandbox/permissions/approval-prompts stripped on
+  branch `strip/permissions`. Cave runs autopilot. Don't reintroduce. See
+  memory `feedback_no_permissions`.
+- **Plan mode wired.** `/plan` enters read-only chat mode (no edits, no shell
+  writes); `/act` exits. Slash command at
+  `packages/coding-agent/src/core/slash-commands/plan.ts`. Plan-mode gating
+  also enforced inside the Task tool for spawned subagents.
+- **Subagents.** Registry + `SendMessage` tool in coding-agent. Subagent
+  isolation honored by Task tool. Agent definitions use `tool` constraints
+  instead of removed `permissionMode` frontmatter.
+- **AgentSession features:** checkpoints, repomap, chat mode, soft compaction,
+  hooks, MCP, skills, recipes, `/clear`, `/quick-open`, `/task-list`.
+- **Goal loop (in-flight, untracked):**
+  `packages/coding-agent/src/core/goal-loop/` — `goal-runner`, `goal-state`,
+  `goal-prompts`. Not yet committed; dev work on `strip/permissions`.
+- **Walkthrough doc:** `context/notes/agent-loop-walkthrough.md` traces the
+  full path from `cave` boot → `interactive-mode` dispatch → `session.prompt`
+  → `agent-loop.runLoop`. Read this first when touching the loop.
+
 ## Agent Guidance
 
 - Read package-specific CLAUDE.md before touching that package.
 - Before building from scratch, run the **pi-check**: search `pi-code` upstream,
   the `pi-*` npm scope, and pi extensions for an existing module. Vendor or wrap
   if found. Note "borrowed from pi: <name>" in the deliverable. See plan §0.
-- CaveKit (`@cave/cavekit`) has been removed; its workflow is being replaced by
-  plan mode (read-only exploration), markdown skills, and recipes.
+- CaveKit (`@cave/cavekit`) has been removed; replaced by plan mode (read-only
+  exploration), markdown skills, and recipes.
+- Don't add per-file "inspired by hermes-agent" attribution comments even when
+  a plan/kit suggests it (memory `feedback_no_hermes_inspired_comment`).

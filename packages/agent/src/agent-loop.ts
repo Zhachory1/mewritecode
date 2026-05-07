@@ -161,6 +161,8 @@ async function runLoop(
 	streamFn?: StreamFn,
 ): Promise<void> {
 	let firstTurn = true;
+	let turnCount = 0;
+	const maxTurns = config.maxTurns && config.maxTurns > 0 ? config.maxTurns : Number.POSITIVE_INFINITY;
 	// Check for steering messages at start (user may have typed while waiting)
 	let pendingMessages: AgentMessage[] = (await config.getSteeringMessages?.()) || [];
 
@@ -170,6 +172,11 @@ async function runLoop(
 
 		// Inner loop: process tool calls and steering messages
 		while (hasMoreToolCalls || pendingMessages.length > 0) {
+			if (turnCount >= maxTurns) {
+				await emit({ type: "agent_end", messages: newMessages });
+				return;
+			}
+			turnCount++;
 			if (!firstTurn) {
 				await emit({ type: "turn_start" });
 			} else {
@@ -251,11 +258,31 @@ async function streamAssistantResponse(
 	// Convert to LLM-compatible messages (AgentMessage[] → Message[])
 	const llmMessages = await config.convertToLlm(messages);
 
+	// Resolve system prompt fresh each turn when configured (Gap 8 — supports plan-mode banner)
+	let resolvedSystemPrompt = context.systemPrompt;
+	if (config.getSystemPrompt) {
+		try {
+			resolvedSystemPrompt = await config.getSystemPrompt(context);
+		} catch {
+			// Per contract: fall back to static systemPrompt on failure.
+		}
+	}
+
+	// Apply tool filter when configured (Gap 8 — supports plan-mode read-only gating)
+	let resolvedTools = context.tools;
+	if (config.toolFilter && resolvedTools) {
+		try {
+			resolvedTools = config.toolFilter(resolvedTools, context);
+		} catch {
+			// Per contract: fall back to unfiltered tools on failure.
+		}
+	}
+
 	// Build LLM context
 	const llmContext: Context = {
-		systemPrompt: context.systemPrompt,
+		systemPrompt: resolvedSystemPrompt,
 		messages: llmMessages,
-		tools: context.tools,
+		tools: resolvedTools,
 	};
 
 	// Resolve model via router if configured

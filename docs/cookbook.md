@@ -51,29 +51,6 @@ steps:
 
 Run: `cave run-recipe parallel-review`. Three subagents run in parallel worktrees; results stream back as 500-token summaries; the parent assembles the final review.
 
-## Plan, then act on a different machine
-
-```bash
-# laptop
-cave --plan
-> refactor packages/agent/src/sandbox to use the policy IR
-# review the plan, save it
-/plan save sandbox-refactor
-
-# scp the plan to the GPU rig
-scp .cave/plans/sandbox-refactor.md gpu-rig:work/repo/.cave/plans/
-
-# gpu-rig
-cave --plan-from .cave/plans/sandbox-refactor.md
-/act
-```
-
-Or use the daemon's worker mode:
-
-```bash
-& --plan-from .cave/plans/sandbox-refactor.md   # dispatches to registered worker
-```
-
 ## Pair programming over the daemon
 
 ```bash

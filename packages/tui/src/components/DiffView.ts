@@ -7,10 +7,6 @@
  * terminal width. Hunk parsing is the caller's job — the existing edit-format
  * renderers in `coding-agent/src/core/edit-formats/` (WS8 territory) will
  * produce these line-tagged inputs.
- *
- * Provenance: pi-code does not ship a side-by-side renderer; the existing
- * coding-agent diff path uses a unified format only. This module is the
- * shared primitive WS8/WS19 will reuse.
  */
 import type { Component } from "../tui.js";
 import { truncateToWidth, visibleWidth } from "../utils.js";

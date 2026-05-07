@@ -3,7 +3,6 @@ name: implementer
 description: Execute a concrete plan or patch description by editing files in an isolated git worktree.
 tools: read, grep, find, ls, bash, edit, write
 isolation: worktree
-permissionMode: acceptEdits
 model: claude-sonnet-4-5
 effort: medium
 maxTurns: 30

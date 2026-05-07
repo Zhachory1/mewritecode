@@ -34,7 +34,6 @@ export {
 	fuzzyFilter,
 	isMutatingTool,
 	JSONL_V3_COMPAT,
-	PlanMode,
 	rewindSession,
 	ShadowCheckpoints,
 	selectGcCandidates,

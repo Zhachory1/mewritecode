@@ -1,15 +1,10 @@
 /**
- * Chapters — auto-fold transcript turns by detected intent (Gemini pattern).
+ * Chapters — auto-fold transcript turns by detected intent.
  *
  * The TUI keeps a flat history; chapters group consecutive turns that share
  * a detected intent ("debug", "refactor", "test", "explain", …) into a
  * single foldable unit. Detection is heuristic (keyword + tool-pattern) so
  * the UX stays predictable and predictable-feeling cheap.
- *
- * Provenance: pi-code does not group turns. Gemini-CLI's "chapters" is the
- * UX inspiration; the heuristic here is a simple keyword/tool match so it
- * works without a model call. A future WS could replace this with an
- * LLM-classified version (see WS19 cost panel).
  */
 
 export type Intent = "implement" | "debug" | "refactor" | "test" | "explain" | "review" | "plan" | "memory" | "other";

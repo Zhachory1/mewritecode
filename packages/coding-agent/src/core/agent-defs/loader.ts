@@ -3,24 +3,14 @@
  * `~/.cave/agents/<name>.md` (user) and parses their Claude Code-compatible
  * frontmatter into `SubagentDef` records.
  *
- * Provenance:
- *   - Pi-check found `pi-coding-agent`'s `examples/extensions/subagent/agents.ts`
- *     which already does directory discovery + frontmatter parsing for a
- *     reduced agent shape (name + description + tools + model + body). This
- *     file extends that pattern with the full WS6 frontmatter superset
- *     (permissionMode, isolation, mcpServers, hooks, maxTurns, skills,
- *     effort, background, disallowedTools).
- *   - Discovery pattern mirrors WS5's skills/commands loaders so users
- *     experience consistent location semantics.
- *
  * Discovery (in order; later entries override earlier on name collision):
  *   1. Bundled defaults: `<package>/agents/*.md` (this repo's defaults)
  *   2. User scope:       `~/.cave/agents/*.md`
  *   3. Project scope:    `<cwd>/.cave/agents/*.md`
  *
  * Frontmatter (Claude Code v2.1.119 superset — see SubagentDef in @cave/agent):
- *   description, prompt (body), tools, disallowedTools, model, permissionMode,
- *   mcpServers, hooks, maxTurns, skills, effort, background, isolation
+ *   description, prompt (body), tools, disallowedTools, model, mcpServers,
+ *   hooks, maxTurns, skills, effort, background, isolation
  *
  * Output:
  *   - `LoadedAgentDef[]`  — successful definitions
@@ -116,6 +106,7 @@ export function parseAgentDefFile(
 	const tools = normalizeFrontmatterArray(frontmatter.tools);
 	const disallowedTools = normalizeFrontmatterArray(frontmatter.disallowedTools);
 	const mcpServers = normalizeFrontmatterArray(frontmatter.mcpServers);
+	const requiredMcpServers = normalizeFrontmatterArray(frontmatter.requiredMcpServers);
 	const skills = normalizeFrontmatterArray(frontmatter.skills);
 
 	const def: SubagentDef = {
@@ -126,13 +117,14 @@ export function parseAgentDefFile(
 		disallowedTools,
 		model: typeof frontmatter.model === "string" ? frontmatter.model : undefined,
 		effort: typeof frontmatter.effort === "string" ? frontmatter.effort : undefined,
-		permissionMode: frontmatter.permissionMode as SubagentDef["permissionMode"],
 		isolation: frontmatter.isolation as SubagentDef["isolation"],
 		mcpServers,
+		requiredMcpServers,
 		skills,
 		hooks: (frontmatter.hooks ?? undefined) as Record<string, unknown> | undefined,
 		maxTurns: typeof frontmatter.maxTurns === "number" ? frontmatter.maxTurns : undefined,
 		background: typeof frontmatter.background === "boolean" ? frontmatter.background : undefined,
+		omitClaudeMd: typeof frontmatter.omitClaudeMd === "boolean" ? frontmatter.omitClaudeMd : undefined,
 		source,
 		filePath,
 	};
@@ -160,7 +152,7 @@ export function parseAgentDefFile(
 			diagnostics.push({ type: "warning", path: filePath, message: err });
 		}
 		// We still return the def if it has at least name+description+prompt
-		// — some validation errors (e.g. permissionMode value) are non-fatal.
+		// — some validation errors are non-fatal.
 		const fatal =
 			errors.some((e) => e.startsWith("name is required")) ||
 			errors.some((e) => e.startsWith("description is required")) ||
@@ -297,4 +289,51 @@ export function getUserAgentsDir(): string {
 /** Resolve the project's agents dir (`<cwd>/.cave/agents/`). */
 export function getProjectAgentsDir(cwd: string): string {
 	return join(cwd, CONFIG_DIR_NAME, "agents");
+}
+
+/**
+ * Returns true when every pattern in `requiredMcpServers` matches at least one
+ * entry in `availableServers` (case-insensitive substring match — same shape
+ * as claude-code loadAgentsDir.ts:233-242).
+ */
+function readRequiredMcpServers(def: SubagentDef): string[] {
+	const raw = (def as { requiredMcpServers?: unknown }).requiredMcpServers;
+	return Array.isArray(raw) ? (raw as string[]) : [];
+}
+
+export function agentMcpRequirementsMet(def: SubagentDef, availableServers: string[]): boolean {
+	const required = readRequiredMcpServers(def);
+	if (required.length === 0) return true;
+	const haystack = availableServers.map((s) => s.toLowerCase());
+	return required.every((pattern) => {
+		const needle = pattern.toLowerCase();
+		return haystack.some((s) => s.includes(needle));
+	});
+}
+
+/**
+ * Filter loaded agents to those whose `requiredMcpServers` are all available.
+ * Diagnostics are appended to explain why an agent was hidden.
+ */
+export function filterAgentsByMcpAvailability(
+	loaded: LoadAgentDefsResult,
+	availableServers: string[],
+): LoadAgentDefsResult {
+	if (availableServers.length === 0 && loaded.agents.every((a) => readRequiredMcpServers(a.def).length === 0)) {
+		return loaded;
+	}
+	const agents: LoadedAgentDef[] = [];
+	const diagnostics = [...loaded.diagnostics];
+	for (const a of loaded.agents) {
+		if (agentMcpRequirementsMet(a.def, availableServers)) {
+			agents.push(a);
+		} else {
+			diagnostics.push({
+				type: "warning",
+				path: a.def.filePath,
+				message: `agent "${a.def.name}" hidden — missing required MCP servers: ${readRequiredMcpServers(a.def).join(", ")}`,
+			});
+		}
+	}
+	return { agents, diagnostics };
 }

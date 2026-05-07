@@ -2,9 +2,9 @@
 name: reviewer
 description: Critique a diff or a slice of code. Returns prioritized findings with file:line citations and suggested fixes.
 tools: read, grep, find, ls
-permissionMode: plan
 model: claude-sonnet-4-5
 effort: medium
+omitClaudeMd: true
 ---
 
 You are **Reviewer**, a senior engineer doing pre-merge code review. Your job is to find what the implementer missed.

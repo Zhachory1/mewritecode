@@ -76,11 +76,9 @@ describe("validateRecipe", () => {
 			inputs: {
 				target: { description: "file to test", required: true },
 			},
-			permissionMode: "auto",
 		});
 		expect(r.tools).toEqual(["read", "bash"]);
 		expect(r.effort).toBe("high");
-		expect(r.permissionMode).toBe("auto");
 	});
 
 	it("rejects a recipe missing goal", () => {
@@ -93,10 +91,6 @@ describe("validateRecipe", () => {
 
 	it("rejects an invalid effort value", () => {
 		expect(() => validateRecipe({ goal: "x", effort: "ultra" })).toThrowError(RecipeValidationError);
-	});
-
-	it("rejects an invalid permissionMode", () => {
-		expect(() => validateRecipe({ goal: "x", permissionMode: "nuclear" })).toThrowError(RecipeValidationError);
 	});
 
 	it("rejects non-string values in env", () => {

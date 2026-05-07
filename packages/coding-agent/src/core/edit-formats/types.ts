@@ -12,10 +12,6 @@
  *   - udiff          unified diff hunks
  *   - editor-diff    architect/editor split — editor runs `diff`
  *   - editor-whole   architect/editor split — editor runs `whole`
- *
- * Provenance: shape + nomenclature mirror Aider's edit formats. Aider is
- * Apache-2.0 — we cite the algorithm + adapt for cave's tool-call model.
- * https://github.com/Aider-AI/aider/tree/main/aider/coders
  */
 
 export type EditFormatName = "whole" | "diff" | "diff-fenced" | "udiff" | "editor-diff" | "editor-whole";

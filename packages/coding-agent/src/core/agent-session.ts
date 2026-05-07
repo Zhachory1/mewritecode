@@ -16,15 +16,14 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import type { Agent, AgentEvent, AgentMessage, AgentState, AgentTool, ThinkingLevel } from "@cave/agent";
-import { LLMLinguaMiddleware, PLAN_MODE_TOOLS } from "@cave/agent";
+import { checkpoints, LLMLinguaMiddleware, memory as memoryNs } from "@cave/agent";
+
+const { CheckpointManager } = checkpoints;
+type CheckpointManagerInstance = InstanceType<typeof CheckpointManager>;
+type MemoryProviderInstance = memoryNs.MemoryProvider;
+
 import type { AssistantMessage, ImageContent, Message, Model, TextContent } from "@cave/ai";
-import {
-	ENV_VAR_BY_PROVIDER,
-	isContextOverflow,
-	modelsAreEqual,
-	resetApiProviders,
-	supportsXhigh,
-} from "@cave/ai";
+import { ENV_VAR_BY_PROVIDER, isContextOverflow, modelsAreEqual, resetApiProviders, supportsXhigh } from "@cave/ai";
 import { getDocsPath } from "../config.js";
 import { theme } from "../modes/interactive/theme/theme.js";
 import { stripFrontmatter } from "../utils/frontmatter.js";
@@ -36,6 +35,7 @@ import {
 	compressCaveToolContentBlocks,
 	ReadDeduplicationCache,
 } from "./cave-tool-compression.js";
+import { type ChatMode, filterToolsForPlanMode, planSystemPrompt } from "./chat-modes/plan.js";
 import {
 	type CompactionResult,
 	calculateContextTokens,
@@ -76,8 +76,9 @@ import {
 import { buildDefaultCavememHooks } from "./hooks/cavemem-hooks.js";
 import type { HooksConfig } from "./hooks/events.js";
 import { createHooksExtension, HooksManager } from "./hooks/index.js";
+import { composeStartupPrelude } from "./memory-bridge.js";
+import { resolveMemoryProvider } from "./memory-factory.js";
 import type { BashExecutionMessage, CustomMessage } from "./messages.js";
-import { PermissionSession, type PromptUI } from "./permission-prompt.js";
 import type { ModelRegistry } from "./model-registry.js";
 import { expandPromptTemplate, type PromptTemplate } from "./prompt-templates.js";
 import type { ResourceExtensionPaths, ResourceLoader } from "./resource-loader.js";
@@ -90,6 +91,7 @@ import { createSyntheticSourceInfo, type SourceInfo } from "./source-info.js";
 import { buildSystemPrompt } from "./system-prompt.js";
 import { type BashOperations, createLocalBashOperations } from "./tools/bash.js";
 import { createAllToolDefinitions } from "./tools/index.js";
+import { createMemorySaveToolDefinition, createMemorySearchToolDefinition } from "./tools/memory.js";
 import { createToolDefinitionFromAgentTool, wrapToolDefinition } from "./tools/tool-definition-wrapper.js";
 
 // ============================================================================
@@ -172,18 +174,6 @@ export interface AgentSessionConfig {
 	extensionRunnerRef?: { current?: ExtensionRunner };
 	/** Session start event metadata emitted when extensions bind to this runtime. */
 	sessionStartEvent?: SessionStartEvent;
-	/**
-	 * WS3 permission UI. When set, tools that opt into the SandboxPolicy
-	 * reducer can call `agentSession.permissionSession?.decide(action)` and
-	 * surface the 4-verb overlay. In headless mode, supply a HeadlessPromptUI
-	 * so non-interactive runs do not block.
-	 */
-	permissionUI?: PromptUI;
-	/**
-	 * Initial permission mode. Drives the SandboxPolicy reducer and the
-	 * subagent runner's plan-mode tool gating. Defaults to "default".
-	 */
-	permissionMode?: import("@cave/agent").PermissionMode;
 }
 
 export interface ExtensionBindings {
@@ -295,11 +285,6 @@ export class AgentSession {
 	private _llmlingua: LLMLinguaMiddleware | null = null;
 	// Hooks subsystem (WS4). Rebuilt in `_buildRuntime` from current settings.
 	private _hooksManager: HooksManager | undefined;
-	// WS3 permission UI + lazy session. UI is injected by the host (interactive
-	// or headless). The session is rebuilt when permission mode changes.
-	private _permissionUI: PromptUI | undefined;
-	private _permissionSession: PermissionSession | undefined;
-	private _permissionMode: import("@cave/agent").PermissionMode = "default";
 
 	private _resourceLoader: ResourceLoader;
 	private _customTools: ToolDefinition[];
@@ -308,6 +293,13 @@ export class AgentSession {
 	private _extensionRunnerRef?: { current?: ExtensionRunner };
 	private _initialActiveToolNames?: string[];
 	private _baseToolsOverride?: Record<string, AgentTool>;
+	// Resolves when the constructor's _buildRuntime() finishes wiring tools and
+	// extensions. prompt() awaits this so print-mode callers (and child cave
+	// subagents, which always run in print mode) don't ship the first turn with
+	// agent.state.tools = []. Without this gate, subagents like `explore` reply
+	// "I don't have access to the repository contents" because the LLM never
+	// receives the read/grep/find/ls tool defs on turn 1.
+	private _initialRuntimeReady!: Promise<void>;
 	private _sessionStartEvent: SessionStartEvent;
 	private _extensionUIContext?: ExtensionUIContext;
 	private _extensionCommandContextActions?: ExtensionCommandContextActions;
@@ -334,6 +326,41 @@ export class AgentSession {
 	// Read deduplication cache (Cave Painting Diff)
 	private _readDeduplicationCache = new ReadDeduplicationCache();
 
+	// Gap 4: shadow-git checkpoint manager. Lazy-instantiated against _cwd.
+	private _checkpointMgr: CheckpointManagerInstance | undefined;
+	private _checkpointAutoSnapshotEnabled = true;
+
+	// Gap 1: repomap auto-injection state.
+	private _repomapEnabled = true;
+	private _repomapAddedFiles = new Set<string>();
+	private _repomapMentionedFiles = new Set<string>();
+	private _repomapCache: { hash: string; rendered: string } | undefined;
+	private _repomapBuildPromise: Promise<void> | undefined;
+
+	// WS7: cavemem-backed retrieval state.
+	private _memoryProvider: MemoryProviderInstance | undefined;
+	private _memoryProviderInit: Promise<MemoryProviderInstance | undefined> | undefined;
+	private _memoryEnabled = true;
+	private _memoryRecallCache: { hash: string; rendered: string } | undefined;
+	private _memoryRecallBuildPromise: Promise<void> | undefined;
+	private _memoryPreludeInjected = false;
+	private _memoryRecallTimeoutMs = 1000;
+	private _memoryRecallTokenCap = 800;
+
+	// Gap 2: chat mode for plan ↔ edit gating. "auto" = no gating (default).
+	// Honor `CAVE_CHAT_MODE` env (set by parent task tool's per-call mode override).
+	private _chatMode: ChatMode =
+		process.env.CAVE_CHAT_MODE === "plan" ? "plan" : process.env.CAVE_CHAT_MODE === "edit" ? "edit" : "auto";
+
+	// Gap 7: soft compaction state. Threshold = fraction of context window above
+	// which we proactively LLMLingua-compress oldest tool-result blocks. Hard
+	// compaction (whole-history summary) still runs as a safety net.
+	private _softCompressionThreshold = 0.7;
+	private _softCompressedTimestamps = new Set<number>();
+	// Don't compress messages from the last N turns — recency matters for
+	// continuity and for the assistant to reference its own recent work.
+	private _softCompressionRecencyWindow = 5;
+
 	constructor(config: AgentSessionConfig) {
 		this.agent = config.agent;
 		this.sessionManager = config.sessionManager;
@@ -347,20 +374,32 @@ export class AgentSession {
 		this._initialActiveToolNames = config.initialActiveToolNames;
 		this._baseToolsOverride = config.baseToolsOverride;
 		this._sessionStartEvent = config.sessionStartEvent ?? { type: "session_start", reason: "startup" };
-		this._permissionUI = config.permissionUI;
-		if (config.permissionMode) {
-			this._permissionMode = config.permissionMode;
-		}
 
 		// Always subscribe to agent events for internal handling
 		// (session persistence, extensions, auto-compaction, retry logic)
 		this._unsubscribeAgent = this.agent.subscribe(this._handleAgentEvent);
 		this._installAgentToolHooks();
 
-		void this._buildRuntime({
+		this._initialRuntimeReady = this._buildRuntime({
 			activeToolNames: this._initialActiveToolNames,
 			includeAllExtensionTools: true,
 		});
+		// Don't let an unhandled rejection crash the process before prompt()
+		// awaits it; the rejection still surfaces to whoever awaits whenReady.
+		this._initialRuntimeReady.catch(() => undefined);
+	}
+
+	/**
+	 * Resolves when the constructor's initial runtime build (tool wiring,
+	 * extension setup, base system prompt) has completed. Callers that issue
+	 * `prompt()` immediately after construction — e.g. print mode and any
+	 * subagent spawned via the `task` tool — should await this first.
+	 *
+	 * `prompt()` itself awaits this internally, so most callers don't need to
+	 * wait explicitly.
+	 */
+	get whenReady(): Promise<void> {
+		return this._initialRuntimeReady;
 	}
 
 	/** Model registry for API key resolution and model discovery */
@@ -404,6 +443,10 @@ export class AgentSession {
 	 */
 	private _installAgentToolHooks(): void {
 		this.agent.beforeToolCall = async ({ toolCall, args }) => {
+			// Gap 4: take a shadow-git snapshot before mutating tools so the user
+			// can /rollback. preToolSnapshot is a no-op for non-mutating tools.
+			await this._maybeAutoSnapshot(toolCall.name);
+
 			const runner = this._extensionRunner;
 			if (!runner?.hasHandlers("tool_call")) {
 				return undefined;
@@ -427,6 +470,11 @@ export class AgentSession {
 		};
 
 		this.agent.afterToolCall = async ({ toolCall, args, result, isError }) => {
+			// Gap 1: track file-touching tool calls for repomap personalization.
+			if (!isError) {
+				this._updateRepomapStateFromTool(toolCall.name, args);
+			}
+
 			const caveEnabled =
 				this.settingsManager.getCaveModeToolCompression() && this.settingsManager.getCaveModeEnabled();
 
@@ -545,6 +593,580 @@ export class AgentSession {
 				details: hookResult.details,
 			};
 		};
+
+		// Gap 1 + Gap 7 + WS7: chain memory recall + repomap injection (parallel),
+		// then soft compression. Memory and repomap hit different backends so we
+		// run them concurrently and merge the two injections before compaction.
+		this.agent.transformContext = async (messages) => {
+			const [afterMemory, afterRepomap] = await Promise.all([
+				this._buildMemoryTransform(messages),
+				this._buildRepomapTransform(messages),
+			]);
+			const merged = this._mergeRetrievalInjections(messages, afterMemory, afterRepomap);
+			return this._softCompactTransform(merged);
+		};
+
+		// Gap 2 + Gap 8: chat-mode tool gating + plan-mode system-prompt banner.
+		this.agent.toolFilter = (tools) => {
+			if (this._chatMode === "plan") return filterToolsForPlanMode(tools);
+			return tools;
+		};
+		this.agent.getSystemPrompt = (ctx) => {
+			if (this._chatMode === "plan") return planSystemPrompt(ctx.systemPrompt);
+			return ctx.systemPrompt;
+		};
+	}
+
+	// =========================================================================
+	// Checkpoints (Gap 4)
+	// =========================================================================
+
+	/** Lazy-instantiated shadow-git checkpoint manager bound to this session's cwd. */
+	get checkpointManager(): CheckpointManagerInstance {
+		if (!this._checkpointMgr) {
+			this._checkpointMgr = new CheckpointManager(this._cwd);
+		}
+		return this._checkpointMgr;
+	}
+
+	/** Toggle automatic pre-tool snapshots (manual snapshots always allowed). */
+	setAutoSnapshotEnabled(enabled: boolean): void {
+		this._checkpointAutoSnapshotEnabled = enabled;
+	}
+
+	private async _maybeAutoSnapshot(toolName: string): Promise<void> {
+		if (!this._checkpointAutoSnapshotEnabled) return;
+		try {
+			const result = await this.checkpointManager.preToolSnapshot(toolName, this.sessionId);
+			if (result) {
+				this._emit({
+					type: "checkpoint_taken",
+					checkpointId: result.commit,
+					toolName,
+					sessionId: this.sessionId,
+					fileCount: result.files.length,
+					timestamp: Date.now(),
+				});
+			}
+		} catch (err) {
+			// Snapshots are advisory — never block tool execution.
+			const message = err instanceof Error ? err.message : String(err);
+			console.warn(`[cave/checkpoints] auto-snapshot failed for ${toolName}: ${message}`);
+		}
+	}
+
+	// =========================================================================
+	// Repomap auto-injection (Gap 1)
+	// =========================================================================
+
+	setRepomapEnabled(enabled: boolean): void {
+		this._repomapEnabled = enabled;
+		if (!enabled) this._repomapCache = undefined;
+	}
+
+	/** Mark a file as added to chat-state (PageRank weight 10×). */
+	repomapAdd(absPath: string): void {
+		this._repomapMentionedFiles.delete(absPath);
+		this._repomapAddedFiles.add(absPath);
+		this._repomapCache = undefined;
+	}
+
+	/** Mark a file as mentioned (PageRank weight 0.5×). */
+	repomapMention(absPath: string): void {
+		if (this._repomapAddedFiles.has(absPath)) return;
+		this._repomapMentionedFiles.add(absPath);
+		this._repomapCache = undefined;
+	}
+
+	private _updateRepomapStateFromTool(toolName: string, args: unknown): void {
+		if (!this._repomapEnabled) return;
+		const path = (args as { path?: string } | undefined)?.path;
+		if (!path) return;
+		const abs = resolve(this._cwd, path);
+		if (toolName === "edit" || toolName === "write") {
+			this.repomapAdd(abs);
+		} else if (toolName === "read") {
+			this.repomapMention(abs);
+		}
+	}
+
+	private _scanUserMessageForFiles(text: string): void {
+		// Conservative regex: relative paths with at least one slash and a known
+		// source-file extension. Avoids matching arbitrary words.
+		const re =
+			/(?<![\w/])((?:[\w.-]+\/)+[\w.-]+\.(?:ts|tsx|js|jsx|mjs|cjs|py|go|rs|java|c|h|cc|cpp|rb|php))(?![\w])/g;
+		for (const match of text.matchAll(re)) {
+			const abs = resolve(this._cwd, match[1]);
+			this.repomapMention(abs);
+		}
+	}
+
+	private _repomapHash(): string {
+		const added = [...this._repomapAddedFiles].sort().join("|");
+		const mentioned = [...this._repomapMentionedFiles].sort().join("|");
+		return `${added}::${mentioned}`;
+	}
+
+	private async _getOrBuildRepomap(): Promise<string | undefined> {
+		const hash = this._repomapHash();
+		if (this._repomapCache?.hash === hash) return this._repomapCache.rendered;
+
+		// Single-flight: if a build is already in progress, wait for it.
+		if (this._repomapBuildPromise) {
+			await this._repomapBuildPromise;
+			if (this._repomapCache?.hash === hash) return this._repomapCache.rendered;
+		}
+
+		const buildPromise = this._buildRepomap(hash);
+		this._repomapBuildPromise = buildPromise.then(
+			() => undefined,
+			() => undefined,
+		);
+		try {
+			return await buildPromise;
+		} finally {
+			this._repomapBuildPromise = undefined;
+		}
+	}
+
+	private async _buildRepomap(hash: string): Promise<string | undefined> {
+		try {
+			const { collectSourceFiles } = await import("./slash-commands/repomap.js");
+			const { repomap: repomapNs } = await import("@cave/agent");
+			const { buildRepomap, dynamicMapTokens } = repomapNs;
+
+			const files = collectSourceFiles(this._cwd);
+			if (files.length === 0) {
+				this._repomapCache = { hash, rendered: "" };
+				return "";
+			}
+			const tokenBudget = dynamicMapTokens({ hasFilesInChat: this._repomapAddedFiles.size > 0 });
+			const result = await buildRepomap({
+				files,
+				tokenBudget,
+				workdir: this._cwd,
+				chatState: {
+					addedFiles: [...this._repomapAddedFiles],
+					mentionedFiles: [...this._repomapMentionedFiles],
+				},
+			});
+			this._repomapCache = { hash, rendered: result.rendered };
+			return result.rendered;
+		} catch (err) {
+			const message = err instanceof Error ? err.message : String(err);
+			console.warn(`[cave/repomap] build failed: ${message}`);
+			return undefined;
+		}
+	}
+
+	private async _buildRepomapTransform(messages: AgentMessage[]): Promise<AgentMessage[]> {
+		if (!this._repomapEnabled) return messages;
+
+		// Mine the most recent user message for file path mentions.
+		for (let i = messages.length - 1; i >= 0; i--) {
+			const m = messages[i];
+			if (m.role === "user") {
+				const text = Array.isArray(m.content)
+					? m.content
+							.filter((c): c is { type: "text"; text: string } => c.type === "text")
+							.map((c) => c.text)
+							.join("\n")
+					: typeof m.content === "string"
+						? m.content
+						: "";
+				if (text) this._scanUserMessageForFiles(text);
+				break;
+			}
+		}
+
+		const rendered = await this._getOrBuildRepomap();
+		if (!rendered) return messages;
+
+		const repomapMessage: AgentMessage = {
+			role: "custom",
+			customType: "repomap",
+			content: `<repomap>\nThe following is a PageRank-ranked map of repository symbols, refreshed each turn. Use it to discover relevant files before you read them.\n\n${rendered}\n</repomap>`,
+			display: false,
+			timestamp: Date.now(),
+		};
+
+		// Inject just before the latest user message so the model reads the map
+		// as antecedent context, not a follow-up reply.
+		for (let i = messages.length - 1; i >= 0; i--) {
+			if (messages[i].role === "user") {
+				return [...messages.slice(0, i), repomapMessage, ...messages.slice(i)];
+			}
+		}
+		return [...messages, repomapMessage];
+	}
+
+	// =========================================================================
+	// Memory recall auto-injection (WS7)
+	// =========================================================================
+
+	/** Toggle memory recall and write hooks for this session. */
+	setMemoryEnabled(enabled: boolean): void {
+		this._memoryEnabled = enabled;
+		if (!enabled) this._memoryRecallCache = undefined;
+	}
+
+	get memoryEnabled(): boolean {
+		return this._memoryEnabled;
+	}
+
+	/**
+	 * Resolve (and lazily build) the active memory provider. Cavemem when its
+	 * CLI is on $PATH; FilesProvider over `<cwd>/.cave/memory/` otherwise.
+	 *
+	 * Returns the same instance the `/memory` slash command should use so the
+	 * MCP transport, embedding model, and FTS handles are reused.
+	 */
+	async memoryProvider(): Promise<MemoryProviderInstance | undefined> {
+		if (this._memoryProvider) return this._memoryProvider;
+		if (!this._memoryProviderInit) {
+			this._memoryProviderInit = resolveMemoryProvider({ cwd: this._cwd })
+				.then((p) => {
+					this._memoryProvider = p;
+					return p;
+				})
+				.catch((err) => {
+					console.warn(`[cave/memory] provider init failed: ${err instanceof Error ? err.message : String(err)}`);
+					return undefined;
+				});
+		}
+		return this._memoryProviderInit;
+	}
+
+	private _latestUserText(messages: AgentMessage[]): string {
+		for (let i = messages.length - 1; i >= 0; i--) {
+			const m = messages[i];
+			if (m.role !== "user") continue;
+			if (Array.isArray(m.content)) {
+				return m.content
+					.filter((c): c is { type: "text"; text: string } => c.type === "text")
+					.map((c) => c.text)
+					.join("\n");
+			}
+			if (typeof m.content === "string") return m.content;
+			return "";
+		}
+		return "";
+	}
+
+	/** Build the search query from chat-state + last user message. */
+	private _memoryQuery(messages: AgentMessage[]): string {
+		const text = this._latestUserText(messages).slice(0, 500);
+		const fileNames = [...this._repomapAddedFiles, ...this._repomapMentionedFiles].slice(-5).map((p) => basename(p));
+		return [text, ...fileNames]
+			.filter((s) => s && s.length > 0)
+			.join("  ")
+			.trim();
+	}
+
+	private _memoryHash(query: string): string {
+		// Cache the rendered recall keyed by query — same input ⇒ skip provider call.
+		const trimmed = query.replace(/\s+/g, " ").trim();
+		return trimmed.length > 256 ? trimmed.slice(0, 256) : trimmed;
+	}
+
+	private async _withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+		return new Promise<T>((resolve) => {
+			let settled = false;
+			const timer = setTimeout(() => {
+				if (settled) return;
+				settled = true;
+				resolve(fallback);
+			}, ms);
+			promise
+				.then((v) => {
+					if (settled) return;
+					settled = true;
+					clearTimeout(timer);
+					resolve(v);
+				})
+				.catch(() => {
+					if (settled) return;
+					settled = true;
+					clearTimeout(timer);
+					resolve(fallback);
+				});
+		});
+	}
+
+	private async _renderMemoryRecall(provider: MemoryProviderInstance, query: string): Promise<string | undefined> {
+		const hits = await this._withTimeout(provider.search(query, { limit: 5 }), this._memoryRecallTimeoutMs, []);
+		if (!hits || hits.length === 0) return undefined;
+		const ids = hits.map((h) => h.id).filter((id) => Number.isFinite(id) && id >= 0);
+		let bodies: memoryNs.MemoryObservation[] = [];
+		if (ids.length > 0) {
+			bodies = await this._withTimeout(
+				provider.getObservations(ids, { expand: false }),
+				this._memoryRecallTimeoutMs,
+				[],
+			);
+		}
+		const byId = new Map(bodies.map((b) => [b.id, b]));
+		const rows = hits
+			.map((h) => {
+				const body = byId.get(h.id);
+				const preview = (body?.content ?? h.preview ?? "").replace(/\s+/g, " ").trim().slice(0, 320);
+				const kind = body?.kind ?? h.kind ?? "fact";
+				const ts = body?.ts ?? h.ts ?? "";
+				return `- #${h.id} [${kind}]${ts ? ` ${ts}` : ""} — ${preview}`;
+			})
+			.filter((r) => r.includes("—"));
+		if (rows.length === 0) return undefined;
+		return rows.join("\n");
+	}
+
+	private async _getOrBuildMemoryRecall(query: string): Promise<string | undefined> {
+		if (!query) return undefined;
+		const provider = await this.memoryProvider();
+		if (!provider) return undefined;
+		const available = await this._withTimeout(provider.isAvailable(), 500, false);
+		if (!available) return undefined;
+
+		const hash = this._memoryHash(query);
+		if (this._memoryRecallCache?.hash === hash) return this._memoryRecallCache.rendered;
+
+		if (this._memoryRecallBuildPromise) {
+			await this._memoryRecallBuildPromise;
+			if (this._memoryRecallCache?.hash === hash) return this._memoryRecallCache.rendered;
+		}
+
+		const buildPromise = (async () => {
+			try {
+				const rendered = await this._renderMemoryRecall(provider, query);
+				if (rendered) {
+					this._memoryRecallCache = { hash, rendered };
+				} else {
+					this._memoryRecallCache = { hash, rendered: "" };
+				}
+			} catch (err) {
+				const message = err instanceof Error ? err.message : String(err);
+				console.warn(`[cave/memory] recall failed: ${message}`);
+				this._memoryRecallCache = { hash, rendered: "" };
+			}
+		})();
+		this._memoryRecallBuildPromise = buildPromise;
+		try {
+			await buildPromise;
+		} finally {
+			this._memoryRecallBuildPromise = undefined;
+		}
+		return this._memoryRecallCache?.rendered || undefined;
+	}
+
+	/**
+	 * Build the per-turn memory recall transform. Returns the message array
+	 * with a single `customType: "memory-recall"` entry inserted before the
+	 * latest user message when the active provider returns hits, otherwise
+	 * the input unchanged.
+	 *
+	 * Parallel with `_buildRepomapTransform` — both seed off the same chat-state.
+	 * Failures degrade silently: timeouts, missing provider, empty results all
+	 * return `messages` untouched.
+	 */
+	private async _buildMemoryTransform(messages: AgentMessage[]): Promise<AgentMessage[]> {
+		if (!this._memoryEnabled) return messages;
+
+		const query = this._memoryQuery(messages);
+		const rendered = await this._getOrBuildMemoryRecall(query);
+		const blocks: AgentMessage[] = [];
+
+		// First-turn prelude: project-local MEMORY.md + a kickoff cavemem search
+		// seeded by the cwd basename. Wires memory-bridge.composeStartupPrelude
+		// which has been dead code since WS7 landed.
+		if (!this._memoryPreludeInjected) {
+			this._memoryPreludeInjected = true;
+			const prelude = await this._buildSessionPrelude();
+			if (prelude) {
+				blocks.push({
+					role: "custom",
+					customType: "memory-prelude",
+					content: prelude,
+					display: false,
+					timestamp: Date.now(),
+				});
+			}
+		}
+
+		if (rendered) {
+			blocks.push({
+				role: "custom",
+				customType: "memory-recall",
+				content: `<memory-recall>\nTop hits from prior cave sessions and saved facts. Search seeded by current chat-state (no extra LLM call).\n\n${rendered}\n</memory-recall>`,
+				display: false,
+				timestamp: Date.now(),
+			});
+		}
+
+		if (blocks.length === 0) return messages;
+
+		for (let i = messages.length - 1; i >= 0; i--) {
+			if (messages[i].role === "user") {
+				return [...messages.slice(0, i), ...blocks, ...messages.slice(i)];
+			}
+		}
+		return [...messages, ...blocks];
+	}
+
+	private async _buildSessionPrelude(): Promise<string | undefined> {
+		try {
+			const indexPath = join(this._cwd, ".cave", "memory", "MEMORY.md");
+			let memoryIndex: string | undefined;
+			if (existsSync(indexPath)) {
+				const raw = readFileSync(indexPath, "utf-8");
+				memoryIndex = raw.split("\n").slice(0, 200).join("\n");
+			}
+			let cavememSnippet: string | undefined;
+			const provider = await this.memoryProvider();
+			if (provider) {
+				const hits = await this._withTimeout(
+					provider.search(basename(this._cwd), { limit: 5 }),
+					this._memoryRecallTimeoutMs,
+					[] as memoryNs.MemoryHit[],
+				);
+				if (hits.length > 0) {
+					cavememSnippet = memoryNs.formatPrelude(hits);
+				}
+			}
+			return composeStartupPrelude({ memoryIndex, cavememSnippet });
+		} catch (err) {
+			console.warn(`[cave/memory] prelude failed: ${err instanceof Error ? err.message : String(err)}`);
+			return undefined;
+		}
+	}
+
+	/**
+	 * Merge two retrieval transforms (memory + repomap) into one message list.
+	 *
+	 * Each transform either returns `messages` unchanged or `messages` with a
+	 * single `customType` block inserted immediately before the latest user
+	 * message. We diff each result against `original` to extract just the
+	 * inserted blocks, drop memory if the combined token estimate exceeds
+	 * 25 % of the model context window, then re-insert in order
+	 * (memory first, then repomap, both before the user message).
+	 */
+	private _mergeRetrievalInjections(
+		original: AgentMessage[],
+		afterMemory: AgentMessage[],
+		afterRepomap: AgentMessage[],
+	): AgentMessage[] {
+		const memoryBlocks =
+			afterMemory.length > original.length
+				? afterMemory.slice(0, afterMemory.length - original.length).filter((m) => !original.includes(m))
+				: [];
+		const repomapBlocks =
+			afterRepomap.length > original.length
+				? afterRepomap.slice(0, afterRepomap.length - original.length).filter((m) => !original.includes(m))
+				: [];
+
+		// Token-budget enforcement: drop memory blocks first when memory + repomap
+		// together exceed 25% of the context window. Repomap is structural and
+		// cheaper to keep round-trip; memory is the tunable knob.
+		const contextWindow = this.model?.contextWindow ?? 0;
+		let keptMemory = memoryBlocks;
+		if (contextWindow > 0 && memoryBlocks.length > 0) {
+			const memTokens = estimateContextTokens(memoryBlocks).tokens;
+			const mapTokens = estimateContextTokens(repomapBlocks).tokens;
+			if (memTokens > this._memoryRecallTokenCap) {
+				keptMemory = [];
+			} else if ((memTokens + mapTokens) / contextWindow > 0.25) {
+				keptMemory = [];
+			}
+		}
+
+		const inserts = [...keptMemory, ...repomapBlocks];
+		if (inserts.length === 0) return original;
+
+		for (let i = original.length - 1; i >= 0; i--) {
+			if (original[i].role === "user") {
+				return [...original.slice(0, i), ...inserts, ...original.slice(i)];
+			}
+		}
+		return [...original, ...inserts];
+	}
+
+	// =========================================================================
+	// Chat mode (Gap 2)
+	// =========================================================================
+
+	get chatMode(): ChatMode {
+		return this._chatMode;
+	}
+
+	setChatMode(mode: ChatMode): void {
+		this._chatMode = mode;
+	}
+
+	// =========================================================================
+	// Soft long-context compaction (Gap 7)
+	// =========================================================================
+
+	/**
+	 * Proactive LLMLingua compression of OLDEST tool-result blocks once context
+	 * usage crosses `_softCompressionThreshold`. Runs INSIDE transformContext
+	 * so the LLM sees a smaller payload but the session keeps the original
+	 * messages on disk. Hard compaction (`_runAutoCompaction`) still triggers
+	 * if growth continues — this is a soft, reversible pass.
+	 */
+	private async _softCompactTransform(messages: AgentMessage[]): Promise<AgentMessage[]> {
+		// Same toggle as the existing in-line tool-result compression. If the
+		// user has cave-mode ML compression off, leave the messages alone.
+		if (!this.settingsManager.getCaveModeEnabled()) return messages;
+		if (!this.settingsManager.getCaveModeMLCompression()) return messages;
+
+		const contextWindow = this.model?.contextWindow ?? 0;
+		if (contextWindow <= 0) return messages;
+		const estimate = estimateContextTokens(messages);
+		if (estimate.tokens / contextWindow < this._softCompressionThreshold) return messages;
+
+		// Identify protected suffix: messages within the last N turns. A "turn"
+		// here = one assistant message + its tool results. We protect by counting
+		// from the end and stopping after we've seen N assistant messages.
+		let assistantSeen = 0;
+		let firstProtectedIndex = messages.length;
+		for (let i = messages.length - 1; i >= 0; i--) {
+			if (messages[i].role === "assistant") {
+				assistantSeen += 1;
+				if (assistantSeen >= this._softCompressionRecencyWindow) {
+					firstProtectedIndex = i;
+					break;
+				}
+			}
+		}
+
+		if (!this._llmlingua) {
+			this._llmlingua = new LLMLinguaMiddleware(true);
+		}
+
+		const transformed = await Promise.all(
+			messages.map(async (m, idx) => {
+				if (idx >= firstProtectedIndex) return m;
+				if (m.role !== "toolResult") return m;
+				if (this._softCompressedTimestamps.has(m.timestamp)) return m;
+
+				try {
+					const compressedContent = await Promise.all(
+						(m.content as Array<{ type: string; text?: string; [key: string]: unknown }>).map(async (block) => {
+							if (block.type !== "text" || typeof block.text !== "string") return block;
+							const r = await this._llmlingua!.compressAsync(block.text, {
+								targetRatio: 0.5,
+								activationThreshold: 4000,
+							});
+							return r.compressed ? { ...block, text: r.bytes } : block;
+						}),
+					);
+					this._softCompressedTimestamps.add(m.timestamp);
+					return { ...m, content: compressedContent } as AgentMessage;
+				} catch {
+					// Compression is advisory; skip on error.
+					return m;
+				}
+			}),
+		);
+		return transformed;
 	}
 
 	// =========================================================================
@@ -670,6 +1292,19 @@ export class AgentSession {
 			// Track assistant message for auto-compaction (checked on agent_end)
 			if (event.message.role === "assistant") {
 				this._lastAssistantMessage = event.message;
+
+				// Plan persistence: when in plan mode, persist the assistant's
+				// plan to disk so /act can re-inject it after a fork/resume.
+				if (this._chatMode === "plan") {
+					const planText = (event.message.content ?? [])
+						.filter((c) => c.type === "text")
+						.map((c) => (c as { type: "text"; text: string }).text)
+						.join("\n")
+						.trim();
+					if (planText) {
+						void this._persistPlan(planText);
+					}
+				}
 
 				const assistantMsg = event.message as AssistantMessage;
 				if (assistantMsg.stopReason !== "error") {
@@ -1019,6 +1654,15 @@ export class AgentSession {
 	// but their snippets and guidelines are suppressed from the system prompt.
 	private static readonly ALWAYS_ON_TOOLS = new Set(["bash", "read", "edit", "write"]);
 
+	private async _persistPlan(text: string): Promise<void> {
+		try {
+			const { writePlan, extractPlanFromMessage } = await import("./plans.js");
+			writePlan(this.sessionId, extractPlanFromMessage(text));
+		} catch {
+			/* best-effort persistence */
+		}
+	}
+
 	private _rebuildSystemPrompt(toolNames: string[]): string {
 		const validToolNames = toolNames.filter((name) => this._toolRegistry.has(name));
 		const toolSnippets: Record<string, string> = {};
@@ -1049,6 +1693,7 @@ export class AgentSession {
 		const loadedContextFiles = this._resourceLoader.getAgentsFiles().agentsFiles;
 
 		const caveModeSettings = this.settingsManager.getCaveModeSettings();
+		const activeModel = this.agent.state.model;
 		return buildSystemPrompt({
 			cwd: this._cwd,
 			skills: loadedSkills,
@@ -1058,6 +1703,7 @@ export class AgentSession {
 			selectedTools: validToolNames,
 			toolSnippets,
 			promptGuidelines,
+			modelId: activeModel?.id,
 			caveMode: {
 				enabled: caveModeEnabled,
 				intensity: this._sessionCaveModeIntensity ?? caveModeSettings.intensity,
@@ -1079,6 +1725,12 @@ export class AgentSession {
 	 * @throws Error if no model selected or no API key available (when not streaming)
 	 */
 	async prompt(text: string, options?: PromptOptions): Promise<void> {
+		// Wait for the constructor's initial runtime build before processing
+		// the first prompt. Without this, callers that send a message
+		// immediately after `new AgentSession()` (print mode, child cave
+		// subagents) ship turn 1 with agent.state.tools = [] and the LLM
+		// reports it has no access to read/grep/etc. tools.
+		await this._initialRuntimeReady;
 		const expandPromptTemplates = options?.expandPromptTemplates ?? true;
 
 		// Handle extension commands first (execute immediately, even during streaming)
@@ -2493,84 +3145,6 @@ export class AgentSession {
 		return this._hooksManager;
 	}
 
-	/**
-	 * WS3 PromptUI bound to this session. Tools that opt into sandbox policy
-	 * enforcement can pull this and call `chooseVerb()` directly, or use the
-	 * `permissionSession` getter below for the full reducer flow.
-	 */
-	get permissionUI(): PromptUI | undefined {
-		return this._permissionUI;
-	}
-
-	/**
-	 * Late-bind the PromptUI after session construction. Used by interactive
-	 * mode, which only has the TUI handle once the runtime has booted, but
-	 * needs to feed an `ApprovalPromptUI(this.ui)` to the agent so subsequent
-	 * tool calls can prompt.
-	 */
-	setPermissionUI(ui: PromptUI | undefined): void {
-		this._permissionUI = ui;
-		// Invalidate any cached PermissionSession so the next access rebuilds
-		// against the new UI.
-		this._permissionSession = undefined;
-	}
-
-	/**
-	 * Lazy `PermissionSession` for tools that want full reducer + persistence.
-	 * Built on first access; rebuilt by `setPermissionMode()` when the mode
-	 * changes. Returns undefined if no `permissionUI` was supplied to config.
-	 */
-	get permissionSession(): PermissionSession | undefined {
-		if (!this._permissionUI) return undefined;
-		if (!this._permissionSession) {
-			// Lazy import to keep module load time clean for headless runs that
-			// never touch the policy primitives.
-			const { defaultPolicyForMode } = require("@cave/agent");
-			this._permissionSession = new PermissionSession({
-				cwd: this._cwd,
-				policy: defaultPolicyForMode(this._permissionMode, this._cwd),
-				mode: this._permissionMode,
-				ui: this._permissionUI,
-			});
-		}
-		return this._permissionSession;
-	}
-
-	/** Current permission mode for this session. */
-	get permissionMode(): import("@cave/agent").PermissionMode {
-		return this._permissionMode;
-	}
-
-	/** Rebuild the PermissionSession with a new permission mode. */
-	setPermissionMode(mode: import("@cave/agent").PermissionMode): void {
-		const previous = this._permissionMode;
-		this._permissionMode = mode;
-		if (this._permissionUI) {
-			const { defaultPolicyForMode } = require("@cave/agent");
-			this._permissionSession = new PermissionSession({
-				cwd: this._cwd,
-				policy: defaultPolicyForMode(mode, this._cwd),
-				mode,
-				ui: this._permissionUI,
-			});
-		} else {
-			// No UI yet — the next permissionSession access will build with the new mode.
-			this._permissionSession = undefined;
-		}
-		// Re-filter the active tool list when entering or leaving plan mode so
-		// mutating tools (edit/write/bash) actually disappear during plan.
-		// When LEAVING plan mode we pass `undefined` so `_buildRuntime` restores
-		// the full default set rather than re-filtering the already-narrowed
-		// list.
-		if (previous !== mode && (previous === "plan" || mode === "plan")) {
-			const activeToolNames = mode === "plan" ? this.getActiveToolNames() : undefined;
-			void this._buildRuntime({
-				activeToolNames,
-				includeAllExtensionTools: true,
-			});
-		}
-	}
-
 	private async _buildRuntime(options: {
 		activeToolNames?: string[];
 		flagValues?: Map<string, boolean | string>;
@@ -2631,12 +3205,47 @@ export class AgentSession {
 							}
 							return overrides;
 						})(),
+						// Gap 3: forward subagent JSON-stream events to TUI as
+						// `subagent_progress` AgentSessionEvents.
+						onProgress: (event) => {
+							this._emit({
+								type: "subagent_progress",
+								subagentId: event.subagentId,
+								subagentName: event.subagentName,
+								phase: event.phase,
+								detail: event.detail,
+								timestamp: Date.now(),
+							});
+						},
 					},
 				});
 
 		this._baseToolDefinitions = new Map(
 			Object.entries(baseToolDefinitions).map(([name, tool]) => [name, tool as ToolDefinition]),
 		);
+
+		// WS7: register memory_search / memory_save when a provider is reachable.
+		// Cached factory means cavemem (or FilesProvider fallback) is built once
+		// and shared with the `/memory` slash command + the recall transform.
+		try {
+			const memoryProvider = await resolveMemoryProvider({ cwd: this._cwd });
+			this._memoryProvider = memoryProvider;
+			const available = await memoryProvider.isAvailable().catch(() => false);
+			// Always register; the tools themselves short-circuit when unavailable.
+			// FilesProvider is always available, so this never strips them locally.
+			if (available || memoryProvider.id === "files") {
+				this._baseToolDefinitions.set(
+					"memory_search",
+					createMemorySearchToolDefinition(memoryProvider) as unknown as ToolDefinition,
+				);
+				this._baseToolDefinitions.set(
+					"memory_save",
+					createMemorySaveToolDefinition(memoryProvider) as unknown as ToolDefinition,
+				);
+			}
+		} catch (err) {
+			console.warn(`[cave/memory] tool registration skipped: ${err instanceof Error ? err.message : String(err)}`);
+		}
 
 		const extensionsResult = this._resourceLoader.getExtensions();
 		if (options.flagValues) {
@@ -2675,16 +3284,19 @@ export class AgentSession {
 
 		const defaultActiveToolNames = this._baseToolsOverride
 			? Object.keys(this._baseToolsOverride)
-			: ["read", "bash", "edit", "write", "task", "agent"];
+			: [
+					"read",
+					"bash",
+					"edit",
+					"write",
+					"task",
+					"agent",
+					...(this._baseToolDefinitions.has("memory_search") ? ["memory_search"] : []),
+					...(this._baseToolDefinitions.has("memory_save") ? ["memory_save"] : []),
+				];
 		const requestedActive = options.activeToolNames ?? defaultActiveToolNames;
-		// In plan mode, hard-restrict the active set to read-only tools so the
-		// model can never reach `edit`/`write`/`bash` (mutating). Bash itself
-		// is allowed but separately gated by `isPlanModeBashCommand` at exec
-		// time.
-		const baseActiveToolNames =
-			this._permissionMode === "plan" ? requestedActive.filter((t) => PLAN_MODE_TOOLS.has(t)) : requestedActive;
 		this._refreshToolRegistry({
-			activeToolNames: baseActiveToolNames,
+			activeToolNames: requestedActive,
 			includeAllExtensionTools: options.includeAllExtensionTools,
 		});
 	}

@@ -12,11 +12,6 @@
  *   cave watch --no-session               — don't persist session
  *   cave watch --model <pattern>          — model to use for agent runs
  *   cave watch --help                     — show help
- *
- * Provenance: Aider `--watch-files` is the canonical prior art.
- *   pi-watch (npm, v0.1.0) and @artale/pi-watch (npm, v1.0.0) both implement
- *   the same pattern for #pi! markers. This implementation is derived
- *   independently for cave markers with 3-variant semantics (fire/qa/context).
  */
 
 import { resolve } from "node:path";

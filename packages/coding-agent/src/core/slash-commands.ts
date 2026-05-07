@@ -1,13 +1,6 @@
 /**
  * Slash commands — built-in registry plus Claude Code-compatible markdown loader.
  *
- * Provenance:
- *   The built-in registry below was carried over from pi-code (cave's upstream).
- *   The markdown loader in this file is new for cave WS5 and is modeled on
- *   Claude Code v2.1.119's commands schema. A user pasting
- *   `~/.claude/commands/foo.md` into `~/.cave/commands/foo.md` works
- *   unchanged (frontmatter is a strict superset).
- *
  * Discovery
  *   - Project: `.cave/commands/*.md` (relative to cwd)
  *   - User:    `~/.cave/commands/*.md`
@@ -87,7 +80,6 @@ export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 	{ name: "reload", description: "Reload keybindings, extensions, skills, prompts, and themes" },
 	{ name: "hooks", description: "List, test, and manage Claude Code-compatible lifecycle hooks (WS4)" },
 	{ name: "mcp", description: "Manage MCP servers (list, doctor, login, reload). See: cave mcp --help." },
-	{ name: "sandbox", description: "Show or change the sandbox policy (WS3, experimental)" },
 	{
 		name: "memory",
 		description:
@@ -109,8 +101,21 @@ export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 	{ name: "cost", description: "Show session cost + today + this-week totals (WS19)." },
 	{ name: "checkpoint", description: "Create a labeled shadow-git snapshot (WS17). /checkpoint <name>" },
 	{ name: "rollback", description: "Restore from a shadow-git snapshot (WS17). /rollback [N] [--file <path>] | list" },
+	{
+		name: "goal",
+		description:
+			"Start an autonomous goal loop (Ralph-style). Usage: /goal <text>. Runs until sentinel, caps, or paused.",
+	},
+	{
+		name: "plan",
+		description: "Enter read-only plan mode. Agent produces a written plan; type /act to execute.",
+	},
+	{ name: "act", description: "Exit plan mode and restore edit tools so the agent can execute its plan." },
 	{ name: "skills", description: "Open the skills hub overlay (browse user/project/bundled skills)." },
-	{ name: "plugins", description: "Open the plugins surface (alias for /skills marketplace stage; placeholder for now)." },
+	{
+		name: "plugins",
+		description: "Open the plugins surface (alias for /skills marketplace stage; placeholder for now).",
+	},
 	{ name: "quit", description: "Quit pi" },
 ];
 
@@ -494,8 +499,15 @@ export {
 	parseMemorySlash,
 	runMemorySlashCommand,
 } from "./slash-commands/memory.js";
-// WS3: re-export the sandbox command handlers for CLI dispatch.
-export { handleSandboxCommand, isSandboxFlagEnabled } from "./slash-commands/sandbox.js";
+
+// =============================================================================
+// /plan and /act (Gap 2 — agent-harness wire-up)
+// =============================================================================
+
+export type { ActCommandIO, ActCommandResult } from "./slash-commands/act.js";
+export { runActCommand } from "./slash-commands/act.js";
+export type { PlanCommandIO, PlanCommandResult } from "./slash-commands/plan.js";
+export { runPlanCommand } from "./slash-commands/plan.js";
 
 // =============================================================================
 // /repomap and /architect (WS8)

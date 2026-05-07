@@ -16,12 +16,6 @@
  *      bytes to the output. We disable in those environments by default.
  *   3. SSH+screen sessions sometimes lie via TERM=xterm-256color; the
  *      classification in `terminal-detect.ts` lets us be conservative.
- *
- * Provenance: pi-code's `tui.ts` already emits `\e[?2026h`/`\e[?2026l` inline
- * at four call sites. WS10 extracts a single primitive so callers (TUI render
- * paths AND the coding-agent's interactive overlays/diff renderer) share one
- * implementation with capability detection. No `pi-sync-output` npm package
- * exists; this is the consolidation of the inline pi-code emit.
  */
 import type { TerminalIdentity } from "./terminal-detect.js";
 

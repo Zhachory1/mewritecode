@@ -154,6 +154,31 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
 	transformContext?: (messages: AgentMessage[], signal?: AbortSignal) => Promise<AgentMessage[]>;
 
 	/**
+	 * Resolves the system prompt fresh for each LLM call.
+	 *
+	 * Use this when the system prompt changes mid-session — for example, a plan-mode
+	 * banner that appears only while `chatMode === "plan"`. When omitted, the static
+	 * `context.systemPrompt` set at session start is used.
+	 *
+	 * Caution: a churning system prompt invalidates the prompt cache. Reserve this for
+	 * mode-level changes, not per-turn injections (use `transformContext` for those).
+	 *
+	 * Contract: must not throw or reject. Return `context.systemPrompt` on failure.
+	 */
+	getSystemPrompt?: (context: AgentContext) => Promise<string> | string;
+
+	/**
+	 * Filter the tool list visible to the model for a single turn.
+	 *
+	 * Applied after `transformContext` and before the LLM call. Tools removed by the
+	 * filter are not exposed to the model — they are not "blocked", they simply aren't
+	 * advertised. Use this for chat-mode tool gating (plan mode = read-only subset).
+	 *
+	 * Contract: must not throw. Return the original tools array on failure.
+	 */
+	toolFilter?: (tools: AgentTool<any>[], context: AgentContext) => AgentTool<any>[];
+
+	/**
 	 * Resolves an API key dynamically for each LLM call.
 	 *
 	 * Useful for short-lived OAuth tokens (e.g., GitHub Copilot) that may expire
@@ -197,6 +222,14 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
 	 * Default: "parallel"
 	 */
 	toolExecution?: ToolExecutionMode;
+
+	/**
+	 * Hard cap on assistant turns within a single run. When the cap is reached,
+	 * the loop emits a final assistant message with stopReason "max_turns" and
+	 * exits cleanly. Used by subagent.maxTurns (loadAgentsDir.ts:128 in claude
+	 * code) and `cave --max-turns N`.
+	 */
+	maxTurns?: number;
 
 	/**
 	 * Called before a tool is executed, after arguments have been validated.
@@ -345,4 +378,22 @@ export type AgentEvent =
 	// Tool execution lifecycle
 	| { type: "tool_execution_start"; toolCallId: string; toolName: string; args: any }
 	| { type: "tool_execution_update"; toolCallId: string; toolName: string; args: any; partialResult: any }
-	| { type: "tool_execution_end"; toolCallId: string; toolName: string; result: any; isError: boolean };
+	| { type: "tool_execution_end"; toolCallId: string; toolName: string; result: any; isError: boolean }
+	// Checkpoint snapshot taken before a mutating tool call (Gap 4)
+	| {
+			type: "checkpoint_taken";
+			checkpointId: string;
+			toolName: string;
+			sessionId: string;
+			fileCount: number;
+			timestamp: number;
+	  }
+	// Subagent dispatched via Task tool reports mid-flight progress (Gap 3)
+	| {
+			type: "subagent_progress";
+			subagentId: string;
+			subagentName: string;
+			phase: "started" | "tool" | "message" | "completed" | "failed";
+			detail?: string;
+			timestamp: number;
+	  };

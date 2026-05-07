@@ -5,10 +5,6 @@
  * and rendering into a single entry point. Adds chat-state personalization
  * (added-files, mentioned-files) so the ranking reflects what the user is
  * actually working on, not just the global graph topology.
- *
- * Provenance: algorithm shape vendored from Aider's `aider/repomap.py`
- * (Apache-2.0). Aider is the canonical reference for repo-map PageRank.
- * Cite: https://github.com/Aider-AI/aider/blob/main/aider/repomap.py
  */
 
 import { type PageRankOptions, pagerank, type RankedSymbol, selectWithinBudget } from "./pagerank.js";

@@ -1,15 +1,11 @@
 /**
- * Subagent observability overlay — Hermes pattern.
+ * Subagent observability overlay.
  *
  * F2 toggles a live tree of running subagents (current tool, token spend,
  * elapsed). Until WS6 ships the Task tool + global subagent registry this
  * overlay subscribes to a no-op registry that emits an empty snapshot. Once
  * WS6 lands, `setRegistry()` will receive a real registry and the overlay
  * begins rendering rows.
- *
- * Provenance: pi-code does not ship a subagent overlay (no Task tool yet);
- * this is original cave-only code structured to plug into WS6's registry
- * via a minimal subscription contract that has no other dependencies.
  */
 import type { Component } from "../tui.js";
 import { visibleWidth } from "../utils.js";

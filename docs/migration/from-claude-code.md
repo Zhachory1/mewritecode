@@ -19,7 +19,7 @@ curl -fsSL https://cave.sh/install | bash
 cp -r ~/.claude/commands ~/.cave/
 cp -r ~/.claude/skills ~/.cave/
 cp -r ~/.claude/agents ~/.cave/
-cp ~/.claude/settings.json ~/.cave/settings.json    # hooks + permissions
+cp ~/.claude/settings.json ~/.cave/settings.json    # hooks + statusLine
 
 # 3. Project-scope
 ln -s .claude .cave   # or: cp -r .claude .cave (if you want them independent)
@@ -38,13 +38,12 @@ cave
 
 | Claude Code | Cave | Notes |
 |---|---|---|
-| `~/.claude/settings.json` | `~/.cave/settings.json` | Hooks + permissions + statusLine identical schema |
+| `~/.claude/settings.json` | `~/.cave/settings.json` | Hooks + statusLine identical schema (cave runs hooks as observers) |
 | `~/.claude/commands/*.md` | `~/.cave/commands/*.md` | Frontmatter is a superset |
 | `~/.claude/skills/<name>/SKILL.md` | `~/.cave/skills/<name>/SKILL.md` | Identical |
 | `~/.claude/agents/<name>.md` | `~/.cave/agents/<name>.md` | Frontmatter is a superset |
 | `.mcp.json` | `.mcp.json` | Same path; no change |
 | `CLAUDE.md` | `CLAUDE.md` (read) or `CAVE.md` (preferred) | Cave reads both, layered |
-| Plan mode prompt | Plan mode | Same shape |
 | Auto-Memory | cavemem | Different backend; same UX |
 
 ## Differences worth knowing
@@ -78,11 +77,11 @@ cave --no-cave-mode
 
 ### Permissions
 
-Cave's permission modes (`plan` / `default` / `acceptEdits` / `auto` / `bypassPermissions`) cycle with `Shift+Tab`. Claude Code's "auto-accept" toggle is `acceptEdits` in cave; "ask" is `default`.
+Cave runs in autopilot — there is no permission prompt, no `--permission-mode` flag, and no Shift+Tab mode cycle. Tools always execute. If you need a tool firewall, write a `PreToolUse` hook (it can rewrite tool input but cannot block).
 
 ### Hooks
 
-`PreToolUse` is **synchronous and blocking** in Cave (30s timeout). Claude Code's contract is the same. If you wrote a long-running hook expecting async semantics, move it to `PostToolUse` (which is async by default).
+`PreToolUse` and `PostToolUse` fire as **observers**. They can patch tool input via `hookSpecificOutput.updatedInput` and add stdout to context, but they cannot deny or block a tool call. Claude Code's "exit code 2 = deny" semantics do not apply here.
 
 ## Confirming the migration worked
 

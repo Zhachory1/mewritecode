@@ -8,8 +8,6 @@
  * The split lets us route reasoning to a high-end model and dispatch the
  * mechanical translation to a cheap, fast one. Aider reports +5–10pp pass@1
  * on its bench by pairing GPT-4 architect + Claude 3 Opus editor.
- *
- * Provenance: Aider's `ArchitectCoder`/`EditorEditBlockCoder`. Apache-2.0.
  */
 
 import { diffFormat } from "./diff.js";

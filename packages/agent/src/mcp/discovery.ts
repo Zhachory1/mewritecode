@@ -6,8 +6,6 @@
 // Schema is byte-compatible with Claude Code / Codex `mcp.json`. A user can
 // paste their existing config in unchanged and it will load.
 //
-// Provenance: discovery path list cribbed from pi-mcp-adapter's config.ts
-// (see IMPORT_PATHS table) — same entries cave's audience would expect.
 
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";

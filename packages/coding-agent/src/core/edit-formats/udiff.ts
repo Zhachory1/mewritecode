@@ -14,9 +14,6 @@
  * Strong choice for high-capability models that emit clean unified diffs
  * (GPT-4o, Claude 3.5+). Aider showed gpt-4-turbo udiff was ~3× more reliable
  * than diff format on its benchmark suite.
- *
- * Provenance: format taken from Aider's `UnifiedDiffCoder`. Apache-2.0.
- * https://github.com/Aider-AI/aider/blob/main/aider/coders/udiff_prompts.py
  */
 
 import type { EditFormat, FileEdit, ParseEditsResult } from "./types.js";

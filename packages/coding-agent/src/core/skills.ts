@@ -1,17 +1,6 @@
 /**
  * Skills loader — Claude Code-compatible markdown skill definitions.
  *
- * Provenance: borrowed from pi-code (`packages/coding-agent/src/core/skills.ts`)
- * — cave is a heavy fork of pi-code. Extended in WS5 with:
- * - Full Claude Code v2.1.119 frontmatter passthrough
- *   (allowed-tools, model, effort, agent, hooks, paths, shell, user-invocable, ...)
- * - Body loading on demand with progressive disclosure
- * - 5k token cap when re-attached after compaction
- * - 25k shared budget across all simultaneously attached skill bodies
- * - Substitution engine ($ARGUMENTS, $0..$N, ${CAVE_SESSION_ID}, ${CAVE_SKILL_DIR}, ${CAVE_EFFORT})
- * - Inline shell preprocessing via !`cmd`
- * - Hot reload via fs.watch
- *
  * Two filesystem locations + plugin namespace, fully Claude Code-compatible.
  * A user pasting `~/.claude/skills/<name>/SKILL.md` into `~/.cave/skills/<name>/SKILL.md`
  * MUST work unchanged.

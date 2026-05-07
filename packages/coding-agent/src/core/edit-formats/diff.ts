@@ -12,9 +12,6 @@
  *
  * The `diff-fenced` variant wraps the same SEARCH/REPLACE block in a single
  * markdown fence, used by models (Gemini) that prefer fenced output.
- *
- * Provenance: format taken from Aider's `EditBlockCoder`. Apache-2.0.
- * https://github.com/Aider-AI/aider/blob/main/aider/coders/editblock_prompts.py
  */
 
 import type { EditFormat, FileEdit, ParseEditsResult } from "./types.js";

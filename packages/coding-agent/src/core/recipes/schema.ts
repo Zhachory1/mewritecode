@@ -13,7 +13,6 @@
 // ---------------------------------------------------------------------------
 
 export type RecipeEffort = "low" | "medium" | "high";
-export type RecipePermissionMode = "default" | "plan" | "acceptEdits" | "auto" | "bypassPermissions";
 
 export interface RecipeInput {
 	description: string;
@@ -41,8 +40,6 @@ export interface Recipe {
 	include?: string[];
 	/** Named input parameters that callers supply via --input k=v. */
 	inputs?: Record<string, RecipeInput>;
-	/** Permission mode for the session. */
-	permissionMode?: RecipePermissionMode;
 	/** Name of the recipe (filled in by the loader, not the YAML). */
 	name?: string;
 	/** Absolute path of the source file (filled in by the loader). */
@@ -69,7 +66,6 @@ export class RecipeValidationError extends Error {
 // ---------------------------------------------------------------------------
 
 const VALID_EFFORTS = new Set<string>(["low", "medium", "high"]);
-const VALID_PERMISSION_MODES = new Set<string>(["default", "plan", "acceptEdits", "auto", "bypassPermissions"]);
 
 function assertString(value: unknown, field: string, filePath?: string): string {
 	if (typeof value !== "string") {
@@ -198,18 +194,6 @@ export function validateRecipe(raw: unknown, filePath?: string): Recipe {
 			inputs[key] = validateInputDef(val, key, filePath);
 		}
 		recipe.inputs = inputs;
-	}
-
-	if ("permissionMode" in obj && obj.permissionMode !== undefined) {
-		const pm = assertString(obj.permissionMode, "permissionMode", filePath);
-		if (!VALID_PERMISSION_MODES.has(pm)) {
-			throw new RecipeValidationError(
-				`"permissionMode" must be one of: ${[...VALID_PERMISSION_MODES].join(", ")}`,
-				"permissionMode",
-				filePath,
-			);
-		}
-		recipe.permissionMode = pm as RecipePermissionMode;
 	}
 
 	return recipe;

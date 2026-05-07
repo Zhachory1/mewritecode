@@ -200,30 +200,6 @@ export function fuzzyFilter(rows: SessionRow[], query: string): SessionRow[] {
 	return rows.filter((r) => r.sessionId.toLowerCase().includes(q) || r.title.toLowerCase().includes(q));
 }
 
-// ─── T-109, T-110: plan mode ────────────────────────────────────────────────
-
-const PLAN_MODE_BLOCKED_TOOLS = new Set(["write", "edit", "apply_sr_diff", "edit_symbol", "bash"]);
-const PLAN_MODE_ALLOWED_TOOLS = new Set(["read", "grep", "glob", "ls", "find"]);
-
-export class PlanMode {
-	private active = false;
-	enter(): void {
-		this.active = true;
-	}
-	exit(): void {
-		this.active = false;
-	}
-	isActive(): boolean {
-		return this.active;
-	}
-	isBlocked(tool: string): boolean {
-		return this.active && PLAN_MODE_BLOCKED_TOOLS.has(tool);
-	}
-	isAllowed(tool: string): boolean {
-		return !this.active || PLAN_MODE_ALLOWED_TOOLS.has(tool);
-	}
-}
-
 // ─── T-111: checkpoint GC retention ─────────────────────────────────────────
 
 export interface CheckpointGcPolicy {

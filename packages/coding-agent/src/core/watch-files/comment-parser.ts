@@ -7,11 +7,6 @@
  *   "-- cave!"  - fire trigger (lua/sql)
  *   "cave?"     - Q&A trigger (read-only)
  *   "cave"      - accumulate context (no suffix)
- *
- * Provenance: pi-watch (npm, pi extension, MIT) implements equivalent
- * comment scanning for #pi! markers. This implementation re-derives the
- * same approach for cave markers with multi-language support and the
- * 3-variant (fire/qa/context) semantic.
  */
 
 export type CommentKind = "fire" | "qa" | "context";

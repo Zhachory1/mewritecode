@@ -4,7 +4,6 @@ import {
 	buildPickerEntries,
 	type CheckpointDirMetadata,
 	fuzzyFilter,
-	PlanMode,
 	type RewindAdapter,
 	rewindSession,
 	type SessionRow,
@@ -127,41 +126,6 @@ describe("cave resume picker", () => {
 
 	it("fuzzyFilter matches on session id", () => {
 		expect(fuzzyFilter(rows, "s-a")).toHaveLength(1);
-	});
-});
-
-describe("PlanMode", () => {
-	it("blocks write/edit/bash when active", () => {
-		const p = new PlanMode();
-		p.enter();
-		expect(p.isBlocked("write")).toBe(true);
-		expect(p.isBlocked("edit")).toBe(true);
-		expect(p.isBlocked("bash")).toBe(true);
-		expect(p.isBlocked("apply_sr_diff")).toBe(true);
-	});
-
-	it("allows grep/read/find/ls when active", () => {
-		const p = new PlanMode();
-		p.enter();
-		expect(p.isAllowed("read")).toBe(true);
-		expect(p.isAllowed("grep")).toBe(true);
-		expect(p.isAllowed("find")).toBe(true);
-		expect(p.isAllowed("ls")).toBe(true);
-	});
-
-	it("inactive mode allows everything", () => {
-		const p = new PlanMode();
-		expect(p.isBlocked("write")).toBe(false);
-		expect(p.isAllowed("write")).toBe(true);
-	});
-
-	it("persists across isActive checks until exit", () => {
-		const p = new PlanMode();
-		p.enter();
-		expect(p.isActive()).toBe(true);
-		expect(p.isActive()).toBe(true); // multiple queries do not exit
-		p.exit();
-		expect(p.isActive()).toBe(false);
 	});
 });
 

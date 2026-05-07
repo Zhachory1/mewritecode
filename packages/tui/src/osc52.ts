@@ -7,12 +7,6 @@
  * terminals accept ~75k base64 bytes (a few MB rendered, but base64 is the
  * wire format). We truncate at 74_994 to leave headroom for the framing
  * bytes (`\e]52;c;` + `\x07`).
- *
- * Provenance: pi-code's `coding-agent/src/utils/clipboard.ts` already emits
- * the OSC-52 sequence inline as a fallback, but does not truncate. WS10
- * extracts a TUI-side primitive so the same byte-budget logic governs every
- * call site (the existing `/copy` slash command + future TUI key bindings
- * for inline copy from a chat row).
  */
 
 /** Maximum decoded character count we accept before truncation, conservative. */

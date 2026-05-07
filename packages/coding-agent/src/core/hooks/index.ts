@@ -147,22 +147,17 @@ export function subscribeHooksToExtensionEvents(api: ExtensionEventBusLike, mana
 		await manager.dispatch("PreCompact", "auto", { trigger: "auto" } as any);
 	});
 
-	// PreToolUse / PostToolUse: extension event handlers can return
-	// synthetic results to block tool calls. We lean on extension API
-	// semantics here — the cave runner already supports `block: true`
-	// from a tool_call handler, which we map from a deny decision.
+	// PreToolUse / PostToolUse: hooks are pure observers post-permission-strip.
+	// They still receive the event and can patch input via `updatedInput`, but
+	// they cannot deny / block tool execution.
 	api.on("tool_call", async (e: { toolName: string; input: Record<string, unknown>; toolCallId: string }) => {
 		const out = await manager.dispatch("PreToolUse", e.toolName, {
 			tool_name: e.toolName,
 			tool_input: e.input,
 			tool_use_id: e.toolCallId,
 		} as any);
-		// Apply hook patches to args in-place (extension API contract).
 		if (out.updatedInput) {
 			Object.assign(e.input, out.updatedInput);
-		}
-		if (out.permission === "deny") {
-			return { block: true, reason: out.results.find((r) => r.stderr)?.stderr ?? "blocked by hook" };
 		}
 		return undefined;
 	});

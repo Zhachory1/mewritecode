@@ -38,26 +38,13 @@ cave
 | `AGENTS.md` | `AGENTS.md` (read) | Layered with CAVE.md / CLAUDE.md |
 | `.mcp.json` | `.mcp.json` | Identical schema |
 | `.codex-plugin/plugin.json` | `.cave-plugin/plugin.json` | Compatible at root level |
-| Sandbox profiles | Cave's `SandboxPolicy` | Codex's `read_only` / `workspace_write` / `danger_full_access` map 1:1 |
 | `--cd` | `--cwd` | Same semantics |
 | `--ephemeral` | `--ephemeral` | Same flag |
 | `codex exec` | `cave exec` | Same JSON event stream |
 
-## Sandbox parity
+## Permissions / sandbox
 
-Codex pioneered the "sandbox-as-utility" pattern:
-
-```bash
-codex sandbox -- npm install
-```
-
-Cave does the same:
-
-```bash
-cave sandbox -- npm install
-```
-
-The underlying SBPL / Landlock policy is the same shape. See [Permissions](/reference/permissions).
+Cave runs autopilot — there is no `--sandbox` flag, no permission prompts, and no Seatbelt/Landlock policy. If you relied on Codex's `read_only` / `workspace_write` / `danger_full_access` profiles, drop them; cave will execute every tool request directly. The OS still enforces filesystem permissions and you can constrain a session by tightening the agent's `tools` list (e.g. omitting `bash`, `edit`, `write`).
 
 ## ChatGPT OAuth
 

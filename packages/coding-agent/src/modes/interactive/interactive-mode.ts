@@ -32,7 +32,7 @@ import {
 	Loader,
 	Markdown,
 	matchesKey,
-	NULL_SUBAGENT_REGISTRY,
+	notify,
 	ProcessTerminal,
 	renderStatusLineDefault,
 	type SidePanelHandle,
@@ -58,7 +58,7 @@ import {
 import { type AgentSession, type AgentSessionEvent, parseSkillBlock } from "../../core/agent-session.js";
 import type { AgentSessionRuntime } from "../../core/agent-session-runtime.js";
 import { type ArchitectModeState, defaultArchitectState } from "../../core/chat-modes/architect.js";
-import { formatInlineCostWithRates, formatSessionEndSummary } from "../../core/cost-formatter.js";
+import { formatSessionEndSummary } from "../../core/cost-formatter.js";
 import { persistSessionCost } from "../../core/cost-persistence.js";
 import type {
 	ExtensionContext,
@@ -75,8 +75,11 @@ import { DefaultPackageManager } from "../../core/package-manager.js";
 import type { ResourceDiagnostic } from "../../core/resource-loader.js";
 import { formatMissingSessionCwdPrompt, MissingSessionCwdError } from "../../core/session-cwd.js";
 import { type SessionContext, SessionManager } from "../../core/session-manager.js";
+import { runActCommand } from "../../core/slash-commands/act.js";
 import { runCheckpointCommand } from "../../core/slash-commands/checkpoint.js";
+import { runGoalSlashCommand } from "../../core/slash-commands/goal.js";
 import { runMcpSlashCommand } from "../../core/slash-commands/mcp.js";
+import { runPlanCommand } from "../../core/slash-commands/plan.js";
 import { runRollbackCommand } from "../../core/slash-commands/rollback.js";
 import {
 	BUILTIN_SLASH_COMMANDS,
@@ -89,22 +92,22 @@ import {
 	runTokensCommand,
 } from "../../core/slash-commands.js";
 import type { SourceInfo } from "../../core/source-info.js";
+import { InMemorySubagentRegistry } from "../../core/subagents-registry.js";
 import type { TruncationResult } from "../../core/tools/truncate.js";
+import { resolveCurrentCaveInvocation } from "../../utils/cave-invocation.js";
 import { getChangelogPath, getNewEntries, parseChangelog } from "../../utils/changelog.js";
 import { copyToClipboard } from "../../utils/clipboard.js";
 import { extensionForImageMimeType, readClipboardImage } from "../../utils/clipboard-image.js";
 import { parseGitUrl } from "../../utils/git.js";
 import { ensureTool } from "../../utils/tools-manager.js";
 import { ActionBarComponent } from "./components/action-bar.js";
-import { ApprovalPromptUI } from "./components/approval-prompt.js";
-import { showConfirmPrompt } from "./components/confirm-prompt.js";
-import { InMemorySubagentRegistry } from "../../core/subagents-registry.js";
 import { ArminComponent } from "./components/armin.js";
 import { AssistantMessageComponent } from "./components/assistant-message.js";
 import { BashExecutionComponent } from "./components/bash-execution.js";
 import { BorderedLoader } from "./components/bordered-loader.js";
 import { BranchSummaryMessageComponent } from "./components/branch-summary-message.js";
 import { CompactionSummaryMessageComponent } from "./components/compaction-summary-message.js";
+import { showConfirmPrompt } from "./components/confirm-prompt.js";
 import { ContextMeterComponent } from "./components/context-meter.js";
 import { CustomEditor } from "./components/custom-editor.js";
 import { CustomMessageComponent } from "./components/custom-message.js";
@@ -212,6 +215,14 @@ export class InteractiveMode {
 	private version: string;
 	private isInitialized = false;
 	private onInputCallback?: (text: string) => void;
+	/**
+	 * FIFO of user-submitted prompts that arrived between turns of the main
+	 * input loop (i.e. while `onInputCallback` was undefined because
+	 * `session.prompt(...)` was still being awaited). Drained by
+	 * `getUserInput()` before re-arming the callback so messages cannot be
+	 * silently dropped.
+	 */
+	private pendingInputQueue: string[] = [];
 	private loadingAnimation: Loader | undefined = undefined;
 	private pendingWorkingMessage: string | undefined = undefined;
 	private readonly defaultWorkingMessage = "Working...";
@@ -306,10 +317,6 @@ export class InteractiveMode {
 	private widgetContainerAbove!: Container;
 	private widgetContainerBelow!: Container;
 
-	// Smoke Signal: per-turn token tracking for cave mode dashboard
-	private smokeSignalTurnCount = 0;
-	private smokeSignalTotalTokens = 0;
-
 	// Tribal Signal: context drift warning state
 	private tribalSignalAmberFired = false;
 	private tribalSignalRecentTurnTokens: number[] = [];
@@ -359,10 +366,6 @@ export class InteractiveMode {
 		this.version = VERSION;
 		this.ui = new TUI(new ProcessTerminal(), this.settingsManager.getShowHardwareCursor());
 		this.ui.setClearOnShrink(this.settingsManager.getClearOnShrink());
-		// WS3: feed the 4-verb approval overlay to the agent so any sandbox-
-		// policy-aware tool can call session.permissionUI.chooseVerb(...) and
-		// surface the prompt.
-		this.session.setPermissionUI(new ApprovalPromptUI(this.ui));
 		this.subagentOverlay = new SubagentOverlay({ registry: this.subagentRegistry });
 		this.subagentOverlay.bindRedraw(() => this.ui.requestRender());
 		this.headerContainer = new Container();
@@ -2368,11 +2371,6 @@ export class InteractiveMode {
 				await this.handleMcpSlashCommand(text);
 				return;
 			}
-			if (text === "/sandbox" || text.startsWith("/sandbox ")) {
-				this.editor.setText("");
-				this.handleSandboxSlashCommand(text);
-				return;
-			}
 			if (text === "/memory" || text.startsWith("/memory ")) {
 				this.editor.setText("");
 				await this.handleMemorySlashCommand(text);
@@ -2405,6 +2403,24 @@ export class InteractiveMode {
 				const args = text.startsWith("/rollback ") ? text.slice(10) : "";
 				this.editor.setText("");
 				await this.handleRollbackSlashCommand(args);
+				return;
+			}
+			if (text === "/goal" || text.startsWith("/goal ")) {
+				const args = text.startsWith("/goal ") ? text.slice(6) : "";
+				this.editor.setText("");
+				await this.handleGoalSlashCommand(args);
+				return;
+			}
+			if (text === "/plan" || text.startsWith("/plan ")) {
+				const args = text.startsWith("/plan ") ? text.slice(6) : "";
+				this.editor.setText("");
+				this.handlePlanSlashCommand(args);
+				return;
+			}
+			if (text === "/act" || text.startsWith("/act ")) {
+				const args = text.startsWith("/act ") ? text.slice(5) : "";
+				this.editor.setText("");
+				this.handleActSlashCommand(args);
 				return;
 			}
 
@@ -2465,6 +2481,12 @@ export class InteractiveMode {
 
 			if (this.onInputCallback) {
 				this.onInputCallback(text);
+			} else {
+				// Main loop is between turns (last session.prompt() returned
+				// but getUserInput() has not re-armed onInputCallback yet).
+				// Queue so the message is consumed on the next loop tick
+				// instead of being silently dropped.
+				this.pendingInputQueue.push(text);
 			}
 			this.editor.addToHistory?.(text);
 		};
@@ -2618,21 +2640,6 @@ export class InteractiveMode {
 						this.currentToolGroup = undefined;
 					}
 					this.streamingComponent = undefined;
-					// WS19: render inline cost after each successful assistant message
-					if (event.message.role === "assistant") {
-						const assistantMsg = event.message;
-						const u = assistantMsg.usage;
-						const pricingKnown = u.cost.total > 0;
-						const inlineLine = formatInlineCostWithRates({
-							dollarsTotal: u.cost.total,
-							pricingKnown,
-							dollarsCachedRead: u.cost.cacheRead,
-							cachedInput: u.cacheRead,
-							inputTokens: u.input,
-							outputTokens: u.output,
-						});
-						this.chatContainer.addChild(new Text(theme.fg("dim", inlineLine), 1, 0));
-					}
 					this.streamingMessage = undefined;
 					this.footer.invalidate();
 				}
@@ -2810,6 +2817,35 @@ export class InteractiveMode {
 					this.showError(`Retry failed after ${event.attempt} attempts: ${event.finalError || "Unknown error"}`);
 				}
 				this.ui.requestRender();
+				break;
+			}
+
+			case "checkpoint_taken": {
+				break;
+			}
+
+			case "subagent_progress": {
+				// Gap 6: live subagent activity from spawned cave children.
+				// Render only "started" / "tool" / "completed" / "failed" — the
+				// "message" phase is too chatty for the inline transcript.
+				if (event.phase === "tool") {
+					this.showStatus(`◇ ${event.subagentName}: tool ${event.detail ?? ""}`);
+				} else if (event.phase === "started") {
+					this.showStatus(`◇ ${event.subagentName}: ${event.detail ?? "starting"}`);
+				} else if (event.phase === "completed") {
+					this.showStatus(`✓ ${event.subagentName}: done`);
+					try {
+						notify({ title: "cave subagent", body: `${event.subagentName} done` });
+					} catch {}
+				} else if (event.phase === "failed") {
+					this.showStatus(`✗ ${event.subagentName}: ${event.detail ?? "failed"}`);
+					try {
+						notify({
+							title: "cave subagent",
+							body: `${event.subagentName} failed: ${event.detail ?? ""}`,
+						});
+					} catch {}
+				}
 				break;
 			}
 		}
@@ -3030,6 +3066,12 @@ export class InteractiveMode {
 	}
 
 	async getUserInput(): Promise<string> {
+		// Drain any input that arrived while the main loop was busy awaiting
+		// the previous prompt. Without this, submissions made between
+		// session.prompt() resolving and the next getUserInput() await would
+		// be silently dropped (onInputCallback is undefined in that window).
+		const queued = this.pendingInputQueue.shift();
+		if (queued !== undefined) return queued;
 		return new Promise((resolve) => {
 			this.onInputCallback = (text: string) => {
 				this.onInputCallback = undefined;
@@ -4378,30 +4420,24 @@ export class InteractiveMode {
 		this.appendSlashOutput(result.lines.join("\n"), result.errors > 0);
 	}
 
-	private handleSandboxSlashCommand(text: string): void {
-		// /sandbox in interactive mode shows the active policy hint and points
-		// users at the CLI form (`cave sandbox -- <cmd>`) for execution. The
-		// CLI handler shells out, which would corrupt the TUI here.
-		const argv = text.replace(/^\/sandbox\s*/, "").trim();
-		const lines = [
-			"Sandbox policy is configured per session via permission mode (Shift+Tab to cycle).",
-			"For sandbox-as-utility execution use the CLI: cave sandbox -- <cmd>",
-		];
-		if (argv) {
-			lines.unshift(`Args ignored in interactive mode: ${argv}`);
-		}
-		this.appendSlashOutput(lines.join("\n"), false);
-	}
-
 	private async handleMemorySlashCommand(text: string): Promise<void> {
-		const { memory: memoryNs } = await import("@cave/agent");
 		const { runMemorySlashCommand } = await import("../../core/slash-commands.js");
 		try {
-			const provider = new memoryNs.CavememProvider();
+			// Reuse the AgentSession's MemoryProvider so MCP transport, embedding
+			// model, and FTS handles are shared with the auto-injection transform.
+			const provider = await this.session.memoryProvider();
+			if (!provider) {
+				this.appendSlashOutput(
+					`Memory backend unavailable. Install \`cavemem\` or initialise \`.cave/memory/\`.`,
+					true,
+				);
+				return;
+			}
 			const result = await runMemorySlashCommand(text, {
 				cwd: this.sessionManager.getCwd(),
 				provider,
-				enabled: true,
+				enabled: this.session.memoryEnabled,
+				setEnabled: (next) => this.session.setMemoryEnabled(next),
 			});
 			this.appendSlashOutput(result.lines.join("\n"), result.errors > 0);
 		} catch (err) {
@@ -4452,6 +4488,65 @@ export class InteractiveMode {
 			projectRoot: this.sessionManager.getCwd(),
 		});
 		this.appendSlashOutput(result.output, result.exitCode !== 0);
+	}
+
+	private async handleGoalSlashCommand(args: string): Promise<void> {
+		const result = await runGoalSlashCommand(args, {
+			cwd: this.sessionManager.getCwd(),
+			spawnDriver: (id) => {
+				const invocation = resolveCurrentCaveInvocation();
+				const child = spawn(invocation.command, [...invocation.argsPrefix, "goal", "resume", id], {
+					cwd: this.sessionManager.getCwd(),
+					detached: true,
+					stdio: "ignore",
+				});
+				child.unref();
+			},
+		});
+		this.appendSlashOutput(result.output, result.exitCode !== 0);
+	}
+
+	private handlePlanSlashCommand(args: string): void {
+		const result = runPlanCommand(args, {
+			getChatMode: () => this.session.chatMode,
+			setChatMode: (mode) => this.session.setChatMode(mode),
+			sessionId: this.session.sessionId,
+		});
+		this.appendSlashOutput(result.output, result.exitCode !== 0);
+		this._refreshChatModeFooter();
+		if (result.promptToSend) {
+			const text = result.promptToSend;
+			this.editor.addToHistory?.(`/plan ${text}`);
+			void this.session
+				.prompt(text, this.session.isStreaming ? { streamingBehavior: "steer" } : undefined)
+				.catch((err: unknown) => {
+					const msg = err instanceof Error ? err.message : String(err);
+					this.showError(msg);
+				});
+		}
+	}
+
+	private handleActSlashCommand(args: string): void {
+		const result = runActCommand(args, {
+			setChatMode: (mode) => this.session.setChatMode(mode),
+			sessionId: this.session.sessionId,
+			enqueueFollowUp: (text) => {
+				void this.session.prompt(text, { streamingBehavior: "followUp" });
+			},
+		});
+		this.appendSlashOutput(result.output, result.exitCode !== 0);
+		this._refreshChatModeFooter();
+	}
+
+	/** Gap 6: surface the active chat mode as a footer extension status. */
+	private _refreshChatModeFooter(): void {
+		const mode = this.session.chatMode;
+		this.footerDataProvider.setExtensionStatus(
+			"chat-mode",
+			mode === "plan" ? theme.fg("warning", "⏸ plan") : undefined,
+		);
+		this.footer.invalidate();
+		this.ui.requestRender();
 	}
 
 	private isUnwiredBuiltinSlash(text: string): boolean {
@@ -5373,26 +5468,7 @@ export class InteractiveMode {
 	}
 
 	private updateSmokeSignal(): void {
-		const caveState = this.session.getCaveModeSessionState();
-		if (!caveState.enabled) {
-			this.setExtensionWidget("smoke-signal", undefined);
-			return;
-		}
-
-		const stats = this.session.getSessionStats();
-		this.smokeSignalTurnCount++;
-		this.smokeSignalTotalTokens += stats.tokens.input + stats.tokens.output;
-
-		const avgPerTurn =
-			this.smokeSignalTurnCount > 0 ? Math.round(this.smokeSignalTotalTokens / this.smokeSignalTurnCount) : 0;
-		const avgStr = avgPerTurn >= 1000 ? `${(avgPerTurn / 1000).toFixed(1)}k` : `${avgPerTurn}`;
-		const costStr = `$${stats.cost.toFixed(3)}`;
-
-		const contextUsage = stats.contextUsage;
-		const ctxStr = contextUsage?.percent != null ? `${Math.round(contextUsage.percent)}%` : "?";
-
-		const line = theme.fg("dim", `avg ${avgStr}/turn  cost ${costStr}  ctx ${ctxStr}  cave:${caveState.intensity}`);
-		this.setExtensionWidget("smoke-signal", [line], { placement: "belowEditor" });
+		this.setExtensionWidget("smoke-signal", undefined);
 	}
 
 	private updateTribalSignal(): void {

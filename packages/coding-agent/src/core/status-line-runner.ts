@@ -6,9 +6,6 @@
  * receives a JSON `StatusLineContext` payload on stdin and writes a single
  * line to stdout. Stderr surfaces in `/doctor`. Timeouts cap at 1.5s so a
  * misbehaving script never blocks the TUI redraw loop.
- *
- * Provenance: this is fresh cave code that mirrors Claude Code's runtime
- * behavior. pi-code does not ship a configurable status line.
  */
 import { spawn } from "node:child_process";
 import type { StatusLineContext, StatusLineRenderer, StatusLineResult, StatusLineSettings } from "@cave/tui";

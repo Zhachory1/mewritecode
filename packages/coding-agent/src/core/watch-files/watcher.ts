@@ -5,10 +5,6 @@
  * (filesystems that don't support inotify). Debounces changes by 500ms.
  * Implements cycle protection: files modified by the agent itself within
  * the last 2s are ignored to prevent re-trigger loops.
- *
- * Provenance: pi-watch (npm, pi extension) uses chokidar for the same
- * purpose. We avoid adding chokidar as a new dep (not already transitive)
- * and implement directly with Node.js fs primitives + polling fallback.
  */
 
 import { statSync, watch } from "node:fs";

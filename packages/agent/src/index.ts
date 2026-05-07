@@ -18,9 +18,7 @@ export * as repomap from "./repomap/index.js";
 export * from "./roles.js";
 // Router
 export * from "./router.js";
-// Sandbox (WS3)
-export * from "./sandbox/index.js";
-// Subagents & Plan Mode (WS6)
+// Subagents (WS6)
 export * from "./subagent.js";
 // Types
 export * from "./types.js";

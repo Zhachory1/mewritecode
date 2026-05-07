@@ -6,9 +6,6 @@
 //   an existing config in unchanged. We accept (and ignore) extra fields the
 //   user may pass through.
 //
-// Provenance: schema fields (command/args/env/url/headers/auth/oauth) cribbed
-// from pi-mcp-adapter@2.5.1 (`packages/types.ts:ServerEntry`) which itself
-// follows Claude Code/Codex format. Keys preserved byte-for-byte.
 
 export type McpTransportKind = "stdio" | "http" | "inproc";
 

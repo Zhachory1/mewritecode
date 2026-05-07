@@ -4,20 +4,15 @@
  * Pre-fix bugs these guard against:
  *   1. `task`/`agent` tools were loaded into the registry but absent from the
  *      default active-tools list, so the model never saw them.
- *   2. `--permission-mode <mode>` was passed by the Task tool's child-spawn
- *      args but never parsed by `args.ts`, so subagent plan mode was silently
- *      dropped on the way to the spawned cave.
- *   3. AgentSession's `permissionSession` getter resolved the initial mode by
- *      calling a non-existent `settingsManager.getPermissionMode()`, which
- *      always fell back to "default".
+ *   2. The Task tool falls back to the parent's model when the agent's
+ *      pinned model is unauthed in the current environment.
  */
 
 import { EventEmitter } from "node:events";
 import { Readable } from "node:stream";
 import { describe, expect, it } from "vitest";
-import { parseArgs } from "../../cli/args.js";
 import type { LoadAgentDefsResult } from "../agent-defs/loader.js";
-import { allTools, allToolDefinitions } from "../tools/index.js";
+import { allToolDefinitions, allTools } from "../tools/index.js";
 import { createTaskToolDefinition } from "../tools/task.js";
 
 describe("WS6 subagent wiring", () => {
@@ -26,28 +21,6 @@ describe("WS6 subagent wiring", () => {
 		expect(allTools.agent).toBeDefined();
 		expect(allToolDefinitions.task.name).toBe("task");
 		expect(allToolDefinitions.agent.name).toBe("agent");
-	});
-
-	it("--permission-mode plan parses into Args.permissionMode", () => {
-		const a = parseArgs(["--permission-mode", "plan"]);
-		expect(a.permissionMode).toBe("plan");
-		expect(a.diagnostics).toHaveLength(0);
-	});
-
-	it("--permission-mode default | acceptEdits | auto | bypassPermissions all parse", () => {
-		for (const mode of ["default", "acceptEdits", "auto", "bypassPermissions"] as const) {
-			const a = parseArgs(["--permission-mode", mode]);
-			expect(a.permissionMode).toBe(mode);
-			expect(a.diagnostics).toHaveLength(0);
-		}
-	});
-
-	it("--permission-mode rejects unknown values with a warning, leaving mode unset", () => {
-		const a = parseArgs(["--permission-mode", "yolo"]);
-		expect(a.permissionMode).toBeUndefined();
-		expect(a.diagnostics.some((d) => d.type === "warning" && d.message.includes("Invalid permission mode"))).toBe(
-			true,
-		);
 	});
 
 	it("Task tool falls back to parent's model when agent's model is unauthed", async () => {

@@ -28,7 +28,6 @@ prompt: |
 tools: [Read, Glob, Grep, Bash]
 disallowedTools: [Edit, Write]
 model: claude-haiku-4
-permissionMode: plan
 maxTurns: 8
 isolation: none
 ---
@@ -45,7 +44,6 @@ For implementer-class agents, set `isolation: worktree` to spawn the agent in a 
 | `tools` | Allowed tools |
 | `disallowedTools` | Denied tools (overrides `tools`) |
 | `model` | Model for this agent |
-| `permissionMode` | `default` / `plan` / `acceptEdits` / `auto` / `bypassPermissions` |
 | `mcpServers` | MCP servers exposed to this agent only |
 | `hooks` | Hook overrides |
 | `maxTurns` | Hard cap on agent turns |
@@ -97,10 +95,6 @@ Subagents return a structured payload:
 ```
 
 The parent receives the `summary` only — full transcripts persist to `~/.cave/sessions/<id>.trace.jsonl`.
-
-## Plan mode + subagents
-
-`cave --plan` flips the parent to read-only mode. The parent can still dispatch `Implementer` subagents in worktrees — those subagents inherit `permissionMode: plan` unless explicitly overridden. Resulting plans land back in the parent for the user to accept (`/act`) before any writes touch the working tree.
 
 ## Importing Claude Code agents
 

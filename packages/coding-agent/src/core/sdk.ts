@@ -72,16 +72,8 @@ export interface CreateAgentSessionOptions {
 	settingsManager?: SettingsManager;
 	/** Session start event metadata for extension runtime startup. */
 	sessionStartEvent?: SessionStartEvent;
-	/**
-	 * WS3 PromptUI for tool permission prompts. Interactive hosts pass
-	 * `ApprovalPromptUI(tui)`; headless / -p hosts pass `HeadlessPromptUI()`.
-	 */
-	permissionUI?: import("./permission-prompt.js").PromptUI;
-	/**
-	 * Initial permission mode (passed via `--permission-mode` or set programmatically).
-	 * Drives the SandboxPolicy reducer + subagent plan-mode tool gating.
-	 */
-	permissionMode?: import("@cave/agent").PermissionMode;
+	/** Hard cap on assistant turns within a single run (Cli flag `--max-turns`). */
+	maxTurns?: number;
 }
 
 /** Result from createAgentSession */
@@ -339,6 +331,7 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		transport: settingsManager.getTransport(),
 		thinkingBudgets: settingsManager.getThinkingBudgets(),
 		maxRetryDelayMs: settingsManager.getRetrySettings().maxDelayMs,
+		maxTurns: options.maxTurns,
 	});
 
 	// Restore messages if session has existing data
@@ -367,8 +360,6 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		initialActiveToolNames,
 		extensionRunnerRef,
 		sessionStartEvent: options.sessionStartEvent,
-		permissionUI: options.permissionUI,
-		permissionMode: options.permissionMode,
 	});
 	const extensionsResult = resourceLoader.getExtensions();
 

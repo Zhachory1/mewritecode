@@ -70,7 +70,7 @@ cave worker add gpu-rig http://gpu-rig:39246 --token <secret>
 Then prepend `&` to any prompt and it dispatches to the worker:
 
 ```
-& refactor packages/agent/src/sandbox to use the new policy IR
+& refactor packages/agent/src/checkpoints to use the new index format
 ```
 
 The local terminal frees up. The worker runs the session. Re-attach later:

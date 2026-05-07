@@ -38,7 +38,6 @@ import {
 	createAgentSessionServices,
 } from "../core/agent-session-services.js";
 import { AuthStorage } from "../core/auth-storage.js";
-import { HeadlessPromptUI } from "../core/permission-prompt-headless.js";
 import { resolveCliModel } from "../core/model-resolver.js";
 import { restoreStdout, takeOverStdout } from "../core/output-guard.js";
 import { SessionManager } from "../core/session-manager.js";
@@ -203,9 +202,6 @@ async function _runExecCommand(execArgs: ExecArgs): Promise<number> {
 			sessionManager: rSessionManager,
 			sessionStartEvent,
 			model,
-			// WS3: never block in CI / cave exec. HeadlessPromptUI logs the
-			// auto-decision to stderr and returns the policy reducer's default verb.
-			permissionUI: new HeadlessPromptUI(),
 		});
 
 		return { ...created, services, diagnostics };

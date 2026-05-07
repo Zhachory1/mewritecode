@@ -1,9 +1,9 @@
 // WS6: agent-defs loader tests.
 //
 // Verifies discovery from project + user + bundled scopes, frontmatter
-// parsing for the WS6 superset (permissionMode, isolation, mcpServers,
-// hooks, maxTurns, skills, effort, background, disallowedTools), and
-// override semantics (project > user > builtin on name collision).
+// parsing for the WS6 superset (isolation, mcpServers, hooks, maxTurns,
+// skills, effort, background, disallowedTools), and override semantics
+// (project > user > builtin on name collision).
 
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -69,7 +69,6 @@ describe("parseAgentDefFile", () => {
 			tools: ["read", "grep"],
 			disallowedTools: ["bash"],
 			model: "claude-sonnet-4-5",
-			permissionMode: "plan",
 			isolation: "worktree",
 			mcpServers: ["github"],
 			skills: ["caveman-compress"],
@@ -83,7 +82,6 @@ describe("parseAgentDefFile", () => {
 		expect(def?.tools).toEqual(["read", "grep"]);
 		expect(def?.disallowedTools).toEqual(["bash"]);
 		expect(def?.model).toBe("claude-sonnet-4-5");
-		expect(def?.permissionMode).toBe("plan");
 		expect(def?.isolation).toBe("worktree");
 		expect(def?.mcpServers).toEqual(["github"]);
 		expect(def?.skills).toEqual(["caveman-compress"]);
@@ -101,17 +99,6 @@ describe("parseAgentDefFile", () => {
 		});
 		const { def } = parseAgentDefFile(filePath, "project");
 		expect(def?.tools).toEqual(["read", "grep", "find"]);
-	});
-
-	it("emits warnings for invalid permissionMode but still returns def", () => {
-		const filePath = writeAgent(join(cwd, ".cave", "agents"), "broken", {
-			name: "broken",
-			description: "x",
-			permissionMode: "ultra-permissive",
-		});
-		const { def, diagnostics } = parseAgentDefFile(filePath, "project");
-		expect(def).not.toBeNull();
-		expect(diagnostics.some((d) => d.message.includes('permissionMode "ultra-permissive"'))).toBe(true);
 	});
 
 	it("skips defs missing required fields", () => {
