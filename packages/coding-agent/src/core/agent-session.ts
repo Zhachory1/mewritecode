@@ -13,7 +13,8 @@
  * Modes use this class and add their own I/O layer on top.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import type { Agent, AgentEvent, AgentMessage, AgentState, AgentTool, ThinkingLevel } from "@cave/agent";
 import { checkpoints, LLMLinguaMiddleware, memory as memoryNs } from "@cave/agent";
@@ -231,6 +232,30 @@ interface ToolDefinitionEntry {
 // ============================================================================
 // Constants
 // ============================================================================
+
+// Prompt-path timing: opt-in via CAVE_PROMPT_TIMING=1. Writes one line per
+// step to ~/.cave/agent/prompt-timing.log so we can see where the after-Enter
+// "fully lag" window goes. No-op when the env var is unset.
+const PROMPT_TIMING_ENABLED = process.env.CAVE_PROMPT_TIMING === "1";
+const PROMPT_TIMING_LOG = join(homedir(), ".cave", "agent", "prompt-timing.log");
+let promptTimingT0 = 0;
+let promptTimingLast = 0;
+export function promptTimingMark(label: string): void {
+	if (!PROMPT_TIMING_ENABLED) return;
+	const now = performance.now();
+	if (promptTimingT0 === 0 || label === "submit") {
+		promptTimingT0 = now;
+		promptTimingLast = now;
+	}
+	const total = (now - promptTimingT0).toFixed(1);
+	const delta = (now - promptTimingLast).toFixed(1);
+	promptTimingLast = now;
+	try {
+		appendFileSync(PROMPT_TIMING_LOG, `[${new Date().toISOString()}] +${delta}ms (total ${total}ms) ${label}\n`);
+	} catch {
+		// Ignore logging errors
+	}
+}
 
 /** Standard thinking levels */
 const THINKING_LEVELS: ThinkingLevel[] = ["off", "minimal", "low", "medium", "high"];
@@ -1240,6 +1265,9 @@ export class AgentSession {
 	}
 
 	private async _processAgentEvent(event: AgentEvent): Promise<void> {
+		if (event.type === "message_start" && event.message.role === "user") {
+			promptTimingMark("processAgentEvent:user.message_start");
+		}
 		// When a user message starts, check if it's from either queue and remove it BEFORE emitting
 		// This ensures the UI sees the updated queue state
 		if (event.type === "message_start" && event.message.role === "user") {
@@ -1725,12 +1753,14 @@ export class AgentSession {
 	 * @throws Error if no model selected or no API key available (when not streaming)
 	 */
 	async prompt(text: string, options?: PromptOptions): Promise<void> {
+		promptTimingMark("session.prompt:start");
 		// Wait for the constructor's initial runtime build before processing
 		// the first prompt. Without this, callers that send a message
 		// immediately after `new AgentSession()` (print mode, child cave
 		// subagents) ship turn 1 with agent.state.tools = [] and the LLM
 		// reports it has no access to read/grep/etc. tools.
 		await this._initialRuntimeReady;
+		promptTimingMark("session.prompt:initialRuntimeReady");
 		const expandPromptTemplates = options?.expandPromptTemplates ?? true;
 
 		// Handle extension commands first (execute immediately, even during streaming)
@@ -1760,6 +1790,7 @@ export class AgentSession {
 				currentImages = inputResult.images ?? currentImages;
 			}
 		}
+		promptTimingMark("session.prompt:emitInput");
 
 		// Expand skill commands (/skill:name args) and prompt templates (/template args)
 		let expandedText = currentText;
@@ -1815,6 +1846,7 @@ export class AgentSession {
 		if (lastAssistant) {
 			await this._checkCompaction(lastAssistant, false);
 		}
+		promptTimingMark("session.prompt:checkCompaction");
 
 		// Build messages array (custom message if any, then user message)
 		const messages: AgentMessage[] = [];
@@ -1838,11 +1870,13 @@ export class AgentSession {
 
 		// Emit before_agent_start extension event
 		if (this._extensionRunner) {
+			promptTimingMark("session.prompt:beforeAgentStart:begin");
 			const result = await this._extensionRunner.emitBeforeAgentStart(
 				expandedText,
 				currentImages,
 				this._baseSystemPrompt,
 			);
+			promptTimingMark("session.prompt:beforeAgentStart:end");
 			// Add all custom messages from extensions
 			if (result?.messages) {
 				for (const msg of result.messages) {
@@ -1865,7 +1899,9 @@ export class AgentSession {
 			}
 		}
 
+		promptTimingMark("session.prompt:agent.prompt:begin");
 		await this.agent.prompt(messages);
+		promptTimingMark("session.prompt:agent.prompt:end");
 		await this.waitForRetry();
 	}
 

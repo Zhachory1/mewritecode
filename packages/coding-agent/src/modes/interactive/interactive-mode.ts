@@ -55,7 +55,7 @@ import {
 	getUpdateInstruction,
 	VERSION,
 } from "../../config.js";
-import { type AgentSession, type AgentSessionEvent, parseSkillBlock } from "../../core/agent-session.js";
+import { type AgentSession, type AgentSessionEvent, parseSkillBlock, promptTimingMark } from "../../core/agent-session.js";
 import type { AgentSessionRuntime } from "../../core/agent-session-runtime.js";
 import { type ArchitectModeState, defaultArchitectState } from "../../core/chat-modes/architect.js";
 import { formatSessionEndSummary } from "../../core/cost-formatter.js";
@@ -2213,6 +2213,7 @@ export class InteractiveMode {
 
 	private setupEditorSubmitHandler(): void {
 		this.defaultEditor.onSubmit = async (text: string) => {
+			promptTimingMark("submit");
 			text = text.trim();
 			if (!text) return;
 
@@ -2478,6 +2479,7 @@ export class InteractiveMode {
 			// Normal message submission
 			// First, move any pending bash components to chat
 			this.flushPendingBashComponents();
+			promptTimingMark("onSubmit:beforeCallback");
 
 			if (this.onInputCallback) {
 				this.onInputCallback(text);
@@ -2551,6 +2553,7 @@ export class InteractiveMode {
 					this.addMessageToChat(event.message);
 					this.updatePendingMessagesDisplay();
 					this.ui.requestRender();
+					promptTimingMark("handleEvent:user.message_start:rendered");
 				} else if (event.message.role === "assistant") {
 					this.streamingComponent = new AssistantMessageComponent(
 						undefined,
