@@ -1,0 +1,10 @@
+tool,provider,model,task_id,difficulty,language,resolved,duration_ms,tokens_input,tokens_output,tokens_cache_read,tokens_cache_write,cost_usd,error
+caveman,openai-codex,gpt-5.5,easy-py-01-add-docstrings,easy,python,true,19882,14264,445,24576,0,0.04847900000000001,
+claude,,,easy-py-01-add-docstrings,easy,python,true,28370,9,1201,130964,17201,0.20305825,
+codex,,,easy-py-01-add-docstrings,easy,python,true,50898,43172,0,,,,
+caveman,openai-codex,gpt-5.5,easy-py-02-fix-assertion,easy,python,false,16742,13829,413,52736,0,0.0539515,
+claude,,,easy-py-02-fix-assertion,easy,python,true,29921,13,1195,282549,18036,0.28393950000000007,
+codex,,,easy-py-02-fix-assertion,easy,python,true,37482,22424,0,,,,
+caveman,openai-codex,gpt-5.5,easy-py-03-fix-import,easy,python,true,14263,14780,238,50176,0,0.05306399999999999,
+claude,,,easy-py-03-fix-import,easy,python,true,16086,9,548,131052,16456,0.182121,
+codex,,,easy-py-03-fix-import,easy,python,true,23444,20689,0,,,,
