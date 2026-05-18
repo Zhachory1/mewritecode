@@ -15,7 +15,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname } from "node:path";
-import { mcp as agentMcp } from "@caveman-code/agent";
+import { mcp as agentMcp } from "@juliusbrussee/caveman-agent";
 import chalk from "chalk";
 import { runMcpSlashCommand } from "../core/slash-commands/mcp.js";
 
@@ -241,11 +241,11 @@ export async function handleMcpCommand(args: string[]): Promise<boolean> {
  *
  * This is the Codex pattern (cave-as-MCP-server) so other agents can call cave.
  * Today it serves the cave-side tools list. The full implementation lands with
- * a follow-up that wires the actual @caveman-code/coding-agent tool surface in.
+ * a follow-up that wires the actual @juliusbrussee/caveman-coding-agent tool surface in.
  */
 async function runCaveAsMcpServer(): Promise<void> {
 	const server = new agentMcp.McpServer();
-	// Future: pull tools from @caveman-code/coding-agent allTools and register here.
+	// Future: pull tools from @juliusbrussee/caveman-coding-agent allTools and register here.
 	server.register({
 		name: "cave_health",
 		description: "Returns 'ok' if cave is responding.",

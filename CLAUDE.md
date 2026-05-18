@@ -11,7 +11,7 @@ Minimal terminal coding agent + multi-provider LLM toolkit. TypeScript monorepo.
 | `packages/ai` | `pi-ai` | Unified LLM API: OpenAI, Anthropic, Google, more |
 | `packages/agent` | — | Agent runtime: tool calling, loop, state, system-prompt/toolFilter/maxTurns |
 | `packages/tui` | — | Terminal UI: differential rendering, chord input, notifications |
-| `packages/sdk` | — | `@caveman-code/sdk` — TS client for caveman-code daemon HTTP+WS API (openapi-generated) |
+| `packages/sdk` | — | `@juliusbrussee/caveman-sdk` — TS client for caveman-code daemon HTTP+WS API (openapi-generated) |
 | `packages/markdown-preview` | — | Markdown renderer used by TUI |
 
 **Out of scope for v2 (separate product surfaces, kept independent):**
@@ -37,7 +37,7 @@ Legacy CaveKit kits/plans/impl have been moved to `context/archive/`.
 
 - Biome for lint/format (not ESLint/Prettier). Config: `biome.json`.
 - TypeScript strict. Shared tsconfig: `tsconfig.base.json`.
-- Package scope: `@caveman-code/*` (all packages). Main CLI package: `caveman-code` (unscoped). Bin registers `caveman` AND `caveman-code` aliases.
+- Package scope: `@juliusbrussee/caveman-*` (all packages on npm). Main CLI package: `@juliusbrussee/caveman-code`. Bin registers `caveman` AND `caveman-code` aliases.
 - Node.js 20+.
 
 ## Current State (2026-05-01)
@@ -67,7 +67,7 @@ Legacy CaveKit kits/plans/impl have been moved to `context/archive/`.
 - Before building from scratch, run the **pi-check**: search `pi-code` upstream,
   the `pi-*` npm scope, and pi extensions for an existing module. Vendor or wrap
   if found. Note "borrowed from pi: <name>" in the deliverable. See plan §0.
-- CaveKit (`@caveman-code/cavekit`) has been removed; replaced by plan mode (read-only
+- CaveKit (`@juliusbrussee/caveman-cavekit`) has been removed; replaced by plan mode (read-only
   exploration), markdown skills, and recipes.
 - Don't add per-file "inspired by hermes-agent" attribution comments even when
   a plan/kit suggests it (memory `feedback_no_hermes_inspired_comment`).

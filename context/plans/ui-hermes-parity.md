@@ -1,7 +1,7 @@
 # Caveman Code UI — Hermes-Parity Components
 
 **Status:** plan, 2026-04-28
-**Scope:** ship the visible UI components hermes has that cave lacks. Build on top of caveman-code's existing `@caveman-code/tui` primitives (`Container`, `Box`, `Text`, `OverlayHandle`, `SidePanelHandle`, `SelectList`, `Markdown`, `DiffView`, `Loader`, `StatusLine`, sync-output, OSC-52, terminal-image, theme). **No new low-level primitives. No reactive layer. No mouse / ScrollBox / AlternateScreen rework.** Components subscribe to events and call `invalidate()` on the renderer cave already ships.
+**Scope:** ship the visible UI components hermes has that cave lacks. Build on top of caveman-code's existing `@juliusbrussee/caveman-tui` primitives (`Container`, `Box`, `Text`, `OverlayHandle`, `SidePanelHandle`, `SelectList`, `Markdown`, `DiffView`, `Loader`, `StatusLine`, sync-output, OSC-52, terminal-image, theme). **No new low-level primitives. No reactive layer. No mouse / ScrollBox / AlternateScreen rework.** Components subscribe to events and call `invalidate()` on the renderer cave already ships.
 
 **Reference (MIT):** `~/.hermes/hermes-agent/ui-tui/src/components/` — patterns reproduced, no source copied. Each new file gets a `// inspired by hermes-agent (MIT)` comment where lineage is direct.
 

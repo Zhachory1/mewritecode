@@ -40,7 +40,7 @@ caveman mcp doctor
         },
         "filesystem": {
             "transport": "inproc",
-            "module": "@caveman-code/mcp-filesystem"
+            "module": "@juliusbrussee/caveman-mcp-filesystem"
         }
     }
 }

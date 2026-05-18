@@ -1,5 +1,5 @@
 {
-	"name": "@caveman-code/monorepo",
+	"name": "@juliusbrussee/caveman-monorepo",
 	"private": true,
 	"type": "module",
 	"workspaces": [
@@ -57,7 +57,7 @@
 	"version": "0.0.3",
 	"dependencies": {
 		"@mariozechner/jiti": "^2.6.5",
-		"caveman-code": "^0.65.2",
+		"@juliusbrussee/caveman-code": "^0.65.2",
 		"get-east-asian-width": "^1.4.0"
 	},
 	"overrides": {

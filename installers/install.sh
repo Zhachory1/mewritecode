@@ -3,7 +3,7 @@
 # Caveman Code tarball installer — used by the Homebrew formula and CI
 # smoke tests. End users should install via npm:
 #
-#   npm install -g caveman-code
+#   npm install -g @juliusbrussee/caveman-code
 #
 # Extracts the full release tarball (binary + theme/, export-html/,
 # photon_rs_bg.wasm, docs/, examples/) into a versioned dir and symlinks

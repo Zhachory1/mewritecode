@@ -10,7 +10,7 @@
 // Wire-up: `cave` constructs an `McpHub`, calls `loadConfig()`, then asks the
 // bridge for tools to register on the agent. The bridge owns all lifecycle.
 
-import { type AgentTool, mcp as agentMcp } from "@caveman-code/agent";
+import { type AgentTool, mcp as agentMcp } from "@juliusbrussee/caveman-agent";
 import { Type } from "@sinclair/typebox";
 
 type McpHub = agentMcp.McpHub;

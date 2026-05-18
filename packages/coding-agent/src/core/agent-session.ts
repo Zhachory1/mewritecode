@@ -16,21 +16,28 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
-import type { Agent, AgentEvent, AgentMessage, AgentState, AgentTool, ThinkingLevel } from "@caveman-code/agent";
-import { checkpoints, LLMLinguaMiddleware, memory as memoryNs } from "@caveman-code/agent";
+import type {
+	Agent,
+	AgentEvent,
+	AgentMessage,
+	AgentState,
+	AgentTool,
+	ThinkingLevel,
+} from "@juliusbrussee/caveman-agent";
+import { checkpoints, LLMLinguaMiddleware, memory as memoryNs } from "@juliusbrussee/caveman-agent";
 
 const { CheckpointManager } = checkpoints;
 type CheckpointManagerInstance = InstanceType<typeof CheckpointManager>;
 type MemoryProviderInstance = memoryNs.MemoryProvider;
 
-import type { AssistantMessage, ImageContent, Message, Model, TextContent } from "@caveman-code/ai";
+import type { AssistantMessage, ImageContent, Message, Model, TextContent } from "@juliusbrussee/caveman-ai";
 import {
 	ENV_VAR_BY_PROVIDER,
 	isContextOverflow,
 	modelsAreEqual,
 	resetApiProviders,
 	supportsXhigh,
-} from "@caveman-code/ai";
+} from "@juliusbrussee/caveman-ai";
 import { getDocsPath } from "../config.js";
 import { theme } from "../modes/interactive/theme/theme.js";
 import { stripFrontmatter } from "../utils/frontmatter.js";
@@ -763,7 +770,7 @@ export class AgentSession {
 	private async _buildRepomap(hash: string): Promise<string | undefined> {
 		try {
 			const { collectSourceFiles } = await import("./slash-commands/repomap.js");
-			const { repomap: repomapNs } = await import("@caveman-code/agent");
+			const { repomap: repomapNs } = await import("@juliusbrussee/caveman-agent");
 			const { buildRepomap, dynamicMapTokens } = repomapNs;
 
 			const files = collectSourceFiles(this._cwd);

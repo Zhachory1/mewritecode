@@ -10,8 +10,8 @@
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Agent } from "@caveman-code/agent";
-import { getModel } from "@caveman-code/ai";
+import { Agent } from "@juliusbrussee/caveman-agent";
+import { getModel } from "@juliusbrussee/caveman-ai";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AgentSession, type AgentSessionEvent } from "../src/core/agent-session.js";
 import { AuthStorage } from "../src/core/auth-storage.js";

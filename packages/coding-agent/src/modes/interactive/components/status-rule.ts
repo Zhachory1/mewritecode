@@ -1,4 +1,4 @@
-import { Container, Text, type TUI, truncateToWidth, visibleWidth } from "@caveman-code/tui";
+import { Container, Text, type TUI, truncateToWidth, visibleWidth } from "@juliusbrussee/caveman-tui";
 import { FACES } from "../content/faces.js";
 import { VERBS } from "../content/verbs.js";
 import { theme } from "../theme/theme.js";

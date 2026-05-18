@@ -1,4 +1,4 @@
-import { getProviders } from "@caveman-code/ai";
+import { getProviders } from "@juliusbrussee/caveman-ai";
 import { i18n } from "@mariozechner/mini-lit";
 import { Dialog, DialogContent, DialogHeader } from "@mariozechner/mini-lit/dist/Dialog.js";
 import { Input } from "@mariozechner/mini-lit/dist/Input.js";

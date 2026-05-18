@@ -5,7 +5,7 @@ import {
 	type KeyId,
 	TUI_KEYBINDINGS,
 	KeybindingsManager as TuiKeybindingsManager,
-} from "@caveman-code/tui";
+} from "@juliusbrussee/caveman-tui";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { getAgentDir } from "../config.js";
@@ -47,7 +47,7 @@ export interface AppKeybindings {
 
 export type AppKeybinding = keyof AppKeybindings;
 
-declare module "@caveman-code/tui" {
+declare module "@juliusbrussee/caveman-tui" {
 	interface Keybindings extends AppKeybindings {}
 }
 

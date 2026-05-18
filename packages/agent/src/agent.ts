@@ -7,7 +7,7 @@ import {
 	type TextContent,
 	type ThinkingBudgets,
 	type Transport,
-} from "@caveman-code/ai";
+} from "@juliusbrussee/caveman-ai";
 import { runAgentLoop, runAgentLoopContinue } from "./agent-loop.js";
 import type { Role } from "./roles.js";
 import type { ModelRouter } from "./router.js";

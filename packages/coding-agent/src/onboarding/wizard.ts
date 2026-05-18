@@ -13,7 +13,7 @@
  */
 
 import { createInterface, type Interface as ReadlineInterface } from "node:readline";
-import { getEnvApiKey } from "@caveman-code/ai";
+import { getEnvApiKey } from "@juliusbrussee/caveman-ai";
 import chalk from "chalk";
 import { VERSION } from "../config.js";
 import type { SettingsManager } from "../core/settings-manager.js";

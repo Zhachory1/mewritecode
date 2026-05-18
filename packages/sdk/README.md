@@ -1,10 +1,10 @@
-# `@caveman-code/sdk`
+# `@juliusbrussee/caveman-sdk`
 
 Thin TypeScript client for the `caveman serve` daemon. Mirrors the OpenAPI spec
 shipped with `caveman` at `packages/coding-agent/openapi.yaml`.
 
 ```ts
-import { CaveClient } from "@caveman-code/sdk";
+import { CaveClient } from "@juliusbrussee/caveman-sdk";
 
 const client = new CaveClient({ baseUrl: "http://127.0.0.1:7421", token: "..." });
 const session = await client.createSession({ cwd: process.cwd() });

@@ -5,8 +5,8 @@
  * and provides a transformer to convert them to LLM-compatible messages.
  */
 
-import type { AgentMessage } from "@caveman-code/agent";
-import type { ImageContent, Message, TextContent } from "@caveman-code/ai";
+import type { AgentMessage } from "@juliusbrussee/caveman-agent";
+import type { ImageContent, Message, TextContent } from "@juliusbrussee/caveman-ai";
 
 export const COMPACTION_SUMMARY_PREFIX = `The conversation history before this point was compacted into the following summary:
 
@@ -67,7 +67,7 @@ export interface CompactionSummaryMessage {
 }
 
 // Extend CustomAgentMessages via declaration merging
-declare module "@caveman-code/agent" {
+declare module "@juliusbrussee/caveman-agent" {
 	interface CustomAgentMessages {
 		bashExecution: BashExecutionMessage;
 		custom: CustomMessage;

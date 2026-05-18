@@ -23,9 +23,9 @@
  *   pi -e ./built-in-tool-renderer.ts
  */
 
-import { Text } from "@caveman-code/tui";
-import type { BashToolDetails, EditToolDetails, ExtensionAPI, ReadToolDetails } from "caveman-code";
-import { createBashTool, createEditTool, createReadTool, createWriteTool } from "caveman-code";
+import type { BashToolDetails, EditToolDetails, ExtensionAPI, ReadToolDetails } from "@juliusbrussee/caveman-code";
+import { createBashTool, createEditTool, createReadTool, createWriteTool } from "@juliusbrussee/caveman-code";
+import { Text } from "@juliusbrussee/caveman-tui";
 
 export default function (pi: ExtensionAPI) {
 	const cwd = process.cwd();

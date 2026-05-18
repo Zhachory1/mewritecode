@@ -27,7 +27,7 @@ Release notes from `v0.30.0` onwards are auto-generated from
   opencode, sourced from the v2 master plan §3.
 - **Migration guides** — zero-migration playbooks for Claude Code, Codex,
   and Aider users.
-- **README rewrite** — single canonical install (`npm install -g caveman-code`),
+- **README rewrite** — single canonical install (`npm install -g @juliusbrussee/caveman-code`),
   "I want to..." router, link to comparison, link to Discord, monorepo table
   at the bottom.
 
@@ -66,8 +66,8 @@ Release notes from `v0.30.0` onwards are auto-generated from
 
 - Release pipeline, installers (`install.sh`, `install.ps1`), Homebrew
   formula, GitHub Actions release workflow.
-- Initial monorepo layout: `caveman`, `@caveman-code/ai`, `@caveman-code/agent`, `@caveman-code/tui`,
-  `@caveman-code/web-ui`, `@caveman-code/mom`, `@caveman-code/pods`.
+- Initial monorepo layout: `caveman`, `@juliusbrussee/caveman-ai`, `@juliusbrussee/caveman-agent`, `@juliusbrussee/caveman-tui`,
+  `@juliusbrussee/caveman-web-ui`, `@juliusbrussee/caveman-mom`, `@juliusbrussee/caveman-pods`.
 
 [Unreleased]: https://github.com/JuliusBrussee/caveman-cli/compare/v0.30.2...HEAD
 [0.30.2]: https://github.com/JuliusBrussee/caveman-cli/compare/v0.30.1...v0.30.2

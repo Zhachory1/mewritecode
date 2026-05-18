@@ -1,7 +1,7 @@
 import { icon } from "@mariozechner/mini-lit";
 import "@mariozechner/mini-lit/dist/MarkdownBlock.js";
-import type { Agent, AgentMessage, AgentTool } from "@caveman-code/agent";
-import { StringEnum, type ToolCall } from "@caveman-code/ai";
+import type { Agent, AgentMessage, AgentTool } from "@juliusbrussee/caveman-agent";
+import { StringEnum, type ToolCall } from "@juliusbrussee/caveman-ai";
 import { Button } from "@mariozechner/mini-lit/dist/Button.js";
 import { type Static, Type } from "@sinclair/typebox";
 import { html, LitElement, type TemplateResult } from "lit";

@@ -2,7 +2,7 @@
  * Tests for the status line runner — verifies the spawn path against a
  * shell command and the synchronous fall-throughs for default/detailed.
  */
-import type { StatusLineContext } from "@caveman-code/tui";
+import type { StatusLineContext } from "@juliusbrussee/caveman-tui";
 import { describe, expect, it } from "vitest";
 import { createStatusLineRenderer } from "../src/core/status-line-runner.js";
 

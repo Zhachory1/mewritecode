@@ -1,5 +1,5 @@
-import { getOAuthProviders } from "@caveman-code/ai/oauth";
-import { Container, type Focusable, getKeybindings, Input, Spacer, Text, type TUI } from "@caveman-code/tui";
+import { getOAuthProviders } from "@juliusbrussee/caveman-ai/oauth";
+import { Container, type Focusable, getKeybindings, Input, Spacer, Text, type TUI } from "@juliusbrussee/caveman-tui";
 import { exec } from "child_process";
 import { theme } from "../theme/theme.js";
 import { DynamicBorder } from "./dynamic-border.js";

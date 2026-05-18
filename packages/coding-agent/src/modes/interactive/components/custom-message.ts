@@ -1,5 +1,5 @@
-import type { TextContent } from "@caveman-code/ai";
-import { type Component, Container, Markdown, type MarkdownTheme, Text } from "@caveman-code/tui";
+import type { TextContent } from "@juliusbrussee/caveman-ai";
+import { type Component, Container, Markdown, type MarkdownTheme, Text } from "@juliusbrussee/caveman-tui";
 import type { MessageRenderer } from "../../../core/extensions/types.js";
 import type { CustomMessage } from "../../../core/messages.js";
 import { getMarkdownTheme, theme } from "../theme/theme.js";

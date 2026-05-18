@@ -18,7 +18,7 @@
  *   /thinking-label          Reset to the default label
  */
 
-import type { ExtensionAPI, ExtensionContext } from "caveman-code";
+import type { ExtensionAPI, ExtensionContext } from "@juliusbrussee/caveman-code";
 
 const DEFAULT_LABEL = "Pondering...";
 

@@ -10,7 +10,7 @@ import {
 	DefaultResourceLoader,
 	type PromptTemplate,
 	SessionManager,
-} from "caveman-code";
+} from "@juliusbrussee/caveman-code";
 
 // Define custom templates
 const deployTemplate: PromptTemplate = {

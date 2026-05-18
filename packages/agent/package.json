@@ -1,6 +1,6 @@
 {
-	"name": "@caveman-code/agent",
-	"version": "0.65.2",
+	"name": "@juliusbrussee/caveman-agent",
+	"version": "0.65.3",
 	"description": "General-purpose agent with transport abstraction, state management, and attachment support",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -17,7 +17,7 @@
 		"prepublishOnly": "npm run clean && npm run build"
 	},
 	"dependencies": {
-		"@caveman-code/ai": "^0.65.2"
+		"@juliusbrussee/caveman-ai": "^0.65.2"
 	},
 	"optionalDependencies": {
 		"onnxruntime-node": "^1.20.0"

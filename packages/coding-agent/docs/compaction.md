@@ -309,7 +309,7 @@ pi.on("session_before_compact", async (event, ctx) => {
 To generate a summary with your own model, convert messages to text using `serializeConversation`:
 
 ```typescript
-import { convertToLlm, serializeConversation } from "caveman-code";
+import { convertToLlm, serializeConversation } from "@juliusbrussee/caveman-code";
 
 pi.on("session_before_compact", async (event, ctx) => {
   const { preparation } = event;

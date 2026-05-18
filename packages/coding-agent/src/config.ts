@@ -64,7 +64,7 @@ export function getUpdateInstruction(_packageName: string): string {
 	if (method === "bun-binary") {
 		return "Run: `cave self-update`";
 	}
-	return "Run: `npm install -g caveman-code@latest`";
+	return "Run: `npm install -g @juliusbrussee/caveman-code@latest`";
 }
 
 // =============================================================================

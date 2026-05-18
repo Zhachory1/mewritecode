@@ -1,5 +1,5 @@
-import type { AgentTool } from "@caveman-code/agent";
-import { fauxAssistantMessage, fauxThinking, fauxToolCall } from "@caveman-code/ai";
+import type { AgentTool } from "@juliusbrussee/caveman-agent";
+import { fauxAssistantMessage, fauxThinking, fauxToolCall } from "@juliusbrussee/caveman-ai";
 import { Type } from "@sinclair/typebox";
 import { afterEach, describe, expect, it } from "vitest";
 import { createHarness, type Harness } from "./harness.js";

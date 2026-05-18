@@ -8,7 +8,7 @@
 - **exec** (single command) → `modes/exec/`
 - **rpc/serve** (daemon, IDE) → `modes/rpc/`, `cli/serve.ts`
 
-Boot wires: `AgentSession` (`core/agent-session.ts`) + `Agent` runtime (`@caveman-code/agent`) + tools (`core/tools/`) + extensions/plugins/skills/MCP/hooks.
+Boot wires: `AgentSession` (`core/agent-session.ts`) + `Agent` runtime (`@juliusbrussee/caveman-agent`) + tools (`core/tools/`) + extensions/plugins/skills/MCP/hooks.
 
 ## Chat input dispatch (`interactive-mode.ts:2210` `setupEditorSubmitHandler`)
 
@@ -40,11 +40,11 @@ loop:
   inject pendingMessages (steers)
   streamAssistantResponse:
     transformContext (compaction, repomap injection)
-    convertToLlm (AgentMessage[] → @caveman-code/ai Message[])
+    convertToLlm (AgentMessage[] → @juliusbrussee/caveman-ai Message[])
     getSystemPrompt (fresh per turn — supports plan-mode banner)
     toolFilter (plan mode: read-only gating)
     router.route(role) → resolve model
-    streamSimple(model, ctx) → @caveman-code/ai provider
+    streamSimple(model, ctx) → @juliusbrussee/caveman-ai provider
     emit message_start/update/end on text/thinking/toolcall deltas
   if toolCalls > 0:
     executeToolCalls (parallel default, sequential opt):
@@ -112,9 +112,9 @@ Steering: while assistant streaming, user types more → queued; injected before
 
 ## Integrated subsystems
 
-- **`@caveman-code/ai`** — provider unification (OpenAI, Anthropic, Google, Ollama, etc.), `streamSimple`, tool-call validation.
-- **`@caveman-code/agent`** — `agentLoop`, state, router (role→model), checkpoints (shadow git), repomap (PageRank), compression, MCP client, subagent runtime, worktree, cost.
-- **`@caveman-code/tui`** — diff renderer, Loader/spinner, components (chat, tool-execution, tool-group, footer, status).
+- **`@juliusbrussee/caveman-ai`** — provider unification (OpenAI, Anthropic, Google, Ollama, etc.), `streamSimple`, tool-call validation.
+- **`@juliusbrussee/caveman-agent`** — `agentLoop`, state, router (role→model), checkpoints (shadow git), repomap (PageRank), compression, MCP client, subagent runtime, worktree, cost.
+- **`@juliusbrussee/caveman-tui`** — diff renderer, Loader/spinner, components (chat, tool-execution, tool-group, footer, status).
 - **MCP** — `core/tools/mcp-bridge.ts` + agent `src/mcp/` connect external servers, expose tools.
 - **Hooks** — Claude Code-compat lifecycle (UserPromptSubmit, SessionStart, PreToolUse, PostToolUse, Stop) via `core/hooks/`, beforeToolCall/afterToolCall in loop config.
 - **Extensions/plugins** — JS modules, register commands/tools/event handlers/system-prompt mutators.

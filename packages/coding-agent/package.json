@@ -1,5 +1,5 @@
 {
-	"name": "caveman-code",
+	"name": "@juliusbrussee/caveman-code",
 	"version": "0.65.2",
 	"description": "Caveman Code — a terminal coding agent",
 	"type": "module",
@@ -50,9 +50,9 @@
 		"prepublishOnly": "npm run clean && npm run build"
 	},
 	"dependencies": {
-		"@caveman-code/agent": "^0.65.2",
-		"@caveman-code/ai": "^0.65.2",
-		"@caveman-code/tui": "^0.65.2",
+		"@juliusbrussee/caveman-agent": "^0.65.2",
+		"@juliusbrussee/caveman-ai": "^0.65.2",
+		"@juliusbrussee/caveman-tui": "^0.65.2",
 		"@mariozechner/jiti": "^2.6.2",
 		"@silvia-odwyer/photon-node": "^0.3.4",
 		"ajv": "^8.17.1",

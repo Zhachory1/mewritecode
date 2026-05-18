@@ -17,7 +17,7 @@ import {
     createAgentSession,
     ModelRegistry,
     SessionManager,
-} from "caveman-code";
+} from "@juliusbrussee/caveman-code";
 
 const { session } = await createAgentSession({
     sessionManager: SessionManager.inMemory(),
@@ -33,14 +33,14 @@ Useful for: building a custom UI on top of caveman-code's runtime, embedding cav
 
 Full TypeScript types are exported from the `caveman` package. See [packages/coding-agent](https://github.com/JuliusBrussee/caveman-cli/tree/main/packages/coding-agent) for source.
 
-## 2. Daemon SDK — `@caveman-code/sdk`
+## 2. Daemon SDK — `@juliusbrussee/caveman-sdk`
 
 ```bash
-npm install @caveman-code/sdk
+npm install @juliusbrussee/caveman-sdk
 ```
 
 ```typescript
-import { CaveClient } from "@caveman-code/sdk";
+import { CaveClient } from "@juliusbrussee/caveman-sdk";
 
 const client = new CaveClient({
     host: "localhost:39245",
@@ -61,7 +61,7 @@ for await (const event of session.events()) {
 }
 ```
 
-The `@caveman-code/sdk` package is generated from the daemon's OpenAPI spec. See [Daemon](/reference/daemon) for the protocol details.
+The `@juliusbrussee/caveman-sdk` package is generated from the daemon's OpenAPI spec. See [Daemon](/reference/daemon) for the protocol details.
 
 ## 3. JSON-RPC over stdin/stdout
 
@@ -133,7 +133,7 @@ If you'd rather load TypeScript modules at session start:
 
 ```typescript
 // .cave/extensions/my-ext.ts
-import type { ExtensionAPI } from "caveman-code";
+import type { ExtensionAPI } from "@juliusbrussee/caveman-code";
 
 export default function (api: ExtensionAPI) {
     api.registerTool({ name: "deploy", schema: { ... }, handler: async (args) => { ... } });
@@ -151,7 +151,7 @@ export default function (api: ExtensionAPI) {
 | Use case | Surface |
 |---|---|
 | Embed in a Node app | SDK (`caveman` import) |
-| Build a remote client | `@caveman-code/sdk` over the daemon |
+| Build a remote client | `@juliusbrussee/caveman-sdk` over the daemon |
 | Editor integration | JSON-RPC `--mode rpc` |
 | CI / GitHub Actions | `caveman exec --output-schema` |
 | In-process custom tool | Extension API |

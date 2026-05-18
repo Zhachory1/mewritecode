@@ -2,7 +2,7 @@
 #
 # Caveman Code tarball installer (repo-root shim).
 #
-# End users: install via npm — `npm install -g caveman-code`.
+# End users: install via npm — `npm install -g @juliusbrussee/caveman-code`.
 #
 # This shell installer is used by the Homebrew formula and CI smoke tests
 # to verify the release tarball. The canonical script lives at

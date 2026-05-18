@@ -13,7 +13,7 @@ Codex (OpenAI's terminal agent) and Caveman Code agree on most file formats. AGE
 
 ```bash
 # 1. Install
-npm install -g caveman-code
+npm install -g @juliusbrussee/caveman-code
 
 # 2. Project context
 #    Codex's AGENTS.md → caveman-code reads it directly. No copy needed.
@@ -70,7 +70,7 @@ Caveman Code compresses tool output by default (~85% reduction). Codex doesn't. 
 
 ### Daemon / app-server
 
-Codex has a TypeScript app-server protocol. Caveman Code's [daemon](/reference/daemon) (`caveman serve`) plays the same role with HTTP + WS + SQLite, plus a generated TS SDK at `@caveman-code/sdk`.
+Codex has a TypeScript app-server protocol. Caveman Code's [daemon](/reference/daemon) (`caveman serve`) plays the same role with HTTP + WS + SQLite, plus a generated TS SDK at `@juliusbrussee/caveman-sdk`.
 
 ## CI / `caveman exec`
 

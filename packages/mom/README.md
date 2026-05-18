@@ -23,7 +23,7 @@ A Slack bot powered by an LLM that can execute bash commands, read/write files, 
 ## Installation
 
 ```bash
-npm install @caveman-code/mom
+npm install @juliusbrussee/caveman-mom
 ```
 
 ### Slack App Setup
@@ -364,7 +364,7 @@ You can write event files directly to `data/events/` on the host machine. This l
 
 ### Updating Mom
 
-Update mom anytime with `npm install -g @caveman-code/mom`. This only updates the Node.js app on your host. Anything mom installed inside the Docker container remains unchanged.
+Update mom anytime with `npm install -g @juliusbrussee/caveman-mom`. This only updates the Node.js app on your host. Anything mom installed inside the Docker container remains unchanged.
 
 ## Message History
 

@@ -2,7 +2,7 @@
 <p align="center">Terminal coding harness with token-saving caveman mode</p>
 <p align="center">
   <a href="https://discord.com/invite/nKXTsAcmbT"><img alt="Discord" src="https://img.shields.io/badge/discord-community-5865F2?style=flat-square&logo=discord&logoColor=white" /></a>
-  <a href="https://www.npmjs.com/package/caveman-code"><img alt="npm" src="https://img.shields.io/npm/v/caveman-code?style=flat-square" /></a>
+  <a href="https://www.npmjs.com/package/@juliusbrussee/caveman-code"><img alt="npm" src="https://img.shields.io/npm/v/%40juliusbrussee%2Fcaveman-code?style=flat-square" /></a>
   <a href="https://github.com/JuliusBrussee/caveman-cli/actions/workflows/ci.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/JuliusBrussee/caveman-cli/ci.yml?style=flat-square&branch=main" /></a>
 </p>
 
@@ -15,7 +15,7 @@ Caveman Code is a minimal terminal coding harness that stays provider-agnostic, 
 ## Install
 
 ```bash
-npm install -g caveman-code
+npm install -g @juliusbrussee/caveman-code
 caveman
 ```
 
@@ -365,7 +365,7 @@ Package docs: [docs/packages.md](docs/packages.md)
 ### SDK
 
 ```typescript
-import { AuthStorage, createAgentSession, ModelRegistry, SessionManager } from "caveman-code";
+import { AuthStorage, createAgentSession, ModelRegistry, SessionManager } from "@juliusbrussee/caveman-code";
 
 const authStorage = AuthStorage.create();
 const modelRegistry = ModelRegistry.create(authStorage);

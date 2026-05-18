@@ -1,4 +1,4 @@
-import type { ImageContent } from "@caveman-code/ai";
+import type { ImageContent } from "@juliusbrussee/caveman-ai";
 import { applyExifOrientation } from "./exif-orientation.js";
 import { loadPhoton } from "./photon.js";
 

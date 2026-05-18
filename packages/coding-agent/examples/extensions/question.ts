@@ -4,9 +4,9 @@
  * Escape in editor returns to options, Escape in options cancels
  */
 
-import { Editor, type EditorTheme, Key, matchesKey, Text, truncateToWidth } from "@caveman-code/tui";
+import type { ExtensionAPI } from "@juliusbrussee/caveman-code";
+import { Editor, type EditorTheme, Key, matchesKey, Text, truncateToWidth } from "@juliusbrussee/caveman-tui";
 import { Type } from "@sinclair/typebox";
-import type { ExtensionAPI } from "caveman-code";
 
 interface OptionWithDesc {
 	label: string;

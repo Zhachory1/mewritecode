@@ -72,7 +72,7 @@ features:
 ## Install
 
 ```bash
-npm install -g caveman-code
+npm install -g @juliusbrussee/caveman-code
 ```
 
 Other options: [Homebrew, Docker, manual](/getting-started/installation).

@@ -7,7 +7,7 @@
  * Usage: /bookmark [label] - bookmark the last assistant message
  */
 
-import type { ExtensionAPI } from "caveman-code";
+import type { ExtensionAPI } from "@juliusbrussee/caveman-code";
 
 export default function (pi: ExtensionAPI) {
 	pi.registerCommand("bookmark", {

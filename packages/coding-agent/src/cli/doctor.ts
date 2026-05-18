@@ -15,7 +15,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { homedir, release as osRelease, platform } from "node:os";
 import { join } from "node:path";
-import { getEnvApiKey } from "@caveman-code/ai";
+import { getEnvApiKey } from "@juliusbrussee/caveman-ai";
 import chalk from "chalk";
 import { CONFIG_DIR_NAME, getAgentDir, VERSION } from "../config.js";
 import { SettingsManager } from "../core/settings-manager.js";

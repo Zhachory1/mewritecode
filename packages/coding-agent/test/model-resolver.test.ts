@@ -1,4 +1,4 @@
-import type { Model } from "@caveman-code/ai";
+import type { Model } from "@juliusbrussee/caveman-ai";
 import { describe, expect, test } from "vitest";
 import {
 	defaultModelPerProvider,

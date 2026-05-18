@@ -12,7 +12,7 @@ import { EventEmitter } from "node:events";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { MAX_PARALLEL_SUBAGENTS } from "@caveman-code/agent";
+import { MAX_PARALLEL_SUBAGENTS } from "@juliusbrussee/caveman-agent";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { loadAgentDefs } from "../src/core/agent-defs/loader.js";
 import { createTaskToolDefinition, type TaskToolDetails } from "../src/core/tools/task.js";
@@ -142,7 +142,7 @@ describe("Task tool — mode mutex", () => {
 });
 
 describe("Task tool — parallel cap (plan §6: max 7)", () => {
-	it("MAX_PARALLEL_SUBAGENTS exposed by @caveman-code/agent equals 7", () => {
+	it("MAX_PARALLEL_SUBAGENTS exposed by @juliusbrussee/caveman-agent equals 7", () => {
 		expect(MAX_PARALLEL_SUBAGENTS).toBe(7);
 	});
 

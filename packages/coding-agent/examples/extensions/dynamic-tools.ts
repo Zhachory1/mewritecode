@@ -7,8 +7,8 @@
  * - Registers additional tools at runtime via /add-echo-tool <name>
  */
 
+import type { ExtensionAPI } from "@juliusbrussee/caveman-code";
 import { Type } from "@sinclair/typebox";
-import type { ExtensionAPI } from "caveman-code";
 
 const ECHO_PARAMS = Type.Object({
 	message: Type.String({ description: "Message to echo" }),

@@ -1,5 +1,5 @@
-import type { AgentTool } from "@caveman-code/agent";
-import { Text } from "@caveman-code/tui";
+import type { AgentTool } from "@juliusbrussee/caveman-agent";
+import { Text } from "@juliusbrussee/caveman-tui";
 import { type Static, Type } from "@sinclair/typebox";
 import { existsSync, readdirSync, statSync } from "fs";
 import nodePath from "path";

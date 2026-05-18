@@ -1,4 +1,4 @@
-import type { Transport } from "@caveman-code/ai";
+import type { Transport } from "@juliusbrussee/caveman-ai";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 import lockfile from "proper-lockfile";
@@ -102,7 +102,7 @@ export type HooksSettings = Record<string, unknown>;
  *
  * Typed as `Record<string, unknown>` to avoid a settings ↔ tui import cycle
  * and to forward-compat unknown fields. Use
- * `parseStatusLineSettings` from `@caveman-code/tui` to validate before consumption.
+ * `parseStatusLineSettings` from `@juliusbrussee/caveman-tui` to validate before consumption.
  */
 export type StatusLineSettings = Record<string, unknown>;
 
@@ -170,7 +170,7 @@ export interface Settings {
 	disableAllHooks?: boolean;
 	/**
 	 * Claude Code-compatible status line config (WS10). See
-	 * `parseStatusLineSettings` in `@caveman-code/tui` for the validated shape.
+	 * `parseStatusLineSettings` in `@juliusbrussee/caveman-tui` for the validated shape.
 	 */
 	statusLine?: StatusLineSettings;
 	/** Pinned models surfaced at the top of the model picker. */

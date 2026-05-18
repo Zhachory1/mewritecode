@@ -13,7 +13,7 @@
  *   export default function (pi: ExtensionAPI) { ... }
  */
 
-import { createAgentSession, DefaultResourceLoader, SessionManager } from "caveman-code";
+import { createAgentSession, DefaultResourceLoader, SessionManager } from "@juliusbrussee/caveman-code";
 
 // Extensions are discovered automatically from standard locations.
 // You can also add paths via settings.json or DefaultResourceLoader options.
@@ -46,7 +46,7 @@ console.log();
 
 // Example extension file (./my-logging-extension.ts):
 /*
-import type { ExtensionAPI } from "caveman-code";
+import type { ExtensionAPI } from "@juliusbrussee/caveman-code";
 
 export default function (pi: ExtensionAPI) {
 	pi.on("agent_start", async () => {

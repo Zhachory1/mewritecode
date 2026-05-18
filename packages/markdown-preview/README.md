@@ -1,15 +1,15 @@
-# @caveman-code/markdown-preview
+# @juliusbrussee/caveman-markdown-preview
 
 Rendered markdown + LaTeX preview for [Caveman Code](https://github.com/JuliusBrussee/caveman-cli) — terminal, browser, and PDF output.
 
-Loaded as a `caveman-code` extension; not intended as a standalone library.
+Loaded as a `@juliusbrussee/caveman-code` extension; not intended as a standalone library.
 
 ## Install
 
-Bundled with `caveman-code` by default. To load explicitly:
+Bundled with `@juliusbrussee/caveman-code` by default. To load explicitly:
 
 ```bash
-caveman --extension @caveman-code/markdown-preview "render this README"
+caveman --extension @juliusbrussee/caveman-markdown-preview "render this README"
 ```
 
 ## What it does

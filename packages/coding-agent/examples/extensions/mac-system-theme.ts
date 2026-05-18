@@ -7,7 +7,7 @@
 
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
-import type { ExtensionAPI } from "caveman-code";
+import type { ExtensionAPI } from "@juliusbrussee/caveman-code";
 
 const execAsync = promisify(exec);
 

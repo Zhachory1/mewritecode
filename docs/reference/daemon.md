@@ -38,14 +38,14 @@ By default `caveman serve` binds to `127.0.0.1` only. Use `--host 0.0.0.0` and a
 
 ## OpenAPI spec
 
-The daemon exposes an OpenAPI 3.1 spec at `GET /openapi.yaml`. The generated TypeScript SDK is published as `@caveman-code/sdk`:
+The daemon exposes an OpenAPI 3.1 spec at `GET /openapi.yaml`. The generated TypeScript SDK is published as `@juliusbrussee/caveman-sdk`:
 
 ```bash
-npm install @caveman-code/sdk
+npm install @juliusbrussee/caveman-sdk
 ```
 
 ```typescript
-import { CaveClient } from "@caveman-code/sdk";
+import { CaveClient } from "@juliusbrussee/caveman-sdk";
 
 const client = new CaveClient({ host: "localhost:39245" });
 const session = await client.sessions.create({ model: "claude-sonnet-4" });

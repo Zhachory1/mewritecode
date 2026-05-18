@@ -10,7 +10,7 @@
  * specifically told NOT to emit edit blocks. That decoupling is what
  * gives Aider its +5–10pp pass@1 on the architect/editor pairing.
  *
- * Routing is wired through `@caveman-code/agent`'s ModelRouter — the architect
+ * Routing is wired through `@juliusbrussee/caveman-agent`'s ModelRouter — the architect
  * mode swaps in a profile that:
  *   - sets `plan` role to a high-end model (long-form thinking)
  *   - sets `edit` role to the cheap tier (cheapTier mapping)
@@ -23,7 +23,7 @@ import {
 	type RouteContext,
 	type RoutingDecision,
 	type RoutingProfile,
-} from "@caveman-code/agent";
+} from "@juliusbrussee/caveman-agent";
 import type { EditFormatName } from "../edit-formats/types.js";
 
 export interface ArchitectModeConfig {

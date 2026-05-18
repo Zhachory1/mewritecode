@@ -2,8 +2,8 @@
  * Model resolution, scoping, and initial selection
  */
 
-import type { ThinkingLevel } from "@caveman-code/agent";
-import { type Api, type KnownProvider, type Model, modelsAreEqual } from "@caveman-code/ai";
+import type { ThinkingLevel } from "@juliusbrussee/caveman-agent";
+import { type Api, type KnownProvider, type Model, modelsAreEqual } from "@juliusbrussee/caveman-ai";
 import chalk from "chalk";
 import { minimatch } from "minimatch";
 import { isValidThinkingLevel } from "../cli/args.js";

@@ -13,7 +13,7 @@ import {
 	Spacer,
 	truncateToWidth,
 	visibleWidth,
-} from "@caveman-code/tui";
+} from "@juliusbrussee/caveman-tui";
 import { CONFIG_DIR_NAME } from "../../../config.js";
 import type { PathMetadata, ResolvedPaths, ResolvedResource } from "../../../core/package-manager.js";
 import type { PackageSource, SettingsManager } from "../../../core/settings-manager.js";

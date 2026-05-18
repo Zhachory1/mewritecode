@@ -4,7 +4,7 @@
  * Override settings using SettingsManager.
  */
 
-import { createAgentSession, SessionManager, SettingsManager } from "caveman-code";
+import { createAgentSession, SessionManager, SettingsManager } from "@juliusbrussee/caveman-code";
 
 // Load current settings (merged global + project)
 const settingsManagerFromDisk = SettingsManager.create();

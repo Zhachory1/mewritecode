@@ -13,7 +13,7 @@ Aider pioneered the **repo map** (PageRank over a tree-sitter symbol graph) and 
 
 ```bash
 # 1. Install
-npm install -g caveman-code
+npm install -g @juliusbrussee/caveman-code
 
 # 2. Use your existing API keys
 export ANTHROPIC_API_KEY=...

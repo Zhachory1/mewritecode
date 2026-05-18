@@ -12,7 +12,7 @@
 import { execSync } from "node:child_process";
 import { readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
-import { Container, Spacer, Text, type TUI } from "@caveman-code/tui";
+import { Container, Spacer, Text, type TUI } from "@juliusbrussee/caveman-tui";
 import { theme } from "../theme/theme.js";
 import { DynamicBorder } from "./dynamic-border.js";
 import { rawKeyHint } from "./keybinding-hints.js";

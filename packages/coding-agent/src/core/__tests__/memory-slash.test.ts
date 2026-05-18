@@ -3,7 +3,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { memory } from "@caveman-code/agent";
+import { memory } from "@juliusbrussee/caveman-agent";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { parseMemorySlash, runMemorySlashCommand } from "../slash-commands/memory.js";
 

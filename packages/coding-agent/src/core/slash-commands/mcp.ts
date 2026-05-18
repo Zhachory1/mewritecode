@@ -14,7 +14,7 @@
 //   /mcp login <name>     → kick off OAuth (currently stubbed with hint text)
 //   /mcp reload           → reconnect everything
 
-import { mcp as agentMcp } from "@caveman-code/agent";
+import { mcp as agentMcp } from "@juliusbrussee/caveman-agent";
 
 export interface SlashContext {
 	cwd: string;

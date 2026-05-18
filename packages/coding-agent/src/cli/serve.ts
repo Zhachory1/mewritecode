@@ -3,7 +3,7 @@
  *
  * Boots the daemon (HTTP + WS) on the requested port. Persists sessions to
  * SQLite at `~/.cave/daemon/sessions.db`. Multi-client safe: any number of
- * `caveman attach` clients (or `@caveman-code/sdk`-using applications) can connect to
+ * `caveman attach` clients (or `@juliusbrussee/caveman-sdk`-using applications) can connect to
  * the same session over WS.
  */
 

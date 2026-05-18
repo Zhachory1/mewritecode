@@ -20,7 +20,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
-            - run: npm install -g caveman-code
+            - run: npm install -g @juliusbrussee/caveman-code
             - run: cave exec "review the diff vs main and post a 200-word PR comment with findings" \
                   --output-schema .github/cave-review-schema.json \
                   --skip-git-repo-check

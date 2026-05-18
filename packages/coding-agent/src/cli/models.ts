@@ -15,7 +15,7 @@ import {
 	getCachePath,
 	loadRegistry,
 	type Registry,
-} from "@caveman-code/ai/registry";
+} from "@juliusbrussee/caveman-ai/registry";
 import chalk from "chalk";
 
 // ---------------------------------------------------------------------------

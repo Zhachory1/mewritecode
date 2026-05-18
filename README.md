@@ -10,8 +10,8 @@
 </p>
 
 <p>
-  <a href="https://www.npmjs.com/package/caveman-code"><img src="https://img.shields.io/npm/v/caveman-code?color=2ea043&label=npm&style=flat-square" alt="npm version" /></a>
-  <a href="https://www.npmjs.com/package/caveman-code"><img src="https://img.shields.io/npm/dm/caveman-code?color=2ea043&label=downloads&style=flat-square" alt="npm downloads" /></a>
+  <a href="https://www.npmjs.com/package/@juliusbrussee/caveman-code"><img src="https://img.shields.io/npm/v/%40juliusbrussee%2Fcaveman-code?color=2ea043&label=npm&style=flat-square" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/@juliusbrussee/caveman-code"><img src="https://img.shields.io/npm/dm/%40juliusbrussee%2Fcaveman-code?color=2ea043&label=downloads&style=flat-square" alt="npm downloads" /></a>
   <a href="https://github.com/JuliusBrussee/caveman-cli/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-2ea043?style=flat-square" alt="MIT License" /></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D20-2ea043?style=flat-square" alt="Node.js 20+" /></a>
   <a href="https://github.com/JuliusBrussee/caveman-cli/actions"><img src="https://img.shields.io/github/actions/workflow/status/JuliusBrussee/caveman-cli/ci.yml?branch=main&label=ci&style=flat-square" alt="CI" /></a>
@@ -59,10 +59,10 @@
 ## Install
 
 ```bash
-npm install -g caveman-code
+npm install -g @juliusbrussee/caveman-code
 ```
 
-The package name on npm is `caveman-code`. The binary is installed as both
+The package on npm is `@juliusbrussee/caveman-code`. Two binaries are installed:
 `caveman` (primary) and `caveman-code` (alias) — pick whichever you prefer.
 Authenticate once, then go:
 
@@ -78,9 +78,9 @@ caveman --goal "ship feature X"         # autonomous loop
 
 ```bash
 # Any package manager works
-pnpm add -g caveman-code
-yarn global add caveman-code
-bun add -g caveman-code
+pnpm add -g @juliusbrussee/caveman-code
+yarn global add @juliusbrussee/caveman-code
+bun add -g @juliusbrussee/caveman-code
 
 # Docker
 docker run --rm -it -v "$PWD:/work" ghcr.io/juliusbrussee/caveman-cli:latest
@@ -111,7 +111,7 @@ caveman --goal "ship payments v2"             # autonomous Ralph loop
 ```
 
 > The CLI binary is installed under both `caveman` and `caveman-code` — they are
-> aliases of the same command. The npm package is `caveman-code`.
+> aliases of the same command. The npm package is `@juliusbrussee/caveman-code`.
 
 Type `/` inside the TUI for the full slash-command list. Or browse
 [docs/reference/slash-commands.md](docs/reference/slash-commands.md).
@@ -435,7 +435,7 @@ Sessions live in SQLite and survive SSH drops. Worker mode: prepend `&` to any p
 <summary><strong>📡 SDK & scripting</strong> — embed, RPC, print mode, JSON mode</summary>
 
 ```typescript
-import { AuthStorage, createAgentSession, ModelRegistry, SessionManager } from "caveman-code";
+import { AuthStorage, createAgentSession, ModelRegistry, SessionManager } from "@juliusbrussee/caveman-code";
 
 const { session } = await createAgentSession({
   sessionManager: SessionManager.inMemory(),
@@ -452,7 +452,7 @@ caveman --mode json "List todos"                         # structured JSON outpu
 caveman exec "lint and fix" --output-schema schema.json  # CI mode with structured output
 ```
 
-The SDK ships as `@caveman-code/sdk` (openapi-generated TS client for the caveman-code daemon HTTP+WS API).
+The SDK ships as `@juliusbrussee/caveman-sdk` (openapi-generated TS client for the caveman-code daemon HTTP+WS API).
 [API reference →](docs/api.md)
 
 </details>
@@ -491,7 +491,7 @@ The SDK ships as `@caveman-code/sdk` (openapi-generated TS client for the cavema
 ## SDK
 
 ```typescript
-import { AuthStorage, createAgentSession, ModelRegistry, SessionManager } from "caveman-code";
+import { AuthStorage, createAgentSession, ModelRegistry, SessionManager } from "@juliusbrussee/caveman-code";
 
 const { session } = await createAgentSession({
   sessionManager: SessionManager.inMemory(),
@@ -503,7 +503,7 @@ session.on("message", (msg) => console.log(msg.role, msg.text));
 await session.prompt("Refactor src/auth.ts to use the new TokenStore.");
 ```
 
-Or talk to a running daemon over HTTP / WS via [`@caveman-code/sdk`](packages/sdk).
+Or talk to a running daemon over HTTP / WS via [`@juliusbrussee/caveman-sdk`](packages/sdk).
 
 ---
 
@@ -522,7 +522,7 @@ Or talk to a running daemon over HTTP / WS via [`@caveman-code/sdk`](packages/sd
 │       │                                                          │
 │       └─ packages/markdown-preview — TUI markdown                │
 │                                                                  │
-│  packages/sdk               — @caveman-code/sdk (HTTP+WS client)         │
+│  packages/sdk               — @juliusbrussee/caveman-sdk (HTTP+WS client)         │
 │                                                                  │
 │  Out of v2 scope (independent surfaces):                         │
 │   packages/web-ui   packages/mom   packages/pods                 │
@@ -535,15 +535,15 @@ Or talk to a running daemon over HTTP / WS via [`@caveman-code/sdk`](packages/sd
 
 | Package | Purpose |
 |---|---|
-| [`caveman`](packages/coding-agent) | Coding agent CLI — sessions, extensions, skills, themes, slash commands, subagents |
-| [`@caveman-code/ai`](packages/ai) | Unified LLM API: OpenAI · Anthropic · Google · 17 more |
-| [`@caveman-code/agent`](packages/agent) | Agent runtime: tool calling, loop, state, system-prompt / toolFilter / maxTurns |
-| [`@caveman-code/tui`](packages/tui) | Terminal UI: differential rendering, chord input, notifications |
-| [`@caveman-code/sdk`](packages/sdk) | TS client for the caveman-code daemon HTTP+WS API (openapi-generated) |
-| [`@caveman-code/markdown-preview`](packages/markdown-preview) | Markdown renderer used by TUI |
-| [`@caveman-code/web-ui`](packages/web-ui) | Web components for AI chat |
-| [`@caveman-code/mom`](packages/mom) | Slack bot → coding agent |
-| [`@caveman-code/pods`](packages/pods) | vLLM deployment on GPU pods |
+| [`@juliusbrussee/caveman-code`](packages/coding-agent) | Coding agent CLI — sessions, extensions, skills, themes, slash commands, subagents |
+| [`@juliusbrussee/caveman-ai`](packages/ai) | Unified LLM API: OpenAI · Anthropic · Google · 17 more |
+| [`@juliusbrussee/caveman-agent`](packages/agent) | Agent runtime: tool calling, loop, state, system-prompt / toolFilter / maxTurns |
+| [`@juliusbrussee/caveman-tui`](packages/tui) | Terminal UI: differential rendering, chord input, notifications |
+| [`@juliusbrussee/caveman-sdk`](packages/sdk) | TS client for the caveman-code daemon HTTP+WS API (openapi-generated) |
+| [`@juliusbrussee/caveman-markdown-preview`](packages/markdown-preview) | Markdown renderer used by TUI |
+| [`@juliusbrussee/caveman-web-ui`](packages/web-ui) | Web components for AI chat |
+| [`@juliusbrussee/caveman-mom`](packages/mom) | Slack bot → coding agent |
+| [`@juliusbrussee/caveman-pods`](packages/pods) | vLLM deployment on GPU pods |
 
 ---
 
@@ -561,7 +561,7 @@ Master plan: [`context/plans/cave-v2-best-in-class.md`](context/plans/cave-v2-be
 ## Acknowledgements
 
 **Cave is a heavy fork of [pi-code](https://github.com/badlogic/pi-code) by [Mario Zechner](https://github.com/badlogic).**
-The `caveman` codebase was forked from `pi-code` after the `@cavepi/pi-* → @caveman-code/*` rebrand.
+The `caveman` codebase was forked from `pi-code` and rebranded to ship as `@juliusbrussee/caveman-*` on npm.
 Substantial primitives — the agent runtime, MCP scaffolding, provider OAuth flows, repo
 map, slash command parser, settings manager, skills loader, edit-format renderers, and
 TUI components — originate in `pi-code`. We continue to track upstream and contribute

@@ -1,4 +1,4 @@
-import type { AssistantMessage, ImageContent } from "@caveman-code/ai";
+import type { AssistantMessage, ImageContent } from "@juliusbrussee/caveman-ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runPrintMode } from "../src/modes/print-mode.js";
 

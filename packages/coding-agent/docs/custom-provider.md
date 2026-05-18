@@ -31,7 +31,7 @@ See these complete provider examples:
 ## Quick Reference
 
 ```typescript
-import type { ExtensionAPI } from "caveman-code";
+import type { ExtensionAPI } from "@juliusbrussee/caveman-code";
 
 export default function (pi: ExtensionAPI) {
   // Override baseUrl for existing provider
@@ -213,7 +213,7 @@ pi.registerProvider("custom-api", {
 Add OAuth/SSO authentication that integrates with `/login`:
 
 ```typescript
-import type { OAuthCredentials, OAuthLoginCallbacks } from "@caveman-code/ai";
+import type { OAuthCredentials, OAuthLoginCallbacks } from "@juliusbrussee/caveman-ai";
 
 pi.registerProvider("corporate-ai", {
   baseUrl: "https://ai.corp.com/v1",
@@ -326,7 +326,7 @@ import {
   type SimpleStreamOptions,
   calculateCost,
   createAssistantMessageEventStream,
-} from "@caveman-code/ai";
+} from "@juliusbrussee/caveman-ai";
 
 function streamMyProvider(
   model: Model<any>,

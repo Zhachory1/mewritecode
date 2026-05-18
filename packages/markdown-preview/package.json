@@ -1,5 +1,5 @@
 {
-	"name": "@caveman-code/markdown-preview",
+	"name": "@juliusbrussee/caveman-markdown-preview",
 	"version": "0.9.6",
 	"description": "Rendered markdown + LaTeX preview for caveman-code, with terminal, browser, and PDF output",
 	"type": "module",
@@ -27,15 +27,15 @@
 		"build": "echo \"no build step — ships .ts source as extension\""
 	},
 	"peerDependencies": {
-		"caveman-code": "*",
-		"@caveman-code/tui": "*"
+		"@juliusbrussee/caveman-code": "*",
+		"@juliusbrussee/caveman-tui": "*"
 	},
 	"dependencies": {
 		"puppeteer-core": "^24.22.3"
 	},
 	"devDependencies": {
-		"caveman-code": "*",
-		"@caveman-code/tui": "*",
+		"@juliusbrussee/caveman-code": "*",
+		"@juliusbrussee/caveman-tui": "*",
 		"@types/node": "^24.3.0",
 		"typescript": "^5.7.3"
 	},

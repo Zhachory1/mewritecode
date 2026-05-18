@@ -15,9 +15,7 @@
  */
 
 import { mkdtemp, writeFile } from "node:fs/promises";
-import { Text } from "@caveman-code/tui";
-import { Type } from "@sinclair/typebox";
-import type { ExtensionAPI } from "caveman-code";
+import type { ExtensionAPI } from "@juliusbrussee/caveman-code";
 import {
 	DEFAULT_MAX_BYTES,
 	DEFAULT_MAX_LINES,
@@ -25,7 +23,9 @@ import {
 	type TruncationResult,
 	truncateHead,
 	withFileMutationQueue,
-} from "caveman-code";
+} from "@juliusbrussee/caveman-code";
+import { Text } from "@juliusbrussee/caveman-tui";
+import { Type } from "@sinclair/typebox";
 import { execSync } from "child_process";
 import { tmpdir } from "os";
 import { join } from "path";

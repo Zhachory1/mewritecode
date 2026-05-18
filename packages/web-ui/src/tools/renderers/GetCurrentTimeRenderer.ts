@@ -1,4 +1,4 @@
-import type { ToolResultMessage } from "@caveman-code/ai";
+import type { ToolResultMessage } from "@juliusbrussee/caveman-ai";
 import { html } from "lit";
 import { Clock } from "lucide";
 import { i18n } from "../../utils/i18n.js";

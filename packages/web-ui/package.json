@@ -1,5 +1,5 @@
 {
-	"name": "@caveman-code/web-ui",
+	"name": "@juliusbrussee/caveman-web-ui",
 	"version": "0.65.2",
 	"description": "Reusable web UI components for AI chat interfaces",
 	"type": "module",
@@ -22,8 +22,8 @@
 	},
 	"dependencies": {
 		"@lmstudio/sdk": "^1.5.0",
-		"@caveman-code/ai": "^0.65.2",
-		"@caveman-code/tui": "^0.65.2",
+		"@juliusbrussee/caveman-ai": "^0.65.2",
+		"@juliusbrussee/caveman-tui": "^0.65.2",
 		"docx-preview": "^0.3.7",
 		"jszip": "^3.10.1",
 		"lucide": "^0.544.0",

@@ -1,5 +1,5 @@
-import { BorderedLoader, DynamicBorder, keyHint } from "caveman-code";
-import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext, Theme } from "caveman-code";
+import { BorderedLoader, DynamicBorder, keyHint } from "@juliusbrussee/caveman-code";
+import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext, Theme } from "@juliusbrussee/caveman-code";
 import {
 	allocateImageId,
 	Container,
@@ -12,7 +12,7 @@ import {
 	Spacer,
 	Text,
 	type TUI,
-} from "@caveman-code/tui";
+} from "@juliusbrussee/caveman-tui";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";

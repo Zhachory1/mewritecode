@@ -13,7 +13,7 @@ The promise: **paste your existing Claude Code config into `~/.cave/` and Cavema
 
 ```bash
 # 1. Install
-npm install -g caveman-code
+npm install -g @juliusbrussee/caveman-code
 
 # 2. Copy config
 cp -r ~/.claude/commands ~/.cave/

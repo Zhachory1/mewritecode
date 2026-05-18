@@ -1,4 +1,4 @@
-import { Container, Text, truncateToWidth } from "@caveman-code/tui";
+import { Container, Text, truncateToWidth } from "@juliusbrussee/caveman-tui";
 import { theme } from "../theme/theme.js";
 import type { ToolExecutionComponent } from "./tool-execution.js";
 
@@ -92,7 +92,7 @@ export class ToolGroupShellComponent extends Container {
 
 	addTool(name: string, component: ToolExecutionComponent): void {
 		this.entries.push({ name, component });
-		this.toolsContainer.addChild(component as unknown as import("@caveman-code/tui").Component);
+		this.toolsContainer.addChild(component as unknown as import("@juliusbrussee/caveman-tui").Component);
 		this.refresh();
 	}
 

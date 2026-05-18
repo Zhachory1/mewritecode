@@ -1,5 +1,5 @@
-import type { AssistantMessage } from "@caveman-code/ai";
-import { Container, Markdown, type MarkdownTheme, Spacer, StreamingMarkdown, Text } from "@caveman-code/tui";
+import type { AssistantMessage } from "@juliusbrussee/caveman-ai";
+import { Container, Markdown, type MarkdownTheme, Spacer, StreamingMarkdown, Text } from "@juliusbrussee/caveman-tui";
 import { getMarkdownTheme, theme } from "../theme/theme.js";
 
 /**

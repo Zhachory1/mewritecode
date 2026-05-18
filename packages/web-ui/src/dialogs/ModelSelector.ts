@@ -1,4 +1,4 @@
-import { getModels, getProviders, type Model, modelsAreEqual } from "@caveman-code/ai";
+import { getModels, getProviders, type Model, modelsAreEqual } from "@juliusbrussee/caveman-ai";
 import { icon } from "@mariozechner/mini-lit";
 import { Badge } from "@mariozechner/mini-lit/dist/Badge.js";
 import { Button } from "@mariozechner/mini-lit/dist/Button.js";

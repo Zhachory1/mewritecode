@@ -1,4 +1,4 @@
-import { setBedrockProviderModule } from "@caveman-code/ai";
-import { bedrockProviderModule } from "@caveman-code/ai/bedrock-provider";
+import { setBedrockProviderModule } from "@juliusbrussee/caveman-ai";
+import { bedrockProviderModule } from "@juliusbrussee/caveman-ai/bedrock-provider";
 
 setBedrockProviderModule(bedrockProviderModule);

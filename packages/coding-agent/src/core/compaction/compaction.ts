@@ -5,9 +5,9 @@
  * and after compaction the session is reloaded.
  */
 
-import type { AgentMessage } from "@caveman-code/agent";
-import type { AssistantMessage, Model, Usage } from "@caveman-code/ai";
-import { completeSimple } from "@caveman-code/ai";
+import type { AgentMessage } from "@juliusbrussee/caveman-agent";
+import type { AssistantMessage, Model, Usage } from "@juliusbrussee/caveman-ai";
+import { completeSimple } from "@juliusbrussee/caveman-ai";
 import {
 	convertToLlm,
 	createBranchSummaryMessage,

@@ -4,7 +4,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { getAgentDir, parseFrontmatter } from "caveman-code";
+import { getAgentDir, parseFrontmatter } from "@juliusbrussee/caveman-code";
 
 export type AgentScope = "user" | "project" | "both";
 

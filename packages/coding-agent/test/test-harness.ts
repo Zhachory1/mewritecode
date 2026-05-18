@@ -10,8 +10,8 @@
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { AgentTool } from "@caveman-code/agent";
-import { Agent } from "@caveman-code/agent";
+import type { AgentTool } from "@juliusbrussee/caveman-agent";
+import { Agent } from "@juliusbrussee/caveman-agent";
 import type {
 	AssistantMessage,
 	AssistantMessageEvent,
@@ -24,8 +24,8 @@ import type {
 	ThinkingContent,
 	ToolCall,
 	Usage,
-} from "@caveman-code/ai";
-import { createAssistantMessageEventStream } from "@caveman-code/ai";
+} from "@juliusbrussee/caveman-ai";
+import { createAssistantMessageEventStream } from "@juliusbrussee/caveman-ai";
 import { AgentSession, type AgentSessionEvent } from "../src/core/agent-session.js";
 import { AuthStorage } from "../src/core/auth-storage.js";
 import { ModelRegistry } from "../src/core/model-registry.js";

@@ -1,4 +1,4 @@
-import type { AgentState } from "@caveman-code/agent";
+import type { AgentState } from "@juliusbrussee/caveman-agent";
 import { Store } from "../store.js";
 import type { SessionData, SessionMetadata, StoreConfig } from "../types.js";
 

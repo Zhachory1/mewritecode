@@ -5,9 +5,9 @@
  * a summary of the branch being left so context isn't lost.
  */
 
-import type { AgentMessage } from "@caveman-code/agent";
-import type { Model } from "@caveman-code/ai";
-import { completeSimple } from "@caveman-code/ai";
+import type { AgentMessage } from "@juliusbrussee/caveman-agent";
+import type { Model } from "@juliusbrussee/caveman-ai";
+import { completeSimple } from "@juliusbrussee/caveman-ai";
 import {
 	convertToLlm,
 	createBranchSummaryMessage,

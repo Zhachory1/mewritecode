@@ -9,7 +9,7 @@
  */
 
 import { relative, resolve } from "node:path";
-import { checkpoints } from "@caveman-code/agent";
+import { checkpoints } from "@juliusbrussee/caveman-agent";
 import chalk from "chalk";
 
 const { CheckpointManager } = checkpoints;

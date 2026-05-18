@@ -4,8 +4,8 @@
  * Shows how to select a specific model and thinking level.
  */
 
-import { getModel } from "@caveman-code/ai";
-import { AuthStorage, createAgentSession, ModelRegistry } from "caveman-code";
+import { getModel } from "@juliusbrussee/caveman-ai";
+import { AuthStorage, createAgentSession, ModelRegistry } from "@juliusbrussee/caveman-code";
 
 // Set up auth storage and model registry
 const authStorage = AuthStorage.create();

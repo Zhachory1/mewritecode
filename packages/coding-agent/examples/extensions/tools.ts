@@ -9,9 +9,9 @@
  * 2. Use /tools to open the tool selector
  */
 
-import { Container, type SettingItem, SettingsList } from "@caveman-code/tui";
-import type { ExtensionAPI, ExtensionContext, ToolInfo } from "caveman-code";
-import { getSettingsListTheme } from "caveman-code";
+import type { ExtensionAPI, ExtensionContext, ToolInfo } from "@juliusbrussee/caveman-code";
+import { getSettingsListTheme } from "@juliusbrussee/caveman-code";
+import { Container, type SettingItem, SettingsList } from "@juliusbrussee/caveman-tui";
 
 // State persisted to session
 interface ToolsState {

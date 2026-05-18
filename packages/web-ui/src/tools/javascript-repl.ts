@@ -1,5 +1,5 @@
-import type { AgentTool } from "@caveman-code/agent";
-import type { ToolResultMessage } from "@caveman-code/ai";
+import type { AgentTool } from "@juliusbrussee/caveman-agent";
+import type { ToolResultMessage } from "@juliusbrussee/caveman-ai";
 import { i18n } from "@mariozechner/mini-lit";
 import { type Static, Type } from "@sinclair/typebox";
 import { html } from "lit";

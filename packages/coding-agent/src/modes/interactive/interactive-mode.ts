@@ -7,8 +7,8 @@ import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import type { AgentMessage } from "@caveman-code/agent";
-import type { AssistantMessage, ImageContent, Message, Model, OAuthProviderId } from "@caveman-code/ai";
+import type { AgentMessage } from "@juliusbrussee/caveman-agent";
+import type { AssistantMessage, ImageContent, Message, Model, OAuthProviderId } from "@juliusbrussee/caveman-ai";
 import type {
 	AutocompleteItem,
 	EditorComponent,
@@ -23,7 +23,7 @@ import type {
 	StatusLineContext,
 	StatusLineRenderer,
 	StatusLineResult,
-} from "@caveman-code/tui";
+} from "@juliusbrussee/caveman-tui";
 import {
 	CombinedAutocompleteProvider,
 	type Component,
@@ -43,7 +43,7 @@ import {
 	TruncatedText,
 	TUI,
 	visibleWidth,
-} from "@caveman-code/tui";
+} from "@juliusbrussee/caveman-tui";
 import { spawn, spawnSync } from "child_process";
 import { maybeNotifyUpdateAvailable } from "../../cli/update.js";
 import {

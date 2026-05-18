@@ -10,7 +10,7 @@
  * second line below the rule when `autopilot.enabled` is true.
  */
 
-import { Container, Text, truncateToWidth } from "@caveman-code/tui";
+import { Container, Text, truncateToWidth } from "@juliusbrussee/caveman-tui";
 import { theme } from "../theme/theme.js";
 
 export interface AutopilotHudState {

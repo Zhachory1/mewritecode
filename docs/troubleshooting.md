@@ -36,7 +36,7 @@ chown -R "$USER" ~/.cave
 You downloaded an x86_64 binary on an ARM Mac. Re-install via npm — the package is platform-agnostic:
 
 ```bash
-npm install -g caveman-code
+npm install -g @juliusbrussee/caveman-code
 ```
 
 ## Auth

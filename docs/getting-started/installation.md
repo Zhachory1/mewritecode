@@ -14,7 +14,7 @@ npm is the primary install path. Native binaries via Homebrew / Docker / direct 
 Requires Node.js 20+:
 
 ```bash
-npm install -g caveman-code
+npm install -g @juliusbrussee/caveman-code
 ```
 
 The package installs two binaries — `caveman` (primary) and `caveman-code` (alias). Either works.
@@ -30,9 +30,9 @@ Works on macOS, Linux, Windows (PowerShell + WSL). Same package on every platfor
 pnpm, yarn, and bun all work too:
 
 ```bash
-pnpm add -g caveman-code
-yarn global add caveman-code
-bun add -g caveman-code
+pnpm add -g @juliusbrussee/caveman-code
+yarn global add @juliusbrussee/caveman-code
+bun add -g @juliusbrussee/caveman-code
 ```
 :::
 
@@ -62,7 +62,7 @@ Mounts your working directory into `/work`. The image runs as a non-root user.
 ::: details Windows
 
 ```powershell
-npm install -g caveman-code
+npm install -g @juliusbrussee/caveman-code
 ```
 
 The npm package works on Windows PowerShell and WSL. WSL is the supported terminal path.
@@ -123,7 +123,7 @@ Sessions live in `~/.cave/sessions/`. Memory (cavemem) lives in `~/.cavemem/` an
 ## Headless / CI install
 
 ```bash
-npm install -g caveman-code@0.65.2   # pin a version for reproducible CI
+npm install -g @juliusbrussee/caveman-code@0.65.2   # pin a version for reproducible CI
 ```
 
 See [`caveman exec` mode](/cookbook) for using caveman inside GitHub Actions.

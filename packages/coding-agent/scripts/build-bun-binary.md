@@ -23,7 +23,7 @@ build; exit code 0 + output containing the semver is the smoke gate.
 
 ## Distribution channels (T-139)
 
-- npm: `npm install -g caveman-code` (primary install path)
+- npm: `npm install -g @juliusbrussee/caveman-code` (primary install path)
 - brew: `brew install caveman-code` (tap at `juliusbrussee/caveman-code`)
 - docker: `ghcr.io/juliusbrussee/caveman-cli:latest`
 

@@ -7,7 +7,7 @@
 
 ## 0. Provenance & the "Use Pi First" Rule
 
-**`caveman` is a heavy fork of `pi-code`.** `pi-code` is the original upstream (the codebase that became `caveman` after the `@cavepi/pi-* → @caveman-code/*` rebrand). Caveman Code has diverged with substantial original work — Caveman Mode 3-layer compression, CaveKit (now being removed), session branching, ambient theming, terminal-blend primitives, the proof-bench eval harness — but `pi-code` is still the parent project and continues to evolve in its own direction.
+**`caveman` is a heavy fork of `pi-code`.** `pi-code` is the original upstream (the codebase that became `caveman` after the `@cavepi/pi-* → @juliusbrussee/caveman-*` rebrand). Caveman Code has diverged with substantial original work — Caveman Mode 3-layer compression, CaveKit (now being removed), session branching, ambient theming, terminal-blend primitives, the proof-bench eval harness — but `pi-code` is still the parent project and continues to evolve in its own direction.
 
 **Operating rule for every workstream below:** before building anything, **check whether `pi-code` already ships a module, an extension, or a plugin that does the job**. If yes, vendor it, depend on it, or wrap it — do not reimplement.
 
@@ -15,7 +15,7 @@ Concretely, before starting any WS:
 1. Search the upstream `pi-code` repo for an equivalent feature, package, or extension.
 2. Search the `pi-*` npm scope (e.g. `pi-mcp`, `pi-sandbox`, `pi-skills`, `pi-hooks`) for published modules.
 3. Search `pi-code`'s extensions directory and any `pi-extensions` registry for community extensions.
-4. **If a pi extension/module exists and is reasonably maintained → use it; integrate via `@caveman-code/agent`'s extension system.** Note "borrowed from pi" in the WS deliverable.
+4. **If a pi extension/module exists and is reasonably maintained → use it; integrate via `@juliusbrussee/caveman-agent`'s extension system.** Note "borrowed from pi" in the WS deliverable.
 5. **If only partial coverage exists → vendor what fits, add cave-specific deltas on top.** Contribute fixes upstream where the change is generally useful.
 6. **Only build from scratch when nothing usable exists in the pi ecosystem.**
 
@@ -78,7 +78,7 @@ See workstreams §5–§7. Headline additions: native MCP, native sandboxing sur
 4. **Cache-Stable Layout** — `[tools] → [system] → [CLAUDE.md] → [pinned] → [history] → [user turn]`. Breakpoint after pinned context, never inside rolling history. 5-min TTL is the new default; pay the 1-hour TTL premium only for pinned project context.
 5. **Hooks Are First-Class** — 12 lifecycle events, stdout-as-context pattern, deny via exit 2. Hooks > prompting for invariants.
 6. **Cavemem Is the Memory Layer** — cave never reimplements embeddings/FTS/compression. Caveman Code owns *policy*: when to write, what to inject, episodic→semantic consolidation, MEMORY.md bridging.
-7. **One Canonical Install Command** — `curl -fsSL https://getcaveman.dev/install | bash` at the top of the README, with everything else behind a disclosure.
+7. **One Canonical Install Command** — `npm install -g @juliusbrussee/caveman-code` at the top of the README, with everything else behind a disclosure.
 8. **Defer Schemas, Lazy-Load Tools** — Anthropic ToolSearch reduced 85% of token bloat; we should match that immediately.
 
 ---
@@ -219,7 +219,7 @@ Soft dependencies: WS5 (skills) → WS13 (marketplace), WS6 (plan mode) → WS11
 
 ### WS7: Memory (cavemem) Integration
 - **Owner:** AI Engineer
-- **Scope:** Add `MemoryProvider` interface in `@caveman-code/agent`. Two implementations: `CavememProvider` (default — talks to cavemem stdio MCP server + writes via `cavemem hook run`) and `FilesProvider` fallback (CLAUDE.md + plain `.cave/memory/*.md`). Wire 5 hook stubs (`session-start`, `user-prompt-submit`, `post-tool-use`, `stop`, `session-end`) using cavemem's `hook run` CLI. Surface 4 cavemem MCP tools (`search`, `timeline`, `get_observations`, `list_sessions`) as native cave tools. Session-start prelude runs `cavemem search "<task summary>"` and injects compact snippets. **Caveman Code's value-add: episodic→semantic consolidation pass** — `/memory consolidate` clusters observations by topic, asks Haiku for semantic facts, writes back as `kind:semantic` with provenance. Bridge to Claude Code's `~/.claude/projects/.../memory/MEMORY.md` (read on startup, `caveman memory sync --from claude` for one-shot import). Auto-install during `caveman init` if `cavemem` on `$PATH`.
+- **Scope:** Add `MemoryProvider` interface in `@juliusbrussee/caveman-agent`. Two implementations: `CavememProvider` (default — talks to cavemem stdio MCP server + writes via `cavemem hook run`) and `FilesProvider` fallback (CLAUDE.md + plain `.cave/memory/*.md`). Wire 5 hook stubs (`session-start`, `user-prompt-submit`, `post-tool-use`, `stop`, `session-end`) using cavemem's `hook run` CLI. Surface 4 cavemem MCP tools (`search`, `timeline`, `get_observations`, `list_sessions`) as native cave tools. Session-start prelude runs `cavemem search "<task summary>"` and injects compact snippets. **Caveman Code's value-add: episodic→semantic consolidation pass** — `/memory consolidate` clusters observations by topic, asks Haiku for semantic facts, writes back as `kind:semantic` with provenance. Bridge to Claude Code's `~/.claude/projects/.../memory/MEMORY.md` (read on startup, `caveman memory sync --from claude` for one-shot import). Auto-install during `caveman init` if `cavemem` on `$PATH`.
 - **Deliverables:** `/memory search|save|show|forget|export|consolidate|off|on|config|sync`, MemoryProvider interface, both providers, MEMORY.md bridge, **PR to `JuliusBrussee/cavemem` adding `caveman` IDE installer to `packages/installers/`**.
 - **Files to touch:**
   - `packages/agent/src/memory/provider.ts` (new — interface)
@@ -245,7 +245,7 @@ Soft dependencies: WS5 (skills) → WS13 (marketplace), WS6 (plan mode) → WS11
 ### WS9: Daemon & Server/Client (`caveman serve`)
 - **Owner:** Backend Architect
 - **Scope:** Headless HTTP daemon with OpenAPI-described endpoints + SQLite session store (opencode pattern). Multi-client attach (TUI + future desktop + future mobile against the same backend session). Sessions survive SSH drops and machine sleep. Generated TS SDK from OpenAPI. `caveman attach <session-id>`, `caveman list`, `caveman serve --port`. JSON-RPC over WS for low-latency token streaming (Codex app-server pattern). Worker-daemon registration for `&`-prefix cloud handoff: prepend `&` to any prompt and it's dispatched to a registered remote `caveman worker`; local terminal frees up; user `caveman attach <id>` later.
-- **Deliverables:** `caveman serve`, `caveman attach`, `caveman worker {start,list,stop}`, `caveman list`, OpenAPI spec, generated TS SDK published as `@caveman-code/sdk`.
+- **Deliverables:** `caveman serve`, `caveman attach`, `caveman worker {start,list,stop}`, `caveman list`, OpenAPI spec, generated TS SDK published as `@juliusbrussee/caveman-sdk`.
 - **Files to touch:**
   - `packages/coding-agent/src/core/daemon/{server,client,protocol}.ts` (new)
   - `packages/coding-agent/src/cli/serve.ts` (new)
@@ -265,7 +265,7 @@ Soft dependencies: WS5 (skills) → WS13 (marketplace), WS6 (plan mode) → WS11
 
 ### WS11: Install, Onboarding, Auto-Update, Doctor
 - **Owner:** DevOps Automator
-- **Scope:** **Canonical:** `curl -fsSL https://getcaveman.dev/install | bash` (or whatever domain we acquire). Self-updater binary checks GitHub releases API once/24h, downloads tarball, atomic replace, re-exec. Three release channels (`stable`, `beta`, `canary`). Detect package manager for `caveman update` (brew/npm/native). **First-run wizard:** 4 questions max — theme (auto-detect bg), auth (detect env keys, OAuth/API/skip), default model, telemetry off-by-default. Persist `hasCompletedOnboarding`. **`caveman doctor`** — kernel version, terminal capabilities, sandbox availability, MCP servers reachable, missing tooling. Cross-platform: macOS (Intel + ARM), Linux (x86 + ARM), Windows via WSL with native PS path as preview.
+- **Scope:** **Canonical:** `npm install -g @juliusbrussee/caveman-code` (or whatever domain we acquire). Self-updater binary checks GitHub releases API once/24h, downloads tarball, atomic replace, re-exec. Three release channels (`stable`, `beta`, `canary`). Detect package manager for `caveman update` (brew/npm/native). **First-run wizard:** 4 questions max — theme (auto-detect bg), auth (detect env keys, OAuth/API/skip), default model, telemetry off-by-default. Persist `hasCompletedOnboarding`. **`caveman doctor`** — kernel version, terminal capabilities, sandbox availability, MCP servers reachable, missing tooling. Cross-platform: macOS (Intel + ARM), Linux (x86 + ARM), Windows via WSL with native PS path as preview.
 - **Deliverables:** `getcaveman.dev` install script, `caveman update` self-updater, first-run wizard ≤ 5s to interactive, `caveman doctor`, `homebrew-cave` tap freshened, `winget` manifest, Docker image, `caveman login --device-auth` for headless.
 - **Files to touch:**
   - `installers/install.sh` (new — write to webserver root)

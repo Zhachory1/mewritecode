@@ -5,8 +5,8 @@
  * Responses and events are emitted as JSON lines on stdout.
  */
 
-import type { AgentMessage, ThinkingLevel } from "@caveman-code/agent";
-import type { ImageContent, Model } from "@caveman-code/ai";
+import type { AgentMessage, ThinkingLevel } from "@juliusbrussee/caveman-agent";
+import type { ImageContent, Model } from "@juliusbrussee/caveman-ai";
 import type { SessionStats } from "../../core/agent-session.js";
 import type { BashResult } from "../../core/bash-executor.js";
 import type { CompactionResult } from "../../core/compaction/index.js";

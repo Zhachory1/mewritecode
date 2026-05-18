@@ -7,8 +7,8 @@
  * write a fact mid-turn without taking the user-driven `/memory` slash route.
  */
 
-import type { AgentTool, memory as memoryNs } from "@caveman-code/agent";
-import { Text } from "@caveman-code/tui";
+import type { AgentTool, memory as memoryNs } from "@juliusbrussee/caveman-agent";
+import { Text } from "@juliusbrussee/caveman-tui";
 import { type Static, Type } from "@sinclair/typebox";
 import type { ToolDefinition } from "../extensions/types.js";
 import { wrapToolDefinition } from "./tool-definition-wrapper.js";

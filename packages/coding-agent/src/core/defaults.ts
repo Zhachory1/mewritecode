@@ -1,3 +1,3 @@
-import type { ThinkingLevel } from "@caveman-code/agent";
+import type { ThinkingLevel } from "@juliusbrussee/caveman-agent";
 
 export const DEFAULT_THINKING_LEVEL: ThinkingLevel = "medium";

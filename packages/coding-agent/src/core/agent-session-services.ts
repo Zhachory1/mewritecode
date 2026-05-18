@@ -1,6 +1,6 @@
 import { join } from "node:path";
-import type { ThinkingLevel } from "@caveman-code/agent";
-import type { Model } from "@caveman-code/ai";
+import type { ThinkingLevel } from "@juliusbrussee/caveman-agent";
+import type { Model } from "@juliusbrussee/caveman-ai";
 import { getAgentDir } from "../config.js";
 import { AuthStorage } from "./auth-storage.js";
 import type { SessionStartEvent, ToolDefinition } from "./extensions/index.js";

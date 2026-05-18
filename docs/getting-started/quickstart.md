@@ -12,7 +12,7 @@ Goal: Caveman Code installed, authenticated, first prompt answered. Target time:
 ## 1. Install
 
 ```bash
-npm install -g caveman-code
+npm install -g @juliusbrussee/caveman-code
 ```
 
 Requires Node.js 20+. Other options (Homebrew, Docker, manual binary) are documented in [Install](/getting-started/installation).
@@ -65,7 +65,7 @@ Type a prompt and the agent responds. Type `/help` for the full slash-command li
 
 ## What just happened
 
-1. npm installed the `caveman-code` package globally, registering two binaries: `caveman` and `caveman-code` (aliases).
+1. npm installed the `@juliusbrussee/caveman-code` package globally, registering two binaries: `caveman` and `caveman-code` (aliases).
 2. On first launch, the wizard ran (4 questions: theme, auth, default model, telemetry off-by-default) and persisted your choice to `~/.cave/settings.json`.
 3. **Caveman Mode** compression is on by default. Tool output (bash, grep, file reads) is summarized before re-entering context.
 

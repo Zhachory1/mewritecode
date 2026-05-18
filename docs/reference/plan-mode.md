@@ -42,7 +42,7 @@ In plan mode:
 3. Edit `path/to/other.ts` — <reason>.
 
 **Risks:**
-- The migration touches the public API of `@caveman-code/agent`. Bump major.
+- The migration touches the public API of `@juliusbrussee/caveman-agent`. Bump major.
 - ...
 
 **Estimate:** ~6 file edits, 1 test run, ~5 min.

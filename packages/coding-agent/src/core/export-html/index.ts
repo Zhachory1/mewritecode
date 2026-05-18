@@ -1,4 +1,4 @@
-import type { AgentState } from "@caveman-code/agent";
+import type { AgentState } from "@juliusbrussee/caveman-agent";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { basename, join } from "path";
 import { APP_NAME, getExportTemplateDir } from "../../config.js";

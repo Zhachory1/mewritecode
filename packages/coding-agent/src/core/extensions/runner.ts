@@ -2,9 +2,9 @@
  * Extension runner - executes extensions and manages their lifecycle.
  */
 
-import type { AgentMessage } from "@caveman-code/agent";
-import type { ImageContent, Model } from "@caveman-code/ai";
-import type { KeyId } from "@caveman-code/tui";
+import type { AgentMessage } from "@juliusbrussee/caveman-agent";
+import type { ImageContent, Model } from "@juliusbrussee/caveman-ai";
+import type { KeyId } from "@juliusbrussee/caveman-tui";
 import { type Theme, theme } from "../../modes/interactive/theme/theme.js";
 import type { ResourceDiagnostic } from "../diagnostics.js";
 import type { KeybindingsConfig } from "../keybindings.js";

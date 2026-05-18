@@ -6,8 +6,13 @@
  * try to refresh tokens simultaneously.
  */
 
-import { getEnvApiKey, type OAuthCredentials, type OAuthLoginCallbacks, type OAuthProviderId } from "@caveman-code/ai";
-import { getOAuthApiKey, getOAuthProvider, getOAuthProviders } from "@caveman-code/ai/oauth";
+import {
+	getEnvApiKey,
+	type OAuthCredentials,
+	type OAuthLoginCallbacks,
+	type OAuthProviderId,
+} from "@juliusbrussee/caveman-ai";
+import { getOAuthApiKey, getOAuthProvider, getOAuthProviders } from "@juliusbrussee/caveman-ai/oauth";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 import lockfile from "proper-lockfile";

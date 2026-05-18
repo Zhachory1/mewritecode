@@ -7,7 +7,7 @@
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import type { AssistantMessage, ToolResultMessage, Usage } from "@caveman-code/ai";
+import type { AssistantMessage, ToolResultMessage, Usage } from "@juliusbrussee/caveman-ai";
 import { compressStructuredOutput } from "../../src/core/cave-structured-compression.js";
 import {
 	compressCaveToolOutput,

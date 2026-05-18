@@ -3,8 +3,8 @@
  * Uses Kitty keyboard protocol for smooth movement (press/release detection)
  */
 
-import { isKeyRelease, Key, matchesKey, visibleWidth } from "@caveman-code/tui";
-import type { ExtensionAPI } from "caveman-code";
+import type { ExtensionAPI } from "@juliusbrussee/caveman-code";
+import { isKeyRelease, Key, matchesKey, visibleWidth } from "@juliusbrussee/caveman-tui";
 
 const GAME_WIDTH = 60;
 const GAME_HEIGHT = 24;

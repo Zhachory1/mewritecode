@@ -1,8 +1,8 @@
 /**
- * @caveman-code/sdk — TypeScript client for the cave daemon.
+ * @juliusbrussee/caveman-sdk — TypeScript client for the cave daemon.
  *
  * Hand-written to match `packages/coding-agent/openapi.yaml`. We deliberately
- * avoid pulling in `@caveman-code/coding-agent` (which would force consumers to ship
+ * avoid pulling in `@juliusbrussee/caveman-coding-agent` (which would force consumers to ship
  * the entire CLI). The types are duplicated by design — a future CI step will
  * regenerate this file from the OpenAPI spec via `openapi-typescript-codegen`.
  *

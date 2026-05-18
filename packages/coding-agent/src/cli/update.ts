@@ -162,7 +162,9 @@ export function runInstaller(
 ): { code: number; stdout: string; stderr: string } {
 	const script = opts.script ?? locateInstallerScript();
 	if (!script) {
-		throw new Error("install.sh not found locally; run `npm install -g caveman-code@latest` to refresh");
+		throw new Error(
+			"install.sh not found locally; run `npm install -g @juliusbrussee/caveman-code@latest` to refresh",
+		);
 	}
 	const args = ["--version", version];
 	if (opts.channel) args.push("--channel", opts.channel);

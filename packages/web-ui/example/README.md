@@ -1,6 +1,6 @@
 # Pi Web UI - Example
 
-This is a minimal example showing how to use `@caveman-code/web-ui` in a web application.
+This is a minimal example showing how to use `@juliusbrussee/caveman-web-ui` in a web application.
 
 ## Setup
 

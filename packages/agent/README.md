@@ -1,18 +1,18 @@
-# @caveman-code/agent
+# @juliusbrussee/caveman-agent
 
-Stateful agent with tool execution and event streaming. Built on `@caveman-code/ai`.
+Stateful agent with tool execution and event streaming. Built on `@juliusbrussee/caveman-ai`.
 
 ## Installation
 
 ```bash
-npm install @caveman-code/agent
+npm install @juliusbrussee/caveman-agent
 ```
 
 ## Quick Start
 
 ```typescript
-import { Agent } from "@caveman-code/agent";
-import { getModel } from "@caveman-code/ai";
+import { Agent } from "@juliusbrussee/caveman-agent";
+import { getModel } from "@juliusbrussee/caveman-ai";
 
 const agent = new Agent({
   initialState: {
@@ -332,7 +332,7 @@ Follow-up messages are checked only when there are no more tool calls and no ste
 Extend `AgentMessage` via declaration merging:
 
 ```typescript
-declare module "@caveman-code/agent" {
+declare module "@juliusbrussee/caveman-agent" {
   interface CustomAgentMessages {
     notification: { role: "notification"; text: string; timestamp: number };
   }
@@ -404,7 +404,7 @@ Thrown errors are caught by the agent and reported to the LLM as tool errors wit
 For browser apps that proxy through a backend:
 
 ```typescript
-import { Agent, streamProxy } from "@caveman-code/agent";
+import { Agent, streamProxy } from "@juliusbrussee/caveman-agent";
 
 const agent = new Agent({
   streamFn: (model, context, options) =>
@@ -421,7 +421,7 @@ const agent = new Agent({
 For direct control without the Agent class:
 
 ```typescript
-import { agentLoop, agentLoopContinue } from "@caveman-code/agent";
+import { agentLoop, agentLoopContinue } from "@juliusbrussee/caveman-agent";
 
 const context: AgentContext = {
   systemPrompt: "You are helpful.",

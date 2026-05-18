@@ -1,6 +1,6 @@
-# @caveman-code/web-ui
+# @juliusbrussee/caveman-web-ui
 
-Reusable web UI components for building AI chat interfaces powered by [@caveman-code/ai](../ai) and [@caveman-code/agent](../agent).
+Reusable web UI components for building AI chat interfaces powered by [@juliusbrussee/caveman-ai](../ai) and [@juliusbrussee/caveman-agent](../agent).
 
 Built with [mini-lit](https://github.com/badlogic/mini-lit) web components and Tailwind CSS v4.
 
@@ -17,7 +17,7 @@ Built with [mini-lit](https://github.com/badlogic/mini-lit) web components and T
 ## Installation
 
 ```bash
-npm install @caveman-code/web-ui @caveman-code/agent @caveman-code/ai
+npm install @juliusbrussee/caveman-web-ui @juliusbrussee/caveman-agent @juliusbrussee/caveman-ai
 ```
 
 ## Quick Start
@@ -25,8 +25,8 @@ npm install @caveman-code/web-ui @caveman-code/agent @caveman-code/ai
 See the [example](./example) directory for a complete working application.
 
 ```typescript
-import { Agent } from '@caveman-code/agent';
-import { getModel } from '@caveman-code/ai';
+import { Agent } from '@juliusbrussee/caveman-agent';
+import { getModel } from '@juliusbrussee/caveman-ai';
 import {
   ChatPanel,
   AppStorage,
@@ -37,8 +37,8 @@ import {
   setAppStorage,
   defaultConvertToLlm,
   ApiKeyPromptDialog,
-} from '@caveman-code/web-ui';
-import '@caveman-code/web-ui/app.css';
+} from '@juliusbrussee/caveman-web-ui';
+import '@juliusbrussee/caveman-web-ui/app.css';
 
 // Set up storage
 const settings = new SettingsStore();
@@ -169,7 +169,7 @@ Properties:
 ### Agent (from pi-agent-core)
 
 ```typescript
-import { Agent } from '@caveman-code/agent';
+import { Agent } from '@juliusbrussee/caveman-agent';
 
 const agent = new Agent({
   initialState: {
@@ -259,7 +259,7 @@ interface SystemNotification {
   timestamp: string;
 }
 
-declare module '@caveman-code/agent' {
+declare module '@juliusbrussee/caveman-agent' {
   interface CustomAgentMessages {
     'system-notification': SystemNotification;
   }
@@ -287,7 +287,7 @@ function myConvertToLlm(messages: AgentMessage[]): Message[] {
 `convertToLlm` transforms app messages to LLM-compatible format:
 
 ```typescript
-import { defaultConvertToLlm, convertAttachments } from '@caveman-code/web-ui';
+import { defaultConvertToLlm, convertAttachments } from '@juliusbrussee/caveman-web-ui';
 
 // defaultConvertToLlm handles:
 // - UserMessageWithAttachments → user message with image/text content blocks
@@ -302,7 +302,7 @@ import { defaultConvertToLlm, convertAttachments } from '@caveman-code/web-ui';
 Execute JavaScript in a sandboxed browser environment:
 
 ```typescript
-import { createJavaScriptReplTool } from '@caveman-code/web-ui';
+import { createJavaScriptReplTool } from '@juliusbrussee/caveman-web-ui';
 
 const replTool = createJavaScriptReplTool();
 
@@ -320,7 +320,7 @@ agent.state.tools = [replTool];
 Extract text from documents at URLs:
 
 ```typescript
-import { createExtractDocumentTool } from '@caveman-code/web-ui';
+import { createExtractDocumentTool } from '@juliusbrussee/caveman-web-ui';
 
 const extractTool = createExtractDocumentTool();
 extractTool.corsProxyUrl = 'https://corsproxy.io/?';
@@ -343,7 +343,7 @@ agent.state.tools = [artifactsPanel.tool];
 ### Custom Tool Renderers
 
 ```typescript
-import { registerToolRenderer, type ToolRenderer } from '@caveman-code/web-ui';
+import { registerToolRenderer, type ToolRenderer } from '@juliusbrussee/caveman-web-ui';
 
 const myRenderer: ToolRenderer = {
   render(params, result, isStreaming) {
@@ -371,7 +371,7 @@ import {
   CustomProvidersStore,
   setAppStorage,
   getAppStorage,
-} from '@caveman-code/web-ui';
+} from '@juliusbrussee/caveman-web-ui';
 
 // Create stores
 const settings = new SettingsStore();
@@ -466,7 +466,7 @@ const all = await storage.customProviders.getAll();
 Load and process files:
 
 ```typescript
-import { loadAttachment, type Attachment } from '@caveman-code/web-ui';
+import { loadAttachment, type Attachment } from '@juliusbrussee/caveman-web-ui';
 
 // From File input
 const file = inputElement.files[0];
@@ -498,7 +498,7 @@ Supported formats: PDF, DOCX, XLSX, PPTX, images, text files.
 For browser environments with CORS restrictions:
 
 ```typescript
-import { createStreamFn, shouldUseProxyForProvider, isCorsError } from '@caveman-code/web-ui';
+import { createStreamFn, shouldUseProxyForProvider, isCorsError } from '@juliusbrussee/caveman-web-ui';
 
 // AgentInterface auto-configures proxy from settings
 // For manual setup:
@@ -517,7 +517,7 @@ agent.streamFn = createStreamFn(async () => {
 ### SettingsDialog
 
 ```typescript
-import { SettingsDialog, ProvidersModelsTab, ProxyTab, ApiKeysTab } from '@caveman-code/web-ui';
+import { SettingsDialog, ProvidersModelsTab, ProxyTab, ApiKeysTab } from '@juliusbrussee/caveman-web-ui';
 
 SettingsDialog.open([
   new ProvidersModelsTab(), // Custom providers + model list
@@ -529,7 +529,7 @@ SettingsDialog.open([
 ### SessionListDialog
 
 ```typescript
-import { SessionListDialog } from '@caveman-code/web-ui';
+import { SessionListDialog } from '@juliusbrussee/caveman-web-ui';
 
 SessionListDialog.open(
   async (sessionId) => { /* load session */ },
@@ -540,7 +540,7 @@ SessionListDialog.open(
 ### ApiKeyPromptDialog
 
 ```typescript
-import { ApiKeyPromptDialog } from '@caveman-code/web-ui';
+import { ApiKeyPromptDialog } from '@juliusbrussee/caveman-web-ui';
 
 const success = await ApiKeyPromptDialog.prompt('anthropic');
 ```
@@ -548,7 +548,7 @@ const success = await ApiKeyPromptDialog.prompt('anthropic');
 ### ModelSelector
 
 ```typescript
-import { ModelSelector } from '@caveman-code/web-ui';
+import { ModelSelector } from '@juliusbrussee/caveman-web-ui';
 
 ModelSelector.open(currentModel, (selectedModel) => {
   agent.state.model = selectedModel;
@@ -560,7 +560,7 @@ ModelSelector.open(currentModel, (selectedModel) => {
 Import the pre-built CSS:
 
 ```typescript
-import '@caveman-code/web-ui/app.css';
+import '@juliusbrussee/caveman-web-ui/app.css';
 ```
 
 Or use Tailwind with custom config:
@@ -575,7 +575,7 @@ Or use Tailwind with custom config:
 ## Internationalization
 
 ```typescript
-import { i18n, setLanguage, translations } from '@caveman-code/web-ui';
+import { i18n, setLanguage, translations } from '@juliusbrussee/caveman-web-ui';
 
 // Add translations
 translations.de = {

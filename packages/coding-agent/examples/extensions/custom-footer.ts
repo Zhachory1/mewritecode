@@ -8,9 +8,9 @@
  * Token stats come from ctx.sessionManager/ctx.model (already accessible).
  */
 
-import type { AssistantMessage } from "@caveman-code/ai";
-import { truncateToWidth, visibleWidth } from "@caveman-code/tui";
-import type { ExtensionAPI } from "caveman-code";
+import type { AssistantMessage } from "@juliusbrussee/caveman-ai";
+import type { ExtensionAPI } from "@juliusbrussee/caveman-code";
+import { truncateToWidth, visibleWidth } from "@juliusbrussee/caveman-tui";
 
 export default function (pi: ExtensionAPI) {
 	let enabled = false;

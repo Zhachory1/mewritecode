@@ -1,6 +1,6 @@
-import type { OAuthProviderInterface } from "@caveman-code/ai";
-import { getOAuthProviders } from "@caveman-code/ai/oauth";
-import { Container, getKeybindings, Spacer, TruncatedText } from "@caveman-code/tui";
+import type { OAuthProviderInterface } from "@juliusbrussee/caveman-ai";
+import { getOAuthProviders } from "@juliusbrussee/caveman-ai/oauth";
+import { Container, getKeybindings, Spacer, TruncatedText } from "@juliusbrussee/caveman-tui";
 import type { AuthStorage } from "../../../core/auth-storage.js";
 import { theme } from "../theme/theme.js";
 import { DynamicBorder } from "./dynamic-border.js";

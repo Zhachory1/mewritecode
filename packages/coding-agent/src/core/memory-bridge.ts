@@ -25,7 +25,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
-import type { memory as memoryNs } from "@caveman-code/agent";
+import type { memory as memoryNs } from "@juliusbrussee/caveman-agent";
 
 type MemoryProvider = memoryNs.MemoryProvider;
 

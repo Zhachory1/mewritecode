@@ -1,5 +1,5 @@
-import type { AgentTool } from "@caveman-code/agent";
-import { Container, Text } from "@caveman-code/tui";
+import type { AgentTool } from "@juliusbrussee/caveman-agent";
+import { Container, Text } from "@juliusbrussee/caveman-tui";
 import { type Static, Type } from "@sinclair/typebox";
 import { mkdir as fsMkdir, writeFile as fsWriteFile } from "fs/promises";
 import { dirname } from "path";

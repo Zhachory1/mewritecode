@@ -1,6 +1,14 @@
 import { appendFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { Container, getKeybindings, type OverlayHandle, Spacer, Text, type TUI, visibleWidth } from "@caveman-code/tui";
+import {
+	Container,
+	getKeybindings,
+	type OverlayHandle,
+	Spacer,
+	Text,
+	type TUI,
+	visibleWidth,
+} from "@juliusbrussee/caveman-tui";
 import { theme } from "../theme/theme.js";
 
 export interface SecretPromptOptions {

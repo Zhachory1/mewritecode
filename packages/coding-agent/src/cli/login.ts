@@ -3,7 +3,7 @@
  *
  * This command exists to give headless / SSH / CI users a deterministic way
  * to attach an OAuth credential or API key without opening the interactive
- * TUI. The full provider OAuth flows live in `@caveman-code/ai` (see
+ * TUI. The full provider OAuth flows live in `@juliusbrussee/caveman-ai` (see
  * packages/ai/src/utils/oauth/). This dispatcher is a thin shim:
  *
  *   caveman login                       # show available providers + env hints
@@ -27,7 +27,7 @@ import {
 	type OAuthAuthInfo,
 	type OAuthPrompt,
 	type OAuthProviderInterface,
-} from "@caveman-code/ai";
+} from "@juliusbrussee/caveman-ai";
 import chalk from "chalk";
 import { AuthStorage } from "../core/auth-storage.js";
 

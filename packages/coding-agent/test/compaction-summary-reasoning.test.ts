@@ -1,5 +1,5 @@
-import type { AgentMessage } from "@caveman-code/agent";
-import type { AssistantMessage, Model } from "@caveman-code/ai";
+import type { AgentMessage } from "@juliusbrussee/caveman-agent";
+import type { AssistantMessage, Model } from "@juliusbrussee/caveman-ai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { generateSummary } from "../src/core/compaction/index.js";
 
@@ -7,8 +7,8 @@ const { completeSimpleMock } = vi.hoisted(() => ({
 	completeSimpleMock: vi.fn(),
 }));
 
-vi.mock("@caveman-code/ai", async (importOriginal) => {
-	const actual = await importOriginal<typeof import("@caveman-code/ai")>();
+vi.mock("@juliusbrussee/caveman-ai", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("@juliusbrussee/caveman-ai")>();
 	return {
 		...actual,
 		completeSimple: completeSimpleMock,

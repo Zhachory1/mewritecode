@@ -16,12 +16,12 @@ import { spawn } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import type { AgentToolResult } from "@caveman-code/agent";
-import type { Message } from "@caveman-code/ai";
-import { StringEnum } from "@caveman-code/ai";
-import { Container, Markdown, Spacer, Text } from "@caveman-code/tui";
+import type { AgentToolResult } from "@juliusbrussee/caveman-agent";
+import type { Message } from "@juliusbrussee/caveman-ai";
+import { StringEnum } from "@juliusbrussee/caveman-ai";
+import { type ExtensionAPI, getMarkdownTheme, withFileMutationQueue } from "@juliusbrussee/caveman-code";
+import { Container, Markdown, Spacer, Text } from "@juliusbrussee/caveman-tui";
 import { Type } from "@sinclair/typebox";
-import { type ExtensionAPI, getMarkdownTheme, withFileMutationQueue } from "caveman-code";
 import { type AgentConfig, type AgentScope, discoverAgents } from "./agents.js";
 
 const MAX_PARALLEL_TASKS = 8;

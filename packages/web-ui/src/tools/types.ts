@@ -1,4 +1,4 @@
-import type { ToolResultMessage } from "@caveman-code/ai";
+import type { ToolResultMessage } from "@juliusbrussee/caveman-ai";
 import type { TemplateResult } from "lit";
 
 export interface ToolRenderResult {

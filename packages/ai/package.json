@@ -1,6 +1,6 @@
 {
-	"name": "@caveman-code/ai",
-	"version": "0.65.2",
+	"name": "@juliusbrussee/caveman-ai",
+	"version": "0.65.3",
 	"description": "Unified LLM API with automatic model discovery and provider configuration",
 	"type": "module",
 	"main": "./dist/index.js",

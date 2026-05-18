@@ -1,5 +1,5 @@
 {
-	"name": "@caveman-code/pods",
+	"name": "@juliusbrussee/caveman-pods",
 	"version": "0.65.2",
 	"description": "CLI tool for managing vLLM deployments on GPU pods",
 	"type": "module",
@@ -33,7 +33,7 @@
 		"node": ">=20.0.0"
 	},
 	"dependencies": {
-		"@caveman-code/agent": "^0.65.2",
+		"@juliusbrussee/caveman-agent": "^0.65.2",
 		"chalk": "^5.5.0"
 	},
 	"devDependencies": {},

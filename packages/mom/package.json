@@ -1,6 +1,6 @@
 {
-	"name": "@caveman-code/mom",
-	"version": "0.65.2",
+	"name": "@juliusbrussee/caveman-mom",
+	"version": "0.65.3",
 	"description": "Slack bot that delegates messages to the caveman-code coding agent",
 	"type": "module",
 	"bin": {
@@ -20,9 +20,9 @@
 	},
 	"dependencies": {
 		"@anthropic-ai/sandbox-runtime": "^0.0.16",
-		"@caveman-code/agent": "^0.65.2",
-		"@caveman-code/ai": "^0.65.2",
-		"caveman-code": "^0.65.2",
+		"@juliusbrussee/caveman-agent": "^0.65.2",
+		"@juliusbrussee/caveman-ai": "^0.65.2",
+		"@juliusbrussee/caveman-code": "^0.65.2",
 		"@sinclair/typebox": "^0.34.0",
 		"@slack/socket-mode": "^2.0.0",
 		"@slack/web-api": "^7.0.0",

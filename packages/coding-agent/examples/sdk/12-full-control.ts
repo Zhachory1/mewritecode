@@ -8,7 +8,7 @@
  * paths relative to your cwd.
  */
 
-import { getModel } from "@caveman-code/ai";
+import { getModel } from "@juliusbrussee/caveman-ai";
 import {
 	AuthStorage,
 	createAgentSession,
@@ -19,7 +19,7 @@ import {
 	type ResourceLoader,
 	SessionManager,
 	SettingsManager,
-} from "caveman-code";
+} from "@juliusbrussee/caveman-code";
 
 // Custom auth storage location
 const authStorage = AuthStorage.create("/tmp/my-agent/auth.json");
