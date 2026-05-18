@@ -12,10 +12,10 @@ Goal: Caveman Code installed, authenticated, first prompt answered. Target time:
 ## 1. Install
 
 ```bash
-curl -fsSL https://cave.sh/install | bash
+npm install -g caveman-code
 ```
 
-That's the canonical install. Other options (Homebrew, npm, Docker, manual binary) are documented in [Install](/getting-started/installation).
+Requires Node.js 20+. Other options (Homebrew, Docker, manual binary) are documented in [Install](/getting-started/installation).
 
 Verify:
 
@@ -65,7 +65,7 @@ Type a prompt and the agent responds. Type `/help` for the full slash-command li
 
 ## What just happened
 
-1. The installer downloaded a single binary, dropped it in `~/.cave/versions/<tag>/` and symlinked `caveman` onto your PATH.
+1. npm installed the `caveman-code` package globally, registering two binaries: `caveman` and `caveman-code` (aliases).
 2. On first launch, the wizard ran (4 questions: theme, auth, default model, telemetry off-by-default) and persisted your choice to `~/.cave/settings.json`.
 3. **Caveman Mode** compression is on by default. Tool output (bash, grep, file reads) is summarized before re-entering context.
 
@@ -83,7 +83,7 @@ Type a prompt and the agent responds. Type `/help` for the full slash-command li
 
 ## Troubleshooting
 
-- `cave: command not found` after install — restart your shell or run `source ~/.zshrc` / `source ~/.bashrc`.
+- `caveman: command not found` after install — restart your shell, or check that the npm global bin dir is on your PATH (`npm config get prefix`).
 - Wizard didn't appear — delete `~/.cave/settings.json` and run `caveman` again.
 - Auth fails on Linux — install `libsecret` (`apt install libsecret-1-0` on Debian/Ubuntu) or use API keys via env.
 

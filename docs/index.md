@@ -72,10 +72,10 @@ features:
 ## Install
 
 ```bash
-curl -fsSL https://cave.sh/install | bash
+npm install -g caveman-code
 ```
 
-Other options: [Homebrew, npm, Docker, manual](/getting-started/installation).
+Other options: [Homebrew, Docker, manual](/getting-started/installation).
 
 </div>
 

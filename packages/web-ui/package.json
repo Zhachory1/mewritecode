@@ -9,6 +9,10 @@
 		".": "./dist/index.js",
 		"./app.css": "./dist/app.css"
 	},
+	"files": [
+		"dist",
+		"README.md"
+	],
 	"scripts": {
 		"clean": "shx rm -rf dist",
 		"build": "tsc -p tsconfig.build.json && tailwindcss -i ./src/app.css -o ./dist/app.css --minify",
@@ -47,5 +51,17 @@
 		"mini-lit"
 	],
 	"author": "Julius Brussee",
-	"license": "MIT"
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/JuliusBrussee/caveman-cli.git",
+		"directory": "packages/web-ui"
+	},
+	"homepage": "https://github.com/JuliusBrussee/caveman-cli#readme",
+	"bugs": {
+		"url": "https://github.com/JuliusBrussee/caveman-cli/issues"
+	},
+	"publishConfig": {
+		"access": "public"
+	}
 }

@@ -78,7 +78,7 @@ See workstreams §5–§7. Headline additions: native MCP, native sandboxing sur
 4. **Cache-Stable Layout** — `[tools] → [system] → [CLAUDE.md] → [pinned] → [history] → [user turn]`. Breakpoint after pinned context, never inside rolling history. 5-min TTL is the new default; pay the 1-hour TTL premium only for pinned project context.
 5. **Hooks Are First-Class** — 12 lifecycle events, stdout-as-context pattern, deny via exit 2. Hooks > prompting for invariants.
 6. **Cavemem Is the Memory Layer** — cave never reimplements embeddings/FTS/compression. Caveman Code owns *policy*: when to write, what to inject, episodic→semantic consolidation, MEMORY.md bridging.
-7. **One Canonical Install Command** — `curl -fsSL https://cave.sh/install | bash` at the top of the README, with everything else behind a disclosure.
+7. **One Canonical Install Command** — `curl -fsSL https://getcaveman.dev/install | bash` at the top of the README, with everything else behind a disclosure.
 8. **Defer Schemas, Lazy-Load Tools** — Anthropic ToolSearch reduced 85% of token bloat; we should match that immediately.
 
 ---
@@ -265,8 +265,8 @@ Soft dependencies: WS5 (skills) → WS13 (marketplace), WS6 (plan mode) → WS11
 
 ### WS11: Install, Onboarding, Auto-Update, Doctor
 - **Owner:** DevOps Automator
-- **Scope:** **Canonical:** `curl -fsSL https://cave.sh/install | bash` (or whatever domain we acquire). Self-updater binary checks GitHub releases API once/24h, downloads tarball, atomic replace, re-exec. Three release channels (`stable`, `beta`, `canary`). Detect package manager for `caveman update` (brew/npm/native). **First-run wizard:** 4 questions max — theme (auto-detect bg), auth (detect env keys, OAuth/API/skip), default model, telemetry off-by-default. Persist `hasCompletedOnboarding`. **`caveman doctor`** — kernel version, terminal capabilities, sandbox availability, MCP servers reachable, missing tooling. Cross-platform: macOS (Intel + ARM), Linux (x86 + ARM), Windows via WSL with native PS path as preview.
-- **Deliverables:** `cave.sh` install script, `caveman update` self-updater, first-run wizard ≤ 5s to interactive, `caveman doctor`, `homebrew-cave` tap freshened, `winget` manifest, Docker image, `caveman login --device-auth` for headless.
+- **Scope:** **Canonical:** `curl -fsSL https://getcaveman.dev/install | bash` (or whatever domain we acquire). Self-updater binary checks GitHub releases API once/24h, downloads tarball, atomic replace, re-exec. Three release channels (`stable`, `beta`, `canary`). Detect package manager for `caveman update` (brew/npm/native). **First-run wizard:** 4 questions max — theme (auto-detect bg), auth (detect env keys, OAuth/API/skip), default model, telemetry off-by-default. Persist `hasCompletedOnboarding`. **`caveman doctor`** — kernel version, terminal capabilities, sandbox availability, MCP servers reachable, missing tooling. Cross-platform: macOS (Intel + ARM), Linux (x86 + ARM), Windows via WSL with native PS path as preview.
+- **Deliverables:** `getcaveman.dev` install script, `caveman update` self-updater, first-run wizard ≤ 5s to interactive, `caveman doctor`, `homebrew-cave` tap freshened, `winget` manifest, Docker image, `caveman login --device-auth` for headless.
 - **Files to touch:**
   - `installers/install.sh` (new — write to webserver root)
   - `packages/coding-agent/src/cli/{update,doctor,login}.ts` (new/extend)
@@ -276,7 +276,7 @@ Soft dependencies: WS5 (skills) → WS13 (marketplace), WS6 (plan mode) → WS11
 
 ### WS12: Docs Site & Marketing
 - **Owner:** Technical Writer + Visual Storyteller
-- **Scope:** **VitePress** at `cave.sh/docs` (free, fast, self-hostable). Sections: Quickstart, Install, Auth, Models, Tools, Slash Commands, Skills, Subagents, Memory (cavemem), MCP, Hooks, Permissions, Plan Mode, Daemon, Recipes, Troubleshooting, Migration from Claude Code/Codex/Aider, Cookbook, API. Ship `llms.txt` and per-page "Copy for LLMs" button. Algolia DocSearch (free for OSS). README rewrite per WS11 wizard pattern: logo + tagline, token-savings chart, single canonical install, **30s GIF**, Quick Start, "I want to..." router, comparison table, providers, monorepo bottom. **5 VHS recordings** (charmbracelet/vhs): (1) 30s install + first prompt, (2) cave-mode A/B vs Claude Code with token counter, (3) `/plan → /act` flow, (4) session branching `/tree`, (5) extension hot-load. Discord. Weekly changelog. Release notes auto-generated from conventional commits.
+- **Scope:** **VitePress** at `getcaveman.dev/docs` (free, fast, self-hostable). Sections: Quickstart, Install, Auth, Models, Tools, Slash Commands, Skills, Subagents, Memory (cavemem), MCP, Hooks, Permissions, Plan Mode, Daemon, Recipes, Troubleshooting, Migration from Claude Code/Codex/Aider, Cookbook, API. Ship `llms.txt` and per-page "Copy for LLMs" button. Algolia DocSearch (free for OSS). README rewrite per WS11 wizard pattern: logo + tagline, token-savings chart, single canonical install, **30s GIF**, Quick Start, "I want to..." router, comparison table, providers, monorepo bottom. **5 VHS recordings** (charmbracelet/vhs): (1) 30s install + first prompt, (2) cave-mode A/B vs Claude Code with token counter, (3) `/plan → /act` flow, (4) session branching `/tree`, (5) extension hot-load. Discord. Weekly changelog. Release notes auto-generated from conventional commits.
 - **Deliverables:** `docs/` VitePress site, `installers/install.sh`, `README.md` rewrite, 5 VHS tape files in CI (re-record on tag), Discord linked from README, `CHANGELOG.md`, llms.txt, comparison page.
 - **Files to touch:**
   - `docs/` (new)

@@ -30,7 +30,10 @@
 		"commands",
 		"skills",
 		"agents",
-		"CHANGELOG.md"
+		"recipes",
+		"openapi.yaml",
+		"CHANGELOG.md",
+		"README.md"
 	],
 	"scripts": {
 		"clean": "shx rm -rf dist",
@@ -108,5 +111,12 @@
 	},
 	"engines": {
 		"node": ">=20.6.0"
+	},
+	"homepage": "https://github.com/JuliusBrussee/caveman-cli#readme",
+	"bugs": {
+		"url": "https://github.com/JuliusBrussee/caveman-cli/issues"
+	},
+	"publishConfig": {
+		"access": "public"
 	}
 }

@@ -15,7 +15,7 @@
   <a href="https://github.com/JuliusBrussee/caveman-cli/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-2ea043?style=flat-square" alt="MIT License" /></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D20-2ea043?style=flat-square" alt="Node.js 20+" /></a>
   <a href="https://github.com/JuliusBrussee/caveman-cli/actions"><img src="https://img.shields.io/github/actions/workflow/status/JuliusBrussee/caveman-cli/ci.yml?branch=main&label=ci&style=flat-square" alt="CI" /></a>
-  <a href="https://cave.sh/docs"><img src="https://img.shields.io/badge/docs-cave.sh-d97757?style=flat-square" alt="Docs" /></a>
+  <a href="docs/index.md"><img src="https://img.shields.io/badge/docs-getcaveman.dev-d97757?style=flat-square" alt="Docs" /></a>
 </p>
 
 <p>
@@ -80,18 +80,21 @@ caveman --goal "ship feature X"         # autonomous loop
 # npm (any platform with Node 20+) — same as above
 npm install -g caveman-code
 
+# pnpm / yarn / bun work too
+pnpm add -g caveman-code
+yarn global add caveman-code
+bun add -g caveman-code
+
 # Homebrew (macOS / Linux)
-brew tap juliusbrussee/caveman-code https://github.com/JuliusBrussee/caveman-cli && brew install caveman-code
+brew tap juliusbrussee/caveman-code https://github.com/JuliusBrussee/caveman-cli
+brew install caveman-code
 
 # Docker
 docker run --rm -it -v "$PWD:/work" ghcr.io/juliusbrussee/caveman-cli:latest
-
-# Windows (PowerShell)
-irm https://cave.sh/install.ps1 | iex
 ```
 
 Auto-update channels (`stable`, `beta`, `canary`) and headless / CI install: see
-[docs/getting-started/installation](https://cave.sh/docs/getting-started/installation).
+[docs/getting-started/installation.md](docs/getting-started/installation.md).
 
 </details>
 
@@ -119,7 +122,7 @@ caveman --goal "ship payments v2"             # autonomous Ralph loop
 > aliases of the same command. The npm package is `caveman-code`.
 
 Type `/` inside the TUI for the full slash-command list. Or browse
-[docs/reference/slash-commands](https://cave.sh/docs/reference/slash-commands).
+[docs/reference/slash-commands.md](docs/reference/slash-commands.md).
 
 ---
 
@@ -127,15 +130,15 @@ Type `/` inside the TUI for the full slash-command list. Or browse
 
 | Goal | Where to look |
 |---|---|
-| Try caveman right now | [Quickstart](https://cave.sh/docs/getting-started/quickstart) |
-| Migrate from Claude Code (paste your config) | [Migration guide](https://cave.sh/docs/migration/from-claude-code) |
-| Migrate from Codex | [Codex migration](https://cave.sh/docs/migration/from-codex) |
-| Migrate from Aider (repo map + edit-formats are first-class) | [Aider migration](https://cave.sh/docs/migration/from-aider) |
-| Use my ChatGPT Plus / Claude Pro / Copilot subscription | [Auth & Providers](https://cave.sh/docs/getting-started/auth) |
-| Compare caveman-code vs the field | [Comparison](https://cave.sh/docs/comparison) |
-| Run caveman headless in CI | [Cookbook → caveman exec](https://cave.sh/docs/cookbook#cave-exec-in-github-actions) |
-| Author a slash command, skill, or subagent | [Skills & Commands](https://cave.sh/docs/reference/slash-commands) |
-| Read everything as one file (LLM-friendly) | [llms.txt](https://cave.sh/llms.txt) |
+| Try caveman right now | [Quickstart](docs/getting-started/quickstart.md) |
+| Migrate from Claude Code (paste your config) | [Migration guide](docs/migration/from-claude-code.md) |
+| Migrate from Codex | [Codex migration](docs/migration/from-codex.md) |
+| Migrate from Aider (repo map + edit-formats are first-class) | [Aider migration](docs/migration/from-aider.md) |
+| Use my ChatGPT Plus / Claude Pro / Copilot subscription | [Auth & Providers](docs/getting-started/auth.md) |
+| Compare caveman-code vs the field | [Comparison](docs/comparison.md) |
+| Run caveman headless in CI | [Cookbook → caveman exec](docs/cookbook.md) |
+| Author a slash command, skill, or subagent | [Skills & Commands](docs/reference/slash-commands.md) |
+| Read everything as one file (LLM-friendly) | [llms.txt](llms.txt) |
 
 ---
 
@@ -178,7 +181,7 @@ Full changelog: [CHANGELOG.md](CHANGELOG.md).
 | Persistent semantic memory (cavemem) | **yes** | MEMORY.md only | no | no | no |
 | MIT open source | **yes** | closed | Apache-2.0 | Apache-2.0 | MIT |
 
-Full table including Crush: [docs/comparison](https://cave.sh/docs/comparison).
+Full table including Crush: [docs/comparison.md](docs/comparison.md).
 
 ---
 
@@ -296,7 +299,7 @@ caveman --caveman-mode lite       # only system-prompt compression
 caveman --no-caveman-mode         # disable
 ```
 
-[Reference →](https://cave.sh/docs/reference/tools)
+[Reference →](docs/reference/recipes.md)
 
 </details>
 
@@ -330,7 +333,7 @@ isolation: worktree
 Five default agents shipped: `Explore`, `Reviewer`, `Tester`, `Implementer`, `Critic`.
 Spawn from any session via the `Task` tool.
 
-[Subagents reference →](https://cave.sh/docs/reference/subagents)
+[Subagents reference →](docs/reference/slash-commands.md)
 
 </details>
 
@@ -361,7 +364,7 @@ caveman --fork <path|id>      # fork into new file
 
 **Custom** — Any OpenAI-/Anthropic-/Google-compatible endpoint via `~/.cave/agent/models.json`.
 
-[Auth & Providers →](https://cave.sh/docs/getting-started/auth)
+[Auth & Providers →](docs/getting-started/auth.md)
 
 </details>
 
@@ -387,7 +390,7 @@ caveman mcp login <name>         # OAuth dance
 caveman mcp-server               # run caveman-code itself as an MCP server (Codex-compatible)
 ```
 
-[Migration guide →](https://cave.sh/docs/migration/from-claude-code)
+[Migration guide →](docs/migration/from-claude-code.md)
 
 </details>
 
@@ -404,7 +407,7 @@ The agent has two native tools: `memory_search` and `memory_save`. Recall is aut
 /memory sync --from claude     # import Claude Code's MEMORY.md
 ```
 
-[Memory reference →](https://cave.sh/docs/reference/memory)
+[Memory reference →](docs/reference/mcp.md)
 
 </details>
 
@@ -432,7 +435,7 @@ caveman list                          # list sessions
 
 Sessions live in SQLite and survive SSH drops. Worker mode: prepend `&` to any prompt to dispatch to a registered remote `caveman worker`.
 
-[Daemon reference →](https://cave.sh/docs/reference/daemon)
+[Daemon reference →](docs/reference/daemon.md)
 
 </details>
 
@@ -458,7 +461,7 @@ caveman exec "lint and fix" --output-schema schema.json  # CI mode with structur
 ```
 
 The SDK ships as `@caveman-code/sdk` (openapi-generated TS client for the caveman-code daemon HTTP+WS API).
-[API reference →](https://cave.sh/docs/api)
+[API reference →](docs/api.md)
 
 </details>
 
@@ -601,7 +604,7 @@ If your project is missing here and we should credit you, [open an issue](https:
 - 🐛 **Issues** — [github.com/JuliusBrussee/caveman-cli/issues](https://github.com/JuliusBrussee/caveman-cli/issues)
 - 🚢 **Releases** — [github.com/JuliusBrussee/caveman-cli/releases](https://github.com/JuliusBrussee/caveman-cli/releases)
 - 📰 **Changelog** — [CHANGELOG.md](CHANGELOG.md) (auto-generated from conventional commits on tag push)
-- 📚 **Docs** — [cave.sh/docs](https://cave.sh/docs)
+- 📚 **Docs** — [docs/](docs/index.md) (live site coming soon at [getcaveman.dev](https://getcaveman.dev))
 
 ---
 

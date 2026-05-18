@@ -44,6 +44,16 @@ collect.sh
 .forge/
 packages/*/.forge/
 
+# Internal scratch / state — never publish
+.cavekit/
+.cave/goal/
+context/reports/
+AUDIT-REPORT.md
+next_steps.md
+*.diff
+todo.md
+TODO.md
+
 # Honest-bench per-run logs (artifacts under research/results/honest-bench-<date>/
 # kept out of git — CSV+JSON top-level files are committed for audit)
 /research/results/honest-bench-*/

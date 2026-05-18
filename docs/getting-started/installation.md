@@ -5,46 +5,47 @@ description: Install Caveman Code on macOS, Linux, Windows, or in Docker.
 
 # Install
 
-The canonical install is the curl-bash one-liner. Everything else is a fallback for users who can't or won't run it.
+npm is the primary install path. Native binaries via Homebrew / Docker / direct download are also available.
 
 <CopyForLlms />
 
-## Canonical
+## Canonical (npm)
+
+Requires Node.js 20+:
 
 ```bash
-curl -fsSL https://cave.sh/install | bash
+npm install -g caveman-code
 ```
 
-This:
+The package installs two binaries — `caveman` (primary) and `caveman-code` (alias). Either works.
 
-1. Detects your OS and architecture (macOS Intel / ARM, Linux x86_64 / ARM64).
-2. Downloads the latest release tarball from GitHub releases.
-3. Extracts to `~/.cave/versions/<tag>/` (or `/usr/local/lib/cave/<tag>/` for root installs).
-4. Symlinks the `caveman` binary onto your PATH.
-5. Keeps the **last 2 versions** so you can `caveman update --rollback`.
+```bash
+caveman --version
+caveman
+```
 
-The script is idempotent — running it again upgrades in place.
+Works on macOS, Linux, Windows (PowerShell + WSL). Same package on every platform.
+
+::: tip Faster installs
+pnpm, yarn, and bun all work too:
+
+```bash
+pnpm add -g caveman-code
+yarn global add caveman-code
+bun add -g caveman-code
+```
+:::
 
 ## Other paths
 
 ::: details Homebrew (macOS, Linux)
 
 ```bash
-brew tap juliusbrussee/cave https://github.com/JuliusBrussee/caveman-cli
-brew install caveman
+brew tap juliusbrussee/caveman-code https://github.com/JuliusBrussee/caveman-cli
+brew install caveman-code
 ```
 
 The tap is auto-updated by the release pipeline.
-
-:::
-
-::: details npm (any platform with Node 20+)
-
-```bash
-npm install -g caveman-code
-```
-
-This installs Caveman Code as an npm package. Useful in CI where Node is already available.
 
 :::
 
@@ -58,13 +59,13 @@ Mounts your working directory into `/work`. The image runs as a non-root user.
 
 :::
 
-::: details Windows (PowerShell)
+::: details Windows
 
 ```powershell
-irm https://cave.sh/install.ps1 | iex
+npm install -g caveman-code
 ```
 
-Native Windows support is a preview. WSL is the supported path; the PS installer covers basic terminal usage.
+The npm package works on Windows PowerShell and WSL. WSL is the supported terminal path.
 
 :::
 
@@ -122,7 +123,7 @@ Sessions live in `~/.cave/sessions/`. Memory (cavemem) lives in `~/.cavemem/` an
 ## Headless / CI install
 
 ```bash
-curl -fsSL https://cave.sh/install | CAVE_VERSION=v0.30.2 CAVE_NO_PROMPT=1 bash
+npm install -g caveman-code@0.65.2   # pin a version for reproducible CI
 ```
 
-Pin the version for reproducible CI. See [`caveman exec` mode](/cookbook#cave-exec-in-github-actions) for using caveman inside GitHub Actions.
+See [`caveman exec` mode](/cookbook) for using caveman inside GitHub Actions.

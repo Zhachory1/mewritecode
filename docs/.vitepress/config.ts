@@ -1,7 +1,7 @@
 import { defineConfig } from "vitepress";
 
 // Cave docs site — VitePress.
-// Live at https://cave.sh/docs (deploy target).
+// Live at https://getcaveman.dev/docs (deploy target).
 // Sidebar mirrors the WS12 spec section list.
 
 export default defineConfig({
@@ -11,7 +11,7 @@ export default defineConfig({
     lastUpdated: true,
     cleanUrls: true,
     base: "/docs/",
-    sitemap: { hostname: "https://cave.sh" },
+    sitemap: { hostname: "https://getcaveman.dev" },
 
     head: [
         ["link", { rel: "icon", href: "/docs/favicon.svg", type: "image/svg+xml" }],
@@ -26,7 +26,7 @@ export default defineConfig({
                     "2x fewer tokens than Codex CLI on identical gpt-5.5 tasks. 20+ provider OAuth. Plan mode, subagents, MCP, sandbox, hooks. MIT.",
             },
         ],
-        ["meta", { property: "og:url", content: "https://cave.sh/docs/" }],
+        ["meta", { property: "og:url", content: "https://getcaveman.dev/docs/" }],
     ],
 
     themeConfig: {

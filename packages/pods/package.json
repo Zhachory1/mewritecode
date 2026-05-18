@@ -36,5 +36,12 @@
 		"@caveman-code/agent": "^0.65.2",
 		"chalk": "^5.5.0"
 	},
-	"devDependencies": {}
+	"devDependencies": {},
+	"homepage": "https://github.com/JuliusBrussee/caveman-cli#readme",
+	"bugs": {
+		"url": "https://github.com/JuliusBrussee/caveman-cli/issues"
+	},
+	"publishConfig": {
+		"access": "public"
+	}
 }

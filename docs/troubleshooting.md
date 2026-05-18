@@ -33,7 +33,11 @@ chown -R "$USER" ~/.cave
 
 ### Apple silicon: `bad CPU type in executable`
 
-You downloaded the x86_64 binary on an ARM Mac. Re-run `curl -fsSL https://cave.sh/install | bash` — the installer detects ARM64.
+You downloaded an x86_64 binary on an ARM Mac. Re-install via npm — the package is platform-agnostic:
+
+```bash
+npm install -g caveman-code
+```
 
 ## Auth
 

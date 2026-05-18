@@ -2,7 +2,7 @@
 #
 # Cave installer — canonical curl-pipe-bash entrypoint.
 #
-#   curl -fsSL https://cave.sh/install | bash
+#   curl -fsSL https://getcaveman.dev/install | bash
 #
 # Extracts the full release tarball (binary + theme/, export-html/,
 # photon_rs_bg.wasm, docs/, examples/) into a versioned dir and symlinks

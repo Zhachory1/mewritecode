@@ -1,6 +1,6 @@
 # Caveman Code Docs
 
-VitePress source for [cave.sh/docs](https://cave.sh/docs).
+VitePress source for [getcaveman.dev/docs](https://getcaveman.dev/docs).
 
 ## Local dev
 
@@ -43,7 +43,7 @@ npm run preview      # serves the built site
 
 ## Deploy
 
-The site builds to `docs/.vitepress/dist/`. The deploy target is `cave.sh/docs/` — base URL is `/docs/` (set in `.vitepress/config.ts`).
+The site builds to `docs/.vitepress/dist/`. The deploy target is `getcaveman.dev/docs/` — base URL is `/docs/` (set in `.vitepress/config.ts`).
 
 A GitHub Actions workflow rebuilds the site on push to `main` and uploads to GitHub Pages or the configured static host. See `.github/workflows/docs.yml` (out of scope for this initial scaffold; track via WS11 release pipeline).
 

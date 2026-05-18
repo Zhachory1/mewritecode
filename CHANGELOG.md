@@ -12,7 +12,7 @@ Release notes from `v0.30.0` onwards are auto-generated from
 
 ### Added
 
-- **Docs site** — VitePress site at `cave.sh/docs` (replaces the previous
+- **Docs site** — VitePress site at `getcaveman.dev/docs` (replaces the previous
   Astro Starlight scaffold). Sections: Quickstart, Install, Auth, Models,
   Tools, Slash Commands, Skills, Subagents, Memory (cavemem), MCP, Hooks,
   Permissions, Plan Mode, Daemon, Recipes, Migration (Claude Code / Codex
@@ -27,9 +27,9 @@ Release notes from `v0.30.0` onwards are auto-generated from
   opencode, sourced from the v2 master plan §3.
 - **Migration guides** — zero-migration playbooks for Claude Code, Codex,
   and Aider users.
-- **README rewrite** — single canonical install (`curl -fsSL
-  https://cave.sh/install | bash`), 30s GIF, "I want to..." router, link to
-  comparison, link to Discord, monorepo table at the bottom.
+- **README rewrite** — single canonical install (`npm install -g caveman-code`),
+  "I want to..." router, link to comparison, link to Discord, monorepo table
+  at the bottom.
 
 ### Changed
 

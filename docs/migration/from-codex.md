@@ -13,7 +13,7 @@ Codex (OpenAI's terminal agent) and Caveman Code agree on most file formats. AGE
 
 ```bash
 # 1. Install
-curl -fsSL https://cave.sh/install | bash
+npm install -g caveman-code
 
 # 2. Project context
 #    Codex's AGENTS.md → caveman-code reads it directly. No copy needed.

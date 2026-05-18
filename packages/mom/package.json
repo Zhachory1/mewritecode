@@ -50,5 +50,12 @@
 	},
 	"engines": {
 		"node": ">=20.0.0"
+	},
+	"homepage": "https://github.com/JuliusBrussee/caveman-cli#readme",
+	"bugs": {
+		"url": "https://github.com/JuliusBrussee/caveman-cli/issues"
+	},
+	"publishConfig": {
+		"access": "public"
 	}
 }

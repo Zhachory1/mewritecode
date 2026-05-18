@@ -6,7 +6,7 @@
 # preserves backward compatibility for existing CI/docs that referenced
 # `install.sh` at the repository root.
 #
-# Webserver entrypoint: https://cave.sh/install -> installers/install.sh
+# Webserver entrypoint: https://getcaveman.dev/install -> installers/install.sh
 #
 # Forwards every flag and env var verbatim.
 
