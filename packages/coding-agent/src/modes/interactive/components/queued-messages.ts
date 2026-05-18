@@ -1,4 +1,12 @@
-import { Container, getKeybindings, type OverlayHandle, Spacer, Text, type TUI, truncateToWidth } from "@caveman-code/tui";
+import {
+	Container,
+	getKeybindings,
+	type OverlayHandle,
+	Spacer,
+	Text,
+	type TUI,
+	truncateToWidth,
+} from "@caveman-code/tui";
 import { theme } from "../theme/theme.js";
 
 export type QueuedMode = "steer" | "followUp";

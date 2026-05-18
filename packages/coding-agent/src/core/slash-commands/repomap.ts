@@ -15,7 +15,7 @@
  * or `cave repomap` CLI without re-importing the TUI stack.
  */
 
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { type Dirent, existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { repomap as repomapNs } from "@caveman-code/agent";
 
@@ -85,7 +85,7 @@ export function collectSourceFiles(
 
 	function walk(dir: string): void {
 		if (out.length >= maxFiles) return;
-		let entries;
+		let entries: Dirent[];
 		try {
 			entries = readdirSync(dir, { withFileTypes: true });
 		} catch {
@@ -139,9 +139,6 @@ export async function runRepomapCommand(args: string, io: RepomapCommandIO): Pro
 			chatState.addedFiles.length = 0;
 			chatState.mentionedFiles.length = 0;
 			return ok("repomap: chat-state reset.");
-		case "help":
-		case "--help":
-		case "-h":
 		default:
 			return ok(formatHelp());
 	}

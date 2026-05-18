@@ -96,7 +96,7 @@ function caveVersion(): string {
 
 async function main() {
 	const opts = parseArgs(process.argv.slice(2));
-	const stderr = (s: string) => process.stderr.write(s + "\n");
+	const stderr = (s: string) => process.stderr.write(`${s}\n`);
 
 	stderr(`## CAVE Compression Proof — ${opts.smoke ? "SMOKE" : "FULL"} run`);
 	stderr(`outDir=${opts.outDir}`);
@@ -320,6 +320,6 @@ function readSessionTranscript(path: string): { messages: Array<{ role: "user" |
 
 main().catch((e) => {
 	process.stderr.write(`\nORCHESTRATOR FAILED: ${String(e)}\n`);
-	if (e instanceof Error && e.stack) process.stderr.write(e.stack + "\n");
+	if (e instanceof Error && e.stack) process.stderr.write(`${e.stack}\n`);
 	process.exit(2);
 });

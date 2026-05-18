@@ -157,7 +157,7 @@ export class SubagentOverlay implements Component {
 		if (visibleWidth(s) <= max) return s;
 		// Coarse truncation; ANSI-aware truncation lives in utils but for the
 		// overlay row we never embed ANSI (theme is applied to the whole row).
-		return s.slice(0, Math.max(0, max - 1)) + "…";
+		return `${s.slice(0, Math.max(0, max - 1))}…`;
 	}
 
 	private padRight(s: string, width: number): string {

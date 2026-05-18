@@ -55,7 +55,7 @@ export type EditSymbolResult =
 	| EditSymbolUnsupported
 	| EditSymbolParseError;
 
-function lineRange(source: string, startLine: number, endLine: number): [number, number] {
+function lineRange(_source: string, startLine: number, endLine: number): [number, number] {
 	return [startLine, endLine];
 }
 

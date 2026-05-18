@@ -221,7 +221,7 @@ async function spawnSubagent(opts: SpawnOptions): Promise<SpawnResult> {
 
 	let tmpDir: string | null = null;
 	let promptPath: string | null = null;
-	if (opts.agent.prompt && opts.agent.prompt.trim()) {
+	if (opts.agent.prompt?.trim()) {
 		tmpDir = mkdtempSync(join(tmpdir(), "cave-subagent-"));
 		promptPath = join(tmpDir, `${opts.agent.name}.md`);
 		writeFileSync(promptPath, opts.agent.prompt, { encoding: "utf-8", mode: 0o600 });
@@ -382,7 +382,7 @@ function spawnSubagentBackground(opts: SpawnBackgroundOptions): {
 
 	let tmpDir: string | null = null;
 	let promptPath: string | null = null;
-	if (opts.agent.prompt && opts.agent.prompt.trim()) {
+	if (opts.agent.prompt?.trim()) {
 		tmpDir = mkdtempSync(join(tmpdir(), "cave-subagent-"));
 		promptPath = join(tmpDir, `${opts.agent.name}.md`);
 		writeFileSync(promptPath, opts.agent.prompt, { encoding: "utf-8", mode: 0o600 });

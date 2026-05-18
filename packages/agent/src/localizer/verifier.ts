@@ -1,7 +1,5 @@
 // T-126..T-130: verifier with best-of-N + executable ranking.
 
-import type { LocalizerCandidate } from "./localizer.js";
-
 export interface Candidate {
 	id: string;
 	diff: string;

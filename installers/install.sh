@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 #
-# Cave installer — canonical curl-pipe-bash entrypoint.
+# Caveman Code tarball installer — used by the Homebrew formula and CI
+# smoke tests. End users should install via npm:
 #
-#   curl -fsSL https://getcaveman.dev/install | bash
+#   npm install -g caveman-code
 #
 # Extracts the full release tarball (binary + theme/, export-html/,
 # photon_rs_bg.wasm, docs/, examples/) into a versioned dir and symlinks

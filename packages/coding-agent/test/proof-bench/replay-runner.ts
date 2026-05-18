@@ -189,5 +189,5 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 		process.exit(2);
 	}
 	const rows = replayAll(files);
-	process.stdout.write(JSON.stringify(rows, null, 2) + "\n");
+	process.stdout.write(`${JSON.stringify(rows, null, 2)}\n`);
 }

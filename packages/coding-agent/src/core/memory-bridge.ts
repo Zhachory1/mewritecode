@@ -66,7 +66,7 @@ export function locateClaudeMemory(cwd: string, home = homedir()): ClaudeMemoryL
 				const indexFile = join(memDir, "MEMORY.md");
 				if (existsSync(indexFile)) {
 					const body = safeRead(indexFile, 4_096);
-					if (body && body.toLowerCase().includes(basename(cwd).toLowerCase())) {
+					if (body?.toLowerCase().includes(basename(cwd).toLowerCase())) {
 						return { root: memDir, indexFile, exists: true };
 					}
 				}
@@ -173,11 +173,11 @@ export function composeStartupPrelude(args: {
 }): string {
 	const max = args.maxChars ?? 2_000;
 	const parts: string[] = [];
-	if (args.memoryIndex && args.memoryIndex.trim()) {
+	if (args.memoryIndex?.trim()) {
 		parts.push("[claude-code MEMORY.md] (first 200 lines):");
 		parts.push(args.memoryIndex.trim());
 	}
-	if (args.cavememSnippet && args.cavememSnippet.trim()) {
+	if (args.cavememSnippet?.trim()) {
 		parts.push(args.cavememSnippet.trim());
 	}
 	if (parts.length === 0) return "";

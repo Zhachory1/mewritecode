@@ -27,6 +27,16 @@ class FakeTerminal implements Terminal {
 	clearFromCursor(): void {}
 	clearScreen(): void {}
 	setTitle(_title: string): void {}
+	enterAltScreen(): void {}
+	leaveAltScreen(): void {}
+	enableMouseTracking(): void {}
+	disableMouseTracking(): void {}
+	isTTY(): boolean {
+		return false;
+	}
+	async queryOsc(_sequence: string, _responsePrefix: string, _timeoutMs: number): Promise<string | null> {
+		return null;
+	}
 
 	get fullClearCount(): number {
 		return this.writes.filter((write) => write.includes("\x1b[2J\x1b[H\x1b[3J")).length;

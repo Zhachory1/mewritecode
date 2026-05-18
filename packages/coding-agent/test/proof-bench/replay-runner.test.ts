@@ -62,7 +62,7 @@ function writeSyntheticSession(dir: string): string {
 		);
 	}
 
-	writeFileSync(path, lines.join("\n") + "\n");
+	writeFileSync(path, `${lines.join("\n")}\n`);
 	return path;
 }
 

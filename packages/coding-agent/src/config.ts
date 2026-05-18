@@ -59,7 +59,6 @@ export function detectInstallMethod(): InstallMethod {
  * with reinstall via the install script as the fallback. The `packageName`
  * argument is kept for API compatibility but no longer used.
  */
-// biome-ignore lint/correctness/noUnusedFunctionParameters: kept for API compatibility
 export function getUpdateInstruction(_packageName: string): string {
 	const method = detectInstallMethod();
 	if (method === "bun-binary") {

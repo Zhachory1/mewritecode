@@ -17,7 +17,7 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import type { AgentSessionRuntime } from "../../core/agent-session-runtime.js";
-import { flushRawStdout, writeRawStdout } from "../../core/output-guard.js";
+import { flushRawStdout } from "../../core/output-guard.js";
 import { runPrintMode } from "../print-mode.js";
 import { type CostInfo, emitEvent, translateAgentEvent } from "./event-stream.js";
 import {
@@ -80,7 +80,7 @@ export interface ExecModeOptions {
  * Returns an exit code (not throws) — the CLI layer calls process.exit().
  */
 export async function runExecMode(runtime: AgentSessionRuntime, options: ExecModeOptions): Promise<number> {
-	const { prompt, json = false, outputSchema, outputLastMessage, timeoutMs } = options;
+	const { outputSchema, timeoutMs, json = false } = options;
 
 	// Load schema early so a bad schema path exits before we touch the model.
 	let schema: Record<string, unknown> | undefined;

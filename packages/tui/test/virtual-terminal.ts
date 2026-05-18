@@ -100,6 +100,18 @@ export class VirtualTerminal implements Terminal {
 		this.xterm.write(`\x1b]0;${title}\x07`);
 	}
 
+	// Optional Terminal interface members — no-op for virtual terminal.
+	enterAltScreen(): void {}
+	leaveAltScreen(): void {}
+	enableMouseTracking(): void {}
+	disableMouseTracking(): void {}
+	isTTY(): boolean {
+		return false;
+	}
+	async queryOsc(_sequence: string, _responsePrefix: string, _timeoutMs: number): Promise<string | null> {
+		return null;
+	}
+
 	// Test-specific methods not in Terminal interface
 
 	/**

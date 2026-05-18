@@ -20,7 +20,7 @@ export class UserMessageComponent implements Component {
 	}
 
 	render(width: number): string[] {
-		const prefix = theme.fg("accent", "│") + " ";
+		const prefix = `${theme.fg("accent", "│")} `;
 		const contentLines = this.markdown.render(width - 2);
 		const lines = contentLines.map((line) => prefix + line);
 

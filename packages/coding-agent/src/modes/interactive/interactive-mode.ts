@@ -55,7 +55,12 @@ import {
 	getUpdateInstruction,
 	VERSION,
 } from "../../config.js";
-import { type AgentSession, type AgentSessionEvent, parseSkillBlock, promptTimingMark } from "../../core/agent-session.js";
+import {
+	type AgentSession,
+	type AgentSessionEvent,
+	parseSkillBlock,
+	promptTimingMark,
+} from "../../core/agent-session.js";
 import type { AgentSessionRuntime } from "../../core/agent-session-runtime.js";
 import { type ArchitectModeState, defaultArchitectState } from "../../core/chat-modes/architect.js";
 import { formatSessionEndSummary } from "../../core/cost-formatter.js";

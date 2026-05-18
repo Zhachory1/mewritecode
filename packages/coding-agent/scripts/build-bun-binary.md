@@ -23,11 +23,9 @@ build; exit code 0 + output containing the semver is the smoke gate.
 
 ## Distribution channels (T-139)
 
-- npm: `npm publish` from the repo root
-- brew: `brew install caveman` (tap hosted at `cave-cli/homebrew-cave`)
-- curl: `curl -fsSL https://getcaveman.dev/install | sh`
-- scoop: `scoop install caveman`
-- docker: `ghcr.io/cave-cli/cave:latest`
+- npm: `npm install -g caveman-code` (primary install path)
+- brew: `brew install caveman-code` (tap at `juliusbrussee/caveman-code`)
+- docker: `ghcr.io/juliusbrussee/caveman-cli:latest`
 
 Each channel has a post-install smoke test: `caveman --version` must exit 0
 and print the current version string. Failing smoke fails the release.

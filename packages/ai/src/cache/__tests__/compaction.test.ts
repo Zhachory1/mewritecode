@@ -1,7 +1,7 @@
 // T-044..T-054
 import { describe, expect, it } from "vitest";
 import { KeepaliveScheduler, summarize, type Turn, trimMiddle } from "../compaction.js";
-import { type CacheRetention, type CacheUsageReport, resolveRetention, totalInputTokens } from "../policy.js";
+import { type CacheUsageReport, resolveRetention, totalInputTokens } from "../policy.js";
 
 describe("cache usage report (T-044, T-046)", () => {
 	it("exposes three token fields", () => {

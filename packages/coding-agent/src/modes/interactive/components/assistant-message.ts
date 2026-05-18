@@ -9,8 +9,9 @@ export class AssistantMessageComponent extends Container {
 	private contentContainer: Container;
 	private hideThinkingBlock: boolean;
 	private markdownTheme: MarkdownTheme;
-	private hiddenThinkingLabel: string;
 	private lastMessage?: AssistantMessage;
+	// biome-ignore lint/correctness/noUnusedPrivateClassMembers: set via setHiddenThinkingLabel, reserved for future thinking-label rendering
+	private hiddenThinkingLabel: string;
 
 	constructor(
 		message?: AssistantMessage,
@@ -85,7 +86,7 @@ export class AssistantMessageComponent extends Container {
 					});
 					this.contentContainer.addChild({
 						render: (width: number) => {
-							const prefix = theme.fg("dim", "│") + " ";
+							const prefix = `${theme.fg("dim", "│")} `;
 							return thinkingMd.render(width - 2).map((line) => prefix + line);
 						},
 						invalidate: () => thinkingMd.invalidate(),

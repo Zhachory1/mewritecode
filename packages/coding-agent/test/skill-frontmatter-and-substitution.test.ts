@@ -69,7 +69,7 @@ describe("WS5 skills — frontmatter parser", () => {
 		expect(skill.description).toContain("exercises every");
 		expect(skill.disableModelInvocation).toBe(false);
 
-		const fm = skill.frontmatter;
+		const fm = skill.frontmatter!;
 		expect(fm["argument-hint"]).toBe("<scope> [--flag]");
 		expect(fm.arguments).toBeDefined();
 		expect(fm["allowed-tools"]).toEqual(["read", "bash"]);

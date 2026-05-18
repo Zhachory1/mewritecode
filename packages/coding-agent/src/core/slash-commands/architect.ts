@@ -57,9 +57,6 @@ export async function runArchitectCommand(args: string, io: ArchitectCommandIO =
 		}
 		case "set":
 			return runSet(argv.slice(1), current);
-		case "help":
-		case "--help":
-		case "-h":
 		default:
 			return { exitCode: 0, output: formatHelp(), state: current };
 	}

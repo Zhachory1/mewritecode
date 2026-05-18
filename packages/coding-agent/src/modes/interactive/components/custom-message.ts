@@ -47,7 +47,7 @@ export class CustomMessageComponent implements Component {
 		}
 
 		// Default rendering: left-bordered
-		const prefix = theme.fg("customMessageLabel", "│") + " ";
+		const prefix = `${theme.fg("customMessageLabel", "│")} `;
 		return this.currentContent.render(width - 2).map((line) => prefix + line);
 	}
 

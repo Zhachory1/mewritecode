@@ -16,10 +16,10 @@ export class StreamingMarkdown implements Component {
 
 	constructor(
 		initial: string,
-		private readonly paddingX: number,
-		private readonly paddingY: number,
-		private readonly theme: MarkdownTheme,
-		private readonly defaultTextStyle?: DefaultTextStyle,
+		readonly paddingX: number,
+		readonly paddingY: number,
+		readonly theme: MarkdownTheme,
+		readonly defaultTextStyle?: DefaultTextStyle,
 	) {
 		this.inner = new Markdown(balancePartial(initial), paddingX, paddingY, theme, defaultTextStyle);
 		this.rawBuffer = initial;

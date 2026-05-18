@@ -311,7 +311,6 @@ function statusBadge(s: DoctorCheckStatus): string {
 			return chalk.yellow("[warn]");
 		case "fail":
 			return chalk.red("[fail]");
-		case "info":
 		default:
 			return chalk.dim("[info]");
 	}

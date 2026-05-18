@@ -10,11 +10,10 @@ import type { ParsedSymbol, RepoLanguage } from "./parser.js";
 /*  the module stays loadable even when the dep is missing.           */
 /* ------------------------------------------------------------------ */
 
-// biome-ignore lint/suspicious/noExplicitAny: dynamic import type
+// Local aliases for web-tree-sitter values — typed `any` because the dep is
+// optional/dynamic and the types disagree across versions.
 type WTSParser = any;
-// biome-ignore lint/suspicious/noExplicitAny: dynamic import type
 type WTSLanguage = any;
-// biome-ignore lint/suspicious/noExplicitAny: dynamic import type
 type WTSTreeCursor = any;
 
 /* ------------------------------------------------------------------ */

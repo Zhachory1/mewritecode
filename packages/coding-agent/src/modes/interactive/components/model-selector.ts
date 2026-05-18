@@ -355,7 +355,7 @@ export class ModelSelectorComponent extends Container implements Focusable {
 		return `${badge} ${name} ${counts}${hint}`;
 	}
 
-	private renderGroupHeader(groupId: string, headerText: string, isSelected: boolean, expanded: boolean): string {
+	private renderGroupHeader(_groupId: string, headerText: string, isSelected: boolean, expanded: boolean): string {
 		const arrow = expanded ? "▼" : "▶";
 		const arrowText = isSelected ? theme.fg("accent", `${arrow} `) : theme.fg("muted", `${arrow} `);
 		const prefix = isSelected ? theme.fg("accent", "→") : " ";

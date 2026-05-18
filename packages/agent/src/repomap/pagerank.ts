@@ -52,7 +52,7 @@ export function pagerank(graph: SymbolGraph, opts: PageRankOptions = {}): Ranked
 	const n = nodeIds.length;
 	if (n === 0) return [];
 	const idx = new Map<string, number>();
-	nodeIds.forEach((id, i) => idx.set(id, i));
+	for (let i = 0; i < nodeIds.length; i++) idx.set(nodeIds[i], i);
 	const outgoing: number[][] = Array.from({ length: n }, () => []);
 	const outDegree = new Array(n).fill(0);
 	for (const edge of graph.edges) {

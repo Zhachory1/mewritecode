@@ -7,7 +7,6 @@
  * mode so behaviour stays identical.
  */
 
-import type { spawn } from "node:child_process";
 import type { SubagentResult } from "@caveman-code/agent";
 import { Text } from "@caveman-code/tui";
 import { type Static, Type } from "@sinclair/typebox";

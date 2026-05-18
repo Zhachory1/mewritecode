@@ -8,8 +8,8 @@
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 // ---------------------------------------------------------------------------
 // Helpers — fake AgentSessionRuntime
@@ -34,7 +34,7 @@ function makeSession(assistantText: string, role: "assistant" | "user" = "assist
 	};
 }
 
-function makeRuntime(assistantText: string) {
+function _makeRuntime(assistantText: string) {
 	return {
 		session: makeSession(assistantText),
 		dispose: async () => {},

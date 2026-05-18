@@ -50,6 +50,7 @@ const SOURCE_TAG: Record<SkillSourceTag, string> = {
 export class SkillsHubComponent extends Container {
 	private stage: Stage = "categories";
 	private currentCategory: SkillCategory | undefined;
+	// biome-ignore lint/correctness/noUnusedPrivateClassMembers: tracks selected skill across stage transitions; reserved for future per-skill actions
 	private currentSkill: SkillEntry | undefined;
 	private listSlot: Container;
 	private titleText: Text;

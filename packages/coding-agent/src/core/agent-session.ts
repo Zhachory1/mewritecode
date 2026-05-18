@@ -24,7 +24,13 @@ type CheckpointManagerInstance = InstanceType<typeof CheckpointManager>;
 type MemoryProviderInstance = memoryNs.MemoryProvider;
 
 import type { AssistantMessage, ImageContent, Message, Model, TextContent } from "@caveman-code/ai";
-import { ENV_VAR_BY_PROVIDER, isContextOverflow, modelsAreEqual, resetApiProviders, supportsXhigh } from "@caveman-code/ai";
+import {
+	ENV_VAR_BY_PROVIDER,
+	isContextOverflow,
+	modelsAreEqual,
+	resetApiProviders,
+	supportsXhigh,
+} from "@caveman-code/ai";
 import { getDocsPath } from "../config.js";
 import { theme } from "../modes/interactive/theme/theme.js";
 import { stripFrontmatter } from "../utils/frontmatter.js";

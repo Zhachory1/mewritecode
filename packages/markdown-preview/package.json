@@ -22,6 +22,10 @@
 		"tsconfig.json",
 		"README.md"
 	],
+	"scripts": {
+		"clean": "echo \"no build artifacts to clean\"",
+		"build": "echo \"no build step — ships .ts source as extension\""
+	},
 	"peerDependencies": {
 		"caveman-code": "*",
 		"@caveman-code/tui": "*"

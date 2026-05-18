@@ -13,7 +13,7 @@ function anthropicNormalizeToolCallId(
 
 function makeCopilotClaudeModel(): Model<"anthropic-messages"> {
 	return {
-		id: "claude-sonnet-4",
+		id: "claude-sonnet-4.5",
 		name: "Claude Sonnet 4",
 		api: "anthropic-messages",
 		provider: "github-copilot",

@@ -47,7 +47,7 @@ export class CaveClient {
 
 	private headers(extra?: Record<string, string>): Record<string, string> {
 		const h: Record<string, string> = { "content-type": "application/json", ...extra };
-		if (this.token) h["authorization"] = `Bearer ${this.token}`;
+		if (this.token) h.authorization = `Bearer ${this.token}`;
 		return h;
 	}
 
@@ -152,6 +152,7 @@ export interface AttachedSession {
 	off<K extends keyof AttachedSessionEvents>(event: K, listener: AttachedSessionEvents[K]): this;
 }
 
+// biome-ignore lint/suspicious/noUnsafeDeclarationMerging: class extends EventEmitter; interface adds strongly-typed on/once/off overloads.
 export class AttachedSession extends EventEmitter {
 	private nextId = 1;
 	private pending = new Map<number | string, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();

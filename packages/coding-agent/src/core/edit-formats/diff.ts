@@ -132,7 +132,7 @@ function findBlocks(
 			} else {
 				if (!opts.fenced && line.trim()) {
 					// Best-effort prose collection between blocks for non-fenced.
-					proseChunks.push(line + "\n");
+					proseChunks.push(`${line}\n`);
 				}
 				i++;
 			}

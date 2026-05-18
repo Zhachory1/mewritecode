@@ -32,7 +32,7 @@ export class BranchSummaryMessageComponent implements Component {
 		if (!this.currentContent) return [];
 
 		if (this.expanded) {
-			const prefix = theme.fg("customMessageLabel", "│") + " ";
+			const prefix = `${theme.fg("customMessageLabel", "│")} `;
 			return this.currentContent.render(width - 2).map((line) => prefix + line);
 		}
 		return this.currentContent.render(width);

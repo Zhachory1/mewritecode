@@ -64,7 +64,7 @@
 		}
 	},
 	"bin": {
-		"cave-ai": "./dist/cli.js"
+		"cave-ai": "dist/cli.js"
 	},
 	"files": [
 		"dist",

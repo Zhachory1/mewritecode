@@ -14,8 +14,7 @@ import AjvModule from "ajv";
 import { EXIT_SCHEMA_VALIDATION_FAILED } from "./exit-codes.js";
 
 // AJV ships as CJS with a default export — handle both module styles.
-// biome-ignore lint/suspicious/noExplicitAny: same pattern as model-registry.ts
-const Ajv = (AjvModule as any).default || AjvModule;
+const Ajv = (AjvModule as unknown as { default?: unknown }).default ?? AjvModule;
 
 export interface SchemaValidationResult {
 	ok: boolean;
@@ -52,7 +51,13 @@ export function loadSchema(schemaPath: string): Record<string, unknown> {
  * Returns EXIT_SCHEMA_VALIDATION_FAILED (2) on mismatch, 0 on success.
  */
 export function validateOutput(output: string, schema: Record<string, unknown>): SchemaValidationResult {
-	const ajv = new Ajv({ allErrors: true });
+	const AjvCtor = Ajv as unknown as new (
+		opts: unknown,
+	) => {
+		compile: (schema: unknown) => ((d: unknown) => boolean) & { errors?: unknown[] | null };
+		errorsText: (errors?: unknown[] | null) => string;
+	};
+	const ajv = new AjvCtor({ allErrors: true });
 
 	let data: unknown;
 	try {

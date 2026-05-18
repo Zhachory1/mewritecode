@@ -1,6 +1,6 @@
 // T-032: tree-sitter integration tests
 import { describe, expect, it } from "vitest";
-import { languageFor, parseFile, parseFileAsync, treeSitter } from "../repomap/parser.js";
+import { parseFile, parseFileAsync, treeSitter } from "../repomap/parser.js";
 
 describe("parseFileAsync (regex fallback)", () => {
 	it("parses TypeScript functions and classes", async () => {

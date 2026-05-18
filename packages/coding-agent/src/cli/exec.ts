@@ -172,7 +172,7 @@ async function _runExecCommand(execArgs: ExecArgs): Promise<number> {
 		};
 
 		const services = await createAgentSessionServices(serviceOptions);
-		const { settingsManager, modelRegistry } = services;
+		const { modelRegistry } = services;
 
 		const diagnostics: AgentSessionRuntimeDiagnostic[] = [...services.diagnostics];
 

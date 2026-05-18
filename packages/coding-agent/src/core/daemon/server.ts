@@ -150,7 +150,7 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 
 	function authorize(req: IncomingMessage): boolean {
 		if (!opts.token) return true;
-		const auth = req.headers["authorization"];
+		const auth = req.headers.authorization;
 		if (!auth || Array.isArray(auth)) return false;
 		const m = /^Bearer\s+(.+)$/.exec(auth);
 		return !!m && m[1] === opts.token;

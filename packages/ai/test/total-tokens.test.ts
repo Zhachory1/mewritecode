@@ -246,7 +246,7 @@ describe("totalTokens field", () => {
 			"grok-3-fast - should return totalTokens equal to sum of components",
 			{ retry: 3, timeout: 60000 },
 			async () => {
-				const llm = getModel("xai", "grok-3-fast");
+				const llm = getModel("xai", "grok-2-latest");
 
 				console.log(`\nxAI / ${llm.id}:`);
 				const { first, second } = await testTotalTokensWithCache(llm, { apiKey: process.env.XAI_API_KEY });
@@ -334,7 +334,7 @@ describe("totalTokens field", () => {
 			"glm-4.5-flash - should return totalTokens equal to sum of components",
 			{ retry: 3, timeout: 60000 },
 			async () => {
-				const llm = getModel("zai", "glm-4.5-flash");
+				const llm = getModel("zai", "glm-4.5-air");
 
 				console.log(`\nz.ai / ${llm.id}:`);
 				const { first, second } = await testTotalTokensWithCache(llm, { apiKey: process.env.ZAI_API_KEY });
@@ -517,7 +517,7 @@ describe("totalTokens field", () => {
 			"meta-llama/llama-4-maverick - should return totalTokens equal to sum of components",
 			{ retry: 3, timeout: 60000 },
 			async () => {
-				const llm = getModel("openrouter", "meta-llama/llama-4-maverick");
+				const llm = getModel("openrouter", "meta-llama/llama-4-scout");
 
 				console.log(`\nOpenRouter / ${llm.id}:`);
 				const { first, second } = await testTotalTokensWithCache(llm, { apiKey: process.env.OPENROUTER_API_KEY });
@@ -557,7 +557,7 @@ describe("totalTokens field", () => {
 			"claude-sonnet-4 - should return totalTokens equal to sum of components",
 			{ retry: 3, timeout: 60000 },
 			async () => {
-				const llm = getModel("github-copilot", "claude-sonnet-4");
+				const llm = getModel("github-copilot", "claude-sonnet-4.5");
 
 				console.log(`\nGitHub Copilot / ${llm.id}:`);
 				const { first, second } = await testTotalTokensWithCache(llm, { apiKey: githubCopilotToken });

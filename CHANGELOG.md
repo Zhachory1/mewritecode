@@ -12,8 +12,8 @@ Release notes from `v0.30.0` onwards are auto-generated from
 
 ### Added
 
-- **Docs site** — VitePress site at `getcaveman.dev/docs` (replaces the previous
-  Astro Starlight scaffold). Sections: Quickstart, Install, Auth, Models,
+- **Docs site** — VitePress source under `docs/` (deploy target:
+  `getcaveman.dev`). Sections: Quickstart, Install, Auth, Models,
   Tools, Slash Commands, Skills, Subagents, Memory (cavemem), MCP, Hooks,
   Permissions, Plan Mode, Daemon, Recipes, Migration (Claude Code / Codex
   / Aider), Cookbook, Comparison, Troubleshooting, API.

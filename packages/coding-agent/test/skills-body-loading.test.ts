@@ -154,7 +154,7 @@ describe("WS5 — end-to-end command invocation against a bundled skill", () => 
 
 		const methodology = skills.find((s) => s.name === "cavekit-methodology");
 		expect(methodology).toBeDefined();
-		expect(methodology!.frontmatter["allowed-tools"]).toEqual(["read", "grep"]);
+		expect(methodology!.frontmatter!["allowed-tools"]).toEqual(["read", "grep"]);
 
 		const body = await loadSkillBody(methodology!, {
 			cwd: process.cwd(),

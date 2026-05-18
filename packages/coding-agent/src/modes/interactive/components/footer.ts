@@ -18,8 +18,9 @@ function formatTokens(count: number): string {
  * Single-line footer: path:branch  stats  model
  */
 export class FooterComponent implements Component {
-	private autoCompactEnabled = true;
 	private ambiguousModelIds: Set<string> | null = null;
+	// biome-ignore lint/correctness/noUnusedPrivateClassMembers: set from interactive-mode; reserved for future footer indicator
+	private autoCompactEnabled = false;
 
 	constructor(
 		private session: AgentSession,

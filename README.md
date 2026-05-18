@@ -74,27 +74,19 @@ caveman --goal "ship feature X"         # autonomous loop
 ```
 
 <details>
-<summary><strong>Other install paths</strong> — Homebrew · Docker · Windows · manual</summary>
+<summary><strong>Other install paths</strong> — pnpm · yarn · bun · Docker</summary>
 
 ```bash
-# npm (any platform with Node 20+) — same as above
-npm install -g caveman-code
-
-# pnpm / yarn / bun work too
+# Any package manager works
 pnpm add -g caveman-code
 yarn global add caveman-code
 bun add -g caveman-code
-
-# Homebrew (macOS / Linux)
-brew tap juliusbrussee/caveman-code https://github.com/JuliusBrussee/caveman-cli
-brew install caveman-code
 
 # Docker
 docker run --rm -it -v "$PWD:/work" ghcr.io/juliusbrussee/caveman-cli:latest
 ```
 
-Auto-update channels (`stable`, `beta`, `canary`) and headless / CI install: see
-[docs/getting-started/installation.md](docs/getting-started/installation.md).
+CI / headless install: see [docs/getting-started/installation.md](docs/getting-started/installation.md).
 
 </details>
 

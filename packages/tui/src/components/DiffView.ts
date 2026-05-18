@@ -150,7 +150,7 @@ export class DiffView implements Component {
 		const o = oldLine !== undefined ? String(oldLine) : "";
 		const n = newLine !== undefined ? String(newLine) : "";
 		const cell = kind === "add" ? n : kind === "del" ? o : n || o;
-		return cell.padStart(4, " ") + " ";
+		return `${cell.padStart(4, " ")} `;
 	}
 }
 

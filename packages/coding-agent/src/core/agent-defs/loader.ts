@@ -19,7 +19,6 @@
 
 import { normalizeFrontmatterArray, type SubagentDef, validateSubagentDef } from "@caveman-code/agent";
 import { existsSync, readdirSync, readFileSync, statSync } from "fs";
-import { homedir } from "os";
 import { basename, join, resolve } from "path";
 import { CONFIG_DIR_NAME, getAgentDir, getPackageDir } from "../../config.js";
 import { parseFrontmatter } from "../../utils/frontmatter.js";

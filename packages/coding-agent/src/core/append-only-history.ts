@@ -52,7 +52,7 @@ export class AppendOnlyHistory {
 	/** Compaction: append a summary block covering turns [0..upToTurn].
 	 *  Historical blocks remain present and unchanged — compaction is an
 	 *  append, never a rewrite. */
-	compactTo(upToTurn: number, summaryBytes: string): HistoryBlock {
+	compactTo(_upToTurn: number, summaryBytes: string): HistoryBlock {
 		if (this.blocks.length === 0) throw new Error("compact: empty history");
 		const tail = this.blocks[this.blocks.length - 1].turnIndex;
 		return this.append({

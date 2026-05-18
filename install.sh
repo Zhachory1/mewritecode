@@ -1,14 +1,12 @@
 #!/usr/bin/env bash
 #
-# Cave installer (repo-root shim).
+# Caveman Code tarball installer (repo-root shim).
 #
-# The canonical installer lives at `installers/install.sh`. This shim
-# preserves backward compatibility for existing CI/docs that referenced
-# `install.sh` at the repository root.
+# End users: install via npm — `npm install -g caveman-code`.
 #
-# Webserver entrypoint: https://getcaveman.dev/install -> installers/install.sh
-#
-# Forwards every flag and env var verbatim.
+# This shell installer is used by the Homebrew formula and CI smoke tests
+# to verify the release tarball. The canonical script lives at
+# `installers/install.sh`; this shim forwards every flag and env var.
 
 set -euo pipefail
 

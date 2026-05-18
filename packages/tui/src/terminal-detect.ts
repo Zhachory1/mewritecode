@@ -53,7 +53,7 @@ export interface ProbeResult {
 	classification: BackgroundClassification;
 }
 
-function getEnv(name: string): string | undefined {
+function _getEnv(name: string): string | undefined {
 	const v = process.env[name];
 	return v === undefined || v === "" ? undefined : v;
 }

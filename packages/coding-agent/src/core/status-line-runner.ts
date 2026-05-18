@@ -9,7 +9,12 @@
  */
 import { spawn } from "node:child_process";
 import type { StatusLineContext, StatusLineRenderer, StatusLineResult, StatusLineSettings } from "@caveman-code/tui";
-import { parseStatusLineSettings, renderStatusLineDefault, renderStatusLineDetailed, sanitizeOneLine } from "@caveman-code/tui";
+import {
+	parseStatusLineSettings,
+	renderStatusLineDefault,
+	renderStatusLineDetailed,
+	sanitizeOneLine,
+} from "@caveman-code/tui";
 
 export const STATUS_LINE_TIMEOUT_MS = 1500;
 

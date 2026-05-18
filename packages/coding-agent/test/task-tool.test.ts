@@ -27,7 +27,7 @@ interface FakeAgentResponse {
 }
 
 function makeMockSpawn(responses: Record<string, FakeAgentResponse>) {
-	return ((command: string, args: readonly string[]) => {
+	return ((_command: string, args: readonly string[]) => {
 		// Find the prompt — the last positional arg (after `Task: `).
 		const taskArg = args.find((a) => typeof a === "string" && a.startsWith("Task: "));
 		const taskText = (taskArg ?? "").replace(/^Task: /, "");
@@ -51,14 +51,13 @@ function makeMockSpawn(responses: Record<string, FakeAgentResponse>) {
 		const delay = resp.delayMs ?? 5;
 		setTimeout(() => {
 			if (resp.finalText) {
-				const event =
-					JSON.stringify({
-						type: "message_end",
-						message: {
-							role: "assistant",
-							content: [{ type: "text", text: resp.finalText }],
-						},
-					}) + "\n";
+				const event = `${JSON.stringify({
+					type: "message_end",
+					message: {
+						role: "assistant",
+						content: [{ type: "text", text: resp.finalText }],
+					},
+				})}\n`;
 				stdout.emit("data", Buffer.from(event));
 			}
 			if (resp.stderr) {
@@ -204,7 +203,7 @@ describe("Task tool — single-mode happy path (mocked LLM)", () => {
 describe("Task tool — chain-mode with {previous} substitution", () => {
 	it("threads each step's output into the next via {previous}", async () => {
 		const calls: string[] = [];
-		const mock = ((command: string, args: readonly string[]) => {
+		const mock = ((_command: string, args: readonly string[]) => {
 			const taskArg = args.find((a) => typeof a === "string" && a.startsWith("Task: ")) ?? "";
 			const taskText = (taskArg as string).replace(/^Task: /, "");
 			calls.push(taskText);
@@ -222,10 +221,10 @@ describe("Task tool — chain-mode with {previous} substitution", () => {
 				stdout.emit(
 					"data",
 					Buffer.from(
-						JSON.stringify({
+						`${JSON.stringify({
 							type: "message_end",
 							message: { role: "assistant", content: [{ type: "text", text }] },
-						}) + "\n",
+						})}\n`,
 					),
 				);
 				child.emit("close", 0);

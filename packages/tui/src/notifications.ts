@@ -32,7 +32,7 @@ export interface NotifyOptions {
 function writeToStream(data: string): void {
 	try {
 		// Prefer stderr because stdout may be piped/captured.
-		if (process.stderr && process.stderr.writable) {
+		if (process.stderr?.writable) {
 			process.stderr.write(data);
 		}
 	} catch {

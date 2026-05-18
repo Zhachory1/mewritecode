@@ -64,7 +64,7 @@ describe("cavemem hook stubs", () => {
 		// exits 0 across platforms.
 		for (const e of CAVEMEM_HOOK_EVENT_NAMES) {
 			const h = cfg[e]?.[0]?.hooks?.[0];
-			if (h && h.command) h.command = "true";
+			if (h?.command) h.command = "true";
 		}
 
 		const manager = new HooksManager({

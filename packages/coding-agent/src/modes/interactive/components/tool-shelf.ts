@@ -81,7 +81,6 @@ function formatShort(ms: number): string {
  * so the shelf never adds visual noise where it would not save space.
  */
 export class ToolGroupShellComponent extends Container {
-	private readonly shelf = new ToolShelfComponent();
 	private readonly toolsContainer = new Container();
 	private readonly entries: { name: string; component: ToolExecutionComponent }[] = [];
 	private expanded = true;

@@ -31,10 +31,15 @@ import addFormatsModule from "ajv-formats";
 // ESM/CJS interop: ajv 8 + ajv-formats ship as CJS default exports, and under
 // `moduleResolution: node16` the default import may be either the namespace
 // object or a direct export. Peel the real constructor out regardless.
-// biome-ignore lint/suspicious/noExplicitAny: Ajv ESM/CJS interop
-const Ajv: new (opts?: Record<string, unknown>) => any = (Ajv2020Module as any).default ?? (Ajv2020Module as any);
-// biome-ignore lint/suspicious/noExplicitAny: ajv-formats ESM/CJS interop
-const addFormats: (ajv: any) => void = (addFormatsModule as any).default ?? (addFormatsModule as any);
+type AjvCtor = new (
+	opts?: Record<string, unknown>,
+) => {
+	addFormats?: unknown;
+	compile: (schema: unknown) => ((d: unknown) => boolean) & { errors?: unknown[] | null };
+};
+const Ajv = ((Ajv2020Module as unknown as { default?: AjvCtor }).default ?? Ajv2020Module) as AjvCtor;
+const addFormats = ((addFormatsModule as unknown as { default?: (ajv: unknown) => void }).default ??
+	addFormatsModule) as (ajv: unknown) => void;
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

@@ -180,5 +180,5 @@ export function aggregateByLayer(rows: LayerIsolationRow[]): Array<{
 if (import.meta.url === `file://${process.argv[1]}`) {
 	const rows = runLayerIsolation();
 	const agg = aggregateByLayer(rows);
-	process.stdout.write(JSON.stringify({ rows, aggregate: agg }, null, 2) + "\n");
+	process.stdout.write(`${JSON.stringify({ rows, aggregate: agg }, null, 2)}\n`);
 }

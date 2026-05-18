@@ -108,9 +108,9 @@ function extractSymbols(file: string, source: string, language: RepoLanguage): P
 	const pattern = PATTERNS[language];
 	if (!pattern) return [];
 	const symbols: ParsedSymbol[] = [];
-	let match: RegExpExecArray | null;
 	pattern.lastIndex = 0;
-	while ((match = pattern.exec(source)) !== null) {
+	let match: RegExpExecArray | null = pattern.exec(source);
+	while (match !== null) {
 		const name = match[2] ?? match[1];
 		const rawKind = match[1] ?? "function";
 		const kind = mapKind(rawKind);
@@ -122,6 +122,7 @@ function extractSymbols(file: string, source: string, language: RepoLanguage): P
 			name,
 			signature: match[0].trim(),
 		});
+		match = pattern.exec(source);
 	}
 	return symbols;
 }

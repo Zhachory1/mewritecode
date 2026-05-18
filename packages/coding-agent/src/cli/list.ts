@@ -87,7 +87,7 @@ export async function runList(args: string[]): Promise<number> {
 		return 0;
 	}
 	const client = new CaveClient({ host: parsed.host, port: parsed.port, token: parsed.token });
-	let sessions;
+	let sessions: Awaited<ReturnType<typeof client.listSessions>>;
 	try {
 		sessions = await client.listSessions({ state: parsed.state, limit: parsed.limit });
 	} catch (err) {

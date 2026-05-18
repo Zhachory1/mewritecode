@@ -34,7 +34,7 @@ export class SkillInvocationMessageComponent implements Component {
 
 		if (this.expanded) {
 			// Left-bordered expanded content
-			const prefix = theme.fg("customMessageLabel", "│") + " ";
+			const prefix = `${theme.fg("customMessageLabel", "│")} `;
 			return this.currentContent.render(width - 2).map((line) => prefix + line);
 		}
 		return this.currentContent.render(width);

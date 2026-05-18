@@ -250,7 +250,7 @@ export async function buildSessionStartPrelude(args: {
 	const memoryIndex = readMemoryIndex(loc, { lines: 200 });
 
 	let cavememSnippet: string | undefined;
-	if (args.taskSummary && args.taskSummary.trim()) {
+	if (args.taskSummary?.trim()) {
 		try {
 			const hits = await args.provider.search(args.taskSummary, { limit: 5 });
 			const { formatPrelude } = await import("@caveman-code/agent").then((m) => m.memory);

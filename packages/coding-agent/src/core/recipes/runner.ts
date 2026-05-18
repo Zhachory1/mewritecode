@@ -78,7 +78,7 @@ export async function runRecipe(opts: RecipeRunOptions): Promise<RecipeRunResult
 	const loaded = resolveRecipeByName(name, cwd, extraDirs);
 	if (!loaded) {
 		throw new RecipeValidationError(
-			`Recipe "${name}" not found. ` + `Searched in .cave/recipes/, ~/.cave/recipes/, and bundled defaults.`,
+			`Recipe "${name}" not found. Searched in .cave/recipes/, ~/.cave/recipes/, and bundled defaults.`,
 			undefined,
 			undefined,
 		);

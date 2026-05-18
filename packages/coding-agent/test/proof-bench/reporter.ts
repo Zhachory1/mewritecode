@@ -320,7 +320,7 @@ function renderWaterfall(layerAggRows: Array<{ layer: string; savedPct: number }
 		const bar = (r.savedPct >= 0 ? "█" : "░").repeat(Math.max(1, barLen));
 		lines.push(`${pad(r.layer, 28)} ${bar} ${r.savedPct.toFixed(1)}%`);
 	}
-	return lines.join("\n") + "\n";
+	return `${lines.join("\n")}\n`;
 }
 
 // ---------------------------------------------------------------------------

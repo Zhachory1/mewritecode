@@ -15,7 +15,7 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, it } from "vitest";
 import { type ABResult, formatABResults, type TaskResult } from "./live-ab-report.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
@@ -161,7 +161,7 @@ function runAgent(
 			turns,
 			durationMs,
 		};
-	} catch (error) {
+	} catch (_error) {
 		const durationMs = Date.now() - start;
 		return {
 			tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
@@ -270,5 +270,5 @@ describe.skipIf(HAS_API_KEY)("Live A/B Benchmark (skipped)", () => {
 
 afterAll(() => {
 	if (results.length === 0) return;
-	console.log("\n" + formatABResults(results) + "\n");
+	console.log(`\n${formatABResults(results)}\n`);
 });

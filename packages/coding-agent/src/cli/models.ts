@@ -9,7 +9,13 @@
 
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { type FetchChannel, fetchAndCacheRegistry, getCachePath, loadRegistry, type Registry } from "@caveman-code/ai/registry";
+import {
+	type FetchChannel,
+	fetchAndCacheRegistry,
+	getCachePath,
+	loadRegistry,
+	type Registry,
+} from "@caveman-code/ai/registry";
 import chalk from "chalk";
 
 // ---------------------------------------------------------------------------

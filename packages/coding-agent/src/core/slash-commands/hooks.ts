@@ -47,9 +47,6 @@ export async function runHooksCommand(args: string, io: HooksCommandIO): Promise
 			return ok(formatRecipesList());
 		case "install-recipe":
 			return runInstallRecipe(argv.slice(1), io);
-		case "help":
-		case "--help":
-		case "-h":
 		default:
 			return ok(formatHelp());
 	}

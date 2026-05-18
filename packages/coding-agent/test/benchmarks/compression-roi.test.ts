@@ -33,7 +33,7 @@ function estimateTokens(chars: number): number {
 // Load fixtures by tool type
 function loadFixture(pattern: string): string {
 	const files = readdirSync(FIXTURES_DIR).filter((f) => f.includes(pattern) && f.endsWith(".txt"));
-	if (files.length === 0) return "default fixture content for " + pattern;
+	if (files.length === 0) return `default fixture content for ${pattern}`;
 	return readFileSync(join(FIXTURES_DIR, files[0]!), "utf-8");
 }
 

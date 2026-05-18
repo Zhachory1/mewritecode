@@ -134,8 +134,7 @@ export function buildNamespacedTool(hub: McpHub, remote: McpRemoteTool): AgentTo
 	return {
 		name: remote.namespacedName,
 		label: remote.title ?? remote.namespacedName,
-		description:
-			(remote.description ?? `MCP tool ${remote.name} on server ${remote.server}.`) + ` (server: ${remote.server})`,
+		description: `${remote.description ?? `MCP tool ${remote.name} on server ${remote.server}.`} (server: ${remote.server})`,
 		parameters: schema,
 		execute: async (_id, args) => {
 			const result = await hub.callNamespaced(remote.namespacedName, args);

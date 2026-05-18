@@ -100,7 +100,7 @@ export class BashExecutionComponent implements Component {
 	}
 
 	render(width: number): string[] {
-		const prefix = theme.fg(this.colorKey, "│") + " ";
+		const prefix = `${theme.fg(this.colorKey, "│")} `;
 		const contentLines = this.contentContainer.render(width - 2);
 		return contentLines.map((line) => prefix + line);
 	}

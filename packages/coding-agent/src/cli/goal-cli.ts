@@ -123,7 +123,9 @@ const parseStartFlags = (rest: string[]): StartFlags => {
 const handleStart = async (rest: string[]): Promise<number> => {
 	const flags = parseStartFlags(rest);
 	if (!flags.text) {
-		console.error(chalk.red('Error: goal text is required.\nExample: caveman goal start "add unit tests for foo.ts"'));
+		console.error(
+			chalk.red('Error: goal text is required.\nExample: caveman goal start "add unit tests for foo.ts"'),
+		);
 		return 2;
 	}
 	const cwd = process.cwd();

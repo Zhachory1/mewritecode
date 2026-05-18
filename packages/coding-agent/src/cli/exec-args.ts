@@ -54,7 +54,7 @@ export function parseExecArgs(rawArgs: string[]): ExecArgs {
 			result.profile = rawArgs[++i];
 		} else if (arg === "--timeout" && i + 1 < rawArgs.length) {
 			const ms = parseInt(rawArgs[++i], 10);
-			if (!isNaN(ms) && ms > 0) {
+			if (!Number.isNaN(ms) && ms > 0) {
 				result.timeoutMs = ms;
 			}
 		} else if (!arg.startsWith("-")) {
