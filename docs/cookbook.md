@@ -9,11 +9,11 @@ Concrete, copy-pasteable patterns. Every snippet was tested before publication.
 
 <CopyForLlms />
 
-## `cave exec` in GitHub Actions
+## `caveman exec` in GitHub Actions
 
 ```yaml
 # .github/workflows/cave-review.yml
-name: Cave PR review
+name: Caveman Code PR review
 on: [pull_request]
 jobs:
     review:
@@ -28,7 +28,7 @@ jobs:
                   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
 
-Cave's stable JSON event stream on stdout is parsed by the action runner; the structured output lands in the PR comment.
+Caveman Code's stable JSON event stream on stdout is parsed by the action runner; the structured output lands in the PR comment.
 
 ## Multi-agent code review
 
@@ -49,19 +49,19 @@ steps:
   - "Post the review as a PR comment via gh CLI"
 ```
 
-Run: `cave run-recipe parallel-review`. Three subagents run in parallel worktrees; results stream back as 500-token summaries; the parent assembles the final review.
+Run: `caveman run-recipe parallel-review`. Three subagents run in parallel worktrees; results stream back as 500-token summaries; the parent assembles the final review.
 
 ## Pair programming over the daemon
 
 ```bash
 # laptop
-cave serve --port 39245 --token $TOKEN
+caveman serve --port 39245 --token $TOKEN
 
 # expose via cloudflared
-cloudflared tunnel run cave-tunnel
+cloudflared tunnel run caveman-tunnel
 
 # colleague's machine
-cave attach --host https://cave.example.com:39245 --token $TOKEN
+caveman attach --host https://cave.example.com:39245 --token $TOKEN
 ```
 
 Both clients see the same session. Tokens stream in real-time to both.
@@ -109,12 +109,12 @@ Both clients see the same session. Tokens stream in real-time to both.
 }
 ```
 
-Cave passes the file content via `$CAVE_HOOK_FILE`. Non-zero exit denies the write and tells the model why.
+Caveman Code passes the file content via `$CAVE_HOOK_FILE`. Non-zero exit denies the write and tells the model why.
 
 ## Use cave as an MCP server from Claude Desktop
 
 ```bash
-cave mcp-server --port 39250
+caveman mcp-server --port 39250
 ```
 
 Then in Claude Desktop's `claude_desktop_config.json`:
@@ -130,31 +130,31 @@ Then in Claude Desktop's `claude_desktop_config.json`:
 }
 ```
 
-Claude Desktop now sees Cave's coding tools (Read, Glob, Grep, Bash, Edit, Write).
+Claude Desktop now sees Caveman Code's coding tools (Read, Glob, Grep, Bash, Edit, Write).
 
 ## Plugin marketplace
 
 Search and install:
 
 ```bash
-cave plugin search security
-cave plugin install ghost-sec/sec-pack
-cave plugin marketplace add https://plugins.example.com/marketplace.json
-cave plugin upgrade
+caveman plugin search security
+caveman plugin install ghost-sec/sec-pack
+caveman plugin marketplace add https://plugins.example.com/marketplace.json
+caveman plugin upgrade
 ```
 
 Author your own:
 
 ```bash
-cave plugin scaffold my-pack
+caveman plugin scaffold my-pack
 $EDITOR my-pack/.cave-plugin/plugin.json
-cave plugin publish my-pack    # publishes to the configured marketplace
+caveman plugin publish my-pack    # publishes to the configured marketplace
 ```
 
 ## Architect / editor split for a tight budget
 
 ```bash
-cave --architect claude-opus-4-7 --editor claude-haiku-4
+caveman --architect claude-opus-4-7 --editor claude-haiku-4
 > migrate this Express app to Fastify
 ```
 
@@ -163,7 +163,7 @@ Opus plans (one expensive model call). Haiku executes each step (cheap). Drops c
 ## Watch mode for IDE-style edits
 
 ```bash
-cave --watch
+caveman --watch
 ```
 
 Then in your editor:
@@ -175,14 +175,14 @@ function processLines(input: string): string[] {
 }
 ```
 
-Cave detects the trailing `!`, runs an edit-class turn with the surrounding lines as context, applies the diff, removes the comment.
+Caveman Code detects the trailing `!`, runs an edit-class turn with the surrounding lines as context, applies the diff, removes the comment.
 
 ## Replay a session
 
 ```bash
-cave -r                                         # browse and pick
-cave --session ~/.cave/sessions/.../abc.jsonl   # load directly
-cave --replay ~/.cave/sessions/.../abc.jsonl    # replay tool calls; --apply to actually run
+caveman -r                                         # browse and pick
+caveman --session ~/.cave/sessions/.../abc.jsonl   # load directly
+caveman --replay ~/.cave/sessions/.../abc.jsonl    # replay tool calls; --apply to actually run
 ```
 
 Useful for: bisecting a regression, sharing a repro with a colleague, reproducing an eval.

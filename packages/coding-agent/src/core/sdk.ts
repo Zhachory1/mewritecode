@@ -1,6 +1,6 @@
 import { join } from "node:path";
-import { Agent, type AgentMessage, type ThinkingLevel } from "@cave/agent";
-import { type Message, type Model, streamSimple } from "@cave/ai";
+import { Agent, type AgentMessage, type ThinkingLevel } from "@caveman-code/agent";
+import { type Message, type Model, streamSimple } from "@caveman-code/ai";
 import { getAgentDir, getDocsPath } from "../config.js";
 import { AgentSession } from "./agent-session.js";
 import { AuthStorage } from "./auth-storage.js";
@@ -142,7 +142,7 @@ function getDefaultAgentDir(): string {
  * const { session } = await createAgentSession();
  *
  * // With explicit model
- * import { getModel } from '@cave/ai';
+ * import { getModel } from '@caveman-code/ai';
  * const { session } = await createAgentSession({
  *   model: getModel('anthropic', 'claude-opus-4-5'),
  *   thinkingLevel: 'high',
@@ -361,6 +361,12 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		extensionRunnerRef,
 		sessionStartEvent: options.sessionStartEvent,
 	});
+	// Wait for the constructor's async runtime build (tool wiring, base
+	// system prompt, extension runner setup) before handing the session out.
+	// Without this, callers that synchronously inspect `session.getAllTools()`
+	// or that ship a prompt to a non-`prompt()` entry point (e.g. raw
+	// `agent.prompt`) see an empty tool registry on turn 1.
+	await session.whenReady;
 	const extensionsResult = resourceLoader.getExtensions();
 
 	return {

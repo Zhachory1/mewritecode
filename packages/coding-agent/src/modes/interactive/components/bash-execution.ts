@@ -3,7 +3,7 @@
  * Uses a left-border accent style instead of full-width horizontal borders.
  */
 
-import { type Component, Container, Loader, Text, type TUI } from "@cave/tui";
+import { type Component, Container, Loader, Text, type TUI } from "@caveman-code/tui";
 import stripAnsi from "strip-ansi";
 import {
 	DEFAULT_MAX_BYTES,

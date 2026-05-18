@@ -1,5 +1,5 @@
 /**
- * Builds the per-iteration prompt fed to `cave -p`. Goal text comes from the
+ * Builds the per-iteration prompt fed to `caveman -p`. Goal text comes from the
  * durable GOAL.md body. SUMMARY.md (rolling, ≤2KB) injects what previous
  * iterations did. Anti-cheat clause and sentinel rule are appended verbatim.
  */

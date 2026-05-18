@@ -1,4 +1,4 @@
-import type { Usage } from "@cave/ai";
+import type { Usage } from "@caveman-code/ai";
 import { i18n } from "@mariozechner/mini-lit";
 
 export function formatCost(cost: number): string {

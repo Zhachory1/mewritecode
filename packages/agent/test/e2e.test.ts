@@ -9,7 +9,7 @@ import {
 	registerFauxProvider,
 	type ToolResultMessage,
 	type UserMessage,
-} from "@cave/ai";
+} from "@caveman-code/ai";
 import { afterEach, describe, expect, it } from "vitest";
 import { Agent, type AgentEvent } from "../src/index.js";
 import { calculateTool } from "./utils/calculate.js";

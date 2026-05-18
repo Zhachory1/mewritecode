@@ -42,8 +42,8 @@ import {
 	type Tool,
 	type ToolCall,
 	type ToolResultMessage,
-} from "@cave/ai";
-import type { ExtensionAPI } from "cave";
+} from "@caveman-code/ai";
+import type { ExtensionAPI } from "caveman-code";
 
 // =============================================================================
 // OAuth Implementation (copied from packages/ai/src/utils/oauth/anthropic.ts)

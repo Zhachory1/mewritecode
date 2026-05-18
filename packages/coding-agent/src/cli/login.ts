@@ -1,16 +1,16 @@
 /**
- * `cave login` (WS11) — minimal headless-friendly login dispatcher.
+ * `caveman login` (WS11) — minimal headless-friendly login dispatcher.
  *
  * This command exists to give headless / SSH / CI users a deterministic way
  * to attach an OAuth credential or API key without opening the interactive
- * TUI. The full provider OAuth flows live in `@cave/ai` (see
+ * TUI. The full provider OAuth flows live in `@caveman-code/ai` (see
  * packages/ai/src/utils/oauth/). This dispatcher is a thin shim:
  *
- *   cave login                       # show available providers + env hints
- *   cave login --provider anthropic  # run anthropic OAuth (browser)
- *   cave login --device-auth         # prefer device flow when available
- *   cave login --provider openai --api-key <key>   # store a raw key
- *   cave login --json                # machine-readable status output
+ *   caveman login                       # show available providers + env hints
+ *   caveman login --provider anthropic  # run anthropic OAuth (browser)
+ *   caveman login --device-auth         # prefer device flow when available
+ *   caveman login --provider openai --api-key <key>   # store a raw key
+ *   caveman login --json                # machine-readable status output
  *
  * Heavy auth-storage manipulation is deliberately *not* done here — that
  * touches AuthStorage internals owned by other workstreams. We surface the
@@ -27,7 +27,7 @@ import {
 	type OAuthAuthInfo,
 	type OAuthPrompt,
 	type OAuthProviderInterface,
-} from "@cave/ai";
+} from "@caveman-code/ai";
 import chalk from "chalk";
 import { AuthStorage } from "../core/auth-storage.js";
 
@@ -59,15 +59,15 @@ function parseLoginArgs(args: string[]): LoginOptions {
 }
 
 function printHelp(): void {
-	process.stdout.write(`${chalk.bold("cave login")} — manage authentication credentials
+	process.stdout.write(`${chalk.bold("caveman login")} — manage authentication credentials
 
 Usage:
-  cave login                          Show providers and current auth status
-  cave login --provider <id>          Start OAuth login for a provider
-  cave login --provider <id> --api-key <k>
+  caveman login                          Show providers and current auth status
+  caveman login --provider <id>          Start OAuth login for a provider
+  caveman login --provider <id> --api-key <k>
                                       Store a raw API key for a provider
-  cave login --device-auth            Prefer device-code OAuth (headless / SSH)
-  cave login --json                   Emit machine-readable JSON
+  caveman login --device-auth            Prefer device-code OAuth (headless / SSH)
+  caveman login --json                   Emit machine-readable JSON
 
 Built-in OAuth providers:
 ${getOAuthProviders()
@@ -214,7 +214,7 @@ export async function runLogin(args: string[]): Promise<number> {
 				const hint = s.hint ? chalk.dim(` (${s.hint})`) : "";
 				process.stdout.write(`  ${tag} ${s.provider}${hint}\n`);
 			}
-			process.stdout.write(chalk.dim("\nRun `cave login --provider <id>` to start a login flow.\n"));
+			process.stdout.write(chalk.dim("\nRun `caveman login --provider <id>` to start a login flow.\n"));
 		}
 		return 0;
 	}

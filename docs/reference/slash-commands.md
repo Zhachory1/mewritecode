@@ -5,7 +5,7 @@ description: Built-in slash commands and how to author your own as Markdown file
 
 # Slash Commands
 
-Inside the TUI, type `/` to open the command palette. Cave ships 10 built-in commands and reads user-authored markdown commands from `~/.cave/commands/` and project-local `.cave/commands/`.
+Inside the TUI, type `/` to open the command palette. Caveman Code ships 10 built-in commands and reads user-authored markdown commands from `~/.cave/commands/` and project-local `.cave/commands/`.
 
 <CopyForLlms />
 
@@ -28,7 +28,7 @@ Inside the TUI, type `/` to open the command palette. Cave ships 10 built-in com
 | `/memory` | cavemem queries: `search`, `save`, `consolidate`, `sync` |
 | `/help` `/hotkeys` `/changelog` | Self-explanatory |
 
-## Default user commands shipped with Cave
+## Default user commands shipped with Caveman Code
 
 These ship in `~/.cave/commands/` after first run. You can edit or delete any of them.
 
@@ -89,7 +89,7 @@ Frontmatter keys (full list — superset of Claude Code):
 
 ### Hot reload
 
-Cave watches `~/.cave/commands/` and `.cave/commands/` for changes. Save the file, the new version is live on the next `/`.
+Caveman Code watches `~/.cave/commands/` and `.cave/commands/` for changes. Save the file, the new version is live on the next `/`.
 
 ## Project vs user vs plugin scope
 
@@ -97,9 +97,9 @@ Cave watches `~/.cave/commands/` and `.cave/commands/` for changes. Save the fil
 |---|---|---|
 | Project | `.cave/commands/*.md` | Lives in repo; team shares it |
 | User | `~/.cave/commands/*.md` | Personal preferences |
-| Plugin | `node_modules/<plugin>/commands/*.md` | Installed via `cave plugin install` |
+| Plugin | `node_modules/<plugin>/commands/*.md` | Installed via `caveman plugin install` |
 
-User overrides project overrides plugin. Conflicts surface in `cave doctor`.
+User overrides project overrides plugin. Conflicts surface in `caveman doctor`.
 
 ## Importing from Claude Code
 

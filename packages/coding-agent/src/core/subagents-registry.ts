@@ -10,7 +10,7 @@
  * internal state here, just the parent's view of "this child is running".
  */
 
-import type { SubagentRegistry, SubagentSnapshot } from "@cave/tui";
+import type { SubagentRegistry, SubagentSnapshot } from "@caveman-code/tui";
 
 interface InternalRow {
 	id: string;

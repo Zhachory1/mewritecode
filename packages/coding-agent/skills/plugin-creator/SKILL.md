@@ -41,7 +41,7 @@ You scaffold new cave plugins. A cave plugin is a directory published to GitHub 
 - `name`: kebab-case, a-z0-9 and hyphens only. Must be unique in the marketplace.
 - `version`: semver ("major.minor.patch").
 - `description`: one sentence, plain text.
-- `tags`: free-form strings for `cave plugin search` matching.
+- `tags`: free-form strings for `caveman plugin search` matching.
 - `capabilities.commands`: set `true` if `commands/` directory is present.
 - `capabilities.skills`: set `true` if `skills/` directory is present.
 - `capabilities.agents`: set `true` if `agents/` directory is present.
@@ -110,7 +110,7 @@ After scaffolding, instruct the user to:
      ]
    }
    ```
-3. Users install it with: `cave plugin install your-handle/my-plugin`
+3. Users install it with: `caveman plugin install your-handle/my-plugin`
 
 ## Example Interaction
 

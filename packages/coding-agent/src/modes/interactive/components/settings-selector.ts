@@ -1,5 +1,5 @@
-import type { ThinkingLevel } from "@cave/agent";
-import type { Transport } from "@cave/ai";
+import type { ThinkingLevel } from "@caveman-code/agent";
+import type { Transport } from "@caveman-code/ai";
 import {
 	Container,
 	getCapabilities,
@@ -10,7 +10,7 @@ import {
 	SettingsList,
 	Spacer,
 	Text,
-} from "@cave/tui";
+} from "@caveman-code/tui";
 import { getSelectListTheme, getSettingsListTheme, theme } from "../theme/theme.js";
 import { DynamicBorder } from "./dynamic-border.js";
 

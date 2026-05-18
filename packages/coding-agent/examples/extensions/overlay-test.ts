@@ -8,8 +8,8 @@
  * - Edge case tests (wide chars, styled text, emoji)
  */
 
-import { CURSOR_MARKER, type Focusable, matchesKey, visibleWidth } from "@cave/tui";
-import type { ExtensionAPI, ExtensionCommandContext, Theme } from "cave";
+import { CURSOR_MARKER, type Focusable, matchesKey, visibleWidth } from "@caveman-code/tui";
+import type { ExtensionAPI, ExtensionCommandContext, Theme } from "caveman-code";
 
 export default function (pi: ExtensionAPI) {
 	pi.registerCommand("overlay-test", {

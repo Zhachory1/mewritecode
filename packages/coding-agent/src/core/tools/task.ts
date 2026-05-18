@@ -27,8 +27,8 @@ import {
 	type SubagentResult,
 	sanitizeId,
 	validateSubagentOutput,
-} from "@cave/agent";
-import { Text } from "@cave/tui";
+} from "@caveman-code/agent";
+import { Text } from "@caveman-code/tui";
 import { type Static, Type } from "@sinclair/typebox";
 import {
 	filterAgentsByMcpAvailability,

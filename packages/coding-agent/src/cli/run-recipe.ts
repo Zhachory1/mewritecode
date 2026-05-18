@@ -1,5 +1,5 @@
 /**
- * WS14: `cave run-recipe <name> [--input k=v ...]` CLI handler.
+ * WS14: `caveman run-recipe <name> [--input k=v ...]` CLI handler.
  *
  * Resolution order: .cave/recipes/ → ~/.cave/recipes/ → bundled defaults.
  * Spawns an agent session restricted to the recipe's tool allowlist,
@@ -59,11 +59,11 @@ function parseInputFlags(args: string[]): { inputs: Record<string, string>; rest
 // ---------------------------------------------------------------------------
 
 function printRunRecipeHelp(): void {
-	console.log(`cave run-recipe — run a Goose-style YAML recipe
+	console.log(`caveman run-recipe — run a Goose-style YAML recipe
 
 Usage:
-  cave run-recipe <name> [--input key=value ...]
-  cave run-recipe --list
+  caveman run-recipe <name> [--input key=value ...]
+  caveman run-recipe --list
 
 Arguments:
   <name>              Recipe name (resolved from .cave/recipes/, ~/.cave/recipes/,
@@ -75,10 +75,10 @@ Options:
   --help, -h          Show this help.
 
 Examples:
-  cave run-recipe migrate-to-biome
-  cave run-recipe add-tests --input target=src/utils/parser.ts
-  cave run-recipe release --input release_type=minor
-  cave run-recipe --list
+  caveman run-recipe migrate-to-biome
+  caveman run-recipe add-tests --input target=src/utils/parser.ts
+  caveman run-recipe release --input release_type=minor
+  caveman run-recipe --list
 `);
 }
 
@@ -110,7 +110,7 @@ function handleList(cwd: string): void {
 // ---------------------------------------------------------------------------
 
 /**
- * Handle `cave run-recipe ...` args array (args[0] === "run-recipe").
+ * Handle `caveman run-recipe ...` args array (args[0] === "run-recipe").
  * Returns true if the command was handled (success or failure); the caller
  * should NOT continue to the session startup flow.
  */
@@ -140,7 +140,7 @@ export async function handleRunRecipeCommand(args: string[]): Promise<boolean> {
 	if (!loaded) {
 		console.error(chalk.red(`Error: Recipe "${recipeName}" not found.`));
 		console.error(chalk.dim("Searched: .cave/recipes/, ~/.cave/recipes/, bundled defaults."));
-		console.error(chalk.dim("Run `cave run-recipe --list` to see all available recipes."));
+		console.error(chalk.dim("Run `caveman run-recipe --list` to see all available recipes."));
 		process.exit(1);
 	}
 
@@ -186,10 +186,10 @@ export async function handleRunRecipeCommand(args: string[]): Promise<boolean> {
 
 /**
  * Default executor: prints the resolved goal and spawns the agent session
- * using the cave session infrastructure.
+ * using the caveman session infrastructure.
  *
  * We dynamically import the session creation to avoid pulling in the full
- * agent stack at module-load time (keeps `cave run-recipe --list` fast).
+ * agent stack at module-load time (keeps `caveman run-recipe --list` fast).
  */
 async function defaultExecutor(opts: RecipeExecutorOptions): Promise<{ exitCode: number; output?: string }> {
 	const { goal, recipe } = opts;

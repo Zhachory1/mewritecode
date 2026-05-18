@@ -1,4 +1,4 @@
-import type { Model } from "@cave/ai";
+import type { Model } from "@caveman-code/ai";
 import {
 	Container,
 	type Focusable,
@@ -9,7 +9,7 @@ import {
 	matchesKey,
 	Spacer,
 	Text,
-} from "@cave/tui";
+} from "@caveman-code/tui";
 import { theme } from "../theme/theme.js";
 import { DynamicBorder } from "./dynamic-border.js";
 

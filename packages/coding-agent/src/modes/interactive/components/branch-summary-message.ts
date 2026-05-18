@@ -1,4 +1,4 @@
-import { type Component, Markdown, type MarkdownTheme, Text } from "@cave/tui";
+import { type Component, Markdown, type MarkdownTheme, Text } from "@caveman-code/tui";
 import type { BranchSummaryMessage } from "../../../core/messages.js";
 import { getMarkdownTheme, theme } from "../theme/theme.js";
 import { keyText } from "./keybinding-hints.js";

@@ -1,4 +1,4 @@
-import type { AgentTool } from "@cave/agent";
+import type { AgentTool } from "@caveman-code/agent";
 import { Type } from "@sinclair/typebox";
 import { basename, resolve as resolvePath } from "path";
 

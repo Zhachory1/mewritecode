@@ -1,6 +1,6 @@
 /**
- * `cave goal …` subcommand handler. Drives the autonomous goal loop with
- * fresh-process-per-iteration spawning of `cave -p`.
+ * `caveman goal …` subcommand handler. Drives the autonomous goal loop with
+ * fresh-process-per-iteration spawning of `caveman -p`.
  *
  * Subcommands:
  *   start "<text>"  [--max-iterations N] [--max-wall-clock-h H] [--max-usd D]
@@ -45,14 +45,14 @@ interface StartFlags {
 }
 
 const printHelp = (): void => {
-	console.log(`${chalk.bold("cave goal")} — autonomous goal loop (Ralph-style)
+	console.log(`${chalk.bold("caveman goal")} — autonomous goal loop (Ralph-style)
 
 ${chalk.bold("Usage:")}
-  cave goal start "<goal text>" [flags]
-  cave goal resume [<id>] [--force]
-  cave goal status [<id>]
-  cave goal cancel [<id>]
-  cave goal list
+  caveman goal start "<goal text>" [flags]
+  caveman goal resume [<id>] [--force]
+  caveman goal status [<id>]
+  caveman goal cancel [<id>]
+  caveman goal list
 
 ${chalk.bold("start flags:")}
   --max-iterations N        default ${DEFAULT_MAX_ITERATIONS}
@@ -60,7 +60,7 @@ ${chalk.bold("start flags:")}
   --max-usd D               default ${DEFAULT_MAX_USD}
   --max-no-progress N       default ${DEFAULT_MAX_NO_PROGRESS}
   --sentinel S              default "${DEFAULT_COMPLETION_SENTINEL}"
-  --model PATTERN           override model passed to each iter's \`cave -p\`
+  --model PATTERN           override model passed to each iter's \`caveman -p\`
   --quiet                   suppress per-iter child stdout
 
 ${chalk.bold("State:")}
@@ -123,7 +123,7 @@ const parseStartFlags = (rest: string[]): StartFlags => {
 const handleStart = async (rest: string[]): Promise<number> => {
 	const flags = parseStartFlags(rest);
 	if (!flags.text) {
-		console.error(chalk.red('Error: goal text is required.\nExample: cave goal start "add unit tests for foo.ts"'));
+		console.error(chalk.red('Error: goal text is required.\nExample: caveman goal start "add unit tests for foo.ts"'));
 		return 2;
 	}
 	const cwd = process.cwd();
@@ -170,7 +170,7 @@ const handleResume = async (rest: string[]): Promise<number> => {
 	}
 	const id = parseGoalIdArg(cwd, positional[0]);
 	if (!id) {
-		console.error(chalk.red("No goal found to resume. Run `cave goal list`."));
+		console.error(chalk.red("No goal found to resume. Run `caveman goal list`."));
 		return 2;
 	}
 	const paths = goalPaths(cwd, id);
@@ -344,7 +344,7 @@ export const handleGoalCommand = async (args: string[]): Promise<boolean> => {
 			process.exit(handleList());
 			break;
 		default:
-			console.error(chalk.red(`Unknown subcommand: cave goal ${sub}`));
+			console.error(chalk.red(`Unknown subcommand: caveman goal ${sub}`));
 			printHelp();
 			process.exit(2);
 	}

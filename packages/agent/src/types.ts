@@ -9,7 +9,7 @@ import type {
 	TextContent,
 	Tool,
 	ToolResultMessage,
-} from "@cave/ai";
+} from "@caveman-code/ai";
 import type { Static, TSchema } from "@sinclair/typebox";
 import type { Role } from "./roles.js";
 import type { ModelRouter } from "./router.js";
@@ -265,7 +265,7 @@ export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhi
  *
  * @example
  * ```typescript
- * declare module "@cave/agent" {
+ * declare module "@caveman-code/agent" {
  *   interface CustomAgentMessages {
  *     artifact: ArtifactMessage;
  *     notification: NotificationMessage;

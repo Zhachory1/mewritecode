@@ -17,7 +17,7 @@
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
-import { repomap as repomapNs } from "@cave/agent";
+import { repomap as repomapNs } from "@caveman-code/agent";
 
 const { buildRepomap, dynamicMapTokens } = repomapNs;
 

@@ -160,7 +160,7 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 		try {
 			await handleHttp(req, res);
 		} catch (err) {
-			console.error("[cave serve] handler error:", err);
+			console.error("[caveman serve] handler error:", err);
 			if (!res.writableEnded) {
 				res.statusCode = 500;
 				res.setHeader("content-type", "application/json");

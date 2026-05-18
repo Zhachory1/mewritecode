@@ -1,5 +1,5 @@
-import { Agent } from "@cave/agent";
-import { type AssistantMessage, getModel, type Usage } from "@cave/ai";
+import { Agent } from "@caveman-code/agent";
+import { type AssistantMessage, getModel, type Usage } from "@caveman-code/ai";
 import { describe, expect, it } from "vitest";
 import { AgentSession } from "../src/core/agent-session.js";
 import { AuthStorage } from "../src/core/auth-storage.js";

@@ -8,7 +8,7 @@
  * is performed in main.ts when the user is in interactive mode via
  * the /watch slash command, which wires a real agentRun callback.
  * In standalone `cave watch` mode this shim emits the prompt to stderr
- * and delegates to `cave -p "<prompt>"` via a child process.
+ * and delegates to `caveman -p "<prompt>"` via a child process.
  */
 
 import { spawn } from "node:child_process";
@@ -22,7 +22,7 @@ export interface WatchAgentRunOptions {
 /**
  * Run the cave agent for a single watch trigger.
  *
- * Spawns `cave -p <prompt>` as a child process so the full session
+ * Spawns `caveman -p <prompt>` as a child process so the full session
  * runtime initialises cleanly. Captures stdout and returns it as
  * the response string.
  *

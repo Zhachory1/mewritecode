@@ -1,4 +1,4 @@
-import { type AssistantMessage, type AssistantMessageEvent, EventStream, getModel } from "@cave/ai";
+import { type AssistantMessage, type AssistantMessageEvent, EventStream, getModel } from "@caveman-code/ai";
 import { describe, expect, it } from "vitest";
 import { Agent } from "../src/index.js";
 

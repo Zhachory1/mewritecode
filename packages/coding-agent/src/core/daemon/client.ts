@@ -1,5 +1,5 @@
 /**
- * WS9 Daemon — HTTP + WS client used by `cave attach`, `cave list`, the SDK,
+ * WS9 Daemon — HTTP + WS client used by `caveman attach`, `cave list`, the SDK,
  * and (mocked) by tests.
  *
  * Same wire format as `server.ts`. Hand-written so the SDK package can copy

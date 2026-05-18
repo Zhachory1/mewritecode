@@ -1,4 +1,4 @@
-import type { ToolResultMessage } from "@cave/ai";
+import type { ToolResultMessage } from "@caveman-code/ai";
 import "./javascript-repl.js"; // Auto-registers the renderer
 import "./extract-document.js"; // Auto-registers the renderer
 import { getToolRenderer, registerToolRenderer } from "./renderer-registry.js";

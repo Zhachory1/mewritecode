@@ -2,8 +2,8 @@
  * List available models with optional fuzzy search
  */
 
-import type { Api, Model } from "@cave/ai";
-import { fuzzyFilter } from "@cave/tui";
+import type { Api, Model } from "@caveman-code/ai";
+import { fuzzyFilter } from "@caveman-code/tui";
 import type { ModelRegistry } from "../core/model-registry.js";
 
 /**

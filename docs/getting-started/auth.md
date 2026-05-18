@@ -1,11 +1,11 @@
 ---
 title: Auth & Providers
-description: Authenticate Cave with 20+ LLM providers via OAuth or API key.
+description: Authenticate Caveman Code with 20+ LLM providers via OAuth or API key.
 ---
 
 # Auth & Providers
 
-Cave supports **20+ providers** and **6 OAuth flows**. You can mix and match — set an Anthropic key for primary work and a Groq key for the editor model in an `/architect` split, for example.
+Caveman Code supports **20+ providers** and **6 OAuth flows**. You can mix and match — set an Anthropic key for primary work and a Groq key for the editor model in an `/architect` split, for example.
 
 <CopyForLlms />
 
@@ -15,7 +15,7 @@ Use your existing paid subscription. No API key needed.
 
 | Provider | Subscription | Login command |
 |---|---|---|
-| Anthropic Claude | Claude Pro / Max | `cave` then `/login claude` |
+| Anthropic Claude | Claude Pro / Max | `caveman` then `/login claude` |
 | OpenAI ChatGPT | ChatGPT Plus / Pro | `/login chatgpt` |
 | GitHub Copilot | Copilot | `/login copilot` |
 | Google Gemini | Gemini Advanced | `/login gemini` |
@@ -25,7 +25,7 @@ OAuth tokens are stored in your OS keychain — macOS Keychain, Linux libsecret,
 
 ## API keys
 
-Set any of these env vars and Cave picks them up automatically:
+Set any of these env vars and Caveman Code picks them up automatically:
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
@@ -63,7 +63,7 @@ Any OpenAI-, Anthropic-, or Google-compatible endpoint works. Add an entry to `~
 Then:
 
 ```bash
-cave --provider my-vllm --model llama-3-70b-instruct
+caveman --provider my-vllm --model llama-3-70b-instruct
 ```
 
 For Anthropic-style routing (e.g. an internal Bedrock proxy), set `type: "anthropic-compatible"`. Same shape.
@@ -79,25 +79,25 @@ OAuth doesn't work without a browser. In CI use API keys:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
 
-For machines without env vars, `cave login --device-auth` runs a device-code flow (printer-style code, claim it from a browser elsewhere).
+For machines without env vars, `caveman login --device-auth` runs a device-code flow (printer-style code, claim it from a browser elsewhere).
 
 ## Switching providers per request
 
 | Flag | Example |
 |---|---|
-| `--provider` | `cave --provider anthropic` |
-| `--model` | `cave --model gpt-5-codex` |
-| `provider/model` | `cave --model anthropic/claude-sonnet-4` |
-| Thinking suffix | `cave --model claude-sonnet-4:high` |
+| `--provider` | `caveman --provider anthropic` |
+| `--model` | `caveman --model gpt-5-codex` |
+| `provider/model` | `caveman --model anthropic/claude-sonnet-4` |
+| Thinking suffix | `caveman --model claude-sonnet-4:high` |
 
 Inside the TUI, `/model` lists available models, `/provider` lists active providers, and `Ctrl+L` cycles your favourites.
 
 ## Cost tracking
 
-Cave reports per-message cost inline (e.g. `$0.0042 (cached: $0.0001)`) and writes daily/weekly totals to `~/.cave/usage.json`. See [Cost Transparency](/reference/tools#cost-transparency).
+Caveman Code reports per-message cost inline (e.g. `$0.0042 (cached: $0.0001)`) and writes daily/weekly totals to `~/.cave/usage.json`. See [Cost Transparency](/reference/tools#cost-transparency).
 
 ## Troubleshooting
 
-- **OAuth opens browser but never returns** — check that the loopback port (random in 1024-65535) isn't firewalled. Try `cave login --device-auth` instead.
-- **`401 Unauthorized` from a stored token** — token expired. `cave logout <provider>` then re-login. Refresh tokens are handled automatically when valid.
-- **Linux libsecret missing** — install `libsecret-tools` on Debian/Ubuntu, `libsecret` on Arch. Cave falls back to plaintext-with-warning if absent and `CAVE_INSECURE_KEYRING=1` is set.
+- **OAuth opens browser but never returns** — check that the loopback port (random in 1024-65535) isn't firewalled. Try `caveman login --device-auth` instead.
+- **`401 Unauthorized` from a stored token** — token expired. `caveman logout <provider>` then re-login. Refresh tokens are handled automatically when valid.
+- **Linux libsecret missing** — install `libsecret-tools` on Debian/Ubuntu, `libsecret` on Arch. Caveman Code falls back to plaintext-with-warning if absent and `CAVE_INSECURE_KEYRING=1` is set.

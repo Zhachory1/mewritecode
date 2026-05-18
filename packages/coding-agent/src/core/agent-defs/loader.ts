@@ -8,7 +8,7 @@
  *   2. User scope:       `~/.cave/agents/*.md`
  *   3. Project scope:    `<cwd>/.cave/agents/*.md`
  *
- * Frontmatter (Claude Code v2.1.119 superset — see SubagentDef in @cave/agent):
+ * Frontmatter (Claude Code v2.1.119 superset — see SubagentDef in @caveman-code/agent):
  *   description, prompt (body), tools, disallowedTools, model, mcpServers,
  *   hooks, maxTurns, skills, effort, background, isolation
  *
@@ -17,7 +17,7 @@
  *   - `ResourceDiagnostic[]` — warnings / failures
  */
 
-import { normalizeFrontmatterArray, type SubagentDef, validateSubagentDef } from "@cave/agent";
+import { normalizeFrontmatterArray, type SubagentDef, validateSubagentDef } from "@caveman-code/agent";
 import { existsSync, readdirSync, readFileSync, statSync } from "fs";
 import { homedir } from "os";
 import { basename, join, resolve } from "path";

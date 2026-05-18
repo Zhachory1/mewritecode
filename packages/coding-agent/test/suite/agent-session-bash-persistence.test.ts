@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
-import type { AgentTool } from "@cave/agent";
-import { fauxAssistantMessage, fauxToolCall } from "@cave/ai";
+import type { AgentTool } from "@caveman-code/agent";
+import { fauxAssistantMessage, fauxToolCall } from "@caveman-code/ai";
 import { Type } from "@sinclair/typebox";
 import { afterEach, describe, expect, it } from "vitest";
 import type { BashOperations } from "../../src/core/tools/bash.js";

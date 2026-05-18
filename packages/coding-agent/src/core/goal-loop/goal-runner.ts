@@ -1,5 +1,5 @@
 /**
- * Goal-loop driver. Spawns `cave -p --mode json` per iteration with the
+ * Goal-loop driver. Spawns `caveman -p --mode json` per iteration with the
  * iteration prompt on stdin, parses the JSON event stream, and updates state.
  *
  * Termination ranking (matches the design doc):
@@ -264,7 +264,7 @@ export const runGoal = async (opts: RunGoalOptions): Promise<RunGoalResult> => {
 		if (consecutiveNoProgress >= frontmatter.max_no_progress) {
 			return finish(
 				"paused",
-				`no progress for ${consecutiveNoProgress} iterations — run \`cave goal resume ${opts.id} --force\` to continue`,
+				`no progress for ${consecutiveNoProgress} iterations — run \`caveman goal resume ${opts.id} --force\` to continue`,
 				ledger,
 			);
 		}

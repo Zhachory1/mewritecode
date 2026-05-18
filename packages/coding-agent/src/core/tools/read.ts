@@ -1,6 +1,6 @@
-import type { AgentTool } from "@cave/agent";
-import type { ImageContent, TextContent } from "@cave/ai";
-import { Text } from "@cave/tui";
+import type { AgentTool } from "@caveman-code/agent";
+import type { ImageContent, TextContent } from "@caveman-code/ai";
+import { Text } from "@caveman-code/tui";
 import { type Static, Type } from "@sinclair/typebox";
 import { constants } from "fs";
 import { access as fsAccess, readFile as fsReadFile } from "fs/promises";

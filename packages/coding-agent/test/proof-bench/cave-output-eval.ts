@@ -5,7 +5,7 @@
  * does the model spend under each intensity, and is quality preserved?
  *
  * Procedure per prompt × intensity:
- *   1. Spawn `cave -p <prompt> --output json --cave-mode <intensity> --model <model>`
+ *   1. Spawn `caveman -p <prompt> --output json --cave-mode <intensity> --model <model>`
  *      with CAVE_CODING_AGENT_DIR set so settings are deterministic.
  *   2. Parse message_end → output token count.
  *   3. Score with Haiku as judge (rubric 0–10 across 3 axes, median of 2 runs).

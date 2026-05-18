@@ -1,8 +1,8 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { AgentTool } from "@cave/agent";
-import { fauxAssistantMessage, fauxToolCall, type Model } from "@cave/ai";
+import type { AgentTool } from "@caveman-code/agent";
+import { fauxAssistantMessage, fauxToolCall, type Model } from "@caveman-code/ai";
 import { Type } from "@sinclair/typebox";
 import { afterEach, describe, expect, it } from "vitest";
 import type { PromptTemplate } from "../../src/core/prompt-templates.js";

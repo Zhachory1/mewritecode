@@ -1,11 +1,11 @@
 ---
 title: Troubleshooting
-description: Fixes for the most common issues with Cave.
+description: Fixes for the most common issues with Caveman Code.
 ---
 
 # Troubleshooting
 
-When something breaks, start here. If your issue isn't covered, [open a GitHub issue](https://github.com/JuliusBrussee/caveman-cli/issues/new) with `cave doctor` output.
+When something breaks, start here. If your issue isn't covered, [open a GitHub issue](https://github.com/JuliusBrussee/caveman-cli/issues/new) with `caveman doctor` output.
 
 <CopyForLlms />
 
@@ -40,7 +40,7 @@ You downloaded the x86_64 binary on an ARM Mac. Re-run `curl -fsSL https://cave.
 ### OAuth opens browser but never completes
 
 1. Check that the loopback port (random in 1024-65535) isn't firewalled.
-2. Try device-code auth: `cave login --device-auth`.
+2. Try device-code auth: `caveman login --device-auth`.
 3. Disable VPN that intercepts loopback.
 
 ### `401 Unauthorized` on a stored token
@@ -48,8 +48,8 @@ You downloaded the x86_64 binary on an ARM Mac. Re-run `curl -fsSL https://cave.
 Token expired and refresh failed. Re-login:
 
 ```bash
-cave logout <provider>
-cave login <provider>
+caveman logout <provider>
+caveman login <provider>
 ```
 
 ### Linux libsecret not found
@@ -68,12 +68,12 @@ If your distro lacks libsecret, set `CAVE_INSECURE_KEYRING=1` to fall back to a 
 
 ## Sessions
 
-### Cave hangs on launch
+### Caveman Code hangs on launch
 
 Stuck on context load. Kill and:
 
 ```bash
-cave -r --no-context     # browse without loading any session
+caveman -r --no-context     # browse without loading any session
 ```
 
 Then identify and remove the bad session in `~/.cave/sessions/<cwd-hash>/`.
@@ -112,27 +112,27 @@ The model's view of the file is stale. After a hook writes to the file, ask cave
 > re-read src/foo.ts and apply the change
 ```
 
-### Cave Mode is summarizing too aggressively
+### Caveman Mode is summarizing too aggressively
 
 Lower compression intensity:
 
 ```bash
-cave --cave-mode lite     # default is "full"
-cave --no-cave-mode       # turn off entirely
+caveman --caveman-mode lite     # default is "full"
+caveman --no-caveman-mode       # turn off entirely
 ```
 
 ## Permissions
 
 ### Every action prompts even though I clicked "Allow always"
 
-The allow-key is more specific than the new action. E.g. `Read packages/foo/**` won't match `Read packages/bar/baz.ts`. Add a broader allow-key with `cave permissions add "Read **"`.
+The allow-key is more specific than the new action. E.g. `Read packages/foo/**` won't match `Read packages/bar/baz.ts`. Add a broader allow-key with `caveman permissions add "Read **"`.
 
 ### Sandbox blocks something I need
 
-`cave debug sandbox` shows the active policy. To temporarily relax for one command:
+`caveman debug sandbox` shows the active policy. To temporarily relax for one command:
 
 ```bash
-cave --sandbox=workspace_write -- some-command
+caveman --sandbox=workspace_write -- some-command
 ```
 
 For permanent allowlist, add to `permissions.json`:
@@ -147,20 +147,20 @@ For permanent allowlist, add to `permissions.json`:
 
 ## MCP
 
-### `cave mcp doctor` shows server unreachable
+### `caveman mcp doctor` shows server unreachable
 
 ```bash
-cave mcp logs <server>     # tails stderr of stdio server
+caveman mcp logs <server>     # tails stderr of stdio server
 ```
 
 Common causes: command not on PATH, env var missing, server's auth flow incomplete.
 
 ### MCP tools don't show up in the model's context
 
-By default Cave defers MCP schemas — only names are listed until the model calls `ToolSearch`. To eager-load:
+By default Caveman Code defers MCP schemas — only names are listed until the model calls `ToolSearch`. To eager-load:
 
 ```bash
-cave --eager-mcp-schemas
+caveman --eager-mcp-schemas
 ```
 
 ## Hooks
@@ -170,7 +170,7 @@ cave --eager-mcp-schemas
 Check the matcher:
 
 ```bash
-cave hooks test PreToolUse --tool Edit --path src/foo.ts
+caveman hooks test PreToolUse --tool Edit --path src/foo.ts
 ```
 
 Reports whether each hook would fire for that input. Common mistake: `paths` glob doesn't include the actual file path.
@@ -187,10 +187,10 @@ cavemem isn't running. Check:
 
 ```bash
 cavemem --version
-cave mcp doctor   # should show cavemem reachable
+caveman mcp doctor   # should show cavemem reachable
 ```
 
-If missing: `npm install -g cavemem` then `cave init`.
+If missing: `npm install -g cavemem` then `caveman init`.
 
 ### Memory injection too noisy
 
@@ -211,7 +211,7 @@ Or disable for the session: `/memory off`.
 Enable synchronized output (DEC mode 2026):
 
 ```bash
-cave --sync-output
+caveman --sync-output
 ```
 
 Most modern terminals support it; cave detects and emits automatically. Override with the flag if detection fails.
@@ -229,8 +229,8 @@ Run `/compact` to manually compact. Or enable auto-compact at a lower threshold:
 ## Reporting issues
 
 ```bash
-cave doctor > /tmp/cave-doctor.txt
-cave version > /tmp/cave-version.txt
+caveman doctor > /tmp/cave-doctor.txt
+caveman version > /tmp/cave-version.txt
 ```
 
 Attach both to a [GitHub issue](https://github.com/JuliusBrussee/caveman-cli/issues/new). Include the prompt that triggered the bug if reproducible.

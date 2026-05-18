@@ -19,9 +19,9 @@
  *   /overlay-streaming  - Multiple input panels with simulated streaming (Tab to cycle focus)
  */
 
-import type { Component, OverlayAnchor, OverlayHandle, OverlayOptions, TUI } from "@cave/tui";
-import { matchesKey, truncateToWidth, visibleWidth } from "@cave/tui";
-import type { ExtensionAPI, ExtensionCommandContext, Theme } from "cave";
+import type { Component, OverlayAnchor, OverlayHandle, OverlayOptions, TUI } from "@caveman-code/tui";
+import { matchesKey, truncateToWidth, visibleWidth } from "@caveman-code/tui";
+import type { ExtensionAPI, ExtensionCommandContext, Theme } from "caveman-code";
 import { spawn } from "child_process";
 
 // Global handle for toggle demo (in real code, use a more elegant pattern)

@@ -1,10 +1,10 @@
 /**
  * WS9 — `cave worker` subcommand family.
  *
- * Workers are remote `cave serve` daemons registered locally so the user
+ * Workers are remote `caveman serve` daemons registered locally so the user
  * can prepend `&` to any prompt in interactive mode and have the session
  * dispatched to a registered remote worker (cloud handoff). The local
- * terminal frees up; later, the user runs `cave attach <id>` against the
+ * terminal frees up; later, the user runs `caveman attach <id>` against the
  * worker URL to resume.
  *
  * Worker registry lives at `~/.cave/workers.json`. The local registry is
@@ -65,8 +65,8 @@ Subcommands:
                                     Register a remote cave daemon as a worker
   list                              List registered workers
   remove <name>                     Unregister a worker
-  start [--port <n>] [--token <t>]  Run \`cave serve\` configured as a worker
-                                    (alias for \`cave serve --token ...\`)
+  start [--port <n>] [--token <t>]  Run \`caveman serve\` configured as a worker
+                                    (alias for \`caveman serve --token ...\`)
 
 Workers persist to ~/.cave/workers.json. Use \`&prompt\` in interactive
 mode to dispatch a prompt to the most recently used worker (TODO ws9-dispatch).`);
@@ -152,8 +152,8 @@ function doRemove(rest: string[]): number {
 }
 
 async function doStart(rest: string[]): Promise<number> {
-	// Alias for `cave serve` — a worker IS just a `cave serve` daemon.
-	// We forward args directly so all `cave serve` flags are accepted.
+	// Alias for `caveman serve` — a worker IS just a `caveman serve` daemon.
+	// We forward args directly so all `caveman serve` flags are accepted.
 	const { runServe } = await import("./serve.js");
 	return runServe(rest);
 }

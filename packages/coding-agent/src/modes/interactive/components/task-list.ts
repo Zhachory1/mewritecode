@@ -15,7 +15,7 @@
  * same way in inline transcripts and overlays.
  */
 
-import { Container, Text } from "@cave/tui";
+import { Container, Text } from "@caveman-code/tui";
 import { type Theme, theme } from "../theme/theme.js";
 
 export type TaskStatus = "pending" | "in_progress" | "completed" | "failed" | "blocked";
@@ -89,7 +89,7 @@ export class TaskListComponent extends Container {
 
 	/**
 	 * Advance the in-progress spinner by one frame. Caller should drive this
-	 * on a 80-100ms tick (same cadence as `Spinner` in @cave/tui).
+	 * on a 80-100ms tick (same cadence as `Spinner` in @caveman-code/tui).
 	 */
 	tick(): void {
 		this.spinnerFrame = (this.spinnerFrame + 1) % SPINNER_FRAMES.length;

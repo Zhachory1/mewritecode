@@ -1,5 +1,5 @@
-import type { AgentMessage, ThinkingLevel } from "@cave/agent";
-import type { Model } from "@cave/ai";
+import type { AgentMessage, ThinkingLevel } from "@caveman-code/agent";
+import type { Model } from "@caveman-code/ai";
 
 /**
  * Transaction interface for atomic operations across stores.

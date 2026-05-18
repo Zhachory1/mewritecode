@@ -10,7 +10,7 @@
  * model knows exactly what to produce.
  */
 
-import type { AgentTool } from "@cave/agent";
+import type { AgentTool } from "@caveman-code/agent";
 
 export type ChatMode = "plan" | "edit" | "auto";
 

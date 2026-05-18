@@ -7,7 +7,7 @@
  *   - SQLite session round-trip (persistence across daemon restart)
  *   - WS streaming roundtrip (token notifications coalesced)
  *   - worker registration via HTTP API
- *   - `cave attach` end-to-end (mocked LLM via the default echo runner)
+ *   - `caveman attach` end-to-end (mocked LLM via the default echo runner)
  *   - bearer token auth
  */
 import { mkdtempSync, rmSync } from "node:fs";

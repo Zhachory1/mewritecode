@@ -1,5 +1,5 @@
-import { Agent, type AgentEvent } from "@cave/agent";
-import { getModel, type ImageContent } from "@cave/ai";
+import { Agent, type AgentEvent } from "@caveman-code/agent";
+import { getModel, type ImageContent } from "@caveman-code/ai";
 import {
 	AgentSession,
 	AuthStorage,
@@ -11,7 +11,7 @@ import {
 	type ResourceLoader,
 	SessionManager,
 	type Skill,
-} from "cave";
+} from "caveman-code";
 import { existsSync, readFileSync } from "fs";
 import { mkdir, writeFile } from "fs/promises";
 import { homedir } from "os";

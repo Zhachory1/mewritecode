@@ -20,7 +20,7 @@
  */
 
 import { resolve } from "node:path";
-import type { memory as memoryNs } from "@cave/agent";
+import type { memory as memoryNs } from "@caveman-code/agent";
 import { composeStartupPrelude, importFromClaudeCode, locateClaudeMemory, readMemoryIndex } from "../memory-bridge.js";
 
 type MemoryProvider = memoryNs.MemoryProvider;
@@ -183,7 +183,7 @@ async function runConsolidate(ctx: MemorySlashContext): Promise<MemorySlashResul
 	const observations = await ctx.provider.getObservations(ids).catch(() => []);
 	if (observations.length === 0) return fail("no observation bodies returned by provider");
 
-	const { consolidate } = await import("@cave/agent").then((m) => m.memory);
+	const { consolidate } = await import("@caveman-code/agent").then((m) => m.memory);
 	const result = await consolidate(ctx.provider, observations, {
 		extractor: ctx.extractor,
 		minClusterSize: 2,
@@ -253,7 +253,7 @@ export async function buildSessionStartPrelude(args: {
 	if (args.taskSummary && args.taskSummary.trim()) {
 		try {
 			const hits = await args.provider.search(args.taskSummary, { limit: 5 });
-			const { formatPrelude } = await import("@cave/agent").then((m) => m.memory);
+			const { formatPrelude } = await import("@caveman-code/agent").then((m) => m.memory);
 			cavememSnippet = formatPrelude(hits, { max: 5 });
 		} catch {
 			cavememSnippet = undefined;

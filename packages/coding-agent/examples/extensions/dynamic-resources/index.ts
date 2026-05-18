@@ -1,6 +1,6 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { ExtensionAPI } from "cave";
+import type { ExtensionAPI } from "caveman-code";
 
 const baseDir = dirname(fileURLToPath(import.meta.url));
 

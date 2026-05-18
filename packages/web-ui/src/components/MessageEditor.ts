@@ -1,4 +1,4 @@
-import type { Model } from "@cave/ai";
+import type { Model } from "@caveman-code/ai";
 import { icon } from "@mariozechner/mini-lit";
 import { Button } from "@mariozechner/mini-lit/dist/Button.js";
 import { Select, type SelectOption } from "@mariozechner/mini-lit/dist/Select.js";
@@ -9,7 +9,7 @@ import { Brain, Loader2, Paperclip, Send, Sparkles, Square } from "lucide";
 import { type Attachment, loadAttachment } from "../utils/attachment-utils.js";
 import { i18n } from "../utils/i18n.js";
 import "./AttachmentTile.js";
-import type { ThinkingLevel } from "@cave/agent";
+import type { ThinkingLevel } from "@caveman-code/agent";
 
 @customElement("message-editor")
 export class MessageEditor extends LitElement {

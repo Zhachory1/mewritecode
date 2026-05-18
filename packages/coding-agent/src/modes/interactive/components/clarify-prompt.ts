@@ -1,4 +1,4 @@
-import { Container, getKeybindings, type OverlayHandle, Spacer, Text, type TUI } from "@cave/tui";
+import { Container, getKeybindings, type OverlayHandle, Spacer, Text, type TUI } from "@caveman-code/tui";
 import { theme } from "../theme/theme.js";
 
 export interface ClarifyPromptOptions {

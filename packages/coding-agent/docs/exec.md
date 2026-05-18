@@ -1,11 +1,11 @@
 # cave exec — CI / Non-Interactive Mode
 
-`cave exec` runs a single agent prompt without a terminal UI and exits. It is designed for use in GitHub Actions, GitLab CI, shell scripts, and other automation contexts.
+`caveman exec` runs a single agent prompt without a terminal UI and exits. It is designed for use in GitHub Actions, GitLab CI, shell scripts, and other automation contexts.
 
 ## Basic Usage
 
 ```bash
-cave exec "List all TypeScript files in src/"
+caveman exec "List all TypeScript files in src/"
 ```
 
 The assistant response is written to stdout and the process exits when done.
@@ -20,7 +20,7 @@ The assistant response is written to stdout and the process exits when done.
 | `--skip-git-repo-check` | Skip the git repository presence check |
 | `--output-last-message <file>` | Write the final assistant text to a file atomically |
 | `--cwd <dir>` | Working directory for the agent session (default: `$PWD`) |
-| `--model <pattern>` | Model pattern, e.g. `anthropic/claude-sonnet-4-5` (same format as `cave --model`) |
+| `--model <pattern>` | Model pattern, e.g. `anthropic/claude-sonnet-4-5` (same format as `caveman --model`) |
 | `--profile <name>` | Named profile from settings (deferred — emits a warning and continues) |
 | `--timeout <ms>` | Timeout in milliseconds; exits with code 5 if the agent does not complete in time |
 | `--help`, `-h` | Show help |
@@ -91,7 +91,7 @@ cat > /tmp/schema.json <<'EOF'
 }
 EOF
 
-cave exec --json --output-schema /tmp/schema.json \
+caveman exec --json --output-schema /tmp/schema.json \
   'Return JSON: {"result": "your answer here"}'
 ```
 
@@ -100,13 +100,13 @@ cave exec --json --output-schema /tmp/schema.json \
 The final assistant text is written to the given file atomically (write to a temp file, then `rename(2)`). Downstream CI steps can safely read the file without race conditions.
 
 ```bash
-cave exec --output-last-message /tmp/answer.txt "What is 2+2?"
+caveman exec --output-last-message /tmp/answer.txt "What is 2+2?"
 cat /tmp/answer.txt
 ```
 
 ## Ephemeral Mode (`--ephemeral`)
 
-In ephemeral mode, `cave exec` ignores all user and project config files:
+In ephemeral mode, `caveman exec` ignores all user and project config files:
 
 - `~/.cave/agent/settings.json` is not loaded
 - `.cave/settings.json` in the project root is not loaded
@@ -115,7 +115,7 @@ In ephemeral mode, `cave exec` ignores all user and project config files:
 This is useful for reproducible CI runs that must not be affected by a developer's local settings.
 
 ```bash
-cave exec --ephemeral \
+caveman exec --ephemeral \
   --model anthropic/claude-haiku-4-5 \
   "Summarize the recent git log"
 ```
@@ -124,24 +124,24 @@ cave exec --ephemeral \
 
 ```bash
 # Basic single-shot run
-cave exec "List all .ts files in src/"
+caveman exec "List all .ts files in src/"
 
 # JSON mode piped to jq to extract the final answer
-cave exec --json "What is the purpose of this codebase?" \
+caveman exec --json "What is the purpose of this codebase?" \
   | jq -r 'select(.type == "message.assistant") | .content'
 
 # Validate structured JSON output
-cave exec --json \
+caveman exec --json \
   --output-schema ./schemas/analysis.json \
   "Analyse the API surface and return JSON"
 
 # Write result to file for downstream CI steps
-cave exec \
+caveman exec \
   --output-last-message ./ci/analysis.txt \
   "Summarize the changes in src/"
 
 # Completely isolated ephemeral run
-cave exec \
+caveman exec \
   --ephemeral \
   --model anthropic/claude-haiku-4-5 \
   --timeout 60000 \
@@ -150,7 +150,7 @@ cave exec \
 # GitHub Actions example
 - name: Run cave exec
   run: |
-    cave exec \
+    caveman exec \
       --json \
       --output-last-message ${{ runner.temp }}/cave-result.txt \
       --ephemeral \
@@ -159,11 +159,11 @@ cave exec \
     ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
 
-## Relationship to `cave --print` / `cave --mode json`
+## Relationship to `caveman --print` / `caveman --mode json`
 
-`cave exec` is a thin wrapper over the existing print-mode (`cave -p`). The key additions are:
+`caveman exec` is a thin wrapper over the existing print-mode (`caveman -p`). The key additions are:
 
-- A cleaner subcommand surface (`cave exec` vs `cave -p`)
+- A cleaner subcommand surface (`caveman exec` vs `caveman -p`)
 - Stable JSONL event schema with `session.start` / `session.end` bookends
 - `--output-schema` validation with exit code 2
 - `--output-last-message` atomic file write

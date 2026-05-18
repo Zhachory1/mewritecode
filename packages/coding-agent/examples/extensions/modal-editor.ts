@@ -9,8 +9,8 @@
  * - ctrl+c, ctrl+d, etc. work in both modes
  */
 
-import { matchesKey, truncateToWidth, visibleWidth } from "@cave/tui";
-import { CustomEditor, type ExtensionAPI } from "cave";
+import { matchesKey, truncateToWidth, visibleWidth } from "@caveman-code/tui";
+import { CustomEditor, type ExtensionAPI } from "caveman-code";
 
 // Normal mode key mappings: key -> escape sequence (or null for mode switch)
 const NORMAL_KEYS: Record<string, string | null> = {

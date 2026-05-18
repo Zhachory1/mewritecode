@@ -2,12 +2,12 @@
 layout: home
 
 hero:
-  name: "Cave"
-  text: "Same work. 40× fewer tokens."
+  name: "Caveman Code"
+  text: "Same model. Same task. 2× fewer tokens."
   tagline: "Terminal coding agent that compresses at every layer. 20+ provider OAuth. Plan mode, subagents, MCP, sandbox, hooks. MIT."
   image:
     src: /logo.svg
-    alt: Cave
+    alt: Caveman Code
   actions:
     - theme: brand
       text: Quickstart
@@ -21,7 +21,7 @@ hero:
 
 features:
   - icon: 📦
-    title: Cave Mode compression
+    title: Caveman Mode compression
     details: 3-layer compression of prompts, tool output, and file reads. ~85% reduction on tool output. $1.70–$6.92 saved per session vs Claude Code.
     link: /reference/tools
     linkText: How it works
@@ -47,7 +47,7 @@ features:
     linkText: Permission profiles
   - icon: 🔌
     title: MCP everywhere
-    details: stdio + Streamable HTTP + in-process. ToolSearch defers schemas. cave can also serve as an MCP server.
+    details: stdio + Streamable HTTP + in-process. ToolSearch defers schemas. caveman-code can also serve as an MCP server.
     link: /reference/mcp
     linkText: MCP servers
   - icon: 🪝
@@ -84,7 +84,7 @@ Other options: [Homebrew, npm, Docker, manual](/getting-started/installation).
 ## I want to…
 
 - **Migrate from Claude Code** → [zero-migration guide](/migration/from-claude-code)
-- **Cut my Claude bill in half** → [Cave Mode reference](/reference/tools)
+- **Cut my Claude bill in half** → [Caveman Mode reference](/reference/tools)
 - **Use my ChatGPT Plus subscription for coding** → [OAuth providers](/getting-started/auth)
 - **Run cave headless in CI** → [exec mode](/cookbook#cave-exec-in-github-actions)
 - **Add my own slash command** → [Skills & Commands](/reference/skills)

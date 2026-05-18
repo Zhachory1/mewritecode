@@ -17,7 +17,7 @@ pkg update && pkg upgrade
 pkg install nodejs termux-api git
 
 # Install pi
-npm install -g cave
+npm install -g caveman-code
 
 # Create config directory
 mkdir -p ~/.pi/agent

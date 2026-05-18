@@ -2,8 +2,8 @@
  * Hello Tool - Minimal custom tool example
  */
 
-import { Type } from "@cave/ai";
-import { defineTool, type ExtensionAPI } from "cave";
+import { Type } from "@caveman-code/ai";
+import { defineTool, type ExtensionAPI } from "caveman-code";
 
 const helloTool = defineTool({
 	name: "hello",

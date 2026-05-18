@@ -5,9 +5,9 @@
  * Multiple questions: tab bar navigation between questions
  */
 
-import { Editor, type EditorTheme, Key, matchesKey, Text, truncateToWidth } from "@cave/tui";
+import { Editor, type EditorTheme, Key, matchesKey, Text, truncateToWidth } from "@caveman-code/tui";
 import { Type } from "@sinclair/typebox";
-import type { ExtensionAPI } from "cave";
+import type { ExtensionAPI } from "caveman-code";
 
 // Types
 interface QuestionOption {

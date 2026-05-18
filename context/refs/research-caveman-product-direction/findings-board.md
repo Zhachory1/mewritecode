@@ -6,7 +6,7 @@
 ## Codebase Findings
 
 ### Architecture
-- Monorepo (10 packages), fork of badlogic/pi-mono, CLI entry: `cave`/`pi`
+- Monorepo (10 packages), fork of badlogic/pi-mono, CLI entry: `caveman`/`pi`
 - Build: tsgo 7.0.0-dev (pre-release risk), Biome 2.3.5, Bun 1.2.20 for binaries
 - Extensions: jiti-loaded TypeScript with ExtensionAPI, NO MCP by design
 - Config: .cave/ dir, AGENTS.md/CLAUDE.md tree walk, deep-merge settings
@@ -15,7 +15,7 @@
 
 ### Patterns & Dependencies
 - TypeScript strict ESM, no `any`, no inline imports, configurable keybindings
-- Cave mode: 3-layer (prompt injection + tool output compression + optional RTK)
+- Caveman Code mode: 3-layer (prompt injection + tool output compression + optional RTK)
 - CaveKit: 4-phase DABI lifecycle, markdown kits, build site DAG, wave executor
 - Key deps: Anthropic/OpenAI/Google/Mistral SDKs, TypeBox, jiti, proper-lockfile
 
@@ -27,7 +27,7 @@
 
 ### Distribution & Viral
 - /share disabled (no domain), /export HTML works
-- Cave mode = primary viral differentiator (runs cheaper)
+- Caveman Code mode = primary viral differentiator (runs cheaper)
 - Package gallery still at upstream domain
 - No /cave toggle command, upstream logo in README
 - 50+ example extensions, full skill/package ecosystem

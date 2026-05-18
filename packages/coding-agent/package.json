@@ -1,14 +1,14 @@
 {
-	"name": "cave",
+	"name": "caveman-code",
 	"version": "0.65.2",
-	"description": "Cave — a terminal coding agent",
+	"description": "Caveman Code — a terminal coding agent",
 	"type": "module",
 	"caveConfig": {
-		"name": "cave",
+		"name": "caveman-code",
 		"configDir": ".cave"
 	},
 	"bin": {
-		"cave": "dist/cli.js",
+		"caveman-code": "dist/cli.js",
 		"caveman": "dist/cli.js"
 	},
 	"main": "./dist/index.js",
@@ -47,9 +47,9 @@
 		"prepublishOnly": "npm run clean && npm run build"
 	},
 	"dependencies": {
-		"@cave/agent": "^0.65.2",
-		"@cave/ai": "^0.65.2",
-		"@cave/tui": "^0.65.2",
+		"@caveman-code/agent": "^0.65.2",
+		"@caveman-code/ai": "^0.65.2",
+		"@caveman-code/tui": "^0.65.2",
 		"@mariozechner/jiti": "^2.6.2",
 		"@silvia-odwyer/photon-node": "^0.3.4",
 		"ajv": "^8.17.1",

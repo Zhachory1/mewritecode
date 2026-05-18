@@ -1,4 +1,4 @@
-import type { ExtensionAPI, ExtensionContext } from "cave";
+import type { ExtensionAPI, ExtensionContext } from "caveman-code";
 
 const COMPACT_THRESHOLD_TOKENS = 100_000;
 

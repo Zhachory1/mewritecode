@@ -94,7 +94,7 @@ export async function runList(args: string[]): Promise<number> {
 		const msg = err instanceof Error ? err.message : String(err);
 		if (msg.includes("ECONNREFUSED")) {
 			console.error(chalk.yellow(`No daemon listening on ${parsed.host}:${parsed.port}.`));
-			console.error(chalk.dim(`Start one with: cave serve`));
+			console.error(chalk.dim(`Start one with: caveman serve`));
 			return 2;
 		}
 		console.error(chalk.red(`Error: ${msg}`));
@@ -120,10 +120,10 @@ export async function runList(args: string[]): Promise<number> {
 }
 
 /**
- * Dispatch hook. Canonical user-facing form is `cave sessions`. We avoid
+ * Dispatch hook. Canonical user-facing form is `caveman sessions`. We avoid
  * `cave list` — that already means "list installed extensions" via the
  * package-manager handler. The WS9 plan specified `cave list`, but to keep
- * the existing extension-list semantics intact we ship `cave sessions` as
+ * the existing extension-list semantics intact we ship `caveman sessions` as
  * the canonical name and accept `cave ps` as a short alias (Docker-style).
  */
 export async function handleListCommand(args: string[]): Promise<boolean> {

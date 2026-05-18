@@ -7,7 +7,7 @@
 
 ## Summary
 
-Cave adopts a layered cache policy, deterministic model routing, a repomap
+Caveman Code adopts a layered cache policy, deterministic model routing, a repomap
 with PageRank, shadow-git checkpoints, and an executable verifier loop to
 cut SWE-bench token spend while holding (or improving) resolved rates.
 

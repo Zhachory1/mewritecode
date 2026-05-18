@@ -13,7 +13,7 @@
  */
 
 import { createInterface, type Interface as ReadlineInterface } from "node:readline";
-import { getEnvApiKey } from "@cave/ai";
+import { getEnvApiKey } from "@caveman-code/ai";
 import chalk from "chalk";
 import { VERSION } from "../config.js";
 import type { SettingsManager } from "../core/settings-manager.js";
@@ -201,7 +201,7 @@ export async function runOnboarding(settings: SettingsManager, io: WizardIO = DE
 			write(out, chalk.bold("\n2) Authentication\n"));
 			write(out, chalk.dim("  No API keys found in the environment.\n"));
 			write(out, chalk.dim("  Set ANTHROPIC_API_KEY / OPENAI_API_KEY / GEMINI_API_KEY (etc) and re-run,\n"));
-			write(out, chalk.dim("  or run `cave login` for interactive OAuth, or skip for now.\n"));
+			write(out, chalk.dim("  or run `caveman login` for interactive OAuth, or skip for now.\n"));
 			auth = { type: "skip" };
 		}
 		if (auth.type === "use-env") {

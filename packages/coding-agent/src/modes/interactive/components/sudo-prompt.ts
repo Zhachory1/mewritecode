@@ -1,4 +1,4 @@
-import type { TUI } from "@cave/tui";
+import type { TUI } from "@caveman-code/tui";
 import { promptSecret, type SecretPromptOptions } from "./secret-prompt.js";
 
 export interface SudoPromptOptions extends Omit<SecretPromptOptions, "auditLabel"> {

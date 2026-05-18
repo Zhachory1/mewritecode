@@ -33,7 +33,7 @@ initiative: token-efficiency
 | T-017 | Block writes outside workdir, network, and sensitive HOME paths under Seatbelt | cavekit-sandbox-mcp.md | R1 | M |
 | T-018 | Implement Linux Landlock sandbox wrapper with kernel 5.13 detection | cavekit-sandbox-mcp.md | R2 | M |
 | T-019 | Emit Windows startup unsupported-sandbox warning and run permissive | cavekit-sandbox-mcp.md | R3 | S |
-| T-020 | Add `cave mcp serve` MCP server mode exposing built-in tool surface | cavekit-sandbox-mcp.md | R6 | M |
+| T-020 | Add `caveman mcp serve` MCP server mode exposing built-in tool surface | cavekit-sandbox-mcp.md | R6 | M |
 | T-021 | Implement ACP handshake, message streaming, and tool call forwarding | cavekit-sandbox-mcp.md | R7 | M |
 | T-022 | Document skills/subagents/hooks trinity as in-process extension surface | cavekit-sandbox-mcp.md | R8 | S |
 | T-023 | Implement shadow-git checkpoint repo at `~/.cave/checkpoints/<session>/.git` | cavekit-session-checkpoints.md | R1 | M |
@@ -453,7 +453,7 @@ Note: tier 1 spans T-041..T-117 (77 tasks). Tier counts reflect parallelization 
 | cavekit-sandbox-mcp.md | R5 | Model-initiated MCP call forwarded | T-113 | COVERED |
 | cavekit-sandbox-mcp.md | R5 | MCP tool schemas byte-stable serialization | T-114 | COVERED |
 | cavekit-sandbox-mcp.md | R5 | Missing server fails cleanly | T-113 | COVERED |
-| cavekit-sandbox-mcp.md | R6 | `cave mcp serve` accepts connections | T-020 | COVERED |
+| cavekit-sandbox-mcp.md | R6 | `caveman mcp serve` accepts connections | T-020 | COVERED |
 | cavekit-sandbox-mcp.md | R6 | All built-in tools exposed | T-020 | COVERED |
 | cavekit-sandbox-mcp.md | R6 | Client can invoke each and receive result | T-020 | COVERED |
 | cavekit-sandbox-mcp.md | R7 | Zed ACP handshake completes | T-021 | COVERED |

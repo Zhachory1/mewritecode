@@ -40,7 +40,7 @@ artifacts, and bumps the references in `README.md` and the docs site.
 | File | What it shows | Length target |
 |---|---|---|
 | `install.tape` | curl-bash install, first prompt | 30s |
-| `cave-mode-ab.tape` | Cave Mode vs Claude Code with token counter | 45s |
+| `cave-mode-ab.tape` | Caveman Mode vs Claude Code with token counter | 45s |
 | `plan-act.tape` | `/plan` → review → `/act` flow | 40s |
 | `session-tree.tape` | `/tree` and `/fork` session branching | 30s |
 | `extension-hotload.tape` | Drop a skill into `.cave/skills/` and watch it load | 25s |

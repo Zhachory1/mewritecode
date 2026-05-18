@@ -1,5 +1,5 @@
 /**
- * `cave doctor` (WS11) — diagnostic / health check command.
+ * `caveman doctor` (WS11) — diagnostic / health check command.
  *
  * Reports kernel + arch, terminal capabilities, sandbox availability, MCP
  * servers reachable, missing tooling, and auth status. Output is human
@@ -15,7 +15,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { homedir, release as osRelease, platform } from "node:os";
 import { join } from "node:path";
-import { getEnvApiKey } from "@cave/ai";
+import { getEnvApiKey } from "@caveman-code/ai";
 import chalk from "chalk";
 import { CONFIG_DIR_NAME, getAgentDir, VERSION } from "../config.js";
 import { SettingsManager } from "../core/settings-manager.js";
@@ -175,7 +175,7 @@ function detectAuth(): DoctorCheck[] {
 			id: "auth",
 			label: "Auth",
 			status: "warn",
-			detail: "no API keys found in env. Run `cave login` or set ANTHROPIC_API_KEY / OPENAI_API_KEY / etc.",
+			detail: "no API keys found in env. Run `caveman login` or set ANTHROPIC_API_KEY / OPENAI_API_KEY / etc.",
 		});
 	}
 	return checks;
@@ -197,7 +197,7 @@ function detectMcpReachability(cwd: string): DoctorCheck[] {
 			id: "mcp-config",
 			label: "MCP config files",
 			status: "info",
-			detail: "no .mcp.json found (project or user). Run `cave mcp add <name>` to register one.",
+			detail: "no .mcp.json found (project or user). Run `caveman mcp add <name>` to register one.",
 		});
 	} else {
 		checks.push({
@@ -208,7 +208,7 @@ function detectMcpReachability(cwd: string): DoctorCheck[] {
 		});
 	}
 	// We intentionally don't spawn MCP servers from doctor — that's the job of
-	// `cave mcp doctor` (WS2). We only verify the config is parseable.
+	// `caveman mcp doctor` (WS2). We only verify the config is parseable.
 	return checks;
 }
 

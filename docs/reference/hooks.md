@@ -5,7 +5,7 @@ description: 12-event lifecycle hooks. settings.json schema is identical to Clau
 
 # Hooks
 
-Hooks are shell commands triggered by lifecycle events. Cave matches **Claude Code's settings.json schema verbatim** — paste your existing `~/.claude/settings.json` into `~/.cave/settings.json` and your hooks Just Work.
+Hooks are shell commands triggered by lifecycle events. Caveman Code matches **Claude Code's settings.json schema verbatim** — paste your existing `~/.claude/settings.json` into `~/.cave/settings.json` and your hooks Just Work.
 
 <CopyForLlms />
 
@@ -13,8 +13,8 @@ Hooks are shell commands triggered by lifecycle events. Cave matches **Claude Co
 
 | Event | When fires | Sync? |
 |---|---|---|
-| `SessionStart` | Cave session boots | sync, advisory |
-| `SessionEnd` | Cave exits | sync, advisory |
+| `SessionStart` | Caveman Code session boots | sync, advisory |
+| `SessionEnd` | Caveman Code exits | sync, advisory |
 | `UserPromptSubmit` | User sends a turn | sync, advisory (stdout → context) |
 | `Stop` | Model returns final response | sync, advisory |
 | `SubagentStop` | A subagent returns to parent | sync, advisory |
@@ -103,7 +103,7 @@ Example: a `PostToolUse` hook that reports failing tests:
 
 If the count is non-zero, the model sees `123` in its context and proactively fixes failures.
 
-## Default hooks shipped with Cave
+## Default hooks shipped with Caveman Code
 
 | Hook | Event | Purpose |
 |---|---|---|
@@ -117,8 +117,8 @@ Disable any of these in `settings.json` by setting `enabled: false`.
 ## Slash commands
 
 ```bash
-cave hooks list             # all hooks, scope, status
-cave hooks test PreToolUse --tool Edit --path src/foo.ts
+caveman hooks list             # all hooks, scope, status
+caveman hooks test PreToolUse --tool Edit --path src/foo.ts
 ```
 
 `/hooks` opens the same view inside the TUI.

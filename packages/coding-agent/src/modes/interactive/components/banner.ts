@@ -1,4 +1,4 @@
-import { Container, Text, truncateToWidth, visibleWidth } from "@cave/tui";
+import { Container, Text, truncateToWidth, visibleWidth } from "@caveman-code/tui";
 import { theme } from "../theme/theme.js";
 
 export type BannerSprite = "rock" | "rock-eyes" | "rock-ascii";

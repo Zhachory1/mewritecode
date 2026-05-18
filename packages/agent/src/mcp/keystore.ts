@@ -5,7 +5,7 @@
 // libsecret on Linux, Credential Vault on Windows). Keytar requires native
 // compilation, which complicates the bun-built binary; the file store is the
 // safe interim and exposes the same `KeyStore` interface so the swap is a
-// 5-line patch in `cave mcp login`.
+// 5-line patch in `caveman mcp login`.
 
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";

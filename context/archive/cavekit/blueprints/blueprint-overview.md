@@ -52,7 +52,7 @@ fork-identity
 
 **No MCP:** Per PRD Decision 2, no MCP servers are used. Tool integrations use direct CLI invocation.
 
-**Print Mode First:** Per PRD Decision 1, subagent dispatch uses print mode (`cave -p`), not SDK embedding.
+**Print Mode First:** Per PRD Decision 1, subagent dispatch uses print mode (`caveman -p`), not SDK embedding.
 
 **Scoped Context:** Subagents receive only relevant kit sections (extension-commands R14), not full kit trees, to minimize token usage.
 

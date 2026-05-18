@@ -10,7 +10,7 @@
  *   /checkpoint my backup label
  */
 
-import { checkpoints } from "@cave/agent";
+import { checkpoints } from "@caveman-code/agent";
 
 const { CheckpointManager } = checkpoints;
 

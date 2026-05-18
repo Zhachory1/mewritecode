@@ -1,4 +1,4 @@
-// T-020: `cave mcp serve` — MCP server mode exposing built-in tool surface.
+// T-020: `caveman mcp serve` — MCP server mode exposing built-in tool surface.
 //
 // Minimal JSON-RPC over stdio. Registered tools can be invoked by an MCP
 // client and the result is returned. Real wire is JSON-RPC 2.0 per MCP spec.

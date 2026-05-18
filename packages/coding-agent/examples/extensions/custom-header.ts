@@ -5,8 +5,8 @@
  * (logo + keybinding hints) with a custom component showing the pi mascot.
  */
 
-import type { ExtensionAPI, Theme } from "cave";
-import { VERSION } from "cave";
+import type { ExtensionAPI, Theme } from "caveman-code";
+import { VERSION } from "caveman-code";
 
 // --- PI MASCOT ---
 // Based on pi_mascot.ts - the pi agent character

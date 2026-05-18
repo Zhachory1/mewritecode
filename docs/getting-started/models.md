@@ -1,11 +1,11 @@
 ---
 title: Models
-description: Select and configure the LLM behind Cave.
+description: Select and configure the LLM behind Caveman Code.
 ---
 
 # Models
 
-Cave runs against any model your provider exposes. The defaults are chosen per provider and re-evaluated on each release based on the [proof-bench eval harness](https://github.com/JuliusBrussee/caveman-cli/tree/main/research/evals).
+Caveman Code runs against any model your provider exposes. The defaults are chosen per provider and re-evaluated on each release based on the [proof-bench eval harness](https://github.com/JuliusBrussee/caveman-cli/tree/main/research/evals).
 
 <CopyForLlms />
 
@@ -23,9 +23,9 @@ Cave runs against any model your provider exposes. The defaults are chosen per p
 Override per session:
 
 ```bash
-cave --model claude-opus-4-7
-cave --model openai/gpt-5
-cave --model claude-sonnet-4:high   # thinking level high
+caveman --model claude-opus-4-7
+caveman --model openai/gpt-5
+caveman --model claude-sonnet-4:high   # thinking level high
 ```
 
 Inside the TUI, `/model` opens the picker.
@@ -50,7 +50,7 @@ Cycle in TUI with `Shift+Tab`.
 Use a strong model to plan, a cheaper model to execute. Drops cost ~3-5× on long sessions.
 
 ```bash
-cave --architect claude-opus-4-7 --editor claude-haiku-4
+caveman --architect claude-opus-4-7 --editor claude-haiku-4
 ```
 
 Or in `~/.cave/settings.json`:
@@ -81,14 +81,14 @@ Subagent results are summarized to ≤500 tokens before re-entering the parent's
 
 ## Model registry
 
-Provider/model definitions live in a versioned registry at `github.com/cave-cli/registry`. Update locally without releasing Cave:
+Provider/model definitions live in a versioned registry at `github.com/cave-cli/registry`. Update locally without releasing Caveman Code:
 
 ```bash
-cave models update
+caveman models update
 ```
 
 Override per-machine in `~/.cave/registry.json`. See [Provider Registry](/reference/tools#registry) for schema.
 
 ## Cost-aware defaults
 
-Cave's first-run wizard suggests Haiku/Flash for the default model on free OAuth accounts to avoid surprise bills. Upgrade with `/model` once you've validated the workflow.
+Caveman Code's first-run wizard suggests Haiku/Flash for the default model on free OAuth accounts to avoid surprise bills. Upgrade with `/model` once you've validated the workflow.

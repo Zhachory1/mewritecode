@@ -2,7 +2,7 @@
  * WS15: Catwalk-style provider/model registry schema.
  *
  * Registry JSON schema defined with @sinclair/typebox (matches existing
- * @cave/ai conventions — ajv + typebox, no zod dependency).
+ * @caveman-code/ai conventions — ajv + typebox, no zod dependency).
  *
  * Validation: use validateRegistry() which returns a typed result.
  */
@@ -74,7 +74,7 @@ export const RegistryProviderSchema = Type.Object({
 	id: Type.String({ minLength: 1 }),
 	/** Human-readable name */
 	name: Type.String({ minLength: 1 }),
-	/** Provider API kind — maps to @cave/ai Api type */
+	/** Provider API kind — maps to @caveman-code/ai Api type */
 	kind: RegistryProviderKindSchema,
 	/** Optional override base URL */
 	baseUrl: Type.Optional(Type.String({ minLength: 1 })),

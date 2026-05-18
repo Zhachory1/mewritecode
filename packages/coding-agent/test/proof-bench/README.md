@@ -1,6 +1,6 @@
 # CAVE Compression Proof
 
-Mac-runnable, scrutiny-proof benchmark of the caveman compression stack. Runs the real `cave` CLI binary end-to-end across an ablation grid, externally audits every token count, quality-gates every claim, and refuses to publish if gates fail.
+Mac-runnable, scrutiny-proof benchmark of the caveman compression stack. Runs the real `caveman` CLI binary end-to-end across an ablation grid, externally audits every token count, quality-gates every claim, and refuses to publish if gates fail.
 
 **Full suite:** ≤ ~$5, ≤ ~45 min wall-clock on a MacBook. Default model `claude-haiku-4-5`.
 
@@ -43,7 +43,7 @@ Artifacts land in `./results/<timestamp>/`:
 
 ### Three measurement modes
 
-- **Live** — real `cave` binary, real API. Used for headline tokens-per-resolved and caveman-output eval. Minimal matrix: 4 configs × 10 tasks × 2 seeds = 80 runs.
+- **Live** — real `caveman` binary, real API. Used for headline tokens-per-resolved and caveman-output eval. Minimal matrix: 4 configs × 10 tasks × 2 seeds = 80 runs.
 - **Replay** — load real `.jsonl` sessions, re-pipe through the compression stack with each layer disabled. $0 cost. Used for layer-isolation on production traces.
 - **Fixture** — static tool-output corpus → compression functions directly. $0 cost. Used for per-layer micro-math.
 
@@ -112,7 +112,7 @@ Compare your `results.json` to the published one — tokens must match per-row w
 - `manifest.json` — pre-registration (dataset/code/model/grid lock)
 - `ablation-matrix.ts` — produces the 4 live + 4 replay configs
 - `layer-isolation.ts` — fixture per-layer math
-- `live-runner.ts` — real `cave` binary via child-process spawn
+- `live-runner.ts` — real `caveman` binary via child-process spawn
 - `replay-runner.ts` — deterministic session replay
 - `cave-output-eval.ts` — generation-side quality-gated measurement
 - `token-auditor.ts` — `count_tokens` recount + delta check

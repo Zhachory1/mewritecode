@@ -1,8 +1,8 @@
 # CAVE CLI — ASCII Logo Concepts
 
-30 candidate ASCII logos for the `cave` CLI. All rock-based: boulders, pebbles,
+30 candidate ASCII logos for the `caveman` CLI. All rock-based: boulders, pebbles,
 cairns, slabs, geodes, scree. Each is sized to fit a terminal banner (most
-under 12 lines, under 60 cols). Pick favorites for `cave --help`, `cave splash`,
+under 12 lines, under 60 cols). Pick favorites for `caveman --help`, `caveman splash`,
 or the README header.
 
 ---

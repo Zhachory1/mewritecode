@@ -23,7 +23,7 @@ export default defineConfig({
             {
                 property: "og:description",
                 content:
-                    "40x fewer tokens than Claude Code. 20+ provider OAuth. Plan mode, subagents, MCP, sandbox, hooks. MIT.",
+                    "2x fewer tokens than Codex CLI on identical gpt-5.5 tasks. 20+ provider OAuth. Plan mode, subagents, MCP, sandbox, hooks. MIT.",
             },
         ],
         ["meta", { property: "og:url", content: "https://cave.sh/docs/" }],

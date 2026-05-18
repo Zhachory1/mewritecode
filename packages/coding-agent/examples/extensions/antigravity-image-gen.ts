@@ -29,9 +29,9 @@ import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { StringEnum } from "@cave/ai";
+import { StringEnum } from "@caveman-code/ai";
 import { type Static, Type } from "@sinclair/typebox";
-import { type ExtensionAPI, getAgentDir, withFileMutationQueue } from "cave";
+import { type ExtensionAPI, getAgentDir, withFileMutationQueue } from "caveman-code";
 
 const PROVIDER = "google-antigravity";
 

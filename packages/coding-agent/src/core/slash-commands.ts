@@ -79,7 +79,7 @@ export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 	{ name: "resume", description: "Resume a different session" },
 	{ name: "reload", description: "Reload keybindings, extensions, skills, prompts, and themes" },
 	{ name: "hooks", description: "List, test, and manage Claude Code-compatible lifecycle hooks (WS4)" },
-	{ name: "mcp", description: "Manage MCP servers (list, doctor, login, reload). See: cave mcp --help." },
+	{ name: "mcp", description: "Manage MCP servers (list, doctor, login, reload). See: caveman mcp --help." },
 	{
 		name: "memory",
 		description:

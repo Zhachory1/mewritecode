@@ -1,4 +1,4 @@
-import { type Component, truncateToWidth, visibleWidth } from "@cave/tui";
+import { type Component, truncateToWidth, visibleWidth } from "@caveman-code/tui";
 import type { AgentSession } from "../../../core/agent-session.js";
 import { theme } from "../theme/theme.js";
 

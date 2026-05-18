@@ -5,26 +5,26 @@ description: Run cave as a headless server. Multi-client attach. Sessions surviv
 
 # Daemon
 
-`cave serve` starts a headless HTTP daemon that other Cave clients (TUI, future desktop, future mobile) attach to. Sessions live in SQLite and survive SSH drops, machine sleep, and client crashes.
+`caveman serve` starts a headless HTTP daemon that other Caveman Code clients (TUI, future desktop, future mobile) attach to. Sessions live in SQLite and survive SSH drops, machine sleep, and client crashes.
 
 <CopyForLlms />
 
 ## Quick start
 
 ```bash
-cave serve --port 39245                          # start the daemon
-cave attach --host localhost:39245               # attach a TUI to it
-cave list                                        # list sessions
+caveman serve --port 39245                          # start the daemon
+caveman attach --host localhost:39245               # attach a TUI to it
+caveman list                                        # list sessions
 ```
 
-By default `cave serve` binds to `127.0.0.1` only. Use `--host 0.0.0.0` and a TLS terminator for remote access.
+By default `caveman serve` binds to `127.0.0.1` only. Use `--host 0.0.0.0` and a TLS terminator for remote access.
 
 ## Architecture
 
 ```
 ┌─────────────────────────────┐         ┌─────────────────────┐
-│  cave TUI (client)          │ ──HTTP─▶│  cave serve         │
-│  cave attach <session-id>   │ ◀──WS── │   ├─ session store  │
+│  cave TUI (client)          │ ──HTTP─▶│  caveman serve         │
+│  caveman attach <session-id>   │ ◀──WS── │   ├─ session store  │
 └─────────────────────────────┘         │   │  (SQLite)        │
                                         │   ├─ session loop    │
 ┌─────────────────────────────┐         │   ├─ tool runtime    │
@@ -38,14 +38,14 @@ By default `cave serve` binds to `127.0.0.1` only. Use `--host 0.0.0.0` and a TL
 
 ## OpenAPI spec
 
-The daemon exposes an OpenAPI 3.1 spec at `GET /openapi.yaml`. The generated TypeScript SDK is published as `@cave/sdk`:
+The daemon exposes an OpenAPI 3.1 spec at `GET /openapi.yaml`. The generated TypeScript SDK is published as `@caveman-code/sdk`:
 
 ```bash
-npm install @cave/sdk
+npm install @caveman-code/sdk
 ```
 
 ```typescript
-import { CaveClient } from "@cave/sdk";
+import { CaveClient } from "@caveman-code/sdk";
 
 const client = new CaveClient({ host: "localhost:39245" });
 const session = await client.sessions.create({ model: "claude-sonnet-4" });
@@ -57,14 +57,14 @@ for await (const ev of session.events()) {
 
 ## Worker mode (cloud handoff)
 
-Register a remote `cave worker`:
+Register a remote `caveman worker`:
 
 ```bash
 # on the remote (e.g. a beefy GPU box)
-cave worker start --bind 0.0.0.0:39246 --token <secret>
+caveman worker start --bind 0.0.0.0:39246 --token <secret>
 
 # locally, register
-cave worker add gpu-rig http://gpu-rig:39246 --token <secret>
+caveman worker add gpu-rig http://gpu-rig:39246 --token <secret>
 ```
 
 Then prepend `&` to any prompt and it dispatches to the worker:
@@ -76,8 +76,8 @@ Then prepend `&` to any prompt and it dispatches to the worker:
 The local terminal frees up. The worker runs the session. Re-attach later:
 
 ```bash
-cave list
-cave attach <session-id>
+caveman list
+caveman attach <session-id>
 ```
 
 ## Multi-client
@@ -88,11 +88,11 @@ Multiple clients can attach to the same session. Edits stream to all attached cl
 
 ```bash
 ssh box
-cave serve &
-cave attach <id>
+caveman serve &
+caveman attach <id>
 # SSH drops
 ssh box
-cave attach <id>     # picks up exactly where you left off
+caveman attach <id>     # picks up exactly where you left off
 ```
 
 The daemon survives client disconnects. Tool calls in flight complete; the next attach replays missed events.
@@ -100,11 +100,11 @@ The daemon survives client disconnects. Tool calls in flight complete; the next 
 ## Stopping
 
 ```bash
-cave serve stop
-cave serve --pid-file ~/.cave/serve.pid stop
+caveman serve stop
+caveman serve --pid-file ~/.cave/serve.pid stop
 ```
 
-`Ctrl+C` on the foreground `cave serve` stops it cleanly. Active sessions checkpoint to disk.
+`Ctrl+C` on the foreground `caveman serve` stops it cleanly. Active sessions checkpoint to disk.
 
 ## Security
 
@@ -115,6 +115,6 @@ cave serve --pid-file ~/.cave/serve.pid stop
 
 ## Limitations
 
-- Daemon is **opt-in**. Most users run cave directly without it.
+- Daemon is **opt-in**. Most users run caveman directly without it.
 - Worker mode requires SSH-grade trust between local and remote.
 - Not yet supported on Windows (preview Q3 2026).

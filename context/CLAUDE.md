@@ -1,6 +1,6 @@
 # Context
 
-Active working context for `cave`. The CaveKit hierarchy (kits/impl/blueprints)
+Active working context for `caveman`. The CaveKit hierarchy (kits/impl/blueprints)
 has been retired and moved to `archive/cavekit/`.
 
 ## Active layout

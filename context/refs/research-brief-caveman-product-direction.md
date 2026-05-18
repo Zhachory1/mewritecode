@@ -12,8 +12,8 @@ Caveman CLI is a standalone agentic coding CLI (fork of pi-mono) with a genuine 
 
 ### Architecture & Patterns
 
-- **Monorepo, 10 packages, single binary entry (`cave`/`pi` aliases)** — build uses tsgo (TS 7.0.0-dev preview), Biome 2.3.5 for linting, Bun 1.2.20 for binary compilation. [confidence: HIGH] [sources: 4 codebase agents unanimous]
-- **Cave mode is 3-layer compression: system prompt injection (lite/full/ultra) + tool output compression (ANSI strip, blank collapse, truncation) + optional RTK binary (200ms timeout, fail-open).** This is the primary differentiator. [confidence: HIGH] [sources: 3]
+- **Monorepo, 10 packages, single binary entry (`caveman`/`pi` aliases)** — build uses tsgo (TS 7.0.0-dev preview), Biome 2.3.5 for linting, Bun 1.2.20 for binary compilation. [confidence: HIGH] [sources: 4 codebase agents unanimous]
+- **Caveman Code mode is 3-layer compression: system prompt injection (lite/full/ultra) + tool output compression (ANSI strip, blank collapse, truncation) + optional RTK binary (200ms timeout, fail-open).** This is the primary differentiator. [confidence: HIGH] [sources: 3]
 - **Extensions use jiti-loaded TypeScript with an ExtensionAPI factory pattern exposing 20+ lifecycle events.** No MCP support by design. [confidence: HIGH] [sources: 2]
 - **Config discovery walks up the directory tree for .cave/, AGENTS.md, CLAUDE.md with deep-merge semantics.** Dual .pi/.cave directory naming persists from incomplete rebrand. [confidence: HIGH] [sources: 2]
 - **CaveKit implements a 4-phase DABI lifecycle with markdown kits, R{N} headings, build sites with tier/task DAGs, and a wave executor.** This is architecturally ambitious but adds substantial maintenance surface. [confidence: HIGH] [sources: 2]
@@ -32,7 +32,7 @@ Caveman CLI is a standalone agentic coding CLI (fork of pi-mono) with a genuine 
 
 - **Zero-config onboarding is the #1 growth lever.** Ollama grew 261% by "just works" design. Currently, cave mode has no `/cave` toggle command — users must edit settings.json manually. This is a friction point that directly undermines virality.
 - **Quantified productivity claims are the #1 viral mechanism for CLI tools.** Oh My Zsh (170K stars) and RTK (single viral post) both demonstrate this. Caveman has zero in-repo benchmarks for token savings despite this being the core value proposition.
-- **Output tokens cost 4-6x more than input tokens; prompt caching gives 90% savings on cache hits.** Cave mode's compression layers should be evaluated against this cost asymmetry — compressing outputs may be more valuable than compressing inputs.
+- **Output tokens cost 4-6x more than input tokens; prompt caching gives 90% savings on cache hits.** Caveman Code mode's compression layers should be evaluated against this cost asymmetry — compressing outputs may be more valuable than compressing inputs.
 - **Show HN is the #1 launch channel for developer tools, but superlatives ("most viral", "best") cause immediate tab-close.** Evidence-led framing with concrete numbers is required. The PRD's "most viral" language needs revision for public-facing copy.
 - **Instruction fade-out is real in long agentic sessions.** Event-triggered reminders (already partially implemented via DESIGN.md auto-injection into subagent sessions) are the correct mitigation.
 - **Lazy tool discovery (only load relevant tools per task) reduces token overhead.** OpenDev paper documents this pattern.
@@ -52,7 +52,7 @@ Caveman CLI is a standalone agentic coding CLI (fork of pi-mono) with a genuine 
 - **jiti extension loading has an RCE vector** — a malicious git repo can execute code before any prompt is shown. Combined with CVE-2025-59536 (RCE via hooks in Claude Code), this is a security surface that needs sandboxing or at minimum prominent warnings. [confidence: HIGH]
 - **Feature creep before core adoption** — CaveKit's 4-phase DABI, wave executor, tier gates, and codex review add substantial surface area. The visual theme overhaul is specified in a kit but unimplemented. The PRD Phase 6 launch plan exists but is unexecuted. Shipping compression benchmarks and a `/cave` toggle would have more impact than any of these. [confidence: HIGH]
 - **No-MCP stance risks ecosystem isolation** — the Claude Code plugin ecosystem has 9,000+ extensions and find-skills has 661K+ installs. Being unable to interoperate with any of these is a growing cost. [confidence: MEDIUM]
-- **Context drift compounds compression errors** — 5.5x failure increase in complex tasks when compression is applied. Cave mode needs graceful degradation or user-visible warnings for long sessions. [confidence: MEDIUM]
+- **Context drift compounds compression errors** — 5.5x failure increase in complex tasks when compression is applied. Caveman Code mode needs graceful degradation or user-visible warnings for long sessions. [confidence: MEDIUM]
 - **OSS session sharing still points to upstream HuggingFace dataset.** The /share command is disabled but the reference remains — a data leak risk if re-enabled without updating. [confidence: HIGH]
 
 ## Contradictions & Open Questions
@@ -69,7 +69,7 @@ Caveman CLI is a standalone agentic coding CLI (fork of pi-mono) with a genuine 
 
 ## Codebase Context
 
-- **Architecture**: Monorepo with 10 packages under @cavepi/ npm scope. Single binary entry point compiles to `cave` and `pi` aliases. Packages span core CLI, TUI (12 terminal primitives, 35 components), AI provider SDKs (Anthropic/OpenAI/Google/AWS/Mistral), CaveKit (SDD/markdown integration), and web-UI (Lit components).
+- **Architecture**: Monorepo with 10 packages under @cavepi/ npm scope. Single binary entry point compiles to `caveman` and `pi` aliases. Packages span core CLI, TUI (12 terminal primitives, 35 components), AI provider SDKs (Anthropic/OpenAI/Google/AWS/Mistral), CaveKit (SDD/markdown integration), and web-UI (Lit components).
 
 - **Key patterns**: Strict ESM TypeScript, tab-indented, 120-char lines, Biome-enforced. No `any` types (cultural rule). Extensions use jiti-loaded TypeScript with ExtensionAPI factory pattern (two-phase init, 20+ lifecycle events). Skills are markdown+YAML frontmatter with 3-scope discovery. Compaction uses LLM-generated summarization with chars/4 token estimation.
 

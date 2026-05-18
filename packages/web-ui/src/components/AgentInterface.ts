@@ -1,4 +1,4 @@
-import { streamSimple, type ToolResultMessage, type Usage } from "@cave/ai";
+import { streamSimple, type ToolResultMessage, type Usage } from "@caveman-code/ai";
 import { html, LitElement } from "lit";
 import { customElement, property, query } from "lit/decorators.js";
 import { ModelSelector } from "../dialogs/ModelSelector.js";
@@ -8,7 +8,7 @@ import "./MessageList.js";
 import "./Messages.js"; // Import for side effects to register the custom elements
 import { getAppStorage } from "../storage/app-storage.js";
 import "./StreamingMessageContainer.js";
-import type { Agent, AgentEvent } from "@cave/agent";
+import type { Agent, AgentEvent } from "@caveman-code/agent";
 import type { Attachment } from "../utils/attachment-utils.js";
 import { formatUsage } from "../utils/format.js";
 import { i18n } from "../utils/i18n.js";

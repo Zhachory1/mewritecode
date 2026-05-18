@@ -12,9 +12,9 @@ Method: 5 parallel exploration agents read code; their findings were spot-verifi
 
 ### B1. Homebrew formula has literal `PLACEHOLDER_*` sha256 strings
 `Formula/cave.rb:10,14,21,25` — every architecture's sha256 is the string `PLACEHOLDER_DARWIN_ARM64`/`_X64`/`LINUX_ARM64`/`LINUX_X64`. Brew will reject the formula on every install (or, worse, accept anything if a downstream tap rewrites them). The `update-homebrew.sh` script that's supposed to populate them was apparently never run before tagging v0.65.2.
-*Impact:* every `brew install cave` is broken right now.
+*Impact:* every `brew install caveman` is broken right now.
 
-### B2. `cave serve` daemon: empty `--token` means open-bar
+### B2. `caveman serve` daemon: empty `--token` means open-bar
 `packages/coding-agent/src/core/daemon/server.ts:159` — `if (!opts.token) return true;`. When no token is configured (the default), the authorize() function unconditionally returns true. Anyone with TCP reach to the daemon port can list/create sessions, send messages, and register workers.
 *Impact:* multi-client/cloud deploy is a privilege-escalation primitive. At minimum the default must be "require token unless `--insecure` is explicitly set" or "bind 127.0.0.1 only with no token".
 
@@ -28,7 +28,7 @@ Method: 5 parallel exploration agents read code; their findings were spot-verifi
 
 ### B5. TUI library calls `process.exit()` from signal/exception handlers
 `packages/tui/src/terminal.ts:176, 192, 200` — `ProcessTerminal` installs handlers for SIGINT/SIGTERM/SIGHUP, uncaughtException, and unhandledRejection that all call `process.exit()`. Library code must not exit the host process.
-*Impact:* any consumer of `@cave/tui` (web-ui, future embedders, tests) loses the ability to handle signals or recover from rejections — the TUI swallows them and kills the process. Also: `unhandledRejection` is now lethal everywhere TUI is loaded, even from rejections originating outside the TUI.
+*Impact:* any consumer of `@caveman-code/tui` (web-ui, future embedders, tests) loses the ability to handle signals or recover from rejections — the TUI swallows them and kills the process. Also: `unhandledRejection` is now lethal everywhere TUI is loaded, even from rejections originating outside the TUI.
 
 ### B6. New OpenRouter/Vercel-Gateway models reduce qwen3-235b context window 2×
 `packages/ai/src/models.generated.ts` (uncommitted diff) — `alibaba/qwen3-235b-a22b-thinking` goes from `contextWindow: 262114, maxTokens: 262114` → `131072, 32768`. Existing sessions sized for 256k will silently truncate or hard-error.
@@ -36,14 +36,14 @@ Method: 5 parallel exploration agents read code; their findings were spot-verifi
 
 ### B7. Plugin installer has no checksum / signature verification
 `packages/coding-agent/src/core/plugins/installer.ts` — plugins are downloaded over `fetch(url)` and extracted without manifest hash check or signature. Combined with the marketplace concept this is a textbook supply-chain hole.
-*Impact:* one CDN compromise or one MITM = arbitrary code execution in every cave session that has the plugin enabled. Same applies to extensions loaded by `jiti.import()` from disk (`extensions/loader.ts:292-304`) — those have no verification either, but the trust boundary there is "user already wrote it to disk".
+*Impact:* one CDN compromise or one MITM = arbitrary code execution in every caveman session that has the plugin enabled. Same applies to extensions loaded by `jiti.import()` from disk (`extensions/loader.ts:292-304`) — those have no verification either, but the trust boundary there is "user already wrote it to disk".
 
 ---
 
 ## HIGH
 
 ### H1. Headless permission UI auto-approves whatever the reducer's `defaultVerb` is
-`packages/coding-agent/src/core/permission-prompt-headless.ts:15-19` — `chooseVerb()` returns `opts.defaultVerb` unchanged. In `cave -p` / RPC / CI mode, prompts that *should* default to "deny" are silently allowed because the reducer's preferred verb is whatever it picked. The only signal is a stderr line.
+`packages/coding-agent/src/core/permission-prompt-headless.ts:15-19` — `chooseVerb()` returns `opts.defaultVerb` unchanged. In `caveman -p` / RPC / CI mode, prompts that *should* default to "deny" are silently allowed because the reducer's preferred verb is whatever it picked. The only signal is a stderr line.
 *Impact:* automation cannot rely on permission policy; behavior diverges silently between TTY and headless. Need a "headless = always deny risky" mode or hard-fail.
 
 ### H2. Subagent inherits *no* parent permission mode
@@ -88,7 +88,7 @@ Method: 5 parallel exploration agents read code; their findings were spot-verifi
 ### M2. Skill `paths` glob-gating frontmatter is loaded but never enforced
 `skills.ts:108,134` — the `paths?: string[]` field on a skill is parsed but no code consults it when deciding whether to inject the skill. Documented feature, missing implementation.
 
-### M3. MCP server-name collisions silently overwrite (`@cave/agent` mcp/client.ts:127)
+### M3. MCP server-name collisions silently overwrite (`@caveman-code/agent` mcp/client.ts:127)
 Last-wins in a `Map<string, server>`. Two configs with the same name → second wins, no warning.
 
 ### M4. Slash-command/skill name collisions are diagnostic-only
@@ -115,7 +115,7 @@ Any port conflict → silent crash during login. Two simultaneous logins on the 
 `daemon/server.ts` + `store.ts` — sessions accumulate in SQLite without TTL; long-running daemons grow unbounded.
 
 ### M10. Daemon `setTimeout` for token-flush isn't `.unref()`'d
-`daemon/server.ts:112` — keeps event loop alive; `cave serve` cannot gracefully shutdown if any client attached.
+`daemon/server.ts:112` — keeps event loop alive; `caveman serve` cannot gracefully shutdown if any client attached.
 
 ### M11. Daemon has no concurrency limit on runners
 `daemon/server.ts:100-156` — every new session spawns a runner; no cap. Trivial DoS.

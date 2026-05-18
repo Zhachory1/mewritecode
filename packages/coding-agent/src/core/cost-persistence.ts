@@ -76,7 +76,7 @@ export function readCostTotals(filePath?: string): CostTotalsFile {
 
 /**
  * Merge a session delta into the totals file atomically.
- * Uses rename-on-write so concurrent cave sessions don't corrupt the file.
+ * Uses rename-on-write so concurrent caveman sessions don't corrupt the file.
  *
  * Steps:
  *   1. Read current file (or empty).

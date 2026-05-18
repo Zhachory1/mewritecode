@@ -1,4 +1,4 @@
-import { fuzzyMatch } from "@cave/tui";
+import { fuzzyMatch } from "@caveman-code/tui";
 import type { SessionInfo } from "../../../core/session-manager.js";
 
 export type SortMode = "threaded" | "recent" | "relevance";

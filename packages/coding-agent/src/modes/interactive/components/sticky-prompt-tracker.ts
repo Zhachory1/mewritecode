@@ -1,4 +1,4 @@
-import { Container, Text, truncateToWidth } from "@cave/tui";
+import { Container, Text, truncateToWidth } from "@caveman-code/tui";
 import { theme } from "../theme/theme.js";
 
 export interface StickyPromptState {

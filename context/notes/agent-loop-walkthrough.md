@@ -1,20 +1,20 @@
-# Cave core agent loop — walkthrough
+# Caveman Code core agent loop — walkthrough
 
 ## Process boot (`packages/coding-agent/src/main.ts` → modes)
 
-`cave` binary launch → resolve config/auth/model → pick mode:
+`caveman` binary launch → resolve config/auth/model → pick mode:
 - **interactive** (TUI, default) → `modes/interactive/interactive-mode.ts`
 - **print** (`-p` one-shot) → `modes/print-mode.ts`
 - **exec** (single command) → `modes/exec/`
 - **rpc/serve** (daemon, IDE) → `modes/rpc/`, `cli/serve.ts`
 
-Boot wires: `AgentSession` (`core/agent-session.ts`) + `Agent` runtime (`@cave/agent`) + tools (`core/tools/`) + extensions/plugins/skills/MCP/hooks.
+Boot wires: `AgentSession` (`core/agent-session.ts`) + `Agent` runtime (`@caveman-code/agent`) + tools (`core/tools/`) + extensions/plugins/skills/MCP/hooks.
 
 ## Chat input dispatch (`interactive-mode.ts:2210` `setupEditorSubmitHandler`)
 
 User hit Enter. Three branches:
 
-1. **Built-in slash** (hardcoded `if` ladder lines 2215-2414): `/settings /model /export /import /share /copy /name /session /changelog /hotkeys /skills /plugins /fork /tree /login /logout /new /clear /compact /freeze /checkpoints /cave /tokens /cost /reload /hooks /debug /resume /quit /mcp /memory /repomap /architect /recipe /checkpoint /rollback /plan /act` — handled in TUI, no LLM call.
+1. **Built-in slash** (hardcoded `if` ladder lines 2215-2414): `/settings /model /export /import /share /copy /name /session /changelog /hotkeys /skills /plugins /fork /tree /login /logout /new /clear /compact /freeze /checkpoints /caveman /tokens /cost /reload /hooks /debug /resume /quit /mcp /memory /repomap /architect /recipe /checkpoint /rollback /plan /act` — handled in TUI, no LLM call.
 2. **Bash escape** `!cmd` / `!!cmd` (excluded from ctx) → `handleBashCommand` direct shell.
 3. **Everything else** → `session.prompt(text)` → LLM turn.
 
@@ -40,11 +40,11 @@ loop:
   inject pendingMessages (steers)
   streamAssistantResponse:
     transformContext (compaction, repomap injection)
-    convertToLlm (AgentMessage[] → @cave/ai Message[])
+    convertToLlm (AgentMessage[] → @caveman-code/ai Message[])
     getSystemPrompt (fresh per turn — supports plan-mode banner)
     toolFilter (plan mode: read-only gating)
     router.route(role) → resolve model
-    streamSimple(model, ctx) → @cave/ai provider
+    streamSimple(model, ctx) → @caveman-code/ai provider
     emit message_start/update/end on text/thinking/toolcall deltas
   if toolCalls > 0:
     executeToolCalls (parallel default, sequential opt):
@@ -112,9 +112,9 @@ Steering: while assistant streaming, user types more → queued; injected before
 
 ## Integrated subsystems
 
-- **`@cave/ai`** — provider unification (OpenAI, Anthropic, Google, Ollama, etc.), `streamSimple`, tool-call validation.
-- **`@cave/agent`** — `agentLoop`, state, router (role→model), checkpoints (shadow git), repomap (PageRank), compression, MCP client, subagent runtime, worktree, cost.
-- **`@cave/tui`** — diff renderer, Loader/spinner, components (chat, tool-execution, tool-group, footer, status).
+- **`@caveman-code/ai`** — provider unification (OpenAI, Anthropic, Google, Ollama, etc.), `streamSimple`, tool-call validation.
+- **`@caveman-code/agent`** — `agentLoop`, state, router (role→model), checkpoints (shadow git), repomap (PageRank), compression, MCP client, subagent runtime, worktree, cost.
+- **`@caveman-code/tui`** — diff renderer, Loader/spinner, components (chat, tool-execution, tool-group, footer, status).
 - **MCP** — `core/tools/mcp-bridge.ts` + agent `src/mcp/` connect external servers, expose tools.
 - **Hooks** — Claude Code-compat lifecycle (UserPromptSubmit, SessionStart, PreToolUse, PostToolUse, Stop) via `core/hooks/`, beforeToolCall/afterToolCall in loop config.
 - **Extensions/plugins** — JS modules, register commands/tools/event handlers/system-prompt mutators.
@@ -125,6 +125,6 @@ Steering: while assistant streaming, user types more → queued; injected before
 - **Recipes** — `/recipe` runs Goose-style YAML.
 - **Checkpoints/rollback** — shadow git snapshots per turn or on-demand.
 - **Compaction** — auto when ctx limit nears; `/compact` manual; `/freeze` cave-tuned checkpoint.
-- **Cave mode** — token compression layer.
+- **Caveman Code mode** — token compression layer.
 
 Bottom line: TUI captures input → built-in slash short-circuits OR `session.prompt` → extension/skill/template/markdown command resolution → enqueue user msg → `runAgentLoop` streams from provider, executes tool calls in parallel, accepts steering mid-flight, exits when no more calls + no queue.

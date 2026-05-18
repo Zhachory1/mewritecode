@@ -102,12 +102,12 @@ Repo is NOT a greenfield runtime — it has a working agent-loop already.
 - `CacheRetention` enum (`"none"|"short"|"long"`) propagates via `StreamOptions.cacheRetention` (`packages/ai/src/types.ts:56-74`) but is set session-wide, not per-task.
 - Sessions: JSONL at `~/.cave/sessions/<id>.jsonl`. `SessionManager` in `packages/coding-agent/src/core/session-manager.ts`, `CURRENT_SESSION_VERSION = 3`. Branch tree, compaction, branch summarization all already present.
 - System prompt: `packages/coding-agent/src/core/system-prompt.ts:97` (`buildSystemPrompt`). CLAUDE.md / AGENTS.md loaded via `resource-loader.ts:59`.
-- Compaction path: `packages/coding-agent/src/core/compaction/` with `compaction.ts` and `branch-summarization.ts`. Cave-mode tool compression at `cave-tool-compression.ts` and `cave-structured-compression.ts`.
+- Compaction path: `packages/coding-agent/src/core/compaction/` with `compaction.ts` and `branch-summarization.ts`. Caveman Code-mode tool compression at `cave-tool-compression.ts` and `cave-structured-compression.ts`.
 - Built-in tools: ~7 (`read`, `write`, `edit`, `bash`, `grep`, `find`, `ls`).
 - No repomap. No tree-sitter / ctags index.
 - No architect/editor split in core loop. CaveKit extension has `PRESET_MODELS` table mapping phases × presets to model IDs (`packages/cavekit-extension/src/config/types.ts:89`).
 - Caveman compression is runtime code, not a standalone skill. `cavemanLevel` config field, `cavemanForSubagents: true` default.
-- Plain `cave` CLI is single-model per session.
+- Plain `caveman` CLI is single-model per session.
 
 ## Implications for Design
 
@@ -159,7 +159,7 @@ Repo is NOT a greenfield runtime — it has a working agent-loop already.
 | Q3 | Tree-sitter top-8 grammars: TS, JS, Python, Go, Rust, Java, C, C++. |
 | Q4 | Sandbox: macOS Seatbelt + Linux Landlock. Windows = unsupported (warn, run permissive). |
 | Q5 | Shadow-git checkpoints as a separate layer below existing JSONL session/compaction. JSONL untouched. |
-| Q6 | Local trace JSONL + `cave trace` viewer at v1. OTel/Langfuse exporter deferred to follow-up kit. |
+| Q6 | Local trace JSONL + `caveman trace` viewer at v1. OTel/Langfuse exporter deferred to follow-up kit. |
 | Q7 | Research artifacts in-repo under `research/` (paper, evals, results, plots colocated). |
 
 ## Sources

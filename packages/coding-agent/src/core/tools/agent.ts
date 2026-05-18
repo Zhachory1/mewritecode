@@ -8,8 +8,8 @@
  */
 
 import type { spawn } from "node:child_process";
-import type { SubagentResult } from "@cave/agent";
-import { Text } from "@cave/tui";
+import type { SubagentResult } from "@caveman-code/agent";
+import { Text } from "@caveman-code/tui";
 import { type Static, Type } from "@sinclair/typebox";
 import { type LoadAgentDefsResult, loadAgentDefs } from "../agent-defs/loader.js";
 import type { ToolDefinition } from "../extensions/types.js";

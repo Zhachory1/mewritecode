@@ -2,8 +2,8 @@
  * Snake game extension - play snake with /snake command
  */
 
-import { matchesKey, visibleWidth } from "@cave/tui";
-import type { ExtensionAPI } from "cave";
+import { matchesKey, visibleWidth } from "@caveman-code/tui";
+import type { ExtensionAPI } from "caveman-code";
 
 const GAME_WIDTH = 40;
 const GAME_HEIGHT = 15;

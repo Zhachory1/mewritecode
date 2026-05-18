@@ -1,4 +1,4 @@
-import { Container, Text } from "@cave/tui";
+import { Container, Text } from "@caveman-code/tui";
 import { theme } from "../theme/theme.js";
 import { keyText } from "./keybinding-hints.js";
 

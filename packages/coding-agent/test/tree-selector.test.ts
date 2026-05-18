@@ -1,4 +1,4 @@
-import { setKeybindings } from "@cave/tui";
+import { setKeybindings } from "@caveman-code/tui";
 import { beforeAll, beforeEach, describe, expect, test } from "vitest";
 import { KeybindingsManager } from "../src/core/keybindings.js";
 import type {

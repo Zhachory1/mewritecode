@@ -5,11 +5,11 @@ description: SDK, JSON-RPC, OpenAPI, and embedding cave in your own apps.
 
 # API Reference
 
-Cave exposes four programmatic surfaces. Pick whichever matches your integration.
+Caveman Code exposes four programmatic surfaces. Pick whichever matches your integration.
 
 <CopyForLlms />
 
-## 1. Node SDK — `cave` import
+## 1. Node SDK — `caveman` import
 
 ```typescript
 import {
@@ -17,7 +17,7 @@ import {
     createAgentSession,
     ModelRegistry,
     SessionManager,
-} from "cave";
+} from "caveman-code";
 
 const { session } = await createAgentSession({
     sessionManager: SessionManager.inMemory(),
@@ -29,18 +29,18 @@ const result = await session.prompt("What files are in the current directory?");
 console.log(result.text);
 ```
 
-Useful for: building a custom UI on top of cave's runtime, embedding cave in a larger app, scripted batch runs.
+Useful for: building a custom UI on top of caveman-code's runtime, embedding cave in a larger app, scripted batch runs.
 
-Full TypeScript types are exported from the `cave` package. See [packages/coding-agent](https://github.com/JuliusBrussee/caveman-cli/tree/main/packages/coding-agent) for source.
+Full TypeScript types are exported from the `caveman` package. See [packages/coding-agent](https://github.com/JuliusBrussee/caveman-cli/tree/main/packages/coding-agent) for source.
 
-## 2. Daemon SDK — `@cave/sdk`
+## 2. Daemon SDK — `@caveman-code/sdk`
 
 ```bash
-npm install @cave/sdk
+npm install @caveman-code/sdk
 ```
 
 ```typescript
-import { CaveClient } from "@cave/sdk";
+import { CaveClient } from "@caveman-code/sdk";
 
 const client = new CaveClient({
     host: "localhost:39245",
@@ -61,12 +61,12 @@ for await (const event of session.events()) {
 }
 ```
 
-The `@cave/sdk` package is generated from the daemon's OpenAPI spec. See [Daemon](/reference/daemon) for the protocol details.
+The `@caveman-code/sdk` package is generated from the daemon's OpenAPI spec. See [Daemon](/reference/daemon) for the protocol details.
 
 ## 3. JSON-RPC over stdin/stdout
 
 ```bash
-cave --mode rpc
+caveman --mode rpc
 ```
 
 JSONL on stdin, JSONL on stdout. One request per line.
@@ -90,16 +90,16 @@ Example:
 {"jsonrpc":"2.0","id":2,"method":"session.prompt","params":{"sessionId":"abc","text":"hello"}}
 ```
 
-Useful for: integrating cave with editors (LSP-style), building shell scripts that pipe through cave, writing other-language clients.
+Useful for: integrating cave with editors (LSP-style), building shell scripts that pipe through caveman-code, writing other-language clients.
 
 ## 4. Print mode + JSON output
 
 For one-shot integrations:
 
 ```bash
-cave -p "summarize this file" < src/foo.ts
-cave --mode json "list todos in this repo"
-cave exec "lint and fix" --output-schema schema.json
+caveman -p "summarize this file" < src/foo.ts
+caveman --mode json "list todos in this repo"
+caveman exec "lint and fix" --output-schema schema.json
 ```
 
 `--output-schema` validates the model's final response against a JSON Schema. Useful for CI gates.
@@ -121,7 +121,7 @@ The schema is versioned. Pin `--protocol-version=v1` for stability across cave r
 The daemon serves its own OpenAPI 3.1 spec:
 
 ```bash
-cave serve &
+caveman serve &
 curl http://localhost:39245/openapi.yaml
 ```
 
@@ -133,7 +133,7 @@ If you'd rather load TypeScript modules at session start:
 
 ```typescript
 // .cave/extensions/my-ext.ts
-import type { ExtensionAPI } from "cave";
+import type { ExtensionAPI } from "caveman-code";
 
 export default function (api: ExtensionAPI) {
     api.registerTool({ name: "deploy", schema: { ... }, handler: async (args) => { ... } });
@@ -150,9 +150,9 @@ export default function (api: ExtensionAPI) {
 
 | Use case | Surface |
 |---|---|
-| Embed in a Node app | SDK (`cave` import) |
-| Build a remote client | `@cave/sdk` over the daemon |
+| Embed in a Node app | SDK (`caveman` import) |
+| Build a remote client | `@caveman-code/sdk` over the daemon |
 | Editor integration | JSON-RPC `--mode rpc` |
-| CI / GitHub Actions | `cave exec --output-schema` |
+| CI / GitHub Actions | `caveman exec --output-schema` |
 | In-process custom tool | Extension API |
-| Observe sessions live | `cave attach --json-events` |
+| Observe sessions live | `caveman attach --json-events` |

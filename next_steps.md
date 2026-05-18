@@ -1,4 +1,4 @@
-# Next Steps — How Cave beats Claude Code on cost AND quality
+# Next Steps — How Caveman Code beats Claude Code on cost AND quality
 
 **Date:** 2026-04-29
 **Author:** synthesis from web research + repo audit + master plan
@@ -10,17 +10,17 @@
 
 ## TL;DR — the 7 biggest unshipped wins, ranked by ROI
 
-| # | Lever | Win | Effort | Cave status |
+| # | Lever | Win | Effort | Caveman Code status |
 |---|---|---|---|---|
 | 1 | **Tree-sitter symbol graph as default context** (replace "read whole file") | **5–50× token reduction** on real repos (49× on Next.js) | 10–14d | scaffolding in `packages/agent/src/repomap/`, not surfaced — WS8 |
 | 2 | **MCP defer-loading + Tool-Search** (Anthropic shipped Jan 2026, on by default in CC) | **85–95%** off tool-schema overhead (47k → 2.4k/turn) | 4–6d | not shipped — extends WS2 |
 | 3 | **Prompt-cache breakpoint hygiene** (5-min default, 4 breakpoints, before fork point) | up to **90%** off cached input | 3–5d | partial — needs audit |
 | 4 | **Confidence-driven cascade** (Haiku → Sonnet → Opus on logprob/test/format signals) | **50–80%** avg cost reduction, no quality loss | 5–7d | manual `/model` only |
 | 5 | **Diff-only context on follow-up turns** (only what changed since last breakpoint) | ~30–60% off after turn 2 | 4–5d | not shipped — new |
-| 6 | **Batch API path** for non-interactive ops (`cave exec`, recipes, nightly) | **50%** off, stacks w/ caching → ~95% combined | 3–4d | not shipped — extends WS16 |
+| 6 | **Batch API path** for non-interactive ops (`caveman exec`, recipes, nightly) | **50%** off, stacks w/ caching → ~95% combined | 3–4d | not shipped — extends WS16 |
 | 7 | **Local-first defaults for trivial ops** (rename, format, simple edit) via Qwen3-Coder-Next on MLX | 100% off those ops, plus latency win | 7–10d | `pi-ai` supports Ollama, no router |
 
-**Combined potential**: a Claude Code session that costs $5 today should cost **$0.40–$0.80** in cave with all seven landed, on the same task. That's the headline number for the README.
+**Combined potential**: a Claude Code session that costs $5 today should cost **$0.40–$0.80** in caveman-code with all seven landed, on the same task. That's the headline number for the README.
 
 The rest of this doc is the detailed playbook.
 
@@ -37,7 +37,7 @@ Ranked by impact magnitude, with realistic numbers from production users in 2026
 | MCP defer-loading / Tool-Search | 85–95% off tool-schema overhead | Anthropic blog: 47.3k → 2.4k tokens/turn; mcp2cli claims 96–99% |
 | Cascading model routing | 50–80% off avg cost | Augment / Anthropic both publish this number |
 | Batch API (24h-deferred) | 50% off | Stacks with caching → ~95% on nightly jobs |
-| Tool-result truncation (already in cave) | 10–30% | Cave already does head+tail per tool budget |
+| Tool-result truncation (already in caveman-code) | 10–30% | Caveman Code already does head+tail per tool budget |
 | Semantic caching of LLM responses | 10–30% in coding | Vendors claim 70%; coding doesn't have FAQ-style duplicates |
 | Local offload for trivial ops | 100% off those ops | But trivial ops are cheap — savings smaller than they look |
 
@@ -45,12 +45,12 @@ Order of operations: ship #1, #2, #3 first. They're the largest, the most defens
 
 ---
 
-## 2. Where Cave can go more **caveman** (compression + context engineering)
+## 2. Where Caveman Code can go more **caveman** (compression + context engineering)
 
-Cave's identity is "fewer tokens for the same answer". The current state — head+tail truncation at `cave-tool-compression.ts:31-46` and the 3-layer Cave Mode — is good but doesn't go far enough. Concrete unlocks:
+Caveman Code's identity is "fewer tokens for the same answer". The current state — head+tail truncation at `cave-tool-compression.ts:31-46` and the 3-layer Caveman Mode — is good but doesn't go far enough. Concrete unlocks:
 
 ### 2.1 Tree-sitter symbol graph as the default context primitive — **biggest single win**
-- Replace every "read whole file" reflex with **fetch-symbol + callers + dependents**. Cave already has `packages/agent/src/repomap/` scaffolding (per `cave-v2-best-in-class.md` §6 WS8); promote it to the universal context API.
+- Replace every "read whole file" reflex with **fetch-symbol + callers + dependents**. Caveman Code already has `packages/agent/src/repomap/` scaffolding (per `cave-v2-best-in-class.md` §6 WS8); promote it to the universal context API.
 - Reference impls: [code-review-graph](https://github.com/tirth8205/code-review-graph) (49× on Next.js, 6.8× on reviews), [Codebase-Memory](https://arxiv.org/abs/2603.27277) (83% quality / 10% tokens).
 - Implementation skeleton:
   - tree-sitter parsers for ts/js/py/go/rust/java/c++/ruby/php (most already in `packages/agent/src/repomap/`)
@@ -70,12 +70,12 @@ Cave's identity is "fewer tokens for the same answer". The current state — hea
 - Files: `packages/coding-agent/src/core/tools/mcp-bridge.ts` (already exists per audit B3 — extend), new `mcp-tool-search.ts`.
 
 ### 2.4 More aggressive prose compression in skills + system prompts
-- Audit: Claude Code's core system prompt is only **2,896 tokens** (not the rumored 40k). OpenCode and Crush are larger. If cave's is over 4k, that's pure overhead.
+- Audit: Claude Code's core system prompt is only **2,896 tokens** (not the rumored 40k). OpenCode and Crush are larger. If caveman-code's is over 4k, that's pure overhead.
 - Action: pass long skill bodies through LLMLingua-2 at load time (3–6× faster than v1, integrated in LangChain). Target 90% retention in skills, with `caveman:full` prose compression already covering ~75% — LLMLingua-2 takes that to ~90%.
 - Files: new preprocessing step in `packages/coding-agent/src/core/skills.ts:534-536` (load path). Cache compressed bodies in `~/.cave/cache/skills/`.
 
 ### 2.5 Lossless prompt caching across forks/branches
-- Cave's session branching (`/tree`, `/fork`) is the perfect substrate for shared cached prefixes — but only if breakpoints are placed *before* the fork point. Audit current behavior: are breakpoints stable across forks, or invalidated on each fork?
+- Caveman Code's session branching (`/tree`, `/fork`) is the perfect substrate for shared cached prefixes — but only if breakpoints are placed *before* the fork point. Audit current behavior: are breakpoints stable across forks, or invalidated on each fork?
 - Likely fix: pin a breakpoint at session-init and after every long-lived skill load; never insert breakpoints into rolling history.
 - Files: `packages/coding-agent/src/core/append-only-history.ts`, breakpoint policy in compaction layer.
 
@@ -89,12 +89,12 @@ Cave's identity is "fewer tokens for the same answer". The current state — hea
 
 ---
 
-## 3. Where Cave can save more **money** (cheap inference)
+## 3. Where Caveman Code can save more **money** (cheap inference)
 
 ### 3.1 Prompt-cache breakpoint hygiene
 - **Default to 5-min TTL.** Anthropic silently dropped the default from 1h → 5min on March 6 2026. 1h costs 2× write vs 1.25× for 5min. Break-even is 1.11 reads for 1h vs 0.28 for 5min — for an interactive coding agent, 5min is right.
 - **4 breakpoints, in order:** `[tools] → [system] → [CLAUDE.md + pinned] → [history]`. Never insert breakpoints inside rolling history.
-- **Workspace isolation:** Anthropic API now isolates caches per workspace (since Feb 5 2026); Bedrock and Vertex still org-isolated. Cave's multi-provider story should track this.
+- **Workspace isolation:** Anthropic API now isolates caches per workspace (since Feb 5 2026); Bedrock and Vertex still org-isolated. Caveman Code's multi-provider story should track this.
 - Audit task: instrument `packages/ai/` to log cache_creation_input_tokens vs cache_read_input_tokens per turn. Aim for >80% read ratio after turn 2.
 
 ### 3.2 Confidence-driven cascade routing
@@ -106,18 +106,18 @@ Cave's identity is "fewer tokens for the same answer". The current state — hea
 - Files: new `packages/coding-agent/src/core/router/cascade.ts`, hooks into `agent-session-runtime.ts` model selection. Read existing tier signal in `model-resolver.ts`.
 
 ### 3.3 Free-tier provider stacking
-User is budget-constrained (per memory). Make this a first-class mode: `cave --free-tier`.
+User is budget-constrained (per memory). Make this a first-class mode: `caveman --free-tier`.
 - **Cerebras** free tier: 30 RPM, 1M tokens/day, runs Llama 3.3 70B / Qwen3 32B / Qwen3 235B / GPT-OSS 120B. Cerebras delivers ~6× the tok/s of Groq on frontier LLMs.
 - **Groq** free tier: Llama 3.3 70B / Llama 4 Scout / Qwen3 32B / Kimi K2 at 300+ tok/s; best TTFT.
 - **OpenRouter free models**: rotating Qwen / DeepSeek / GLM tier.
 - **Gemini free tier**: 1500 req/day Flash, 50 req/day Pro (as of 2026-04).
-- Round-robin across providers when one rate-limits. Cave already supports 20+ providers — add a `--free-tier` flag that rejects paid models and rotates on 429.
+- Round-robin across providers when one rate-limits. Caveman Code already supports 20+ providers — add a `--free-tier` flag that rejects paid models and rotates on 429.
 - Files: `packages/ai/src/providers/register-builtins.ts` already holds registration; new policy module + flag in `packages/coding-agent/src/cli/args.ts`.
 
 ### 3.4 Batch API for deferred work
 - Anthropic's Batch API: **50% off**, 24h SLA. Stacks with prompt caching for ~95% combined.
-- Coding-agent fit: `cave exec` (CI mode, WS16), recipes (WS14), nightly review-all-PRs, codemod sweeps, doc generation, eval runs (`research/evals/`).
-- New flag: `cave exec --batch <prompt>` queues to Anthropic batch endpoint, polls, returns when ready.
+- Coding-agent fit: `caveman exec` (CI mode, WS16), recipes (WS14), nightly review-all-PRs, codemod sweeps, doc generation, eval runs (`research/evals/`).
+- New flag: `caveman exec --batch <prompt>` queues to Anthropic batch endpoint, polls, returns when ready.
 - Files: extend `packages/ai/src/providers/anthropic.ts` (batch endpoint already in SDK), `packages/coding-agent/src/cli/exec.ts` (WS16).
 
 ### 3.5 Local-first defaults for trivial ops
@@ -140,7 +140,7 @@ User is budget-constrained (per memory). Make this a first-class mode: `cave --f
 ### 3.7 Cost transparency UX (WS19) — drives behavior change
 - Per-message inline `$0.0042 (cached: $0.0001)`, session-end summary, daily/weekly totals, clear cache hit/miss reporting.
 - Without this, users don't know that their `/model opus` for a trivial fix just cost 50× the optimal.
-- `pi-ai` already tracks usage; surface it. Add `cave usage today`, `cave usage week`. Add live ticker in TUI status line.
+- `pi-ai` already tracks usage; surface it. Add `caveman usage today`, `caveman usage week`. Add live ticker in TUI status line.
 - Files: `packages/coding-agent/src/core/cost-formatter.ts` already exists — extend; add status-line integration.
 
 ---
@@ -157,7 +157,7 @@ User is budget-constrained (per memory). Make this a first-class mode: `cave --f
 | Plan-then-diff-approve UX | Cursor Composer / Claude Code Plan Mode | Now the dominant interaction loop | WS6 |
 | Daemon + multi-client + session links | opencode (Go) | OpenCode hit 140k stars; daemon makes ssh-drop survival possible | WS9 |
 | AI! / `// cave!` watch comments | Aider | Drive-by edits without leaving editor | WS18 |
-| Sandbox-as-utility (`cave sandbox -- cmd`) | Codex | Best-in-class sandboxing | WS3 |
+| Sandbox-as-utility (`caveman sandbox -- cmd`) | Codex | Best-in-class sandboxing | WS3 |
 | Containerized parallel sessions | Sketch / parallel-code | Run 3 cave instances on the same task, pick winning diff | optional / v2.1 |
 | Persistent in-session "Flows" context | Windsurf Cascade | Branch retention policy | extends session branching |
 | Long-running autonomous agents | Amazon Q Developer | Java/.NET migrations as background jobs | extends WS16 |
@@ -171,7 +171,7 @@ Cheaper is half the pitch. Here's how cave gets *better answers*, not just cheap
 ### 5.1 Edit-format-per-model
 Diff-XYZ benchmark (arxiv 2510.12487): **search-replace** is most effective overall, especially for larger models. Structured udiff/udiff-h are reliable but consistently outperformed. udiff-l (verbose line markers) performs poorly. Whole-file works for small files only.
 
-Recommended defaults table (cave should ship and document):
+Recommended defaults table (caveman-code should ship and document):
 
 | Model family | Edit format | Notes |
 |---|---|---|
@@ -182,18 +182,18 @@ Recommended defaults table (cave should ship and document):
 | Qwen3-Coder, DeepSeek | udiff | trained heavily on git diffs |
 | Older GPT-4-Turbo descendants | udiff-l | only model-class where verbose markers help |
 
-Run cave's `proof-bench/` ablation to validate before shipping defaults.
+Run caveman-code's `proof-bench/` ablation to validate before shipping defaults.
 
 ### 5.2 Memory: temporal knowledge graph in cavemem
 - **Zep** scores 63.8% on LongMemEval vs **Mem0** 49.0% — 15 points, attributed to temporal knowledge graphs over flat embeddings.
 - OMEGA (95.4%) and Mastra (94.87%) lead.
 - cavemem already has SQLite + FTS5 + local embeddings (per memory). Add a temporal-graph layer: episode → entity nodes, with `valid_from` / `valid_to` and `superseded_by` edges. Hybrid search becomes: BM25 + vector + graph walk.
-- Cave's already-planned **episodic→semantic consolidation pass** (master plan §8.2) is the right primitive — make sure it builds the graph as it goes, not as a flat list.
+- Caveman Code's already-planned **episodic→semantic consolidation pass** (master plan §8.2) is the right primitive — make sure it builds the graph as it goes, not as a flat list.
 
 ### 5.3 Hooks > prompting for invariants
 Codex/Claude Code/cave all converge here. Treat hooks as the trust boundary, not the model. PreToolUse synchronous + blocking with 30s timeout, returns `allow`/`deny`/`ask`. Stdout-as-assistant-context is the killer feature (per WS4) — gives hooks veto power without prompt engineering.
 
-Default hooks cave should ship out of the box:
+Default hooks caveman-code should ship out of the box:
 - Auto-format on Edit (Biome / Prettier / black, language-detected)
 - Auto-test on Stop (run smoke tests, surface failures into next turn)
 - Conventional-commit gate on `git commit`
@@ -215,7 +215,7 @@ Per master plan WS6 — already correct. Add: confidence-driven re-dispatch (if 
 1. **Cache-aware compaction.** Master plan WS5 (skills) and existing `compaction/` don't have explicit cache-invalidation tracking. A single edit to the system prompt invalidates the *entire* cache. Need a cache-invalidation graph that tracks which messages would be invalidated by which edits.
 2. **Cascade router** (§3.2) is not in the master plan. It's the single highest-ROI item the plan misses.
 3. **Free-tier stacking** (§3.3) is not in the master plan. For a budget-constrained student user (per memory), this is the difference between "I can use this daily" and "I can use this for special tasks".
-4. **Batch API** for deferred work (§3.4) is not called out. Pairs naturally with WS16 (`cave exec`) and WS14 (recipes).
+4. **Batch API** for deferred work (§3.4) is not called out. Pairs naturally with WS16 (`caveman exec`) and WS14 (recipes).
 5. **Diff-only follow-up context** (§2.2) is not in the plan. Single largest "every turn after the first" win.
 6. **LLMLingua-2 prose compression for skills** (§2.4) is not in the plan. Worth ~10–15% on long sessions.
 7. **Adaptive per-tool budgets** (§2.7) is not in the plan. Small but real.
@@ -233,18 +233,18 @@ A reordering of the master plan WS list, weighted by ROI per dollar:
 - **Day 6–7:** Cost-transparency panel (WS19, §3.7). Behavior change requires visibility.
 
 ### Week 2 — Caveman compression core
-- **Day 8–14:** Tree-sitter symbol graph as default tool surface (§2.1, extends WS8). New tools: `code_symbol_lookup`, `code_symbol_callers`, `code_file_skeleton`. `Read` demoted to fallback. **This is the cave identity.**
+- **Day 8–14:** Tree-sitter symbol graph as default tool surface (§2.1, extends WS8). New tools: `code_symbol_lookup`, `code_symbol_callers`, `code_file_skeleton`. `Read` demoted to fallback. **This is the caveman-code identity.**
 
 ### Week 3 — Routing + free tier
 - **Day 15–18:** Cascade router (§3.2). Confidence signals from Haiku → Sonnet → Opus. Auto-escalate, never auto-downgrade in a single turn.
-- **Day 19–21:** Free-tier mode (§3.3). `cave --free-tier` rotates Cerebras / Groq / OpenRouter / Gemini Flash. Budget-student first-class.
+- **Day 19–21:** Free-tier mode (§3.3). `caveman --free-tier` rotates Cerebras / Groq / OpenRouter / Gemini Flash. Budget-student first-class.
 
 ### Week 4 — Quality + ergonomics
 - **Day 22–24:** Edit-format-per-model ablation. Run `proof-bench/`, ship the table, default to search-replace for Sonnet/Opus.
 - **Day 25–27:** Diff-only follow-up context (§2.2). Most-improvement-for-least-code.
-- **Day 28–30:** Batch API path (§3.4). `cave exec --batch` lands; pair with one recipe (WS14) as proof.
+- **Day 28–30:** Batch API path (§3.4). `caveman exec --batch` lands; pair with one recipe (WS14) as proof.
 
-After Day 30, cave should be:
+After Day 30, caveman-code should be:
 - 5–10× cheaper than Claude Code on a typical session, measured in $.
 - Same or better quality on `research/evals/` SWE-bench-Verified subset.
 - Backed by a public comparison page (WS12) with reproducible numbers.
@@ -253,10 +253,10 @@ After Day 30, cave should be:
 
 ## 8. What to **stop doing** / **kill**
 
-- **Don't reimplement memory primitives.** cavemem owns embeddings/FTS/compression. Cave owns *policy* (when to write, what to inject, semantic consolidation). Resist the urge to add a second memory store.
+- **Don't reimplement memory primitives.** cavemem owns embeddings/FTS/compression. Caveman Code owns *policy* (when to write, what to inject, semantic consolidation). Resist the urge to add a second memory store.
 - **Don't add provider-specific OAuth flows for niche providers** until WS15 (Catwalk-style external registry). The binary is already big.
 - **Don't ship a web UI** (`packages/web-ui`) before TUI parity hits 1.0. Per master plan §1.2 — keep it out of scope.
-- **Don't write new compression algorithms.** LLMLingua-2 + tree-sitter symbol graph + structured tool truncation cover the entire surface. Cave-specific compression should be policy on top of these primitives.
+- **Don't write new compression algorithms.** LLMLingua-2 + tree-sitter symbol graph + structured tool truncation cover the entire surface. Caveman Code-specific compression should be policy on top of these primitives.
 - **Don't optimize for Claude Code parity at the format level beyond what the master plan §9 specifies.** Format compatibility is a free ecosystem, not a feature ceiling. Add cave-specific frontmatter keys liberally.
 
 ---

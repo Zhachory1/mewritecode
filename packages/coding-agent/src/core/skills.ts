@@ -594,7 +594,7 @@ export interface SkillExpandContext {
 	rawArguments?: string;
 	/** Positional arguments ($0, $1, …). $0 is the skill/command name by convention. */
 	args?: string[];
-	/** Current cave session id; injected as ${CAVE_SESSION_ID}. */
+	/** Current caveman session id; injected as ${CAVE_SESSION_ID}. */
 	sessionId?: string;
 	/** Effort level; injected as ${CAVE_EFFORT}. */
 	effort?: string;

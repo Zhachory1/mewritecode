@@ -6,7 +6,7 @@
  *   1. mkdtemp a fresh CAVE_CODING_AGENT_DIR
  *   2. write settings.json with the config's caveMode block
  *   3. copy task/setup/ into a fresh working dir
- *   4. spawn `cave -p <prompt> --output json --model <model>`
+ *   4. spawn `caveman -p <prompt> --output json --model <model>`
  *   5. parse `message_end` events for token usage
  *   6. run task/verify.sh → pass/fail
  *   7. save session.jsonl for replay + audit

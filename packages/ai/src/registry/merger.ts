@@ -1,6 +1,6 @@
 /**
  * WS15: Registry merger — convert RegistryProvider entries into the
- * @cave/ai Model<Api> shape so they can be injected into ModelRegistry.
+ * @caveman-code/ai Model<Api> shape so they can be injected into ModelRegistry.
  *
  * Compatibility constraint: existing model-registry.ts consumers keep
  * working. The merger produces models in the same shape as getModels()
@@ -14,7 +14,7 @@ import type { Registry, RegistryModel, RegistryProvider } from "./schema.js";
 // Kind → Api mapping
 // ---------------------------------------------------------------------------
 
-/** Map registry provider kinds to the @cave/ai Api string */
+/** Map registry provider kinds to the @caveman-code/ai Api string */
 function kindToApi(kind: RegistryProvider["kind"]): Api | undefined {
 	switch (kind) {
 		case "anthropic":
@@ -52,7 +52,7 @@ function kindToApi(kind: RegistryProvider["kind"]): Api | undefined {
 
 /**
  * Convert a single RegistryModel + its parent RegistryProvider into
- * the Model<Api> shape used by @cave/ai's internal registry.
+ * the Model<Api> shape used by @caveman-code/ai's internal registry.
  */
 export function registryModelToModel(provider: RegistryProvider, model: RegistryModel): Model<Api> | undefined {
 	const api = kindToApi(provider.kind);

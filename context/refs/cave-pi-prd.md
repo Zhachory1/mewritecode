@@ -1,4 +1,4 @@
-# Cave Pi — Product Requirements Document
+# Caveman Code Pi — Product Requirements Document
 
 ## For Agent Implementation: Zero to Shipped Product
 
@@ -56,11 +56,11 @@ packages/tui/                                         — Terminal UI rendering 
 
 ## What We Are Building
 
-Cave Pi is two things shipped together:
+Caveman Code Pi is two things shipped together:
 
 1. **A thin fork of Pi** that modifies 3-4 source files to natively integrate caveman token compression and RTK tool result compression into the agent's core pipeline.
 
-2. **A CaveKit extension** (`@cavekit/pi-sdd`) that implements the full specification-driven development workflow as a Pi extension — installable on Cave Pi or vanilla Pi.
+2. **A CaveKit extension** (`@cavekit/pi-sdd`) that implements the full specification-driven development workflow as a Pi extension — installable on Caveman Code Pi or vanilla Pi.
 
 The thin fork makes every session cheaper. The extension makes complex builds structured and reliable. Together they form the most token-efficient, spec-driven coding agent available.
 
@@ -68,7 +68,7 @@ The thin fork makes every session cheaper. The extension makes complex builds st
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│                    Cave Pi (thin fork)                │
+│                    Caveman Code Pi (thin fork)                │
 │                                                      │
 │  MODIFIED (3-4 files):                               │
 │  ┌─────────────────────────────────────────────────┐ │
@@ -112,7 +112,7 @@ npm install
 npm run build
 ```
 
-Rename the CLI binary from `pi` to `cave` in `packages/coding-agent/package.json`. Update the `bin` field. Update all `package.json` names to use `@cavepi/` scope (or `@juliusbrussee/cave-pi-*`). Keep the MIT license.
+Rename the CLI binary from `pi` to `caveman` in `packages/coding-agent/package.json`. Update the `bin` field. Update all `package.json` names to use `@cavepi/` scope (or `@juliusbrussee/cave-pi-*`). Keep the MIT license.
 
 Set up a remote for upstream tracking:
 ```bash
@@ -195,7 +195,7 @@ Technical terms exact. Max density.
 **File:** Find where bash tool results are processed before being added to the conversation history. This is likely in the tool executor within `packages/coding-agent/src/core/` or in the agent-core package's tool execution logic.
 
 **What to do:** Add a post-processing step that pipes bash command output through RTK when:
-1. Cave mode's `toolCompression` setting is enabled
+1. Caveman Code mode's `toolCompression` setting is enabled
 2. RTK is installed on the system (check with `which rtk`)
 3. The command matches RTK's supported command patterns
 
@@ -235,7 +235,7 @@ function compressToolResult(command: string, output: string, settings: Settings)
 - Collapse consecutive blank lines to single blank line
 - For `git push`/`git pull`/`git add`/`git commit`: extract only the summary line
 - For test runners: extract only failures and summary line
-- Truncate outputs over N characters with head+tail preservation (Pi already does this at 30k chars — consider lowering to 10k in cave mode)
+- Truncate outputs over N characters with head+tail preservation (Pi already does this at 30k chars — consider lowering to 10k in caveman-code mode)
 
 The simpler approach avoids the RTK binary dependency but captures ~60% of the savings. The full RTK approach captures ~80-90%. Recommend starting with the simpler approach and adding RTK as an optional enhancement.
 
@@ -243,13 +243,13 @@ The simpler approach avoids the RTK binary dependency but captures ~60% of the s
 
 **Files to update:**
 - Root `package.json` — name, description, repository URL
-- `packages/coding-agent/package.json` — name, bin field (`cave` instead of `pi`), description
+- `packages/coding-agent/package.json` — name, bin field (`caveman` instead of `pi`), description
 - All other `packages/*/package.json` — scope rename
 - `README.md` — New branding, installation instructions, link to upstream Pi
 - Config directory: Change default from `~/.pi/agent/` to `~/.cave-pi/agent/` (update `PI_CODING_AGENT_DIR` default or add `CAVE_PI_DIR`)
 
 **Branding elements:**
-- CLI binary: `cave`
+- CLI binary: `caveman`
 - Config dir: `~/.cave-pi/`
 - npm scope: `@cavepi/` or `@juliusbrussee/cave-pi-*`
 - Startup banner: Include caveman branding and token savings indicator
@@ -260,7 +260,7 @@ The simpler approach avoids the RTK binary dependency but captures ~60% of the s
 
 ### 2.1 Extension Structure
 
-Create this directory structure. It ships as a Pi package installable via `pi install` or bundled with the Cave Pi fork.
+Create this directory structure. It ships as a Pi package installable via `pi install` or bundled with the Caveman Code Pi fork.
 
 ```
 extensions/cavekit/
@@ -301,7 +301,7 @@ extensions/cavekit/
 
 ```typescript
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-// Adjust import path if using the cave-pi fork's scope
+// Adjust import path if using the caveman-code-pi fork's scope
 
 export default function cavekit(pi: ExtensionAPI) {
   // Load config from .cavekit/config or defaults
@@ -538,9 +538,9 @@ async function executeTask(
   const { execSync } = require("child_process");
   const prompt = buildTaskPrompt(task, scopedContext);
   
-  // Use pi --print (or cave --print) for subagent
+  // Use pi --print (or caveman --print) for subagent
   const result = execSync(
-    `cave -p ${JSON.stringify(prompt)}`,
+    `caveman -p ${JSON.stringify(prompt)}`,
     {
       cwd: process.cwd(),
       timeout: config.taskTimeout || 300000, // 5 min default
@@ -700,7 +700,7 @@ const DEFAULTS: CaveKitConfig = {
 
 ### Phase 1: Thin Fork (Week 1-2)
 
-**Deliverable:** A working `cave` CLI binary that is functionally identical to `pi` but with caveman output compression baked in.
+**Deliverable:** A working `caveman` CLI binary that is functionally identical to `pi` but with caveman output compression baked in.
 
 1. Fork the repo, set up upstream remote
 2. Rename CLI binary and package scope
@@ -734,7 +734,7 @@ const DEFAULTS: CaveKitConfig = {
 **Deliverable:** Working `/ck:build` with parallel wave execution and build dashboard.
 
 1. Implement wave computation from build site (topological sort by tier)
-2. Implement task dispatch via print mode (`cave -p`)
+2. Implement task dispatch via print mode (`caveman -p`)
 3. Implement scoped context builder (extract only relevant kit sections per task)
 4. Implement build dashboard widget
 5. Implement convergence monitoring (iteration count, plateau detection, circuit breaker)
@@ -773,10 +773,10 @@ const DEFAULTS: CaveKitConfig = {
 
 1. Package CaveKit extension for standalone install (`pi install npm:@cavekit/pi-sdd`)
 2. Write README with installation, usage, and configuration docs
-3. Write AGENTS.md for Cave Pi projects
+3. Write AGENTS.md for Caveman Code Pi projects
 4. Create example configs for common project types
-5. Run benchmarks: token usage comparison (Cave Pi vs Pi vs Claude Code)
-6. Publish Cave Pi to npm
+5. Run benchmarks: token usage comparison (Caveman Code Pi vs Pi vs Claude Code)
+6. Publish Caveman Code Pi to npm
 7. Publish CaveKit extension to npm
 8. Create launch content: Threads post, HN Show HN, GitHub release
 
@@ -786,7 +786,7 @@ const DEFAULTS: CaveKitConfig = {
 
 ### Decision 1: Print mode for subagents (Phase 1-3), SDK for Phase 4+
 
-Start with `cave -p "<prompt>"` for task dispatch. It's simpler, battle-tested (this is how CaveKit works today), and avoids in-process memory management. Migrate to `createAgentSession()` SDK embedding when you need event-level progress streaming for the build dashboard.
+Start with `caveman -p "<prompt>"` for task dispatch. It's simpler, battle-tested (this is how CaveKit works today), and avoids in-process memory management. Migrate to `createAgentSession()` SDK embedding when you need event-level progress streaming for the build dashboard.
 
 ### Decision 2: No MCP — stay aligned with Pi's philosophy
 
@@ -859,5 +859,5 @@ The extension should gracefully degrade when running on vanilla Pi (without the 
 ### Launch
 
 - npm install works: `npm install -g @cavepi/cave-pi-coding-agent`
-- Extension install works: `cave install npm:@cavekit/pi-sdd` (on Cave Pi) or `pi install npm:@cavekit/pi-sdd` (on vanilla Pi)
+- Extension install works: `caveman install npm:@cavekit/pi-sdd` (on Caveman Code Pi) or `pi install npm:@cavekit/pi-sdd` (on vanilla Pi)
 - README is clear enough that a developer can go from zero to first build in under 10 minutes

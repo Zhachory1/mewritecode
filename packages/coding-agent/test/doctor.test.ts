@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { buildDoctorReport, formatDoctorReport } from "../src/cli/doctor.js";
 
-describe("WS11 cave doctor", () => {
+describe("WS11 caveman doctor", () => {
 	const testDir = join(process.cwd(), "test-doctor-tmp");
 
 	beforeEach(() => {

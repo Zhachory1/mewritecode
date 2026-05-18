@@ -6,7 +6,7 @@
  */
 
 import { Type } from "@sinclair/typebox";
-import type { ExtensionAPI } from "cave";
+import type { ExtensionAPI } from "caveman-code";
 import ms from "ms";
 
 export default function (pi: ExtensionAPI) {

@@ -1,13 +1,13 @@
-# Cave v2 — The Best Terminal Coding Agent
+# Caveman Code v2 — The Best Terminal Coding Agent
 **Master Plan · April 2026**
 
-> Goal: take `cave` from "interesting niche compression-focused CLI" to "best-in-class terminal coding agent that beats Claude Code, Codex, Aider, Cline, Crush, and opencode head-to-head".
+> Goal: take `caveman` from "interesting niche compression-focused CLI" to "best-in-class terminal coding agent that beats Claude Code, Codex, Aider, Cline, Crush, and opencode head-to-head".
 
 ---
 
 ## 0. Provenance & the "Use Pi First" Rule
 
-**`cave` is a heavy fork of `pi-code`.** `pi-code` is the original upstream (the codebase that became `cave` after the `@cavepi/pi-* → @cave/*` rebrand). Cave has diverged with substantial original work — Cave Mode 3-layer compression, CaveKit (now being removed), session branching, ambient theming, terminal-blend primitives, the proof-bench eval harness — but `pi-code` is still the parent project and continues to evolve in its own direction.
+**`caveman` is a heavy fork of `pi-code`.** `pi-code` is the original upstream (the codebase that became `caveman` after the `@cavepi/pi-* → @caveman-code/*` rebrand). Caveman Code has diverged with substantial original work — Caveman Mode 3-layer compression, CaveKit (now being removed), session branching, ambient theming, terminal-blend primitives, the proof-bench eval harness — but `pi-code` is still the parent project and continues to evolve in its own direction.
 
 **Operating rule for every workstream below:** before building anything, **check whether `pi-code` already ships a module, an extension, or a plugin that does the job**. If yes, vendor it, depend on it, or wrap it — do not reimplement.
 
@@ -15,24 +15,24 @@ Concretely, before starting any WS:
 1. Search the upstream `pi-code` repo for an equivalent feature, package, or extension.
 2. Search the `pi-*` npm scope (e.g. `pi-mcp`, `pi-sandbox`, `pi-skills`, `pi-hooks`) for published modules.
 3. Search `pi-code`'s extensions directory and any `pi-extensions` registry for community extensions.
-4. **If a pi extension/module exists and is reasonably maintained → use it; integrate via `@cave/agent`'s extension system.** Note "borrowed from pi" in the WS deliverable.
+4. **If a pi extension/module exists and is reasonably maintained → use it; integrate via `@caveman-code/agent`'s extension system.** Note "borrowed from pi" in the WS deliverable.
 5. **If only partial coverage exists → vendor what fits, add cave-specific deltas on top.** Contribute fixes upstream where the change is generally useful.
 6. **Only build from scratch when nothing usable exists in the pi ecosystem.**
 
-This applies most obviously to: TUI components, provider OAuth flows, MCP scaffolding (already in `packages/agent/src/mcp/`, much of which likely came from pi-code), sandbox primitives, repomap, slash command parser, settings manager, skills loader, and edit-format renderers. It probably does **not** apply to: cavemem integration (cave-specific), Cave Mode compression layers (already cave-specific), CaveKit teardown (cave-specific), or anything cave invented.
+This applies most obviously to: TUI components, provider OAuth flows, MCP scaffolding (already in `packages/agent/src/mcp/`, much of which likely came from pi-code), sandbox primitives, repomap, slash command parser, settings manager, skills loader, and edit-format renderers. It probably does **not** apply to: cavemem integration (cave-specific), Caveman Mode compression layers (already cave-specific), CaveKit teardown (cave-specific), or anything cave invented.
 
-**Why this matters:** keeps cave's diff against upstream small enough to occasionally rebase or cherry-pick from `pi-code`; saves us reimplementing primitives that already exist; ensures we ride pi-code's bug fixes and security updates instead of forking them silently.
+**Why this matters:** keeps caveman-code's diff against upstream small enough to occasionally rebase or cherry-pick from `pi-code`; saves us reimplementing primitives that already exist; ensures we ride pi-code's bug fixes and security updates instead of forking them silently.
 
 ---
 
 ## TL;DR
 
-Cave already has unusually strong foundations — 20+ provider unified API, 4-layer token compression, session branching, 7 core tools, scaffolded MCP + sandbox primitives in `packages/agent/`, 360+ passing tests across `agent` and `coding-agent`. The gap to best-in-class is **packaging and distribution of capabilities**, not architecture. We close it by:
+Caveman Code already has unusually strong foundations — 20+ provider unified API, 4-layer token compression, session branching, 7 core tools, scaffolded MCP + sandbox primitives in `packages/agent/`, 360+ passing tests across `agent` and `coding-agent`. The gap to best-in-class is **packaging and distribution of capabilities**, not architecture. We close it by:
 
 1. **Killing CaveKit** (`packages/cavekit-extension`) and replacing it with native Plan-mode + Markdown skills (Claude Code-compatible).
 2. **Wiring up the latent infra** — surface `packages/agent/src/{mcp,sandbox}/` to the user-facing CLI as first-class features.
 3. **Adopting Claude Code's authoring formats verbatim** (settings.json, frontmatter, agent definitions) for instant ecosystem compatibility — copy-paste Claude Code skills/hooks/agents Just Work.
-4. **Integrating cavemem natively** as the canonical memory backend via the user's existing MCP server + 5 hook stubs; cave's value-add is the episodic→semantic consolidation pass.
+4. **Integrating cavemem natively** as the canonical memory backend via the user's existing MCP server + 5 hook stubs; caveman-code's value-add is the episodic→semantic consolidation pass.
 5. **Stealing the proven differentiators** — Aider's repo map, Codex's sandbox-as-utility, Cline's model-emitted approval bits, opencode's daemon, Hermes' shadow-git checkpoints, Sketch's containerized parallel sessions.
 6. **Investing in install/docs** — `curl | sh` canonical, self-updater, 4-question first-run wizard, VitePress docs site, 5 VHS demo recordings.
 
@@ -43,11 +43,11 @@ The work fans out into **19 workstreams across 3 phases**, with 11 of them runna
 ## 1. Strategic Decisions
 
 ### 1.1 Keep (load-bearing — protect at all costs)
-- **`packages/coding-agent`** (`cave` CLI) — the user surface
+- **`packages/coding-agent`** (`caveman` CLI) — the user surface
 - **`packages/ai`** (`pi-ai`) — 20+ providers, OAuth flows, prompt caching. Best-in-class as-is
 - **`packages/agent`** — runtime + event bus + sandbox/MCP scaffolding. Foundational
 - **`packages/tui`** — already differential, color-depth detection
-- **Cave Mode** (3-layer compression, ~85% on tool output, $1.70-$6.92/session savings) — *the* unique differentiator
+- **Caveman Mode** (3-layer compression, ~85% on tool output, $1.70-$6.92/session savings) — *the* unique differentiator
 - **Session branching** (`/tree`, `/fork`) — no major competitor has this
 - **20+ provider OAuth** (Claude Pro, ChatGPT, Copilot, Gemini, Antigravity) — unique
 - **Multi-mode operation** (interactive, print `-p`, JSON, RPC) — competitive
@@ -77,17 +77,17 @@ See workstreams §5–§7. Headline additions: native MCP, native sandboxing sur
 3. **Reversibility-Aware Permissioning** — Default highlighted button is "Allow once". Allow-always keys are normalized command shapes, not raw strings. Reversibility tier (read/edit/exec/network) drives default verb.
 4. **Cache-Stable Layout** — `[tools] → [system] → [CLAUDE.md] → [pinned] → [history] → [user turn]`. Breakpoint after pinned context, never inside rolling history. 5-min TTL is the new default; pay the 1-hour TTL premium only for pinned project context.
 5. **Hooks Are First-Class** — 12 lifecycle events, stdout-as-context pattern, deny via exit 2. Hooks > prompting for invariants.
-6. **Cavemem Is the Memory Layer** — cave never reimplements embeddings/FTS/compression. Cave owns *policy*: when to write, what to inject, episodic→semantic consolidation, MEMORY.md bridging.
+6. **Cavemem Is the Memory Layer** — cave never reimplements embeddings/FTS/compression. Caveman Code owns *policy*: when to write, what to inject, episodic→semantic consolidation, MEMORY.md bridging.
 7. **One Canonical Install Command** — `curl -fsSL https://cave.sh/install | bash` at the top of the README, with everything else behind a disclosure.
 8. **Defer Schemas, Lazy-Load Tools** — Anthropic ToolSearch reduced 85% of token bloat; we should match that immediately.
 
 ---
 
-## 3. Cave's Differentiation Story (post-v2)
+## 3. Caveman Code's Differentiation Story (post-v2)
 
-| Axis | Cave v2 | Claude Code | Codex | Aider | Crush | opencode |
+| Axis | Caveman Code v2 | Claude Code | Codex | Aider | Crush | opencode |
 |---|---|---|---|---|---|---|
-| Token compression (3-layer Cave Mode) | ✅ unique | ❌ | ❌ | repo map only | ❌ | ❌ |
+| Token compression (3-layer Caveman Mode) | ✅ unique | ❌ | ❌ | repo map only | ❌ | ❌ |
 | 20+ provider OAuth (Claude Pro / ChatGPT / Copilot / Gemini) | ✅ unique | Anthropic only | ChatGPT only | env keys only | subset | env keys |
 | Session branching + fork | ✅ | ❌ | fork only | git only | ❌ | ❌ |
 | Native MCP | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
@@ -102,7 +102,7 @@ See workstreams §5–§7. Headline additions: native MCP, native sandboxing sur
 | Cost transparency (per-msg $) | ✅ | partial | partial | ✅ best-in-class | ❌ | ❌ |
 | MIT open source | ✅ | closed | Apache | Apache | FSL | MIT |
 
-The pitch: **"Cave is the only terminal coding agent that beats Claude Code on cost, Aider on context selection, Codex on provider flexibility, and opencode on session UX — in a single MIT-licensed binary."**
+The pitch: **"Caveman Code is the only terminal coding agent that beats Claude Code on cost, Aider on context selection, Codex on provider flexibility, and opencode on session UX — in a single MIT-licensed binary."**
 
 ---
 
@@ -141,7 +141,7 @@ Soft dependencies: WS5 (skills) → WS13 (marketplace), WS6 (plan mode) → WS11
 
 ## 5. Phase 1 — Serial Foundation Cleanup
 
-> **Pi-check first (see §0):** before deleting cavekit-extension or any cave-specific code, confirm whether the equivalent already exists in upstream `pi-code` — if so, the deletion is automatically safe; if cave's variant is genuinely original (Cave Mode, terminal-blend, proof-bench), keep it.
+> **Pi-check first (see §0):** before deleting cavekit-extension or any cave-specific code, confirm whether the equivalent already exists in upstream `pi-code` — if so, the deletion is automatically safe; if caveman-code's variant is genuinely original (Caveman Mode, terminal-blend, proof-bench), keep it.
 
 ### WS1: Trim & Repo Hygiene
 - **Owner:** Software Architect + Senior Developer
@@ -163,8 +163,8 @@ Soft dependencies: WS5 (skills) → WS13 (marketplace), WS6 (plan mode) → WS11
 
 ### WS2: MCP Native Integration
 - **Owner:** MCP Builder agent
-- **Scope:** Surface `packages/agent/src/mcp/{client,serve,acp}.ts` to the `cave` CLI. Three transports: **stdio** (subprocess + JSON-RPC), **Streamable HTTP** (SSE deprecating mid-2026), **in-process** (zero-spawn for cave's own tools). OAuth 2.1 + PKCE with two-tool pattern (`authenticate` returns OAuth URL, `complete_authentication` finalizes). Token cache in OS keychain (`keytar`). MCP tool namespacing as `mcp__<server>__<tool>`. Warm pool (idle servers SIGSTOP, resume SIGCONT). Defer schemas via ToolSearch by default.
-- **Deliverables:** `cave mcp add <name>`, `cave mcp list`, `cave mcp doctor`, `cave mcp login <name>`, `cave mcp remove`. Project `.mcp.json` + user `~/.cave/mcp.json` discovery. `cave mcp-server` mode (cave as MCP server itself, like Codex).
+- **Scope:** Surface `packages/agent/src/mcp/{client,serve,acp}.ts` to the `caveman` CLI. Three transports: **stdio** (subprocess + JSON-RPC), **Streamable HTTP** (SSE deprecating mid-2026), **in-process** (zero-spawn for caveman-code's own tools). OAuth 2.1 + PKCE with two-tool pattern (`authenticate` returns OAuth URL, `complete_authentication` finalizes). Token cache in OS keychain (`keytar`). MCP tool namespacing as `mcp__<server>__<tool>`. Warm pool (idle servers SIGSTOP, resume SIGCONT). Defer schemas via ToolSearch by default.
+- **Deliverables:** `caveman mcp add <name>`, `caveman mcp list`, `caveman mcp doctor`, `caveman mcp login <name>`, `caveman mcp remove`. Project `.mcp.json` + user `~/.cave/mcp.json` discovery. `caveman mcp-server` mode (cave as MCP server itself, like Codex).
 - **Files to touch:**
   - `packages/agent/src/mcp/client.ts` (extend)
   - `packages/agent/src/mcp/transport/{stdio,http,inproc}.ts` (new)
@@ -175,7 +175,7 @@ Soft dependencies: WS5 (skills) → WS13 (marketplace), WS6 (plan mode) → WS11
 ### WS3: Sandboxing & Permissions
 - **Owner:** Security Engineer
 - **Scope:** Promote `packages/agent/src/sandbox/{seatbelt,landlock,windows}.ts` to user surface. Define `SandboxPolicy` IR (tagged union: `read_only` | `workspace_write` | `danger_full_access`). On macOS: dynamic SBPL with `(deny default)` + `(allow file-write* (subpath cwd))` + per-host network via local CONNECT proxy. On Linux: bubblewrap + Landlock. On Windows: Restricted Tokens. Five permission modes (`default`, `plan`, `acceptEdits`, `auto`, `bypassPermissions`) cycled by Shift+Tab. Auto mode uses Haiku-class classifier with cached system prompt. 4-verb prompt with default-highlighted "Allow once". Allow-always persisted with normalized command keys to `.cave/permissions.json`.
-- **Deliverables:** `cave sandbox -- <cmd>` (sandbox-as-utility, Codex-style), `cave debug sandbox`, `cave execpolicy check`, all tools route through `SandboxPolicy` reducer.
+- **Deliverables:** `caveman sandbox -- <cmd>` (sandbox-as-utility, Codex-style), `caveman debug sandbox`, `caveman execpolicy check`, all tools route through `SandboxPolicy` reducer.
 - **Files to touch:**
   - `packages/agent/src/sandbox/policy.ts` (new — IR + reducer)
   - `packages/agent/src/sandbox/{seatbelt,landlock,windows}.ts` (extend)
@@ -187,7 +187,7 @@ Soft dependencies: WS5 (skills) → WS13 (marketplace), WS6 (plan mode) → WS11
 ### WS4: Hooks System
 - **Owner:** Backend Architect
 - **Scope:** Match Claude Code's 12 lifecycle events: `SessionStart`, `SessionEnd`, `UserPromptSubmit`, `Stop`, `SubagentStop`, `PreToolUse`, `PostToolUse`, `PreCompact`, `PostCompact`, `Notification`, plus `FileChanged`, `CwdChanged`. Use Claude Code's `settings.json` schema verbatim under `hooks` key (matchers + commands + decisions). PreToolUse synchronous + blocking with 30s timeout, returns `allow`/`deny`/`ask`/`defer`. PostToolUse async/advisory by default. **stdout-as-assistant-context** pattern (the killer feature). HTTP and LLM-prompt hook types as v2 stretch.
-- **Deliverables:** `cave hooks list`, `cave hooks test <event>`, settings.json schema valid against Claude Code's, 4 default hook recipes shipped (auto-format on Edit, auto-test on Stop, conventional-commit gate, secret-scan PreToolUse for Write).
+- **Deliverables:** `caveman hooks list`, `caveman hooks test <event>`, settings.json schema valid against Claude Code's, 4 default hook recipes shipped (auto-format on Edit, auto-test on Stop, conventional-commit gate, secret-scan PreToolUse for Write).
 - **Files to touch:**
   - `packages/coding-agent/src/core/hooks/{registry,executor,events}.ts` (new)
   - `packages/coding-agent/src/core/settings-manager.ts` (extend hooks key)
@@ -208,7 +208,7 @@ Soft dependencies: WS5 (skills) → WS13 (marketplace), WS6 (plan mode) → WS11
 ### WS6: Subagents & Plan Mode
 - **Owner:** AI Engineer
 - **Scope:** Native `Task` / `Agent` tool. Custom agents at `.cave/agents/<name>.md` and `~/.cave/agents/<name>.md`, frontmatter: `description`, `prompt`, `tools`, `disallowedTools`, `model`, `permissionMode`, `mcpServers`, `hooks`, `maxTurns`, `skills`, `effort`, `background`, `isolation: worktree|none`. Worktree isolation via `git worktree add .cave/worktrees/<id> <branch>`. Plan mode = read-only tools (Read/Glob/Grep + Bash with read-only allowlist), output ends in structured plan, user accepts → flips to `acceptEdits`. Per-subagent model tier; result-schema validation; up to 7 parallel via `Task`.
-- **Deliverables:** `Task` and `Agent` built-in tools, `.cave/agents/` discovery, `cave plan` shorthand, plan-mode permission profile, 5 default agents (`Explore`, `Reviewer`, `Tester`, `Implementer`, `Critic`).
+- **Deliverables:** `Task` and `Agent` built-in tools, `.cave/agents/` discovery, `caveman plan` shorthand, plan-mode permission profile, 5 default agents (`Explore`, `Reviewer`, `Tester`, `Implementer`, `Critic`).
 - **Files to touch:**
   - `packages/agent/src/subagent.ts` (new)
   - `packages/agent/src/worktree.ts` (new)
@@ -219,8 +219,8 @@ Soft dependencies: WS5 (skills) → WS13 (marketplace), WS6 (plan mode) → WS11
 
 ### WS7: Memory (cavemem) Integration
 - **Owner:** AI Engineer
-- **Scope:** Add `MemoryProvider` interface in `@cave/agent`. Two implementations: `CavememProvider` (default — talks to cavemem stdio MCP server + writes via `cavemem hook run`) and `FilesProvider` fallback (CLAUDE.md + plain `.cave/memory/*.md`). Wire 5 hook stubs (`session-start`, `user-prompt-submit`, `post-tool-use`, `stop`, `session-end`) using cavemem's `hook run` CLI. Surface 4 cavemem MCP tools (`search`, `timeline`, `get_observations`, `list_sessions`) as native cave tools. Session-start prelude runs `cavemem search "<task summary>"` and injects compact snippets. **Cave's value-add: episodic→semantic consolidation pass** — `/memory consolidate` clusters observations by topic, asks Haiku for semantic facts, writes back as `kind:semantic` with provenance. Bridge to Claude Code's `~/.claude/projects/.../memory/MEMORY.md` (read on startup, `cave memory sync --from claude` for one-shot import). Auto-install during `cave init` if `cavemem` on `$PATH`.
-- **Deliverables:** `/memory search|save|show|forget|export|consolidate|off|on|config|sync`, MemoryProvider interface, both providers, MEMORY.md bridge, **PR to `JuliusBrussee/cavemem` adding `cave` IDE installer to `packages/installers/`**.
+- **Scope:** Add `MemoryProvider` interface in `@caveman-code/agent`. Two implementations: `CavememProvider` (default — talks to cavemem stdio MCP server + writes via `cavemem hook run`) and `FilesProvider` fallback (CLAUDE.md + plain `.cave/memory/*.md`). Wire 5 hook stubs (`session-start`, `user-prompt-submit`, `post-tool-use`, `stop`, `session-end`) using cavemem's `hook run` CLI. Surface 4 cavemem MCP tools (`search`, `timeline`, `get_observations`, `list_sessions`) as native cave tools. Session-start prelude runs `cavemem search "<task summary>"` and injects compact snippets. **Caveman Code's value-add: episodic→semantic consolidation pass** — `/memory consolidate` clusters observations by topic, asks Haiku for semantic facts, writes back as `kind:semantic` with provenance. Bridge to Claude Code's `~/.claude/projects/.../memory/MEMORY.md` (read on startup, `caveman memory sync --from claude` for one-shot import). Auto-install during `caveman init` if `cavemem` on `$PATH`.
+- **Deliverables:** `/memory search|save|show|forget|export|consolidate|off|on|config|sync`, MemoryProvider interface, both providers, MEMORY.md bridge, **PR to `JuliusBrussee/cavemem` adding `caveman` IDE installer to `packages/installers/`**.
 - **Files to touch:**
   - `packages/agent/src/memory/provider.ts` (new — interface)
   - `packages/agent/src/memory/cavemem.ts` (new — wraps cavemem MCP+CLI)
@@ -242,10 +242,10 @@ Soft dependencies: WS5 (skills) → WS13 (marketplace), WS6 (plan mode) → WS11
   - `packages/coding-agent/src/core/slash-commands/{repomap,architect}.ts` (new)
 - **Effort:** 7–10 days
 
-### WS9: Daemon & Server/Client (`cave serve`)
+### WS9: Daemon & Server/Client (`caveman serve`)
 - **Owner:** Backend Architect
-- **Scope:** Headless HTTP daemon with OpenAPI-described endpoints + SQLite session store (opencode pattern). Multi-client attach (TUI + future desktop + future mobile against the same backend session). Sessions survive SSH drops and machine sleep. Generated TS SDK from OpenAPI. `cave attach <session-id>`, `cave list`, `cave serve --port`. JSON-RPC over WS for low-latency token streaming (Codex app-server pattern). Worker-daemon registration for `&`-prefix cloud handoff: prepend `&` to any prompt and it's dispatched to a registered remote `cave worker`; local terminal frees up; user `cave attach <id>` later.
-- **Deliverables:** `cave serve`, `cave attach`, `cave worker {start,list,stop}`, `cave list`, OpenAPI spec, generated TS SDK published as `@cave/sdk`.
+- **Scope:** Headless HTTP daemon with OpenAPI-described endpoints + SQLite session store (opencode pattern). Multi-client attach (TUI + future desktop + future mobile against the same backend session). Sessions survive SSH drops and machine sleep. Generated TS SDK from OpenAPI. `caveman attach <session-id>`, `caveman list`, `caveman serve --port`. JSON-RPC over WS for low-latency token streaming (Codex app-server pattern). Worker-daemon registration for `&`-prefix cloud handoff: prepend `&` to any prompt and it's dispatched to a registered remote `caveman worker`; local terminal frees up; user `caveman attach <id>` later.
+- **Deliverables:** `caveman serve`, `caveman attach`, `caveman worker {start,list,stop}`, `caveman list`, OpenAPI spec, generated TS SDK published as `@caveman-code/sdk`.
 - **Files to touch:**
   - `packages/coding-agent/src/core/daemon/{server,client,protocol}.ts` (new)
   - `packages/coding-agent/src/cli/serve.ts` (new)
@@ -265,8 +265,8 @@ Soft dependencies: WS5 (skills) → WS13 (marketplace), WS6 (plan mode) → WS11
 
 ### WS11: Install, Onboarding, Auto-Update, Doctor
 - **Owner:** DevOps Automator
-- **Scope:** **Canonical:** `curl -fsSL https://cave.sh/install | bash` (or whatever domain we acquire). Self-updater binary checks GitHub releases API once/24h, downloads tarball, atomic replace, re-exec. Three release channels (`stable`, `beta`, `canary`). Detect package manager for `cave update` (brew/npm/native). **First-run wizard:** 4 questions max — theme (auto-detect bg), auth (detect env keys, OAuth/API/skip), default model, telemetry off-by-default. Persist `hasCompletedOnboarding`. **`cave doctor`** — kernel version, terminal capabilities, sandbox availability, MCP servers reachable, missing tooling. Cross-platform: macOS (Intel + ARM), Linux (x86 + ARM), Windows via WSL with native PS path as preview.
-- **Deliverables:** `cave.sh` install script, `cave update` self-updater, first-run wizard ≤ 5s to interactive, `cave doctor`, `homebrew-cave` tap freshened, `winget` manifest, Docker image, `cave login --device-auth` for headless.
+- **Scope:** **Canonical:** `curl -fsSL https://cave.sh/install | bash` (or whatever domain we acquire). Self-updater binary checks GitHub releases API once/24h, downloads tarball, atomic replace, re-exec. Three release channels (`stable`, `beta`, `canary`). Detect package manager for `caveman update` (brew/npm/native). **First-run wizard:** 4 questions max — theme (auto-detect bg), auth (detect env keys, OAuth/API/skip), default model, telemetry off-by-default. Persist `hasCompletedOnboarding`. **`caveman doctor`** — kernel version, terminal capabilities, sandbox availability, MCP servers reachable, missing tooling. Cross-platform: macOS (Intel + ARM), Linux (x86 + ARM), Windows via WSL with native PS path as preview.
+- **Deliverables:** `cave.sh` install script, `caveman update` self-updater, first-run wizard ≤ 5s to interactive, `caveman doctor`, `homebrew-cave` tap freshened, `winget` manifest, Docker image, `caveman login --device-auth` for headless.
 - **Files to touch:**
   - `installers/install.sh` (new — write to webserver root)
   - `packages/coding-agent/src/cli/{update,doctor,login}.ts` (new/extend)
@@ -292,32 +292,32 @@ Soft dependencies: WS5 (skills) → WS13 (marketplace), WS6 (plan mode) → WS11
 
 ### WS13: Plugin Marketplace
 - **Owner:** Backend Architect
-- **Scope:** Manifest at `.cave-plugin/plugin.json`. Plugin bundles `commands/`, `skills/`, `agents/`, `hooks/`, `.mcp.json`. Three marketplace scopes: repo (`.cave/plugins/marketplace.json`), personal (`~/.cave/plugins/marketplace.json`), remote (URL). Commands: `cave plugin search`, `cave plugin install <user/plugin>`, `cave plugin marketplace add <url>`, `cave plugin upgrade`. Built-in `$plugin-creator` skill scaffolds a manifest. Hub aspect (Continue-style): publish a complete cave config — model role assignments + rules + MCP servers + recipes + themes + skills.
+- **Scope:** Manifest at `.cave-plugin/plugin.json`. Plugin bundles `commands/`, `skills/`, `agents/`, `hooks/`, `.mcp.json`. Three marketplace scopes: repo (`.cave/plugins/marketplace.json`), personal (`~/.cave/plugins/marketplace.json`), remote (URL). Commands: `caveman plugin search`, `caveman plugin install <user/plugin>`, `caveman plugin marketplace add <url>`, `caveman plugin upgrade`. Built-in `$plugin-creator` skill scaffolds a manifest. Hub aspect (Continue-style): publish a complete cave config — model role assignments + rules + MCP servers + recipes + themes + skills.
 - **Effort:** 7 days
 
 ### WS14: Recipes
 - **Owner:** Backend Architect
-- **Scope:** Goose-style YAML at `.cave/recipes/<name>.yaml`. Schema: `goal`, `tools` (allowed), `model`, `env`, `include` (subrecipes). `cave run-recipe <name>`. Ship 10 built-ins: `migrate-deps`, `add-feature-flag`, `port-to-typescript`, `add-tests`, `bump-deps`, `extract-component`, `seo-audit`, `accessibility-audit`, `migrate-to-biome`, `release`.
+- **Scope:** Goose-style YAML at `.cave/recipes/<name>.yaml`. Schema: `goal`, `tools` (allowed), `model`, `env`, `include` (subrecipes). `caveman run-recipe <name>`. Ship 10 built-ins: `migrate-deps`, `add-feature-flag`, `port-to-typescript`, `add-tests`, `bump-deps`, `extract-component`, `seo-audit`, `accessibility-audit`, `migrate-to-biome`, `release`.
 - **Effort:** 4 days
 
 ### WS15: Provider/Model Registry (Catwalk-style)
 - **Owner:** Backend Architect
-- **Scope:** Externalize provider definitions from binary into a versioned JSON registry hosted at `github.com/cave-cli/registry`. `cave models update` pulls latest. Community PRs add models without releasing cave. Local override via `~/.cave/registry.json`.
+- **Scope:** Externalize provider definitions from binary into a versioned JSON registry hosted at `github.com/cave-cli/registry`. `caveman models update` pulls latest. Community PRs add models without releasing cave. Local override via `~/.cave/registry.json`.
 - **Effort:** 3 days
 
-### WS16: `cave exec` / CI Mode
+### WS16: `caveman exec` / CI Mode
 - **Owner:** DevOps Automator
-- **Scope:** `cave exec <prompt>` non-interactive: `--json`, `--output-schema schema.json`, `--ephemeral` (ignore user config), `--skip-git-repo-check`, `--output-last-message <file>`, `--cwd`, `--model`, `--profile`. Idiomatic for GitHub Actions / GitLab CI. Stable JSON event stream on stdout. Exit codes documented.
+- **Scope:** `caveman exec <prompt>` non-interactive: `--json`, `--output-schema schema.json`, `--ephemeral` (ignore user config), `--skip-git-repo-check`, `--output-last-message <file>`, `--cwd`, `--model`, `--profile`. Idiomatic for GitHub Actions / GitLab CI. Stable JSON event stream on stdout. Exit codes documented.
 - **Effort:** 4 days
 
 ### WS17: Shadow-Git Checkpoint Manager
 - **Owner:** Backend Architect
-- **Scope:** Hermes pattern. Real shadow git repo at `~/.cave/checkpoints/<repo-hash>`. Snapshot before every destructive tool call (write/edit/exec). `cave rollback <N>` restores; `cave rollback <N> --file <path>` for surgical revert. Integrate with worktree from WS6 so rollback never touches user's index. `/checkpoint <name>` for manual snapshots.
+- **Scope:** Hermes pattern. Real shadow git repo at `~/.cave/checkpoints/<repo-hash>`. Snapshot before every destructive tool call (write/edit/exec). `caveman rollback <N>` restores; `caveman rollback <N> --file <path>` for surgical revert. Integrate with worktree from WS6 so rollback never touches user's index. `/checkpoint <name>` for manual snapshots.
 - **Effort:** 5 days
 
 ### WS18: Watch-Files / AI! Comments
 - **Owner:** Senior Developer
-- **Scope:** Aider pattern. `cave --watch` polls repo for `// cave!` (fire), `// cave?` (Q&A), `// cave` (accumulate context). Trailing `!` triggers code edits with cwd + comment + surrounding lines as context.
+- **Scope:** Aider pattern. `caveman --watch` polls repo for `// cave!` (fire), `// cave?` (Q&A), `// cave` (accumulate context). Trailing `!` triggers code edits with cwd + comment + surrounding lines as context.
 - **Effort:** 3 days
 
 ### WS19: Cost Transparency Panel
@@ -326,7 +326,7 @@ Soft dependencies: WS5 (skills) → WS13 (marketplace), WS6 (plan mode) → WS11
 - **Effort:** 3 days
 
 ### Optional / stretch (cut if budget pressed)
-- **Containerized parallel sessions** (Sketch pattern): `cave run --container --parallel 3 <task>` spawns N Docker containers, each on `cave/<slug>-N` branch; UI picks winning diff to merge. **Effort: 7 days.** Defer to v2.1.
+- **Containerized parallel sessions** (Sketch pattern): `caveman run --container --parallel 3 <task>` spawns N Docker containers, each on `cave/<slug>-N` branch; UI picks winning diff to merge. **Effort: 7 days.** Defer to v2.1.
 - **Encrypted-IPC sudo elevation**: Cursor pattern; password prompts via OS keychain / ssh-askpass, never crossing the model. **Effort: 4 days.** Defer to v2.1.
 - **AGENTS.override.md directory-scoped overrides**: Codex pattern. **Effort: 2 days.** Could land with WS5.
 
@@ -339,7 +339,7 @@ Soft dependencies: WS5 (skills) → WS13 (marketplace), WS6 (plan mode) → WS11
 ### 8.1 Integration architecture
 
 ```
-cave session
+caveman session
   ├── on session_start  ──► cavemem hook run session-start  (write)
   ├── on user_prompt    ──► cavemem hook run user-prompt-submit  (write)
   ├── on post_tool_use  ──► cavemem hook run post-tool-use  (write, async, non-blocking)
@@ -351,15 +351,15 @@ cave session
         └── list_sessions(limit?)         → recent sessions
 ```
 
-### 8.2 Cave's value-add (not in cavemem)
+### 8.2 Caveman Code's value-add (not in cavemem)
 
 - **Episodic→semantic consolidation**: nightly or `/memory consolidate` job clusters observations by topic, asks Haiku to extract semantic facts, writes them back as `kind:semantic` with provenance ids. Closes the loop most agents skip; what makes Letta/Zep feel "smart" — but local, deterministic, cheap.
-- **Auto-trigger learning**: when a tool call fails twice and then succeeds, cave writes a "lesson" observation (mirrors Claude Code Auto-Memory).
-- **MEMORY.md bridge**: read `~/.claude/projects/<slug>/memory/MEMORY.md` first 200 lines into context on session start so cave behaves consistently when invoked alongside Claude Code; `cave memory sync --from claude` imports per-fact `.md` files as cavemem observations.
+- **Auto-trigger learning**: when a tool call fails twice and then succeeds, caveman-code writes a "lesson" observation (mirrors Claude Code Auto-Memory).
+- **MEMORY.md bridge**: read `~/.claude/projects/<slug>/memory/MEMORY.md` first 200 lines into context on session start so cave behaves consistently when invoked alongside Claude Code; `caveman memory sync --from claude` imports per-fact `.md` files as cavemem observations.
 
 ### 8.3 PR upstream
 
-Add `cave` installer to cavemem's `packages/installers/`. The Installer interface already exists (Claude Code, Cursor, Codex, OpenCode, Gemini CLI). Cave just becomes the 6th. Spawn Node explicitly so Windows survives `EFTYPE`.
+Add `caveman` installer to cavemem's `packages/installers/`. The Installer interface already exists (Claude Code, Cursor, Codex, OpenCode, Gemini CLI). Caveman Code just becomes the 6th. Spawn Node explicitly so Windows survives `EFTYPE`.
 
 ---
 
@@ -367,7 +367,7 @@ Add `cave` installer to cavemem's `packages/installers/`. The Installer interfac
 
 Use Claude Code as the format authority where it makes sense. The user gets free ecosystem.
 
-| Format | Source of truth | Cave path | Notes |
+| Format | Source of truth | Caveman Code path | Notes |
 |---|---|---|---|
 | `settings.json` schema | Claude Code | `~/.cave/settings.json`, `.cave/settings.json` | Hook key + permissions key + statusLine identical |
 | Slash commands | Claude Code | `.cave/commands/*.md`, `~/.cave/commands/*.md` | Frontmatter superset |
@@ -380,7 +380,7 @@ Use Claude Code as the format authority where it makes sense. The user gets free
 | Memory | cavemem | `~/.cavemem/` (managed by cavemem) | + bridge to Claude Code MEMORY.md |
 | Recipes | Goose | `.cave/recipes/<name>.yaml` | Goose-compatible |
 
-The promise: **a user with existing Claude Code commands/skills/agents/hooks/MCP/CLAUDE.md drops in `cave` with zero migration**. A user with Codex AGENTS.md and plugins ditto.
+The promise: **a user with existing Claude Code commands/skills/agents/hooks/MCP/CLAUDE.md drops in `caveman` with zero migration**. A user with Codex AGENTS.md and plugins ditto.
 
 ---
 
@@ -431,7 +431,7 @@ Day 25  : Public 1.0 launch + docs site live.
 If we have to pick **one week of work to maximize signal**:
 
 1. **WS1 trim** (Mon): cut cavekit-extension, get clean tree.
-2. **WS2 + WS3 + WS4 + WS5** in parallel (Mon→Fri): MCP, sandbox, hooks, markdown skills/commands. These are the "instant ecosystem compatibility" layer — landing them lets Claude Code users try cave with zero migration.
+2. **WS2 + WS3 + WS4 + WS5** in parallel (Mon→Fri): MCP, sandbox, hooks, markdown skills/commands. These are the "instant ecosystem compatibility" layer — landing them lets Claude Code users try caveman with zero migration.
 3. **WS11 install + WS12 docs** in parallel (Mon→Fri): canonical install, first-run wizard, VitePress site, comparison table, README rewrite.
 
 After this sprint: cave looks and feels like Claude Code for someone with an existing setup, but cheaper. That's the strongest narrative for adoption.
@@ -466,4 +466,4 @@ Then in week 2: WS6 subagents, WS7 cavemem, WS8 repomap. Then in week 3: daemon 
 
 ---
 
-*This plan is intentionally aggressive but grounded in cave's existing scaffolding (sandbox/, mcp/, repomap/, agent loop, 360+ tests). Each workstream is independently shippable and reversible — none of the foundational architectural decisions are bet-the-company.*
+*This plan is intentionally aggressive but grounded in caveman-code's existing scaffolding (sandbox/, mcp/, repomap/, agent loop, 360+ tests). Each workstream is independently shippable and reversible — none of the foundational architectural decisions are bet-the-company.*

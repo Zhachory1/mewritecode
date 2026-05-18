@@ -8,7 +8,7 @@
  */
 
 import { Type } from "@sinclair/typebox";
-import type { ExtensionAPI } from "cave";
+import type { ExtensionAPI } from "caveman-code";
 
 const ECHO_PARAMS = Type.Object({
 	message: Type.String({ description: "Message to echo" }),

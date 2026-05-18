@@ -1,5 +1,5 @@
-import type { AgentMessage, AgentTool } from "@cave/agent";
-import type { ToolResultMessage } from "@cave/ai";
+import type { AgentMessage, AgentTool } from "@caveman-code/agent";
+import type { ToolResultMessage } from "@caveman-code/ai";
 import { html, LitElement } from "lit";
 import { property, state } from "lit/decorators.js";
 

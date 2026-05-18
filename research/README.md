@@ -34,11 +34,7 @@ npm run bench:micro -- --dry-run             # list tasks without running
 | Hard | 2/7 (29%) | $0.06 | 55s |
 | **Total** | **16/25 (64%)** | **$0.05** | **33s** |
 
-Key metrics:
-- **$1.19 total cost** for full suite
-- **59k total tokens per resolved task** (non-cached input + cached input + output)
-- **75% prompt cache hit rate** (caveman compression)
-- **14 min** wall clock
+Numbers above are from an older SDK-coupled run (`microbench-2026-04-16.json`) and are no longer the headline. **The current headline lives in `honest-bench-2026-05-18.{csv,json}`** — see "Cross-System Comparison" below for the live apples-to-apples vs Codex CLI.
 
 ### Terminal-Bench (head-to-head, live)
 
@@ -95,7 +91,7 @@ npm run bench:eval                           # evaluate patches with Docker harn
 
 ### Cross-System Comparison
 
-Compare cave's token efficiency against Codex and Claude Code using published baseline data.
+Compare caveman-code's token efficiency against Codex and Claude Code using published baseline data.
 
 ```bash
 npm run bench:compare -- --cave-results research/results/microbench-2026-04-16.json
@@ -103,15 +99,26 @@ npm run bench:compare -- --cave-results research/results/swebench-2026-04-16.jso
 npm run bench:compare -- --format json --output report.json
 ```
 
-**Token efficiency comparison (SWE-bench baselines):**
+**Honest apples-to-apples — 25-task MicroBench, gpt-5.5, xhigh reasoning (2026-05-18):**
 
-| System | Benchmark | Resolved | Tok/Resolved | $/Resolved | Cache% |
-|--------|-----------|----------|-------------|------------|--------|
-| cave | microbench | 64.0% | 59k | $0.07 | 75.0% |
-| codex | swebench | 74.2% | 1,348k | $3.37 | n/a |
-| claude-code | swebench | 51.0% | 2,353k | $7.35 | n/a |
+| Tool | Resolved | Fresh tokens (in+out) | Cost |
+|------|----------|----------------------|------|
+| Codex CLI | 15/25 (60%) | 1,010,185 | $0 (codex sub) |
+| **Caveman Code** | **14/25 (56%)** | **524,703** | **$1.78** |
 
-Note: cave microbench vs SWE-bench is not apples-to-apples (different tasks, different difficulty). Run cave on SWE-bench for a direct comparison. Tok/Resolved includes all prompt tokens (cached + non-cached) plus output tokens.
+**1.93× fewer fresh tokens than Codex CLI on identical tasks, same model, same reasoning effort.** Pass rate within 1 task.
+
+Raw artifacts: `research/results/honest-bench-2026-05-18.csv` + `.json` + per-task stdout/stderr logs under `research/results/honest-bench-2026-05-18/`.
+
+Reproduce in one command:
+
+```bash
+npx tsx research/evals/run-honest-bench.ts --tools caveman,codex
+```
+
+Methodology: each tool is spawned as a real child process (no SDK shortcuts), each task is verified with the task-specific `verify.sh`. Token counts come from each tool's own JSONL / stdout summary.
+
+Older numbers from the SDK-coupled `microbench-2026-04-16.json` and published-baseline comparisons are retained in `research/results/` for historical reference but are **not** the launch headline.
 
 ## Regenerating published numbers
 

@@ -1,6 +1,6 @@
 # Packages
 
-TypeScript monorepo under the `@cave/` scope.
+TypeScript monorepo under the `@caveman-code/` scope.
 
 ## Package Map
 
@@ -8,18 +8,18 @@ TypeScript monorepo under the `@cave/` scope.
 
 | Dir | Package | Binary | Role |
 |-----|---------|--------|------|
-| `coding-agent/` | `cave` | `cave` | Main coding agent CLI |
-| `ai/` | `@cave/ai` | `pi-ai` | Multi-provider LLM unified API |
-| `agent/` | `@cave/agent` | — | Agent runtime: tool calling, state |
-| `tui/` | `@cave/tui` | — | Terminal UI: differential rendering |
+| `coding-agent/` | `caveman` | `caveman` | Main coding agent CLI |
+| `ai/` | `@caveman-code/ai` | `pi-ai` | Multi-provider LLM unified API |
+| `agent/` | `@caveman-code/agent` | — | Agent runtime: tool calling, state |
+| `tui/` | `@caveman-code/tui` | — | Terminal UI: differential rendering |
 
 **Out of scope for v2 (separate product surfaces):**
 
 | Dir | Package | Binary | Role |
 |-----|---------|--------|------|
-| `web-ui/` | `@cave/web-ui` | — | Web components for AI chat |
-| `mom/` | `@cave/mom` | `mom` | Slack bot → coding agent delegate |
-| `pods/` | `@cave/pods` | `cave-pods` | vLLM deployment on GPU pods |
+| `web-ui/` | `@caveman-code/web-ui` | — | Web components for AI chat |
+| `mom/` | `@caveman-code/mom` | `mom` | Slack bot → coding agent delegate |
+| `pods/` | `@caveman-code/pods` | `cave-pods` | vLLM deployment on GPU pods |
 
 ## Conventions
 

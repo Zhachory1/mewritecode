@@ -1,21 +1,21 @@
 ---
-title: Cave vs the field
-description: Feature-by-feature comparison of Cave with Claude Code, Codex, Aider, Crush, and opencode.
+title: Caveman Code vs the field
+description: Feature-by-feature comparison of Caveman Code with Claude Code, Codex, Aider, Crush, and opencode.
 ---
 
-# Cave vs Claude Code, Codex, Aider, Crush, opencode
+# Caveman Code vs Claude Code, Codex, Aider, Crush, opencode
 
 This is the comparison table from the v2 master plan, kept current as features land. The pitch is short:
 
-> **Cave is the only terminal coding agent that beats Claude Code on cost, Aider on context selection, Codex on provider flexibility, and opencode on session UX — in a single MIT-licensed binary.**
+> **Caveman Code is the only terminal coding agent that beats Claude Code on cost, Aider on context selection, Codex on provider flexibility, and opencode on session UX — in a single MIT-licensed binary.**
 
 <CopyForLlms />
 
 ## Capabilities
 
-| Axis | Cave v2 | Claude Code | Codex | Aider | Crush | opencode |
+| Axis | Caveman Code v2 | Claude Code | Codex | Aider | Crush | opencode |
 |---|---|---|---|---|---|---|
-| Token compression (3-layer Cave Mode) | yes (unique) | no | no | repo map only | no | no |
+| Token compression (3-layer Caveman Mode) | yes (unique) | no | no | repo map only | no | no |
 | 20+ provider OAuth (Claude Pro / ChatGPT / Copilot / Gemini) | yes (unique) | Anthropic only | ChatGPT only | env keys only | subset | env keys |
 | Session branching + fork | yes | no | fork only | git only | no | no |
 | Native MCP | yes | yes | yes | no | yes | yes |
@@ -37,25 +37,28 @@ This is the comparison table from the v2 master plan, kept current as features l
 - **Aider** — pioneer of repo map + edit-format-per-model. Strongest at large-codebase context selection. Less ergonomic interactive UX.
 - **Crush** — fast, polished TUI (Charm). Mid-session model swap. Smaller ecosystem.
 - **opencode** — strong daemon / multi-client story. Newer; ecosystem still maturing.
-- **Cave** — borrows the best of all five and adds **Cave Mode compression** + **20+ provider OAuth** as native, unique differentiators.
+- **Cave** — borrows the best of all five and adds **Caveman Mode compression** + **20+ provider OAuth** as native, unique differentiators.
 
-## Cost — the headline
+## Tokens — the headline
 
-A 30-turn session against a 100k-token repo, identical task, identical model (Sonnet 4):
+25-task MicroBench, `gpt-5.5` on both sides, `xhigh` reasoning (2026-05-18):
 
-| Agent | Tokens consumed | Cost |
-|---|---|---|
-| Claude Code | ~2,353,000 | $7.35 |
-| Codex | ~1,348,000 | $3.37 |
-| **Cave** | **~59,000** | **$0.07** |
+| Agent | Fresh tokens | Pass rate | Cost |
+|---|---|---|---|
+| Codex CLI | 1,010,185 | 15/25 (60%) | $0 (codex sub) |
+| **Caveman Code** | **524,703** | **14/25 (56%)** | **$1.78** |
 
-Reproduce: `npm run bench:offline` (no API key, runs in &lt;1s) and `npm run bench:replay` (analyzes your real sessions).
+**1.93× fewer tokens for ~equivalent pass rate.** Reproduce in one command:
 
-The Cave Mode compression numbers are conservative — typical sessions land between 25× and 50× lower than Claude Code depending on tool-call volume.
+```bash
+npx tsx research/evals/run-honest-bench.ts --tools caveman,codex
+```
+
+Raw CSV and per-task logs live in [`research/results/`](https://github.com/JuliusBrussee/caveman-cli/tree/main/research/results). Methodology spawns each CLI as a real child process — no SDK shortcuts.
 
 ## Format compatibility
 
-Cave is a **superset** of Claude Code's authoring formats. Concretely, you can paste these directly into `~/.cave/`:
+Caveman Code is a **superset** of Claude Code's authoring formats. Concretely, you can paste these directly into `~/.cave/`:
 
 - `~/.claude/settings.json` → `~/.cave/settings.json` (hooks, permissions, statusLine identical schema)
 - `~/.claude/commands/*.md` → `~/.cave/commands/*.md`

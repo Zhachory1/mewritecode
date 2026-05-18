@@ -18,7 +18,7 @@ Plan mode is a permission profile + a prompt convention. The agent is restricted
 ## Enter plan mode
 
 ```bash
-cave --plan          # boot in plan mode
+caveman --plan          # boot in plan mode
 cave                 # then Shift+Tab → "plan"
 /plan                # inside a session
 ```
@@ -42,13 +42,13 @@ In plan mode:
 3. Edit `path/to/other.ts` — <reason>.
 
 **Risks:**
-- The migration touches the public API of `@cave/agent`. Bump major.
+- The migration touches the public API of `@caveman-code/agent`. Bump major.
 - ...
 
 **Estimate:** ~6 file edits, 1 test run, ~5 min.
 ```
 
-The model is prompted to emit this exact shape so cave can parse the steps for `/act`.
+The model is prompted to emit this exact shape so caveman-code can parse the steps for `/act`.
 
 ## Accept and execute
 
@@ -65,7 +65,7 @@ Flips to `acceptEdits`, the model walks each plan step in order. Steps that fail
 ## Architect mode (split planning + edit)
 
 ```bash
-cave --architect claude-opus-4-7 --editor claude-haiku-4
+caveman --architect claude-opus-4-7 --editor claude-haiku-4
 ```
 
 Architect mode is plan-mode + auto-handoff:
@@ -81,11 +81,11 @@ This is the cheapest way to use a frontier model for hard reasoning while keepin
 `/plan save <name>` writes the current plan to `.cave/plans/<name>.md`. Re-run with:
 
 ```bash
-cave --plan-from .cave/plans/refactor-auth.md
+caveman --plan-from .cave/plans/refactor-auth.md
 ```
 
 Useful for: handing the same plan to another teammate, sharing in PR description, replaying after rebasing.
 
 ## Importing from Claude Code
 
-Claude Code's plan mode uses an analogous `## Plan` shape. Copy the markdown directly. Cave's parser is forgiving about heading depth and bullet style.
+Claude Code's plan mode uses an analogous `## Plan` shape. Copy the markdown directly. Caveman Code's parser is forgiving about heading depth and bullet style.

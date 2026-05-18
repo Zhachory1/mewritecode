@@ -1,4 +1,4 @@
-import { truncateToWidth, visibleWidth } from "@cave/tui";
+import { truncateToWidth, visibleWidth } from "@caveman-code/tui";
 import { describe, expect, it } from "vitest";
 
 /**

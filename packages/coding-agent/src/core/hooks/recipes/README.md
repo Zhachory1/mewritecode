@@ -1,7 +1,7 @@
 # Default Hook Recipes
 
-Four ready-to-use shell hooks shipped with cave. They illustrate the cave
-hook authoring pattern and are referenced from `cave hooks list --recipes`.
+Four ready-to-use shell hooks shipped with caveman-code. They illustrate the caveman-code
+hook authoring pattern and are referenced from `caveman hooks list --recipes`.
 
 | Recipe | Event | Matcher | Purpose |
 |---|---|---|---|
@@ -50,7 +50,7 @@ Add to `~/.cave/settings.json` or `.cave/settings.json`:
 }
 ```
 
-`$CAVE_PROJECT_DIR` resolves to the project root cave is running in.
+`$CAVE_PROJECT_DIR` resolves to the project root caveman-code is running in.
 The Claude-Code-compatible alias `$CLAUDE_PROJECT_DIR` works identically.
 
 ## Authoring conventions

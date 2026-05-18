@@ -48,13 +48,13 @@ steps:
 Run:
 
 ```bash
-cave run-recipe migrate-to-biome
-cave run-recipe migrate-to-biome --dry-run    # plan-mode-only
+caveman run-recipe migrate-to-biome
+caveman run-recipe migrate-to-biome --dry-run    # plan-mode-only
 ```
 
 ## Built-in recipes
 
-Cave ships 10 default recipes you can copy or extend:
+Caveman Code ships 10 default recipes you can copy or extend:
 
 | Recipe | Purpose |
 |---|---|
@@ -72,8 +72,8 @@ Cave ships 10 default recipes you can copy or extend:
 List:
 
 ```bash
-cave recipes list
-cave recipes show migrate-to-biome
+caveman recipes list
+caveman recipes show migrate-to-biome
 ```
 
 ## include: subrecipes
@@ -106,7 +106,7 @@ $EDITOR .cave/recipes/release-rc.yaml
 Validate:
 
 ```bash
-cave recipes lint .cave/recipes/release-rc.yaml
+caveman recipes lint .cave/recipes/release-rc.yaml
 ```
 
 The linter checks: required keys, model exists in the registry, tools are valid, includes resolve.
@@ -117,6 +117,6 @@ The linter checks: required keys, model exists in the registry, tools are valid,
 |---|---|---|
 | Skill | model-invoked by description match | knowledge / how-to |
 | Slash command | user-invoked by `/foo` | one-shot tasks |
-| Recipe | user-invoked by `cave run-recipe` | multi-step pipelines, sub-tasks, env vars |
+| Recipe | user-invoked by `caveman run-recipe` | multi-step pipelines, sub-tasks, env vars |
 
 A recipe can dispatch slash commands as steps. A slash command can dispatch a recipe. Don't overcomplicate — pick the simplest construct that fits.

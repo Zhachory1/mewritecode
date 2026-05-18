@@ -56,9 +56,9 @@ Two CLI parity features grouped for implementation cohesion: sandboxed bash exec
 **Dependencies:** cavekit-prompt-cache R2
 
 ### R6: MCP server
-**Description:** `cave` exposes an MCP server mode (`cave mcp serve`) presenting its built-in tools over MCP for embedding in other clients.
+**Description:** `cave` exposes an MCP server mode (`caveman mcp serve`) presenting its built-in tools over MCP for embedding in other clients.
 **Acceptance Criteria:**
-- [ ] `cave mcp serve` starts and accepts MCP connections.
+- [ ] `caveman mcp serve` starts and accepts MCP connections.
 - [ ] The built-in `read`, `write`, `edit`, `bash`, `grep`, `find`, `ls` tools are all exposed.
 - [ ] A connected MCP client can invoke each tool and receive a result.
 **Dependencies:** none

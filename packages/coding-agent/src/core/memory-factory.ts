@@ -9,7 +9,7 @@
  */
 
 import { join } from "node:path";
-import { memory as memoryNs } from "@cave/agent";
+import { memory as memoryNs } from "@caveman-code/agent";
 
 type MemoryProvider = memoryNs.MemoryProvider;
 

@@ -1,4 +1,4 @@
-import { Container, type SelectItem, SelectList, type SelectListLayoutOptions } from "@cave/tui";
+import { Container, type SelectItem, SelectList, type SelectListLayoutOptions } from "@caveman-code/tui";
 import { getSelectListTheme } from "../theme/theme.js";
 import { DynamicBorder } from "./dynamic-border.js";
 

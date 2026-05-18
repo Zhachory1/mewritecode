@@ -8,7 +8,7 @@
  * - Interact with the user via UI primitives
  */
 
-import type { AgentMessage, AgentToolResult, AgentToolUpdateCallback, ThinkingLevel } from "@cave/agent";
+import type { AgentMessage, AgentToolResult, AgentToolUpdateCallback, ThinkingLevel } from "@caveman-code/agent";
 import type {
 	Api,
 	AssistantMessageEvent,
@@ -21,7 +21,7 @@ import type {
 	SimpleStreamOptions,
 	TextContent,
 	ToolResultMessage,
-} from "@cave/ai";
+} from "@caveman-code/ai";
 import type {
 	AutocompleteItem,
 	Component,
@@ -32,7 +32,7 @@ import type {
 	OverlayOptions,
 	SidePanelOptions,
 	TUI,
-} from "@cave/tui";
+} from "@caveman-code/tui";
 import type { Static, TSchema } from "@sinclair/typebox";
 import type { Theme } from "../../modes/interactive/theme/theme.js";
 import type { BashResult } from "../bash-executor.js";
@@ -199,7 +199,7 @@ export interface ExtensionUIContext {
 	 *
 	 * @example
 	 * ```ts
-	 * import { CustomEditor } from "cave";
+	 * import { CustomEditor } from "caveman-code";
 	 *
 	 * class VimEditor extends CustomEditor {
 	 *   private mode: "normal" | "insert" = "insert";

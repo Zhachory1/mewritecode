@@ -4,7 +4,7 @@ Key findings:
 - Distribution: npm @cavepi/ + Bun binaries via GitHub Releases, no Homebrew
 - /share command disabled (no domain), /export to HTML works
 - OSS session sharing still points to upstream HuggingFace dataset
-- Cave mode is the primary viral differentiator (runs cheaper)
+- Caveman Code mode is the primary viral differentiator (runs cheaper)
 - Package gallery still at shittycodingagent.ai, keyword pi-package
 - Skills/packages: full npm/git install ecosystem, pi-package keyword discovery
 - Discord: two different invite links (upstream vs caveman confusion)

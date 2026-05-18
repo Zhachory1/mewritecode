@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Cave are documented here.
+All notable changes to Caveman Code are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -21,9 +21,9 @@ Release notes from `v0.30.0` onwards are auto-generated from
   per-page "Copy for LLMs" button that strips chrome and reports an estimated
   token count.
 - **VHS tape files** — five `vhs/*.tape` recordings for the README and docs:
-  install + first prompt, Cave Mode A/B, plan/act flow, session branching,
+  install + first prompt, Caveman Mode A/B, plan/act flow, session branching,
   extension hot-load.
-- **Comparison page** — Cave vs Claude Code / Codex / Aider / Crush /
+- **Comparison page** — Caveman Code vs Claude Code / Codex / Aider / Crush /
   opencode, sourced from the v2 master plan §3.
 - **Migration guides** — zero-migration playbooks for Claude Code, Codex,
   and Aider users.
@@ -58,7 +58,7 @@ Release notes from `v0.30.0` onwards are auto-generated from
 
 ### Changed
 
-- Rebrand `pi` → `cave`. Models and tests updated.
+- Rebrand `pi` → `caveman`. Models and tests updated.
 
 ## [0.30.0] — 2026-04-08
 
@@ -66,8 +66,8 @@ Release notes from `v0.30.0` onwards are auto-generated from
 
 - Release pipeline, installers (`install.sh`, `install.ps1`), Homebrew
   formula, GitHub Actions release workflow.
-- Initial monorepo layout: `cave`, `@cave/ai`, `@cave/agent`, `@cave/tui`,
-  `@cave/web-ui`, `@cave/mom`, `@cave/pods`.
+- Initial monorepo layout: `caveman`, `@caveman-code/ai`, `@caveman-code/agent`, `@caveman-code/tui`,
+  `@caveman-code/web-ui`, `@caveman-code/mom`, `@caveman-code/pods`.
 
 [Unreleased]: https://github.com/JuliusBrussee/caveman-cli/compare/v0.30.2...HEAD
 [0.30.2]: https://github.com/JuliusBrussee/caveman-cli/compare/v0.30.1...v0.30.2

@@ -284,7 +284,7 @@ async function main() {
 }
 
 /**
- * Extract the user/assistant message bodies from a cave session .jsonl for
+ * Extract the user/assistant message bodies from a caveman session .jsonl for
  * the token audit. We deliberately do NOT try to reconstruct the system
  * prompt here: cave assembles it dynamically (with skills, extensions, cave
  * mode injections) and the fully-expanded string is not stored in the

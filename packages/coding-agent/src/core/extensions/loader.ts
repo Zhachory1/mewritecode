@@ -9,11 +9,11 @@ import { createRequire } from "node:module";
 import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import * as _bundledPiAgentCore from "@cave/agent";
-import * as _bundledPiAi from "@cave/ai";
-import * as _bundledPiAiOauth from "@cave/ai/oauth";
-import type { KeyId } from "@cave/tui";
-import * as _bundledPiTui from "@cave/tui";
+import * as _bundledPiAgentCore from "@caveman-code/agent";
+import * as _bundledPiAi from "@caveman-code/ai";
+import * as _bundledPiAiOauth from "@caveman-code/ai/oauth";
+import type { KeyId } from "@caveman-code/tui";
+import * as _bundledPiTui from "@caveman-code/tui";
 import { createJiti } from "@mariozechner/jiti";
 // Static imports of packages that extensions may use.
 // These MUST be static so Bun bundles them into the compiled binary.
@@ -42,10 +42,10 @@ import type {
 /** Modules available to extensions via virtualModules (for compiled Bun binary) */
 const VIRTUAL_MODULES: Record<string, unknown> = {
 	"@sinclair/typebox": _bundledTypebox,
-	"@cave/agent": _bundledPiAgentCore,
-	"@cave/tui": _bundledPiTui,
-	"@cave/ai": _bundledPiAi,
-	"@cave/ai/oauth": _bundledPiAiOauth,
+	"@caveman-code/agent": _bundledPiAgentCore,
+	"@caveman-code/tui": _bundledPiTui,
+	"@caveman-code/ai": _bundledPiAi,
+	"@caveman-code/ai/oauth": _bundledPiAiOauth,
 	cave: _bundledPiCodingAgent,
 };
 
@@ -76,10 +76,10 @@ function getAliases(): Record<string, string> {
 
 	_aliases = {
 		cave: packageIndex,
-		"@cave/agent": resolveWorkspaceOrImport("agent/dist/index.js", "@cave/agent"),
-		"@cave/tui": resolveWorkspaceOrImport("tui/dist/index.js", "@cave/tui"),
-		"@cave/ai": resolveWorkspaceOrImport("ai/dist/index.js", "@cave/ai"),
-		"@cave/ai/oauth": resolveWorkspaceOrImport("ai/dist/oauth.js", "@cave/ai/oauth"),
+		"@caveman-code/agent": resolveWorkspaceOrImport("agent/dist/index.js", "@caveman-code/agent"),
+		"@caveman-code/tui": resolveWorkspaceOrImport("tui/dist/index.js", "@caveman-code/tui"),
+		"@caveman-code/ai": resolveWorkspaceOrImport("ai/dist/index.js", "@caveman-code/ai"),
+		"@caveman-code/ai/oauth": resolveWorkspaceOrImport("ai/dist/oauth.js", "@caveman-code/ai/oauth"),
 		"@sinclair/typebox": typeboxRoot,
 	};
 

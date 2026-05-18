@@ -92,7 +92,7 @@ export interface McpTransport {
 	isConnected(): boolean;
 }
 
-/** Server health snapshot used by `cave mcp doctor`. */
+/** Server health snapshot used by `caveman mcp doctor`. */
 export interface McpServerHealth {
 	name: string;
 	transport: McpTransportKind;

@@ -3,9 +3,9 @@
  *
  * Verifies the Claude-Code-compatible `statusLine` block roundtrips through
  * the manager, that project overrides win over global, and that malformed
- * shapes are preserved (parsing/validation lives in @cave/tui).
+ * shapes are preserved (parsing/validation lives in @caveman-code/tui).
  */
-import { parseStatusLineSettings } from "@cave/tui";
+import { parseStatusLineSettings } from "@caveman-code/tui";
 import { describe, expect, it } from "vitest";
 import { SettingsManager } from "../src/core/settings-manager.js";
 
@@ -26,7 +26,7 @@ describe("SettingsManager statusLine", () => {
 		const cfg = { type: "command", command: "/bin/echo cave", padding: 2 };
 		sm.setGlobalStatusLine(cfg);
 		expect(sm.getStatusLine()).toEqual(cfg);
-		// Validates against the @cave/tui parser unchanged.
+		// Validates against the @caveman-code/tui parser unchanged.
 		expect(parseStatusLineSettings(sm.getStatusLine())).toEqual(cfg);
 	});
 

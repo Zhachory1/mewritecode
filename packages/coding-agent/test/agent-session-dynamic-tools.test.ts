@@ -1,13 +1,14 @@
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { getModel } from "@cave/ai";
+import { getModel } from "@caveman-code/ai";
 import { Type } from "@sinclair/typebox";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DefaultResourceLoader } from "../src/core/resource-loader.js";
 import { createAgentSession } from "../src/core/sdk.js";
 import { SessionManager } from "../src/core/session-manager.js";
 import { SettingsManager } from "../src/core/settings-manager.js";
+import { createReadOnlyTools } from "../src/core/tools/index.js";
 
 describe("AgentSession dynamic tool registration", () => {
 	let tempDir: string;
@@ -130,6 +131,46 @@ describe("AgentSession dynamic tool registration", () => {
 			origin: "top-level",
 		});
 		expect(session.getActiveToolNames()).toContain("sdk_tool");
+
+		session.dispose();
+	});
+
+	it("advertises explicitly-selected non-always-on tools in the system prompt under cave mode", async () => {
+		// Regression: print mode and subagents invoke `cave -p --tools
+		// read,grep,find,ls`. Cave mode used to drop snippets for any tool
+		// outside {bash, read, edit, write}, leaving the model to read
+		// "Available tools: - read" and refuse. Tools must remain visible.
+		const settingsManager = SettingsManager.create(tempDir, agentDir);
+		settingsManager.setCaveModeEnabled(true);
+		const sessionManager = SessionManager.inMemory();
+		const resourceLoader = new DefaultResourceLoader({
+			cwd: tempDir,
+			agentDir,
+			settingsManager,
+		});
+		await resourceLoader.reload();
+
+		const { session } = await createAgentSession({
+			cwd: tempDir,
+			agentDir,
+			model: getModel("anthropic", "claude-sonnet-4-5")!,
+			settingsManager,
+			sessionManager,
+			resourceLoader,
+			tools: createReadOnlyTools(tempDir),
+		});
+
+		const active = session.getActiveToolNames();
+		expect(active).toEqual(expect.arrayContaining(["read", "grep", "find", "ls"]));
+		// Schemas reach the agent runtime (this is what the LLM gets via API)
+		expect(session.agent.state.tools.map((t) => t.name)).toEqual(
+			expect.arrayContaining(["read", "grep", "find", "ls"]),
+		);
+		// And the model sees them advertised in the system prompt
+		expect(session.systemPrompt).toContain("- read:");
+		expect(session.systemPrompt).toContain("- grep:");
+		expect(session.systemPrompt).toContain("- find:");
+		expect(session.systemPrompt).toContain("- ls:");
 
 		session.dispose();
 	});

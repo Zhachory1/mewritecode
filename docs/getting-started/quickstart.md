@@ -1,11 +1,11 @@
 ---
 title: Quickstart
-description: Install Cave and run your first prompt in under 30 seconds.
+description: Install Caveman Code and run your first prompt in under 30 seconds.
 ---
 
 # Quickstart
 
-Goal: Cave installed, authenticated, first prompt answered. Target time: 30 seconds.
+Goal: Caveman Code installed, authenticated, first prompt answered. Target time: 30 seconds.
 
 <CopyForLlms />
 
@@ -20,12 +20,12 @@ That's the canonical install. Other options (Homebrew, npm, Docker, manual binar
 Verify:
 
 ```bash
-cave --version
+caveman --version
 ```
 
 ## 2. Authenticate
 
-Pick **one** of these. Cave detects which keys you already have in your environment.
+Pick **one** of these. Caveman Code detects which keys you already have in your environment.
 
 ::: code-group
 
@@ -38,7 +38,7 @@ export OPENAI_API_KEY=sk-...
 ```
 
 ```bash [Claude Pro / ChatGPT Plus / Copilot / Gemini]
-cave
+caveman
 # inside the TUI:
 /login
 ```
@@ -52,39 +52,39 @@ See the full [Auth & Providers](/getting-started/auth) page for the 20+ supporte
 ## 3. First prompt
 
 ```bash
-cave "explain this codebase"
+caveman "explain this codebase"
 ```
 
 Or open the interactive TUI:
 
 ```bash
-cave
+caveman
 ```
 
 Type a prompt and the agent responds. Type `/help` for the full slash-command list.
 
 ## What just happened
 
-1. The installer downloaded a single binary, dropped it in `~/.cave/versions/<tag>/` and symlinked `cave` onto your PATH.
+1. The installer downloaded a single binary, dropped it in `~/.cave/versions/<tag>/` and symlinked `caveman` onto your PATH.
 2. On first launch, the wizard ran (4 questions: theme, auth, default model, telemetry off-by-default) and persisted your choice to `~/.cave/settings.json`.
-3. **Cave Mode** compression is on by default. Tool output (bash, grep, file reads) is summarized before re-entering context.
+3. **Caveman Mode** compression is on by default. Tool output (bash, grep, file reads) is summarized before re-entering context.
 
 ## Common next steps
 
 | Task | Command / link |
 |---|---|
-| Continue your last session | `cave -c` |
-| Browse and resume past sessions | `cave -r` |
-| Pipe stdin to the agent | `cat README.md \| cave -p "review"` |
+| Continue your last session | `caveman -c` |
+| Browse and resume past sessions | `caveman -r` |
+| Pipe stdin to the agent | `cat README.md \| caveman -p "review"` |
 | Switch model mid-session | `/model claude-sonnet-4` |
 | Fork session to try a different path | `/fork` |
-| Run in plan-only mode | `cave --plan` (or Shift+Tab in TUI) |
+| Run in plan-only mode | `caveman --plan` (or Shift+Tab in TUI) |
 | Migrate from Claude Code | [Migration guide](/migration/from-claude-code) |
 
 ## Troubleshooting
 
 - `cave: command not found` after install — restart your shell or run `source ~/.zshrc` / `source ~/.bashrc`.
-- Wizard didn't appear — delete `~/.cave/settings.json` and run `cave` again.
+- Wizard didn't appear — delete `~/.cave/settings.json` and run `caveman` again.
 - Auth fails on Linux — install `libsecret` (`apt install libsecret-1-0` on Debian/Ubuntu) or use API keys via env.
 
 More: [Troubleshooting](/troubleshooting).

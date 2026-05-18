@@ -8,7 +8,7 @@ cave-pi-monorepo@0.0.3 /Users/julb/Desktop/GitHub/caveman-cli
 │ ├── UNMET OPTIONAL DEPENDENCY @biomejs/cli-linux-x64@2.3.5
 │ ├── UNMET OPTIONAL DEPENDENCY @biomejs/cli-win32-arm64@2.3.5
 │ └── UNMET OPTIONAL DEPENDENCY @biomejs/cli-win32-x64@2.3.5
-├─┬ @cave/markdown-preview@0.9.6 -> ./packages/markdown-preview
+├─┬ @caveman-code/markdown-preview@0.9.6 -> ./packages/markdown-preview
 │ ├── @cavepi/pi-coding-agent@0.65.2 deduped -> ./packages/coding-agent
 │ ├── @cavepi/pi-tui@0.65.2 deduped -> ./packages/tui
 │ ├─┬ @types/node@24.12.2

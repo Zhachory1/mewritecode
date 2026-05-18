@@ -7,8 +7,8 @@
 
 import { resolve } from "node:path";
 import { createInterface } from "node:readline";
-import { type ImageContent, modelsAreEqual, supportsXhigh } from "@cave/ai";
-import { detectTerminalIdentity, ProcessTerminal, probeTerminal, setKeybindings, TUI } from "@cave/tui";
+import { type ImageContent, modelsAreEqual, supportsXhigh } from "@caveman-code/ai";
+import { detectTerminalIdentity, ProcessTerminal, probeTerminal, setKeybindings, TUI } from "@caveman-code/tui";
 import chalk from "chalk";
 import { type Args, type Mode, parseArgs, printHelp } from "./cli/args.js";
 import { handleAttachCommand } from "./cli/attach.js";
@@ -526,17 +526,17 @@ export async function main(args: string[]) {
 		return;
 	}
 
-	// WS2: `cave mcp <subcmd>` and `cave mcp-server`
+	// WS2: `caveman mcp <subcmd>` and `caveman mcp-server`
 	if (await handleMcpCommand(args)) {
 		return;
 	}
 
 	// WS9: daemon + multi-client attach.
-	//   cave serve [--port N]      — boot the daemon
-	//   cave sessions (alias `ps`) — list daemon sessions (`cave list` is
+	//   caveman serve [--port N]      — boot the daemon
+	//   caveman sessions (alias `ps`) — list daemon sessions (`cave list` is
 	//                                already used by the extensions package
 	//                                manager; `sessions` is the WS9 canonical)
-	//   cave attach <id>           — attach to a session over WS
+	//   caveman attach <id>           — attach to a session over WS
 	//   cave worker {register,...} — manage remote-worker registry for &-prefix handoff
 	if (await handleServeCommand(args)) {
 		return;
@@ -561,7 +561,7 @@ export async function main(args: string[]) {
 		return;
 	}
 
-	// `cave goal …` — autonomous Ralph-style goal loop driver.
+	// `caveman goal …` — autonomous Ralph-style goal loop driver.
 	if (await handleGoalCommand(args)) {
 		return;
 	}
@@ -571,7 +571,7 @@ export async function main(args: string[]) {
 		return;
 	}
 
-	// WS14: cave run-recipe — Goose-style YAML recipe runner.
+	// WS14: caveman run-recipe — Goose-style YAML recipe runner.
 	if (await handleRunRecipeCommand(args)) {
 		return;
 	}
@@ -581,7 +581,7 @@ export async function main(args: string[]) {
 		return;
 	}
 
-	// WS15: cave models — provider/model registry (update, list, inspect).
+	// WS15: caveman models — provider/model registry (update, list, inspect).
 	const modelsExitCode = await handleModelsCommand(args);
 	if (modelsExitCode !== -1) {
 		process.exit(modelsExitCode);

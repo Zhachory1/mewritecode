@@ -1,7 +1,7 @@
 // Main chat interface
 
-export type { Agent, AgentMessage, AgentState, ThinkingLevel } from "@cave/agent";
-export type { Model } from "@cave/ai";
+export type { Agent, AgentMessage, AgentState, ThinkingLevel } from "@caveman-code/agent";
+export type { Model } from "@caveman-code/ai";
 export { ChatPanel } from "./ChatPanel.js";
 // Components
 export { AgentInterface } from "./components/AgentInterface.js";

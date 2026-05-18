@@ -1,4 +1,4 @@
-import { Container, Text } from "@cave/tui";
+import { Container, Text } from "@caveman-code/tui";
 import { theme } from "../theme/theme.js";
 import { BannerComponent, type BannerSprite } from "./banner.js";
 import { SessionPanelComponent } from "./session-panel.js";

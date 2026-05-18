@@ -2,7 +2,7 @@
 //
 // For cave's own tools or any tool that lives in the same Node process. Calls
 // the tool's `call()` directly without serialization. The fastest possible
-// transport — used for the cave→cave path in `cave mcp-server` mode and any
+// transport — used for the cave→cave path in `caveman mcp-server` mode and any
 // "fake" servers tests want to wire up without subprocesses.
 
 import type { McpTool } from "../serve.js";

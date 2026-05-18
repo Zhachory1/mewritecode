@@ -16,15 +16,15 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
-import type { Agent, AgentEvent, AgentMessage, AgentState, AgentTool, ThinkingLevel } from "@cave/agent";
-import { checkpoints, LLMLinguaMiddleware, memory as memoryNs } from "@cave/agent";
+import type { Agent, AgentEvent, AgentMessage, AgentState, AgentTool, ThinkingLevel } from "@caveman-code/agent";
+import { checkpoints, LLMLinguaMiddleware, memory as memoryNs } from "@caveman-code/agent";
 
 const { CheckpointManager } = checkpoints;
 type CheckpointManagerInstance = InstanceType<typeof CheckpointManager>;
 type MemoryProviderInstance = memoryNs.MemoryProvider;
 
-import type { AssistantMessage, ImageContent, Message, Model, TextContent } from "@cave/ai";
-import { ENV_VAR_BY_PROVIDER, isContextOverflow, modelsAreEqual, resetApiProviders, supportsXhigh } from "@cave/ai";
+import type { AssistantMessage, ImageContent, Message, Model, TextContent } from "@caveman-code/ai";
+import { ENV_VAR_BY_PROVIDER, isContextOverflow, modelsAreEqual, resetApiProviders, supportsXhigh } from "@caveman-code/ai";
 import { getDocsPath } from "../config.js";
 import { theme } from "../modes/interactive/theme/theme.js";
 import { stripFrontmatter } from "../utils/frontmatter.js";
@@ -757,7 +757,7 @@ export class AgentSession {
 	private async _buildRepomap(hash: string): Promise<string | undefined> {
 		try {
 			const { collectSourceFiles } = await import("./slash-commands/repomap.js");
-			const { repomap: repomapNs } = await import("@cave/agent");
+			const { repomap: repomapNs } = await import("@caveman-code/agent");
 			const { buildRepomap, dynamicMapTokens } = repomapNs;
 
 			const files = collectSourceFiles(this._cwd);
@@ -1020,7 +1020,7 @@ export class AgentSession {
 			blocks.push({
 				role: "custom",
 				customType: "memory-recall",
-				content: `<memory-recall>\nTop hits from prior cave sessions and saved facts. Search seeded by current chat-state (no extra LLM call).\n\n${rendered}\n</memory-recall>`,
+				content: `<memory-recall>\nTop hits from prior caveman sessions and saved facts. Search seeded by current chat-state (no extra LLM call).\n\n${rendered}\n</memory-recall>`,
 				display: false,
 				timestamp: Date.now(),
 			});
@@ -1677,11 +1677,6 @@ export class AgentSession {
 		return Array.from(unique);
 	}
 
-	// Tools that always show prompt snippets/guidelines in system prompt.
-	// In cave mode, other tools are "lazy" — they still work (schemas sent via API)
-	// but their snippets and guidelines are suppressed from the system prompt.
-	private static readonly ALWAYS_ON_TOOLS = new Set(["bash", "read", "edit", "write"]);
-
 	private async _persistPlan(text: string): Promise<void> {
 		try {
 			const { writePlan, extractPlanFromMessage } = await import("./plans.js");
@@ -1698,10 +1693,6 @@ export class AgentSession {
 		const caveModeEnabled = this._sessionCaveModeDisabled ? false : this.settingsManager.getCaveModeEnabled();
 
 		for (const name of validToolNames) {
-			// In cave mode, suppress snippets/guidelines for lazy (non-always-on) tools
-			if (caveModeEnabled && !AgentSession.ALWAYS_ON_TOOLS.has(name)) {
-				continue;
-			}
 			const snippet = this._toolPromptSnippets.get(name);
 			if (snippet) {
 				toolSnippets[name] = snippet;
@@ -2866,6 +2857,14 @@ export class AgentSession {
 	}
 
 	async bindExtensions(bindings: ExtensionBindings): Promise<void> {
+		// Print mode / SDK callers invoke bindExtensions immediately after
+		// `new AgentSession()` — i.e. before the constructor's async
+		// `_buildRuntime` has finished creating `_extensionRunner`. Without
+		// awaiting here, the `if (this._extensionRunner)` guard below silently
+		// no-ops, `session_start` never fires, and extension-registered tools /
+		// skills / commands are lost. Re-awaiting a settled promise is cheap.
+		await this._initialRuntimeReady;
+
 		if (bindings.uiContext !== undefined) {
 			this._extensionUIContext = bindings.uiContext;
 		}
@@ -2882,6 +2881,11 @@ export class AgentSession {
 		if (this._extensionRunner) {
 			this._applyExtensionBindings(this._extensionRunner);
 			await this._extensionRunner.emit(this._sessionStartEvent);
+			// Pick up any tools registered inside `session_start` handlers
+			// (via `pi.registerTool`). Without this refresh those tools live
+			// only on the runner and never reach `_toolRegistry` /
+			// `agent.state.tools`, so the LLM never sees them.
+			this._refreshToolRegistry({ includeAllExtensionTools: true });
 			await this.extendResourcesFromExtensions(this._sessionStartEvent.reason === "reload" ? "reload" : "startup");
 		}
 	}

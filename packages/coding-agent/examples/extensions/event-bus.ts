@@ -7,7 +7,7 @@
  * Usage: /emit [event-name] [data] - emit an event on the bus
  */
 
-import type { ExtensionAPI, ExtensionContext } from "cave";
+import type { ExtensionAPI, ExtensionContext } from "caveman-code";
 
 export default function (pi: ExtensionAPI) {
 	// Store ctx for use in event handler

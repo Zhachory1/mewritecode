@@ -141,7 +141,7 @@ const MICROBENCH_SYSTEM_ADDENDUM = [
 ].join("\n");
 
 // ---------------------------------------------------------------------------
-// Run cave session on a single task
+// Run caveman session on a single task
 // ---------------------------------------------------------------------------
 
 interface TaskResult {

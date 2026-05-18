@@ -5,9 +5,9 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { Agent } from "@cave/agent";
-import { getModel, type OAuthCredentials, type OAuthProvider } from "@cave/ai";
-import { getOAuthApiKey } from "@cave/ai/oauth";
+import { Agent } from "@caveman-code/agent";
+import { getModel, type OAuthCredentials, type OAuthProvider } from "@caveman-code/ai";
+import { getOAuthApiKey } from "@caveman-code/ai/oauth";
 import { AgentSession } from "../src/core/agent-session.js";
 import { AuthStorage } from "../src/core/auth-storage.js";
 import { createEventBus } from "../src/core/event-bus.js";

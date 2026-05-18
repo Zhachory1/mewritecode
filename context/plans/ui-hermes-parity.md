@@ -1,7 +1,7 @@
-# Cave UI — Hermes-Parity Components
+# Caveman Code UI — Hermes-Parity Components
 
 **Status:** plan, 2026-04-28
-**Scope:** ship the visible UI components hermes has that cave lacks. Build on top of cave's existing `@cave/tui` primitives (`Container`, `Box`, `Text`, `OverlayHandle`, `SidePanelHandle`, `SelectList`, `Markdown`, `DiffView`, `Loader`, `StatusLine`, sync-output, OSC-52, terminal-image, theme). **No new low-level primitives. No reactive layer. No mouse / ScrollBox / AlternateScreen rework.** Components subscribe to events and call `invalidate()` on the renderer cave already ships.
+**Scope:** ship the visible UI components hermes has that cave lacks. Build on top of caveman-code's existing `@caveman-code/tui` primitives (`Container`, `Box`, `Text`, `OverlayHandle`, `SidePanelHandle`, `SelectList`, `Markdown`, `DiffView`, `Loader`, `StatusLine`, sync-output, OSC-52, terminal-image, theme). **No new low-level primitives. No reactive layer. No mouse / ScrollBox / AlternateScreen rework.** Components subscribe to events and call `invalidate()` on the renderer cave already ships.
 
 **Reference (MIT):** `~/.hermes/hermes-agent/ui-tui/src/components/` — patterns reproduced, no source copied. Each new file gets a `// inspired by hermes-agent (MIT)` comment where lineage is direct.
 
@@ -40,7 +40,7 @@ Render as transcript-anchored intro rows (kind: `intro`), not one-shot startup p
 
 ```
 ╭───────────────────────────────────────────────╮
-│   ▄████▄    Cave  v2.0.0                      │
+│   ▄████▄    Caveman Code  v2.0.0                      │
 │  ████████   Opus 4.7 (1M context) · xhigh     │
 │  ▀██████▀   /Users/julb/Desktop/GitHub/...    │
 ╰───────────────────────────────────────────────╯
@@ -69,7 +69,7 @@ Render as transcript-anchored intro rows (kind: `intro`), not one-shot startup p
 
 Auto-fall back to `rock-ascii` when `terminal-detect.ts` reports no block-glyph support.
 
-**Right column:** line 1 bold accent (`Cave  vX.Y.Z`); line 2 dim (`<model> (<context>) · <effort>`); line 3 dim cwd, truncated from left with `…/` prefix when wider than `cols - 14`.
+**Right column:** line 1 bold accent (`Caveman Code  vX.Y.Z`); line 2 dim (`<model> (<context>) · <effort>`); line 3 dim cwd, truncated from left with `…/` prefix when wider than `cols - 14`.
 
 **SessionPanel** (rendered immediately after banner, no border): `mode: <plan|edit|ask>`, `auth: <provider/account>`, `tip: <rotating>`. Same width; right column aligned with banner's text column.
 
@@ -189,7 +189,7 @@ ask which test framework do you use here?
 ↑/↓ select · Enter confirm · 1-4 quick · Esc cancel
 ```
 
-Selecting "Other" opens the cave editor inline below the prompt. `Esc` from the typing state returns to the choice list (when choices exist) or cancels.
+Selecting "Other" opens the caveman-code editor inline below the prompt. `Esc` from the typing state returns to the choice list (when choices exist) or cancels.
 
 **Acceptance:** roundtrip works during a long autopilot turn — agent waits, user answers, agent receives string.
 
@@ -261,7 +261,7 @@ When the user scrolls up past the most recent visible user message, render a one
 ↳ refactor the auth module to use the new permission store
 ```
 
-Dim color, single-line truncated. Disappears when scrolled back to bottom. Uses cave's existing `scroll-buffer.ts` viewport state — no new ScrollBox needed; reads `scrollTop` and walks message offsets to find the most-recent-above-viewport user message.
+Dim color, single-line truncated. Disappears when scrolled back to bottom. Uses caveman-code's existing `scroll-buffer.ts` viewport state — no new ScrollBox needed; reads `scrollTop` and walks message offsets to find the most-recent-above-viewport user message.
 
 ---
 
@@ -269,7 +269,7 @@ Dim color, single-line truncated. Disappears when scrolled back to bottom. Uses 
 
 **File:** `packages/coding-agent/src/modes/interactive/components/skills-hub.ts`
 
-Three-stage navigation built on cave's existing `SelectList`:
+Three-stage navigation built on caveman-code's existing `SelectList`:
 
 1. **Category list** — bundled / user / project / marketplace.
 2. **Skill list** — names with source tag (`[t]` / `[u]` / `[p]` / `[mkt]`).
@@ -277,7 +277,7 @@ Three-stage navigation built on cave's existing `SelectList`:
 
 Wires into existing skills loader. Slash command: `/skills` opens the overlay; `/plugins` reuses the same shell with the marketplace source.
 
-Loading + error states. No new RPC layer needed — call into `skills_hub.ts` equivalent (use cave's `skills-config.ts` or its planned WS5 successor).
+Loading + error states. No new RPC layer needed — call into `skills_hub.ts` equivalent (use caveman-code's `skills-config.ts` or its planned WS5 successor).
 
 ---
 
@@ -321,7 +321,7 @@ The headline component. Pinned panel above the C2 status rule when autopilot mod
 
 **File:** `packages/coding-agent/src/modes/interactive/components/queued-messages.ts`
 
-Cave already has a queued-messages count. Extend to show the actual queue and let the user edit/remove pending entries before they send.
+Caveman Code already has a queued-messages count. Extend to show the actual queue and let the user edit/remove pending entries before they send.
 
 ```
 queued (3):
@@ -331,7 +331,7 @@ queued (3):
 ↑/↓ select · Enter edit · Del remove · Esc back
 ```
 
-Triggered by `Ctrl+Q` or by clicking the count in the status rule. Backed by cave's existing queue state.
+Triggered by `Ctrl+Q` or by clicking the count in the status rule. Backed by caveman-code's existing queue state.
 
 ---
 
@@ -405,7 +405,7 @@ Critical path to autopilot HUD: C2 + C10 in parallel → C13. ~8 days end-to-end
 
 ## Out of Scope
 
-- Mouse / wheel / scrollbar / AlternateScreen / NoSelect primitive work — cave's existing TUI is enough.
+- Mouse / wheel / scrollbar / AlternateScreen / NoSelect primitive work — caveman-code's existing TUI is enough.
 - Virtual transcript / variable-row-height virtualization — defer until performance evidence demands it.
 - Reactive shell / signals / JSX — explicitly not building.
 - `interactive-mode.ts` rewrite — incremental swap-ins only, file stays.

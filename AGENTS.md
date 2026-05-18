@@ -75,7 +75,7 @@ When closing issues via commit:
 
 ## Testing cave Interactive Mode with tmux
 
-To test cave's TUI in a controlled terminal environment:
+To test caveman-code's TUI in a controlled terminal environment:
 
 ```bash
 # Create tmux session with specific dimensions

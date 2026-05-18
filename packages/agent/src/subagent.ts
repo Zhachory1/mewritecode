@@ -11,7 +11,7 @@
  *   - validateSubagentDef             — runtime validation of a parsed def.
  *
  * Design notes:
- *   - Types live in @cave/agent so the loader (in @cave/coding-agent) and the
+ *   - Types live in @caveman-code/agent so the loader (in @caveman-code/coding-agent) and the
  *     Task/Agent tools (also in coding-agent) can both import them without a
  *     circular dependency.
  *   - MAX_PARALLEL_SUBAGENTS=7 mirrors Claude Code's documented Task fan-out
@@ -224,7 +224,7 @@ export function normalizeFrontmatterArray(value: unknown): string[] | undefined 
 
 /**
  * Schema-light shape returned by the Task tool. The actual TypeBox schema
- * is declared in `@cave/coding-agent`'s task.ts so it can use the same
+ * is declared in `@caveman-code/coding-agent`'s task.ts so it can use the same
  * project's TypeBox version; we keep the TS shape here for type sharing.
  */
 export interface TaskInvocation {

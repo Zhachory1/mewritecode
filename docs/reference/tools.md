@@ -1,11 +1,11 @@
 ---
 title: Tools
-description: Cave's built-in tools, Cave Mode compression, and cost transparency.
+description: Caveman Code's built-in tools, Caveman Mode compression, and cost transparency.
 ---
 
 # Tools
 
-Cave ships seven built-in tools, plus dynamic tools loaded from MCP servers and skills. All tool output is run through **Cave Mode** compression before re-entering the model's context.
+Caveman Code ships seven built-in tools, plus dynamic tools loaded from MCP servers and skills. All tool output is run through **Caveman Mode** compression before re-entering the model's context.
 
 <CopyForLlms />
 
@@ -21,15 +21,15 @@ Cave ships seven built-in tools, plus dynamic tools loaded from MCP servers and 
 | `Write` | Write a file | gated by permission mode |
 | `Task` / `Agent` | Dispatch a [subagent](/reference/subagents) | always |
 
-Plan mode (`cave --plan`) restricts to `Read`, `Glob`, `Grep`, and `Bash` with a read-only allowlist. See [Plan Mode](/reference/plan-mode).
+Plan mode (`caveman --plan`) restricts to `Read`, `Glob`, `Grep`, and `Bash` with a read-only allowlist. See [Plan Mode](/reference/plan-mode).
 
-## Cave Mode compression
+## Caveman Mode compression
 
 Four compression layers, always on. Break-even after one tool call.
 
 | Layer | What happens | Impact |
 |---|---|---|
-| **Cave Mode** | Model responds in terse technical fragments. Levels: `lite`, `full`, `ultra`. | Prompt + response compression |
+| **Caveman Mode** | Model responds in terse technical fragments. Levels: `lite`, `full`, `ultra`. | Prompt + response compression |
 | **Tool Budgets** | Per-tool line limits (bash: 80, read: 300, grep: 120) + ANSI strip + blank collapse + semantic JSON/XML extraction | -67% to -94% on tool output |
 | **Read Dedup** | Files fingerprinted per session — re-reads return a stub, not the content | -99% on repeated reads |
 | **RTK** | Optional Rust binary rewrites bash output before it enters context | ~60% additional reduction |
@@ -82,16 +82,16 @@ By default, MCP tools are listed by name only. The model fetches the schema via 
 Disable per session:
 
 ```bash
-cave --eager-mcp-schemas
+caveman --eager-mcp-schemas
 ```
 
 ## Registry
 
-Provider, model, and tool defaults live in a versioned registry at `github.com/cave-cli/registry`. Pull updates without releasing Cave:
+Provider, model, and tool defaults live in a versioned registry at `github.com/cave-cli/registry`. Pull updates without releasing Caveman Code:
 
 ```bash
-cave models update
-cave tools update
+caveman models update
+caveman tools update
 ```
 
 Override locally in `~/.cave/registry.json`.

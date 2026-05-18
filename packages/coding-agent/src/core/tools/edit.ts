@@ -1,5 +1,5 @@
-import type { AgentTool } from "@cave/agent";
-import { Container, Text } from "@cave/tui";
+import type { AgentTool } from "@caveman-code/agent";
+import { Container, Text } from "@caveman-code/tui";
 import { type Static, Type } from "@sinclair/typebox";
 import { constants } from "fs";
 import { access as fsAccess, readFile as fsReadFile, writeFile as fsWriteFile } from "fs/promises";

@@ -1,4 +1,4 @@
-import type { Model } from "@cave/ai";
+import type { Model } from "@caveman-code/ai";
 import { LMStudioClient } from "@lmstudio/sdk";
 import { Ollama } from "ollama/browser";
 

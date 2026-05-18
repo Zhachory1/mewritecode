@@ -10,7 +10,7 @@ import {
 	streamSimple,
 	type ToolResultMessage,
 	validateToolArguments,
-} from "@cave/ai";
+} from "@caveman-code/ai";
 import type {
 	AgentContext,
 	AgentEvent,

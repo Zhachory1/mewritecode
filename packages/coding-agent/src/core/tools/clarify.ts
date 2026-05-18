@@ -1,4 +1,4 @@
-import { Text } from "@cave/tui";
+import { Text } from "@caveman-code/tui";
 import { type Static, Type } from "@sinclair/typebox";
 import { ClarifyPromptComponent } from "../../modes/interactive/components/clarify-prompt.js";
 import type { ToolDefinition } from "../extensions/types.js";

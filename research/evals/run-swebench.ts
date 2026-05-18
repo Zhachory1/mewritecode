@@ -151,7 +151,7 @@ function buildPrompt(instance: BenchInstance): string {
 }
 
 // ---------------------------------------------------------------------------
-// Run cave session on a single instance
+// Run caveman session on a single instance
 // ---------------------------------------------------------------------------
 
 interface InstanceResult {

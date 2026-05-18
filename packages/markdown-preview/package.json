@@ -1,7 +1,7 @@
 {
-	"name": "@cave/markdown-preview",
+	"name": "@caveman-code/markdown-preview",
 	"version": "0.9.6",
-	"description": "Rendered markdown + LaTeX preview for cave, with terminal, browser, and PDF output",
+	"description": "Rendered markdown + LaTeX preview for caveman-code, with terminal, browser, and PDF output",
 	"type": "module",
 	"pi": {
 		"extensions": [
@@ -11,20 +11,20 @@
 	"license": "MIT",
 	"keywords": [
 		"pi-package",
-		"cave",
+		"caveman-code",
 		"markdown",
 		"preview"
 	],
 	"peerDependencies": {
-		"cave": "*",
-		"@cave/tui": "*"
+		"caveman-code": "*",
+		"@caveman-code/tui": "*"
 	},
 	"dependencies": {
 		"puppeteer-core": "^24.22.3"
 	},
 	"devDependencies": {
-		"cave": "*",
-		"@cave/tui": "*",
+		"caveman-code": "*",
+		"@caveman-code/tui": "*",
 		"@types/node": "^24.3.0",
 		"typescript": "^5.7.3"
 	}

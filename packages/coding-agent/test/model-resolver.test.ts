@@ -1,4 +1,4 @@
-import type { Model } from "@cave/ai";
+import type { Model } from "@caveman-code/ai";
 import { describe, expect, test } from "vitest";
 import {
 	defaultModelPerProvider,

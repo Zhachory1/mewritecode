@@ -41,3 +41,10 @@ todo.md
 collect.sh
 /logs
 /research/results/traces
+.forge/
+packages/*/.forge/
+
+# Honest-bench per-run logs (artifacts under research/results/honest-bench-<date>/
+# kept out of git — CSV+JSON top-level files are committed for audit)
+/research/results/honest-bench-*/
+/research/results/honest-bench-full-*.log

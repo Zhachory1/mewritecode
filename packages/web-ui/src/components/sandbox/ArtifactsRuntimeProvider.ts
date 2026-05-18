@@ -1,4 +1,4 @@
-import type { AgentMessage } from "@cave/agent";
+import type { AgentMessage } from "@caveman-code/agent";
 import {
 	ARTIFACTS_RUNTIME_PROVIDER_DESCRIPTION_RO,
 	ARTIFACTS_RUNTIME_PROVIDER_DESCRIPTION_RW,

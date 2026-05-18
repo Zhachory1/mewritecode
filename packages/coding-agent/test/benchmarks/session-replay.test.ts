@@ -70,7 +70,7 @@ describe.skipIf(!hasSession)("Session Replay Analysis", () => {
 
 describe.skipIf(hasSession)("Session Replay (no sessions found)", () => {
 	it("skipped — no session files at ~/.cave/agent/sessions/", () => {
-		console.log("  No session files found. Run some cave sessions first, then re-run this benchmark.");
+		console.log("  No session files found. Run some caveman sessions first, then re-run this benchmark.");
 	});
 });
 

@@ -7,7 +7,7 @@
  * Usage: pi -e ./model-status.ts
  */
 
-import type { ExtensionAPI } from "cave";
+import type { ExtensionAPI } from "caveman-code";
 
 export default function (pi: ExtensionAPI) {
 	pi.on("model_select", async (event, ctx) => {

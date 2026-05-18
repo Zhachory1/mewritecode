@@ -39,7 +39,7 @@ export * from "./stream.js";
 export * from "./types.js";
 export * from "./utils/event-stream.js";
 export * from "./utils/json-parse.js";
-// WS11: cave login dispatcher needs the OAuth provider registry helpers.
+// WS11: caveman login dispatcher needs the OAuth provider registry helpers.
 export {
 	getOAuthProvider,
 	getOAuthProviderInfoList,

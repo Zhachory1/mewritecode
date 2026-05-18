@@ -22,7 +22,7 @@ This blueprint does NOT cover any behavioral modifications to the agent (those b
 
 **Acceptance Criteria:**
 - [ ] AC-1: After installation, running `cave --version` outputs a version string containing the fork's version identifier.
-- [ ] AC-2: Running `cave --help` produces help output that references the `cave` binary name, not `pi`.
+- [ ] AC-2: Running `caveman --help` produces help output that references the `cave` binary name, not `pi`.
 - [ ] AC-3: All subcommands available under `pi` (e.g., `pi -p`, `pi install`) are available under `cave` with identical behavior.
 
 ### R2: Package Scope Rename

@@ -1,4 +1,4 @@
-# Cave Docs
+# Caveman Code Docs
 
 VitePress source for [cave.sh/docs](https://cave.sh/docs).
 
@@ -25,7 +25,7 @@ npm run preview      # serves the built site
 | `getting-started/` | Quickstart, Install, Auth, Models |
 | `reference/` | Tools, Slash Commands, Skills, Subagents, Memory, MCP, Hooks, Permissions, Plan Mode, Daemon, Recipes |
 | `migration/` | Claude Code, Codex, Aider migration guides |
-| `comparison.md` | Cave vs the field |
+| `comparison.md` | Caveman Code vs the field |
 | `cookbook.md` | Working recipes (CI, multi-agent review, daemon) |
 | `troubleshooting.md` | Common issues and fixes |
 | `api.md` | SDK, JSON-RPC, OpenAPI, extension API |
