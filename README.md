@@ -7,11 +7,10 @@
 Same model. Same task. **~2× fewer tokens than Codex.** 20+ providers · plan mode · autopilot loop · MIT.
 
 <p>
-  <a href="https://github.com/JuliusBrussee/caveman-cli/stargazers"><img src="https://img.shields.io/github/stars/JuliusBrussee/caveman-cli?color=d97757&style=flat-square" alt="Stars" /></a>
+  <a href="https://github.com/JuliusBrussee/caveman-code/stargazers"><img src="https://img.shields.io/github/stars/JuliusBrussee/caveman-code?color=d97757&style=flat-square" alt="Stars" /></a>
   <a href="https://www.npmjs.com/package/@juliusbrussee/caveman-code"><img src="https://img.shields.io/npm/v/%40juliusbrussee%2Fcaveman-code?color=2ea043&label=npm&style=flat-square" alt="npm version" /></a>
   <a href="https://www.npmjs.com/package/@juliusbrussee/caveman-code"><img src="https://img.shields.io/npm/dm/%40juliusbrussee%2Fcaveman-code?color=2ea043&label=downloads&style=flat-square" alt="npm downloads" /></a>
-  <a href="https://github.com/JuliusBrussee/caveman-cli/actions"><img src="https://img.shields.io/github/actions/workflow/status/JuliusBrussee/caveman-cli/ci.yml?branch=main&label=ci&style=flat-square" alt="CI" /></a>
-  <a href="https://github.com/JuliusBrussee/caveman-cli/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-2ea043?style=flat-square" alt="MIT License" /></a>
+  <a href="https://github.com/JuliusBrussee/caveman-code/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-2ea043?style=flat-square" alt="MIT License" /></a>
 </p>
 
 <a href="#install">Install</a> ·
@@ -33,21 +32,11 @@ Same model. Same task. **~2× fewer tokens than Codex.** 20+ providers · plan m
 
 Big agent waffle. Waffle cost token. Caveman no waffle.
 
-```
-  ASKED ▸  why does this component re-render on every keystroke?
+**Asked** ▸ *why does this component re-render on every keystroke?*
 
-  ───  ordinary agent  ────────────────────────────  ~290 tokens
-  Great question! A React component can re-render on every
-  keystroke for several reasons. The most common cause is
-  passing a fresh object or function reference as a prop on
-  each render, which defeats React's referential-equality
-  bail-out and forces the child to reconcile again …
-  …three more paragraphs…
-
-  ───  caveman code  ─────────────────────────────────  31 tokens
-  New object ref each render. Inline prop = new ref = re-render.
-  Wrap in useMemo.
-```
+| Ordinary agent · **~290 tokens** | 🪨 Caveman Code · **31 tokens** |
+|---|---|
+| Great question! A React component can re-render on every keystroke for several reasons. The most common cause is passing a fresh object or function reference as a prop on each render, which defeats React's referential-equality bail-out and forces the child to reconcile again … *(three more paragraphs)* | New object ref each render. Inline prop = new ref = re-render. Wrap in `useMemo`. |
 
 Same answer. Same model. Caveman version costs **~9× less to read back** — and the agent reads its own context back on *every single turn*. The saving compounds across the whole session.
 
@@ -57,12 +46,12 @@ That is the entire product. Everything below is the coding agent it ships inside
 
 ## The proof
 
-```
-  25-task MicroBench · gpt-5.5 · xhigh reasoning · 2026-05-18
+*25-task MicroBench · `gpt-5.5` · xhigh reasoning · 2026-05-18*
 
-  caveman  ████████████▌                         524k tokens · 14/25 · $1.78
-  codex    ████████████████████████  1,010k tokens · 15/25 · $0 (codex sub)
-```
+| Tool | Fresh tokens | Pass rate | Cost |
+|---|---|---|---|
+| **🪨 caveman** | `████████████▌` **524k** | 14 / 25 | **$1.78** |
+| codex | `████████████████████████` 1,010k | 15 / 25 | $0 (codex sub) |
 
 > **1.93× fewer tokens than Codex CLI on identical tasks.**
 > Same `gpt-5.5` model. Same `xhigh` reasoning. Pass rate within one task.
@@ -101,7 +90,7 @@ yarn global add @juliusbrussee/caveman-code
 bun  add -g @juliusbrussee/caveman-code
 
 # Docker
-docker run --rm -it -v "$PWD:/work" ghcr.io/juliusbrussee/caveman-cli:latest
+docker run --rm -it -v "$PWD:/work" ghcr.io/juliusbrussee/caveman-code:latest
 
 # No API key? Use a subscription you already pay for:
 caveman && /login   # Claude Pro · ChatGPT Plus · Copilot · Gemini · Antigravity
@@ -189,7 +178,7 @@ caveman --no-caveman-mode      # off
 | Capability | Caveman | Claude Code | Codex | Aider | opencode |
 |---|:---:|:---:|:---:|:---:|:---:|
 | 4-layer token compression | ✅ | ❌ | ❌ | repo map only | ❌ |
-| 20+ provider OAuth | ✅ | Anthropic | ChatGPT | API keys | API keys |
+| 20+ provider OAuth | ✅ | Anthropic | ChatGPT | API keys | ✅ |
 | Autonomous goal loop | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Autopilot — no permission prompts | ✅ | ❌ | ❌ | ✅ | ❌ |
 | Repo map (PageRank, Aider-style) | ✅ | ❌ | ❌ | ✅ | ❌ |
@@ -319,7 +308,7 @@ TypeScript monorepo, 9 packages — full layout in [CLAUDE.md](CLAUDE.md).
 
 Also indebted to [Aider](https://aider.chat) (repo map + edit-format-per-model), [Claude Code](https://www.anthropic.com/news/claude-code) (settings/commands/skills/agents/`.mcp.json` formats — adopted verbatim, then extended), [Codex](https://github.com/openai/codex) (cave-as-MCP-server), and [Biome](https://biomejs.dev) (single-binary lint/format).
 
-Missing credit? [Open an issue](https://github.com/JuliusBrussee/caveman-cli/issues) — we'll fix it fast.
+Missing credit? [Open an issue](https://github.com/JuliusBrussee/caveman-code/issues) — we'll fix it fast.
 
 ---
 
@@ -329,7 +318,7 @@ MIT © [Julius Brussee](https://github.com/JuliusBrussee). Forked from [pi-code]
 
 <div align="center">
 
-[Issues](https://github.com/JuliusBrussee/caveman-cli/issues) · [Releases](https://github.com/JuliusBrussee/caveman-cli/releases) · [Changelog](CHANGELOG.md) · [Docs](docs/index.md)
+[Issues](https://github.com/JuliusBrussee/caveman-code/issues) · [Releases](https://github.com/JuliusBrussee/caveman-code/releases) · [Changelog](CHANGELOG.md) · [Docs](docs/index.md)
 
 <sub>Caveman no waste token. Caveman ship.</sub>
 
