@@ -48,10 +48,10 @@ That is the entire product. Everything below is the coding agent it ships inside
 
 *25-task MicroBench · `gpt-5.5` · xhigh reasoning · 2026-05-18*
 
-| Tool | Fresh tokens | Pass rate | Cost |
-|---|---|---|---|
-| **🪨 caveman** | `████████████▌` **524k** | 14 / 25 | **$1.78** |
-| codex | `████████████████████████` 1,010k | 15 / 25 | $0 (codex sub) |
+| Tool | Fresh tokens | Pass rate |
+|---|---|---|
+| **🪨 caveman** | `████████████▌` **524k** | 14 / 25 |
+| codex | `████████████████████████` 1,010k | 15 / 25 |
 
 > **1.93× fewer tokens than Codex CLI on identical tasks.**
 > Same `gpt-5.5` model. Same `xhigh` reasoning. Pass rate within one task.
