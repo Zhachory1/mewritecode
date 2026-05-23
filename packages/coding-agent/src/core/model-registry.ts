@@ -6,6 +6,7 @@ import {
 	type Api,
 	type AssistantMessageEventStream,
 	type Context,
+	discoverAnthropicCapabilities,
 	getModels,
 	getProviders,
 	type KnownProvider,
@@ -13,6 +14,7 @@ import {
 	type OAuthProviderInterface,
 	type OpenAICompletionsCompat,
 	type OpenAIResponsesCompat,
+	onModelRegistryChange,
 	registerApiProvider,
 	resetApiProviders,
 	type SimpleStreamOptions,
@@ -264,6 +266,13 @@ export class ModelRegistry {
 		private modelsJsonPath: string | undefined,
 	) {
 		this.loadModels();
+		// Re-snapshot the model list whenever the underlying caveman-ai
+		// registry publishes a new id (currently used by the Anthropic
+		// capability-discovery layer to surface model variants like
+		// claude-opus-4.6-1m that aren't in the generated registry).
+		onModelRegistryChange(() => {
+			this.loadModels();
+		});
 	}
 
 	static create(authStorage: AuthStorage, modelsJsonPath: string = join(getAgentDir(), "models.json")): ModelRegistry {
@@ -514,6 +523,27 @@ export class ModelRegistry {
 	 */
 	getAll(): Model<Api>[] {
 		return this.models;
+	}
+
+	/**
+	 * Kick off per-provider capability discovery for every Anthropic-API
+	 * model the user has auth for. Fire-and-forget; new model ids appear
+	 * via the onModelRegistryChange listener wired in the constructor.
+	 * Idempotent and memoized inside caveman-ai per (provider, baseUrl).
+	 */
+	async discoverAnthropicCapabilities(): Promise<void> {
+		const seen = new Set<string>();
+		const tasks: Promise<void>[] = [];
+		for (const model of this.models) {
+			if (model.api !== "anthropic-messages") continue;
+			const key = `${model.provider}::${model.baseUrl}`;
+			if (seen.has(key)) continue;
+			seen.add(key);
+			const auth = await this.getApiKeyAndHeaders(model);
+			if (!auth.ok || !auth.apiKey) continue;
+			tasks.push(discoverAnthropicCapabilities(model.provider, model.baseUrl, auth.apiKey, auth.headers));
+		}
+		await Promise.all(tasks);
 	}
 
 	/**
