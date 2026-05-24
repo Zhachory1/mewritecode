@@ -70,8 +70,11 @@ export async function init(): Promise<boolean> {
 	if (initAttempted) return parser !== null;
 	initAttempted = true;
 	try {
-		const mod = await import("web-tree-sitter");
-		ParserCtor = mod.default;
+		const mod: any = await import("web-tree-sitter");
+		// web-tree-sitter ships as ESM with a `Parser` named export in 0.25+,
+		// as `default` in older versions, and as the bare namespace under some
+		// CJS interop paths (tsgo on Windows). Cover all three.
+		ParserCtor = mod.Parser ?? mod.default ?? mod;
 		await ParserCtor!.init();
 		parser = new ParserCtor!();
 		return true;

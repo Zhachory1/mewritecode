@@ -108,7 +108,7 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/JuliusBrussee/caveman-cli.git",
+		"url": "git+https://github.com/JuliusBrussee/caveman-code.git",
 		"directory": "packages/ai"
 	},
 	"engines": {
@@ -119,9 +119,9 @@
 		"canvas": "^3.2.0",
 		"vitest": "^3.2.4"
 	},
-	"homepage": "https://github.com/JuliusBrussee/caveman-cli#readme",
+	"homepage": "https://github.com/JuliusBrussee/caveman-code#readme",
 	"bugs": {
-		"url": "https://github.com/JuliusBrussee/caveman-cli/issues"
+		"url": "https://github.com/JuliusBrussee/caveman-code/issues"
 	},
 	"publishConfig": {
 		"access": "public"

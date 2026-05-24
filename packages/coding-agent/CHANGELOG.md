@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- Added missing `@sinclair/typebox` runtime dependency. Fixes `ERR_MODULE_NOT_FOUND` on `caveman-code` startup when installed globally ([#6](https://github.com/JuliusBrussee/caveman-code/issues/6)).
+- Fixed broken extensions-migration links in the hooks-folder warning — now point to `JuliusBrussee/caveman-code` instead of the renamed-away `caveman-cli` repo ([#8](https://github.com/JuliusBrussee/caveman-code/issues/8)).
+- Self-update check now queries the correct GitHub repo (`caveman-code`) for releases.
+- Regenerated model registry to include GPT 5.5 / GPT 5.5 Pro for the OpenAI Codex login provider ([#7](https://github.com/JuliusBrussee/caveman-code/issues/7)) and refreshed Antigravity model entries ([#9](https://github.com/JuliusBrussee/caveman-code/issues/9)).
 - Fixed bare `readline` import to use `node:readline` prefix for Deno compatibility ([#2885](https://github.com/badlogic/pi-mono/issues/2885) by [@milosv-vtool](https://github.com/milosv-vtool))
 - Fixed auto-retry to treat stream failures like `request ended without sending any chunks` as transient errors ([#2892](https://github.com/badlogic/pi-mono/issues/2892))
 - Fixed interactive startup notices to render after the initial resource listing, and added a bundled Earendil startup announcement with inline image rendering for April 8, 2026.

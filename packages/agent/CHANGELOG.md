@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Repomap `web-tree-sitter` loader now handles `Parser` named export, `default` export, and bare namespace shapes — fixes `TS2741: Property 'init' is missing` Windows build failure when `web-tree-sitter` is installed ([#13](https://github.com/JuliusBrussee/caveman-code/issues/13)).
+- Declared `web-tree-sitter` as an optional dependency so opting in to AST-backed repomap no longer requires a manual `npm install web-tree-sitter` step ([#13](https://github.com/JuliusBrussee/caveman-code/issues/13)).
+
 ## [0.65.2] - 2026-04-06
 
 ## [0.65.1] - 2026-04-05

@@ -128,7 +128,7 @@ Four compression layers, always on — and they hit **two** separate token sinks
 | **Model reply** | Caveman Mode | Terse technical fragments — no filler, no hedging. Levels `lite` · `full` · `ultra`. | prompt + reply |
 | **Tool output** | Tool Budgets | Per-tool line caps (bash 80 · read 300 · grep 120), ANSI strip, blank-line collapse, semantic JSON/XML extraction. | **−67% to −94%** |
 | | Read Dedup | Files fingerprinted per session — re-reads return a stub, not the bytes. | **−99%** on repeats |
-| | RTK | Optional Rust binary rewrites bash output before it enters context. | **~60%** extra |
+| | **[RTK](https://github.com/rtk-ai/rtk)** | Optional external Rust binary ("Rust Token Killer") — pipes bash output through `rtk` before it enters context. | **−60% to −90%** (RTK's own bench) |
 
 Pays for itself after one tool call.
 
@@ -306,7 +306,7 @@ TypeScript monorepo, 9 packages — full layout in [CLAUDE.md](CLAUDE.md).
 |---|---|
 | Agent runtime · MCP scaffolding · provider OAuth · repo map · slash-command parser · settings manager · skills loader · edit-format renderers · TUI components | Caveman Mode (4-layer compression) · goal loop · plan mode · cavemem integration · `/tree` session branching · architect/editor split · honest-bench harness |
 
-Also indebted to [Aider](https://aider.chat) (repo map + edit-format-per-model), [Claude Code](https://www.anthropic.com/news/claude-code) (settings/commands/skills/agents/`.mcp.json` formats — adopted verbatim, then extended), [Codex](https://github.com/openai/codex) (cave-as-MCP-server), and [Biome](https://biomejs.dev) (single-binary lint/format).
+Also indebted to [Aider](https://aider.chat) (repo map + edit-format-per-model), [Claude Code](https://www.anthropic.com/news/claude-code) (settings/commands/skills/agents/`.mcp.json` formats — adopted verbatim, then extended), [Codex](https://github.com/openai/codex) (cave-as-MCP-server), [RTK](https://github.com/rtk-ai/rtk) (optional bash-output compression layer), and [Biome](https://biomejs.dev) (single-binary lint/format).
 
 Missing credit? [Open an issue](https://github.com/JuliusBrussee/caveman-code/issues) — we'll fix it fast.
 
