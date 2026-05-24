@@ -25,6 +25,10 @@ function formatTokenCount(count: number): string {
  * List available models, optionally filtered by search pattern
  */
 export async function listModels(modelRegistry: ModelRegistry, searchPattern?: string): Promise<void> {
+	// Block on per-account capability discovery so the listing reflects what
+	// the user can actually use (e.g. claude-opus-4.6-1m on Copilot).
+	await modelRegistry.discoverAnthropicCapabilities().catch(() => {});
+
 	const models = modelRegistry.getAvailable();
 
 	if (models.length === 0) {
