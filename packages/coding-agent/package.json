@@ -54,6 +54,7 @@
 		"@juliusbrussee/caveman-ai": "^0.65.2",
 		"@juliusbrussee/caveman-tui": "^0.65.2",
 		"@mariozechner/jiti": "^2.6.2",
+		"@sinclair/typebox": "^0.34.49",
 		"@silvia-odwyer/photon-node": "^0.3.4",
 		"ajv": "^8.17.1",
 		"better-sqlite3": "^11.7.0",
@@ -106,15 +107,15 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/JuliusBrussee/caveman-cli.git",
+		"url": "git+https://github.com/JuliusBrussee/caveman-code.git",
 		"directory": "packages/coding-agent"
 	},
 	"engines": {
 		"node": ">=20.6.0"
 	},
-	"homepage": "https://github.com/JuliusBrussee/caveman-cli#readme",
+	"homepage": "https://github.com/JuliusBrussee/caveman-code#readme",
 	"bugs": {
-		"url": "https://github.com/JuliusBrussee/caveman-cli/issues"
+		"url": "https://github.com/JuliusBrussee/caveman-code/issues"
 	},
 	"publishConfig": {
 		"access": "public"

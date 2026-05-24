@@ -28,7 +28,7 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/JuliusBrussee/caveman-cli.git",
+		"url": "git+https://github.com/JuliusBrussee/caveman-code.git",
 		"directory": "packages/tui"
 	},
 	"engines": {
@@ -49,9 +49,9 @@
 		"@xterm/headless": "^5.5.0",
 		"@xterm/xterm": "^5.5.0"
 	},
-	"homepage": "https://github.com/JuliusBrussee/caveman-cli#readme",
+	"homepage": "https://github.com/JuliusBrussee/caveman-code#readme",
 	"bugs": {
-		"url": "https://github.com/JuliusBrussee/caveman-cli/issues"
+		"url": "https://github.com/JuliusBrussee/caveman-code/issues"
 	},
 	"publishConfig": {
 		"access": "public"

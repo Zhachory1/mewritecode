@@ -29,7 +29,7 @@ import chalk from "chalk";
 import { detectInstallMethod, getAgentDir, getUpdateInstruction, VERSION } from "../config.js";
 import { SettingsManager } from "../core/settings-manager.js";
 
-const REPO = "JuliusBrussee/caveman-cli";
+const REPO = "JuliusBrussee/caveman-code";
 const PACKAGE_NAME = "cave";
 
 export interface RemoteRelease {

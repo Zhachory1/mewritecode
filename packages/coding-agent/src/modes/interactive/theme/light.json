@@ -1,5 +1,5 @@
 {
-	"$schema": "https://raw.githubusercontent.com/JuliusBrussee/caveman-cli/main/packages/coding-agent/src/modes/interactive/theme/theme-schema.json",
+	"$schema": "https://raw.githubusercontent.com/JuliusBrussee/caveman-code/main/packages/coding-agent/src/modes/interactive/theme/theme-schema.json",
 	"name": "light",
 	"vars": {
 		"teal": "#00b8d4",

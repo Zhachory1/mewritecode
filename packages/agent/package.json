@@ -20,7 +20,8 @@
 		"@juliusbrussee/caveman-ai": "^0.65.2"
 	},
 	"optionalDependencies": {
-		"onnxruntime-node": "^1.20.0"
+		"onnxruntime-node": "^1.20.0",
+		"web-tree-sitter": "^0.25.10"
 	},
 	"keywords": [
 		"ai",
@@ -33,7 +34,7 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/JuliusBrussee/caveman-cli.git",
+		"url": "git+https://github.com/JuliusBrussee/caveman-code.git",
 		"directory": "packages/agent"
 	},
 	"engines": {
@@ -44,9 +45,9 @@
 		"typescript": "^5.7.3",
 		"vitest": "^3.2.4"
 	},
-	"homepage": "https://github.com/JuliusBrussee/caveman-cli#readme",
+	"homepage": "https://github.com/JuliusBrussee/caveman-code#readme",
 	"bugs": {
-		"url": "https://github.com/JuliusBrussee/caveman-cli/issues"
+		"url": "https://github.com/JuliusBrussee/caveman-code/issues"
 	},
 	"publishConfig": {
 		"access": "public"

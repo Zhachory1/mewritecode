@@ -3461,7 +3461,7 @@ export class InteractiveMode {
 		const updateInstruction = theme.fg("muted", `New version ${newVersion} is available. `) + action;
 		const changelogUrl = theme.fg(
 			"accent",
-			"https://github.com/JuliusBrussee/caveman-cli/blob/main/packages/coding-agent/CHANGELOG.md",
+			"https://github.com/JuliusBrussee/caveman-code/blob/main/packages/coding-agent/CHANGELOG.md",
 		);
 		const changelogLine = theme.fg("muted", "Changelog: ") + changelogUrl;
 

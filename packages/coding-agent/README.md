@@ -3,10 +3,10 @@
 <p align="center">
   <a href="https://discord.com/invite/nKXTsAcmbT"><img alt="Discord" src="https://img.shields.io/badge/discord-community-5865F2?style=flat-square&logo=discord&logoColor=white" /></a>
   <a href="https://www.npmjs.com/package/@juliusbrussee/caveman-code"><img alt="npm" src="https://img.shields.io/npm/v/%40juliusbrussee%2Fcaveman-code?style=flat-square" /></a>
-  <a href="https://github.com/JuliusBrussee/caveman-cli/actions/workflows/ci.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/JuliusBrussee/caveman-cli/ci.yml?style=flat-square&branch=main" /></a>
+  <a href="https://github.com/JuliusBrussee/caveman-code/actions/workflows/ci.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/JuliusBrussee/caveman-code/ci.yml?style=flat-square&branch=main" /></a>
 </p>
 
-Caveman Code is the `caveman` CLI package in [JuliusBrussee/caveman-cli](https://github.com/JuliusBrussee/caveman-cli).
+Caveman Code is the `caveman` CLI package in [JuliusBrussee/caveman-code](https://github.com/JuliusBrussee/caveman-code).
 
 Caveman Code is a minimal terminal coding harness that stays provider-agnostic, terminal-native, and deeply extensible. Use it interactively, run it in print or JSON mode, embed it through the SDK, or extend it with TypeScript modules, skills, prompt templates, themes, and CaveKit workflows.
 

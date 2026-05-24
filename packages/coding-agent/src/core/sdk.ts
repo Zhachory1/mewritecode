@@ -179,6 +179,12 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 	const authStorage = options.authStorage ?? AuthStorage.create(authPath);
 	const modelRegistry = options.modelRegistry ?? ModelRegistry.create(authStorage, modelsPath);
 
+	// Kick off per-account capability discovery for Anthropic-API providers
+	// (e.g. GitHub Copilot's /models endpoint surfaces 1M variants like
+	// claude-opus-4.6-1m that aren't in the static registry). Fire-and-forget;
+	// onModelRegistryChange refreshes the local snapshot as results arrive.
+	void modelRegistry.discoverAnthropicCapabilities().catch(() => {});
+
 	const settingsManager = options.settingsManager ?? SettingsManager.create(cwd, agentDir);
 	const sessionManager = options.sessionManager ?? SessionManager.create(cwd, getDefaultSessionDir(cwd, agentDir));
 
