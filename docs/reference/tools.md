@@ -21,7 +21,7 @@ Caveman Code ships seven built-in tools, plus dynamic tools loaded from MCP serv
 | `Write` | Write a file | gated by permission mode |
 | `Task` / `Agent` | Dispatch a [subagent](/reference/subagents) | always |
 
-Plan mode (`caveman --plan`) restricts to `Read`, `Glob`, `Grep`, and `Bash` with a read-only allowlist. See [Plan Mode](/reference/plan-mode).
+Plan mode restricts to `Read`, `Glob`, `Grep`, and `Bash` with a read-only allowlist. Enable with `/plan` in the TUI. See [Plan Mode](/reference/plan-mode).
 
 ## Caveman Mode compression
 
@@ -78,12 +78,6 @@ Daily/weekly totals persist to `~/.cave/usage.json`. See [Cost Transparency Pane
 ## ToolSearch (deferred MCP schemas)
 
 By default, MCP tools are listed by name only. The model fetches the schema via `ToolSearch` only when needed. This is the same trick Anthropic uses to cut 85% of context bloat.
-
-Disable per session:
-
-```bash
-caveman --eager-mcp-schemas
-```
 
 ## Registry
 

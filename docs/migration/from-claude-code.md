@@ -72,7 +72,7 @@ caveman --model claude-sonnet-4   # default behavior matches Claude Code
 By default Caveman Mode compression is **on**, which Claude Code doesn't have. Expect tool-output token consumption to drop ~85%. If something looks off, bisect with:
 
 ```bash
-caveman --no-caveman-mode
+/caveman off
 ```
 
 ### Permissions

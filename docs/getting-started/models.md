@@ -50,7 +50,7 @@ Cycle in TUI with `Shift+Tab`.
 Use a strong model to plan, a cheaper model to execute. Drops cost ~3-5× on long sessions.
 
 ```bash
-caveman --architect claude-opus-4-7 --editor claude-haiku-4
+/architect set architectModel=claude-opus-4-7 editorModel=claude-haiku-4
 ```
 
 Or in `~/.cave/settings.json`:

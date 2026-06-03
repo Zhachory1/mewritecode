@@ -154,7 +154,7 @@ caveman plugin publish my-pack    # publishes to the configured marketplace
 ## Architect / editor split for a tight budget
 
 ```bash
-caveman --architect claude-opus-4-7 --editor claude-haiku-4
+/architect set architectModel=claude-opus-4-7 editorModel=claude-haiku-4
 > migrate this Express app to Fastify
 ```
 
@@ -182,7 +182,6 @@ Caveman Code detects the trailing `!`, runs an edit-class turn with the surround
 ```bash
 caveman -r                                         # browse and pick
 caveman --session ~/.cave/sessions/.../abc.jsonl   # load directly
-caveman --replay ~/.cave/sessions/.../abc.jsonl    # replay tool calls; --apply to actually run
 ```
 
-Useful for: bisecting a regression, sharing a repro with a colleague, reproducing an eval.
+To share a reproducible session: export to HTML (`/export session.html`) or copy the session file. Replay functionality is planned for future releases.
