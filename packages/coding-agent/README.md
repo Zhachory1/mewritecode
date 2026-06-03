@@ -48,6 +48,7 @@ caveman -p "summarize this file"     # print mode
 cat README.md | caveman -p "review"  # pipe stdin
 caveman -c                           # continue last session
 caveman -r                           # browse sessions
+caveman goal start "<text>"          # autonomous goal loop
 ```
 
 Success looks like this:
@@ -396,6 +397,34 @@ Protocol details: [docs/rpc.md](docs/rpc.md)
 caveman [options] [@files...] [messages...]
 ```
 
+### Subcommands
+
+| Command | Description |
+|---------|-------------|
+| `caveman goal start "<text>" [flags]` | Autonomous goal loop (Ralph-style) |
+| `caveman goal resume [id] [--force]` | Resume a paused/completed goal |
+| `caveman goal status [id]` | Show goal state, ledger, transcript |
+| `caveman goal cancel [id]` | Mark goal as cancelled |
+| `caveman goal list` | List all goals in project |
+
+### Subcommands
+
+| Command | Description |
+|---------|-------------|
+| `caveman goal start "<text>" [flags]` | Autonomous Ralph-style goal loop |
+| `caveman goal resume [id] [--force]` | Resume a paused goal |
+| `caveman goal status [id]` | Show goal state and ledger |
+| `caveman goal cancel [id]` | Cancel a running goal |
+| `caveman goal list` | List all goals |
+| `caveman mcp <subcmd>` | Manage MCP servers |
+| `caveman watch [paths]` | File watcher for `// cave!` triggers |
+| `caveman exec [flags] "<prompt>"` | Non-interactive CI mode |
+| `caveman plugin <subcmd>` | Plugin marketplace |
+| `caveman run-recipe <name>` | Run YAML workflows |
+| `caveman rollback N` | Revert to checkpoint N |
+| `caveman models <subcmd>` | Manage model registry |
+| `caveman serve` / `attach` | Daemon mode |
+
 ### Core options
 
 | Option | Description |
@@ -414,6 +443,19 @@ caveman [options] [@files...] [messages...]
 | `--api-key <key>` | Override env var auth |
 | `-v`, `--version` | Show version |
 | `-h`, `--help` | Show help |
+
+### Slash commands (in TUI)
+
+| Command | Description |
+|---------|-------------|
+| `/plan` | Toggle plan mode (read-only exploration) |
+| `/act` | Execute a saved plan |
+| `/caveman [level]` | Adjust token compression |
+| `/login`, `/logout` | OAuth authentication |
+| `/model` | Switch models |
+| `/settings` | Configure settings |
+| `/resume` | Browse sessions |
+| `/tree` | Navigate session history |
 
 Built-in tools: `read`, `bash`, `edit`, `write`, `grep`, `find`, `ls`
 
