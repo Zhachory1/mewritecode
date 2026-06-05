@@ -230,21 +230,22 @@ export function printHelp(extensionFlags?: ExtensionFlag[]): void {
 ${chalk.bold("Usage:")}
   ${APP_NAME} [options] [@files...] [messages...]
 
-${chalk.bold("Commands:")}
-  ${APP_NAME} install <source> [-l]     Install extension source and add to settings
-  ${APP_NAME} remove <source> [-l]      Remove extension source from settings
-  ${APP_NAME} uninstall <source> [-l]   Alias for remove
-  ${APP_NAME} update [source]           Update installed extensions (skips pinned sources)
-  ${APP_NAME} list                      List installed extensions from settings
-  ${APP_NAME} config                    Open TUI to enable/disable package resources
-  ${APP_NAME} plugin search [query]     Search plugin marketplaces
-  ${APP_NAME} plugin install <ref>      Install a plugin (owner/name)
-  ${APP_NAME} plugin list               List installed plugins
-  ${APP_NAME} plugin upgrade            Upgrade all installed plugins
-  ${APP_NAME} plugin marketplace add <url>  Register a remote marketplace
-  ${APP_NAME} run-recipe <name>         Run a Goose-style YAML recipe (WS14)
-  ${APP_NAME} run-recipe --list         List all available recipes
-  ${APP_NAME} <command> --help          Show help for install/remove/uninstall/update/list
+ ${chalk.bold("Commands:")}
+  ${APP_NAME} doctor                          Report system health (Node, terminal, auth, providers)
+  ${APP_NAME} login [<provider>]              OAuth authentication
+  ${APP_NAME} self-update                     Check and install updates
+  ${APP_NAME} package <subcommand>            Package manager (install, remove, list, update, config)
+  ${APP_NAME} plugin <subcommand>             Plugin marketplace (search, install, list, upgrade)
+  ${APP_NAME} run-recipe <name>               Run YAML recipes
+  ${APP_NAME} goal <subcommand>               Autonomous goal loop (start, resume, status, cancel, list)
+  ${APP_NAME} mcp <subcommand>                MCP server management (add, list, doctor, remove)
+  ${APP_NAME} watch [paths]                   File watcher for // cave! triggers
+  ${APP_NAME} exec [flags] "<prompt>"         Non-interactive CI mode
+  ${APP_NAME} serve                           Start daemon for remote clients
+  ${APP_NAME} attach                          Attach to a running daemon session
+  ${APP_NAME} worker <subcommand>             Manage remote workers
+  ${APP_NAME} rollback <N>                    Revert to checkpoint N
+  ${APP_NAME} models <subcommand>             Model registry (update, list, inspect)
 
 ${chalk.bold("Options:")}
   --provider <name>              Provider name (default: google)

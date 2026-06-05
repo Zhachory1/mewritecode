@@ -78,7 +78,8 @@ Installs two binaries — `caveman` (primary) and `caveman-code` (alias). Same c
 export ANTHROPIC_API_KEY=sk-ant-...     # or any supported provider's key
 caveman                                 # launch the TUI
 caveman "explain this codebase"          # one-shot
-caveman --goal "ship feature X"          # autonomous loop
+caveman -p "summarize this"              # print mode (non-interactive)
+caveman goal start "ship feature X"      # autonomous Ralph loop
 ```
 
 <details>
@@ -111,8 +112,8 @@ caveman -p "summarize this file"    # non-interactive: print and exit
 cat err.log | caveman -p "debug"    # pipe stdin
 caveman -c                          # continue last session
 caveman -r                          # browse + resume sessions
-caveman --plan "ship payments v2"   # plan mode — read-only
-caveman --goal "ship payments v2"   # autonomous Ralph loop
+caveman /plan                       # plan mode — read-only (slash command)
+caveman goal start "ship payments v2"   # autonomous Ralph loop
 ```
 
 Type `/` inside the TUI for every slash command. Reference: [docs/reference/slash-commands.md](docs/reference/slash-commands.md).
@@ -166,9 +167,7 @@ npm run bench:live      # A/B with live LLM calls — needs API key
 </details>
 
 ```bash
-caveman --caveman-mode ultra   # most aggressive
-caveman --caveman-mode lite    # system-prompt compression only
-caveman --no-caveman-mode      # off
+Use `/caveman [lite|full|ultra|off]` in the TUI to adjust compression aggressiveness.
 ```
 
 ---
@@ -195,8 +194,8 @@ Full table including Crush: [docs/comparison.md](docs/comparison.md).
 
 | | Feature | Trigger |
 |---|---|---|
-| 🤖 | **Autonomous goal loop** — Ralph-style autopilot. Rolling state, per-iteration $/token ledger, shadow-git checkpoints, ranked termination (sentinel · iteration cap · $-cap · no-progress · SIGINT). Resume any time. | `caveman --goal` |
-| 🧠 | **Plan mode** — read-only chat. Model sees only `read`/`grep`/`find`/`ls`, produces a written plan, never edits. Subagents inherit the gate. `/act` to execute. | `--plan` · `/plan` |
+| 🤖 | **Autonomous goal loop** — Ralph-style autopilot. Rolling state, per-iteration $/token ledger, shadow-git checkpoints, ranked termination (sentinel · iteration cap · $-cap · no-progress · SIGINT). Resume any time. | `caveman goal start` |
+| 🧠 | **Plan mode** — read-only chat. Model sees only `read`/`grep`/`find`/`ls`, produces a written plan, never edits. Subagents inherit the gate. `/act` to execute. | `/plan` |
 | 👥 | **Subagents** — up to 7 parallel, worktree-isolated. Frontmatter agents at `.cave/agents/*.md` (Claude Code superset). Five ship by default. | `Task` tool |
 | 🪞 | **Architect / editor split** — slow model plans, fast model executes. ~3–5× cheaper than a single-model run. | `--architect` · `--editor` |
 
@@ -265,11 +264,43 @@ Sessions live in SQLite and survive SSH drops. Prepend `&` to any prompt to disp
 | `-c` / `-r` | Continue / browse-resume session |
 | `-p`, `--print` | Non-interactive: print and exit |
 | `--mode json\|rpc` | Structured output modes |
-| `--plan` / `--goal <prompt>` | Plan mode / autonomous loop |
 | `--provider` / `--model` | Provider name / model ID (`:<thinking>` suffix ok) |
 | `--thinking <level>` | `off`·`minimal`·`low`·`medium`·`high`·`xhigh` |
 | `--architect` / `--editor <model>` | Architect/editor split |
-| `--caveman-mode <level>` / `--no-caveman-mode` | `lite`·`full`·`ultra` / off |
+| `--tools <list>` | Enable specific tools |
+| `--no-tools` | Disable all built-in tools |
+| `--extension <path>` | Load an extension |
+| `--no-extensions` | Disable extension discovery |
+
+### 📋 Slash commands (in TUI)
+| Command | Description |
+|---|---|
+| `/plan` | Toggle plan mode (read-only exploration) |
+| `/act` | Execute a saved plan |
+| `/caveman [level]` | Adjust token compression (`lite`·`full`·`ultra`·`off`) |
+| `/login`, `/logout` | OAuth authentication |
+| `/model` | Switch models |
+| `/settings` | Configure theme, thinking, compaction |
+| `/resume` | Browse and resume sessions |
+| `/tree` | Navigate session history |
+| `/checkpoint`, `/rollback N` | Git-like version control |
+
+### 🚀 Subcommands
+| Command | Description |
+|---|---|
+| `caveman goal start "<text>"` | Autonomous Ralph-style loop |
+| `caveman goal resume [id] [--force]` | Resume a paused goal |
+| `caveman goal status [id]` | Show goal state and ledger |
+| `caveman goal cancel [id]` | Mark goal as cancelled |
+| `caveman goal list` | List all goals in project |
+| `caveman mcp <subcmd>` | Manage MCP servers |
+| `caveman watch [paths]` | File watcher for `// cave!` triggers |
+| `caveman exec [flags] "<prompt>"` | Non-interactive CI mode |
+| `caveman plugin <subcmd>` | Plugin marketplace |
+| `caveman run-recipe <name>` | Run YAML workflow recipes |
+| `caveman rollback N` | Revert to checkpoint N |
+| `caveman models <subcmd>` | Manage model registry |
+| `caveman serve` / `attach` | Daemon mode |
 
 Env: `ANTHROPIC_API_KEY` · `OPENAI_API_KEY` · `CAVE_CODING_AGENT_DIR` (config dir) · `CAVE_CACHE_RETENTION=long` (extended prompt cache).
 

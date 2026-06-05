@@ -20,7 +20,7 @@ export ANTHROPIC_API_KEY=...
 export OPENAI_API_KEY=...
 
 # 3. Tell Caveman Code what files you'd manually /add in Aider
-caveman --files src/main.py src/utils.py
+caveman @src/main.py @src/utils.py "Help me with this"
 
 # 4. Use it
 caveman
@@ -30,12 +30,12 @@ caveman
 
 | Aider | Caveman Code | Notes |
 |---|---|---|
-| `/add <file>` | `--files` flag or `@file` in TUI | Adds to chat context |
+| `/add <file>` | `@file` in TUI | Adds to chat context |
 | `/drop <file>` | `/drop` | Removes from chat context |
 | `/run <cmd>` | `!cmd` (in TUI) | Or use Bash tool directly |
 | `/diff` | `/diff` | Show pending diff |
 | `/architect` | `/architect` | Architect/editor split |
-| `--map-tokens N` | `--map-tokens N` | Same default (1024) |
+| `--map-tokens N` | `/repomap set mapTokens=N` | Same default (1024) |
 | `--edit-format` | `--edit-format` | `whole`/`diff`/`udiff`/`editor-diff`/`editor-whole` |
 | `.aider.conf.yml` | `~/.cave/settings.json` | Different format, same options |
 | Conventions file | `CAVE.md` / `CLAUDE.md` | Read on session start |
@@ -50,7 +50,7 @@ Aider's repo map is best-in-class. Caveman Code matches it:
 - Send signatures only; bodies on demand.
 
 ```bash
-caveman --map-tokens 2048    # bigger map
+/repomap set mapTokens=2048    # bigger map
 /repomap                  # show the current ranked list
 ```
 
@@ -74,7 +74,7 @@ Caveman Code's defaults are pinned to Aider's published ablation winners and upd
 Same UX as Aider:
 
 ```bash
-caveman --architect claude-opus-4-7 --editor claude-haiku-4
+/architect set architectModel=claude-opus-4-7 editorModel=claude-haiku-4
 ```
 
 Architect plans, editor executes. Drops cost ~3-5× on long sessions. See [Plan Mode](/reference/plan-mode#architect-mode-split-planning--edit).

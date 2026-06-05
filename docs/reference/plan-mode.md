@@ -18,10 +18,17 @@ Plan mode is a permission profile + a prompt convention. The agent is restricted
 ## Enter plan mode
 
 ```bash
-caveman --plan          # boot in plan mode
-cave                 # then Shift+Tab → "plan"
+cave                 # then /plan in TUI
 /plan                # inside a session
 ```
+
+Plan mode is provided by the `plan-mode` extension. Install it first:
+
+```bash
+caveman install git:github.com/JuliusBrussee/caveman-code#examples/extensions/plan-mode
+```
+
+Or use the built-in `/plan` slash command in the TUI.
 
 In plan mode:
 
@@ -65,7 +72,7 @@ Flips to `acceptEdits`, the model walks each plan step in order. Steps that fail
 ## Architect mode (split planning + edit)
 
 ```bash
-caveman --architect claude-opus-4-7 --editor claude-haiku-4
+/architect set architectModel=claude-opus-4-7 editorModel=claude-haiku-4
 ```
 
 Architect mode is plan-mode + auto-handoff:
@@ -78,13 +85,7 @@ This is the cheapest way to use a frontier model for hard reasoning while keepin
 
 ## Plans on disk
 
-`/plan save <name>` writes the current plan to `.cave/plans/<name>.md`. Re-run with:
-
-```bash
-caveman --plan-from .cave/plans/refactor-auth.md
-```
-
-Useful for: handing the same plan to another teammate, sharing in PR description, replaying after rebasing.
+`/plan save <name>` writes the current plan to `.cave/plans/<name>.md`.
 
 ## Importing from Claude Code
 

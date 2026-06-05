@@ -121,8 +121,8 @@ The model's view of the file is stale. After a hook writes to the file, ask cave
 Lower compression intensity:
 
 ```bash
-caveman --caveman-mode lite     # default is "full"
-caveman --no-caveman-mode       # turn off entirely
+/caveman lite                 # default is "full" (in TUI)
+/caveman off                  # turn off entirely
 ```
 
 ## Permissions
@@ -133,11 +133,7 @@ The allow-key is more specific than the new action. E.g. `Read packages/foo/**` 
 
 ### Sandbox blocks something I need
 
-`caveman debug sandbox` shows the active policy. To temporarily relax for one command:
-
-```bash
-caveman --sandbox=workspace_write -- some-command
-```
+`caveman debug sandbox` shows the active policy. Caveman Code executes all tool requests directly - there is no sandbox flag or permission prompts. The OS enforces filesystem permissions. To constrain a session, use `--tools` to limit available tools (e.g. `--tools read,grep,find,ls` for read-only).
 
 For permanent allowlist, add to `permissions.json`:
 
@@ -161,11 +157,7 @@ Common causes: command not on PATH, env var missing, server's auth flow incomple
 
 ### MCP tools don't show up in the model's context
 
-By default Caveman Code defers MCP schemas — only names are listed until the model calls `ToolSearch`. To eager-load:
-
-```bash
-caveman --eager-mcp-schemas
-```
+By default Caveman Code defers MCP schemas — only names are listed until the model calls `ToolSearch`. This reduces context bloat by ~85%.
 
 ## Hooks
 
@@ -212,13 +204,7 @@ Or disable for the session: `/memory off`.
 
 ### TUI feels laggy
 
-Enable synchronized output (DEC mode 2026):
-
-```bash
-caveman --sync-output
-```
-
-Most modern terminals support it; cave detects and emits automatically. Override with the flag if detection fails.
+Caveman Code automatically detects and uses synchronized output (DEC mode 2026) on supported terminals. If you see rendering issues, ensure your terminal supports ANSI escape sequences and check `caveman doctor` output for terminal detection status.
 
 ### Long sessions get slow
 

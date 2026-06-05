@@ -74,12 +74,6 @@ MCP tools are namespaced as `mcp__<server>__<tool>` to avoid collisions. The mod
 
 By default Caveman Code only lists MCP tool **names** in the always-on context. Schemas are fetched on demand via `ToolSearch`. This matches Anthropic's pattern and cuts ~85% of context bloat.
 
-Disable per session:
-
-```bash
-caveman --eager-mcp-schemas
-```
-
 ## Warm pool
 
 Idle stdio MCP servers are SIGSTOP'd to reclaim memory. They're SIGCONT'd on the next call. Eviction policy: LRU, max idle 10 minutes.

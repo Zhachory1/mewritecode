@@ -78,7 +78,7 @@ Type a prompt and the agent responds. Type `/help` for the full slash-command li
 | Pipe stdin to the agent | `cat README.md \| caveman -p "review"` |
 | Switch model mid-session | `/model claude-sonnet-4` |
 | Fork session to try a different path | `/fork` |
-| Run in plan-only mode | `caveman --plan` (or Shift+Tab in TUI) |
+| Run in plan-only mode | `/plan` (slash command in TUI) |
 | Migrate from Claude Code | [Migration guide](/migration/from-claude-code) |
 
 ## Troubleshooting
