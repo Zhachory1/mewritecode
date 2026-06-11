@@ -12,6 +12,18 @@ class TestComponent implements Component {
 	invalidate(): void {}
 }
 
+/**
+ * Wait for the TUI's throttled render scheduler to fire and flush the result.
+ * The renderer batches frames behind a setTimeout (MIN_RENDER_INTERVAL_MS),
+ * so a bare `terminal.flush()` (which only drains xterm writes) can return
+ * before the pending frame is actually written. Awaiting one throttle window
+ * before flushing guarantees the scheduled render has run.
+ */
+async function settle(terminal: VirtualTerminal): Promise<void> {
+	await new Promise((resolve) => setTimeout(resolve, 25));
+	await terminal.flush();
+}
+
 class LoggingVirtualTerminal extends VirtualTerminal {
 	private writes: string[] = [];
 
@@ -100,13 +112,13 @@ describe("TUI resize handling", () => {
 
 			component.lines = Array.from({ length: 20 }, (_, i) => `Line ${i}`);
 			tui.start();
-			await terminal.flush();
+			await settle(terminal);
 			terminal.clearWrites();
 
 			const initialRedraws = tui.fullRedraws;
 			for (const height of [15, 8, 14, 11]) {
 				terminal.resize(40, height);
-				await terminal.flush();
+				await settle(terminal);
 			}
 
 			assert.strictEqual(tui.fullRedraws, initialRedraws, "Height change should not trigger full redraw");
@@ -234,18 +246,18 @@ describe("TUI differential rendering", () => {
 		// Initial render: 5 identical lines
 		component.lines = ["Line 0", "Line 1", "Line 2", "Line 3", "Line 4"];
 		tui.start();
-		await terminal.flush();
+		await settle(terminal);
 
 		// Shrink to 3 lines, all identical to before (no content changes in remaining lines)
 		component.lines = ["Line 0", "Line 1", "Line 2"];
 		tui.requestRender();
-		await terminal.flush();
+		await settle(terminal);
 
 		// cursorRow should be 2 (last line of new content)
 		// Verify by doing another render with a change on line 1
 		component.lines = ["Line 0", "CHANGED", "Line 2"];
 		tui.requestRender();
-		await terminal.flush();
+		await settle(terminal);
 
 		const viewport = terminal.getViewport();
 		// Line 1 should show "CHANGED", proving cursor tracking was correct
@@ -263,14 +275,14 @@ describe("TUI differential rendering", () => {
 		// Initial render
 		component.lines = ["Header", "Working...", "Footer"];
 		tui.start();
-		await terminal.flush();
+		await settle(terminal);
 
 		// Simulate spinner animation - only middle line changes
 		const spinnerFrames = ["|", "/", "-", "\\"];
 		for (const frame of spinnerFrames) {
 			component.lines = ["Header", `Working ${frame}`, "Footer"];
 			tui.requestRender();
-			await terminal.flush();
+			await settle(terminal);
 
 			const viewport = terminal.getViewport();
 			assert.ok(viewport[0]?.includes("Header"), `Header preserved: ${viewport[0]}`);
@@ -377,7 +389,7 @@ describe("TUI differential rendering", () => {
 		// Start with content
 		component.lines = ["Line 0", "Line 1", "Line 2"];
 		tui.start();
-		await terminal.flush();
+		await settle(terminal);
 
 		let viewport = terminal.getViewport();
 		assert.ok(viewport[0]?.includes("Line 0"), "Initial content rendered");
@@ -385,12 +397,12 @@ describe("TUI differential rendering", () => {
 		// Clear to empty
 		component.lines = [];
 		tui.requestRender();
-		await terminal.flush();
+		await settle(terminal);
 
 		// Add content back - this should work correctly even after empty state
 		component.lines = ["New Line 0", "New Line 1"];
 		tui.requestRender();
-		await terminal.flush();
+		await settle(terminal);
 
 		viewport = terminal.getViewport();
 		assert.ok(viewport[0]?.includes("New Line 0"), `New content rendered: ${viewport[0]}`);
@@ -429,20 +441,20 @@ describe("TUI differential rendering", () => {
 
 		component.lines = Array.from({ length: 8 }, (_, i) => `Line ${i}`);
 		tui.start();
-		await terminal.flush();
+		await settle(terminal);
 
 		const initialRedraws = tui.fullRedraws;
 
 		component.lines = ["Line 0", "Line 1"];
 		tui.requestRender();
-		await terminal.flush();
+		await settle(terminal);
 
 		assert.ok(tui.fullRedraws > initialRedraws, "Shrink should reset the viewport with a full redraw");
 		const redrawsAfterShrink = tui.fullRedraws;
 
 		component.lines = ["Line 0", "Line 1", "Line 2"];
 		tui.requestRender();
-		await terminal.flush();
+		await settle(terminal);
 
 		assert.strictEqual(tui.fullRedraws, redrawsAfterShrink, "Append should stay on the differential path");
 		assert.deepStrictEqual(terminal.getViewport(), ["Line 0", "Line 1", "Line 2", "", ""]);
@@ -466,20 +478,20 @@ describe("TUI differential rendering", () => {
 		chat.lines = longChat;
 		editor.lines = editorLines;
 		tui.start();
-		await terminal.flush();
+		await settle(terminal);
 
 		editor.lines = selectorLines;
 		tui.requestRender();
-		await terminal.flush();
+		await settle(terminal);
 
 		editor.lines = editorLines;
 		tui.requestRender();
-		await terminal.flush();
+		await settle(terminal);
 
 		const redrawsBeforeSwitch = tui.fullRedraws;
 		chat.lines = shortChat;
 		tui.requestRender();
-		await terminal.flush();
+		await settle(terminal);
 
 		assert.ok(tui.fullRedraws > redrawsBeforeSwitch, "Branch switch should trigger a full redraw");
 

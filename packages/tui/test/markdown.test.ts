@@ -592,6 +592,10 @@ describe("Markdown component", () => {
 			const component = new MarkdownWithInput(markdown);
 			tui.addChild(component);
 			tui.start();
+			// The renderer batches frames behind a throttle timer
+			// (MIN_RENDER_INTERVAL_MS); wait one window before flushing so the
+			// scheduled frame (which calls component.render) has actually run.
+			await new Promise((resolve) => setTimeout(resolve, 25));
 			await terminal.flush();
 
 			assert.ok(component.markdownLineCount > 0);

@@ -31,9 +31,11 @@ describe("TUI overlay with short content", () => {
 		const overlay = new SimpleOverlay();
 		tui.showOverlay(overlay);
 
-		// Trigger render
+		// Trigger render. The renderer batches frames behind a throttle timer
+		// (MIN_RENDER_INTERVAL_MS), so wait one throttle window before flushing
+		// to guarantee the scheduled frame has been written.
 		tui.start();
-		await new Promise((r) => process.nextTick(r));
+		await new Promise((r) => setTimeout(r, 25));
 		await terminal.flush();
 
 		const viewport = terminal.getViewport();
