@@ -432,6 +432,12 @@ describe("AgentSession concurrent prompt guard", () => {
 			baseToolsOverride: { dummy: tool },
 		});
 
+		// The runtime (including _extensionRunner) is built asynchronously by the
+		// constructor. Wait for that build to finish before swapping in the fake
+		// runner below, otherwise prompt()'s `await whenReady` resolves the build
+		// and clobbers our fake with the real (handler-less) runner.
+		await session.whenReady;
+
 		const snapshots: string[][] = [];
 		const sessionWithRunner = session as unknown as {
 			_extensionRunner?: {

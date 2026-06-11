@@ -306,11 +306,13 @@ export function createEditToolDefinition(
 			}
 			const output = formatEditResult(context.args, result as any, theme, context.isError);
 			if (!output) {
-				const component = (context.lastComponent as Container | undefined) ?? new Container();
+				const component = context.lastComponent instanceof Container ? context.lastComponent : new Container();
 				component.clear();
 				return component;
 			}
-			const text = (context.lastComponent as Text | undefined) ?? new Text("", 0, 0);
+			// lastComponent may be a Container from a previous collapsed render; only
+			// reuse it when it is actually a Text node, otherwise create a fresh one.
+			const text = context.lastComponent instanceof Text ? context.lastComponent : new Text("", 0, 0);
 			text.setText(output);
 			return text;
 		},

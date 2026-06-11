@@ -107,6 +107,10 @@ describe("ToolExecutionComponent parity", () => {
 			(update) => updates.push(update as { content: Array<{ type: string; text?: string }>; details?: unknown }),
 			{} as never,
 		);
+		// execute now resolves the spawn context before emitting the initial empty
+		// partial update, so wait one tick for that update to land (it still arrives
+		// before any command output, since exec is mocked to take 10ms).
+		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(updates).toEqual([{ content: [], details: undefined }]);
 		await promise;
 	});
@@ -140,6 +144,9 @@ describe("ToolExecutionComponent parity", () => {
 			createFakeTui(),
 		);
 		component.updateResult({ content: [{ type: "text", text: "hello" }], details: undefined, isError: false }, false);
+		// Built-in read results collapse by default; expand to surface the inherited
+		// result renderer's content.
+		component.setExpanded(true);
 		const rendered = stripAnsi(component.render(120).join("\n"));
 		expect(rendered).toContain("override call");
 		expect(rendered).toContain("hello");
@@ -277,6 +284,8 @@ describe("ToolExecutionComponent parity", () => {
 			createWriteToolDefinition(process.cwd()),
 			createFakeTui(),
 		);
+		// Write previews collapse by default; expand to render the diff lines.
+		component.setExpanded(true);
 		const rendered = stripAnsi(component.render(120).join("\n"));
 		expect(rendered).toContain("one");
 		expect(rendered).toContain("two");
@@ -296,6 +305,8 @@ describe("ToolExecutionComponent parity", () => {
 			{ content: [{ type: "text", text: "one\ntwo\n" }], details: undefined, isError: false },
 			false,
 		);
+		// Read results collapse by default; expand to render the file lines.
+		component.setExpanded(true);
 		const rendered = stripAnsi(component.render(120).join("\n"));
 		expect(rendered).toContain("one");
 		expect(rendered).toContain("two");

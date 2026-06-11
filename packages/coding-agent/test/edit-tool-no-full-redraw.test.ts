@@ -129,6 +129,10 @@ describe("edit tool TUI rendering", () => {
 		expect(tui.fullRedraws).toBe(redrawsBeforeResult);
 		expect(terminal.fullClearCount).toBe(clearsBeforeResult);
 
+		// Edit results collapse by default; expanding surfaces the full diff. This also
+		// exercises the collapsed->expanded transition where the cached result component
+		// is a Container rather than a Text node.
+		component.setExpanded(true);
 		const settledRender = component.render(80).join("\n");
 		expect(settledRender).toContain("line 50 changed");
 		expect(settledRender).toContain("line 950 changed");

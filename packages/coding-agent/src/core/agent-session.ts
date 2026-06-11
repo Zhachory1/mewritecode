@@ -329,6 +329,12 @@ export class AgentSession {
 	private _baseToolDefinitions: Map<string, ToolDefinition> = new Map();
 	private _cwd: string;
 	private _extensionRunnerRef?: { current?: ExtensionRunner };
+	// The transformContext installed on the agent at construction time (e.g. the
+	// extension `context` event emitter from the SDK/harness). Captured once so
+	// repeated `_buildRuntime` calls (reload) re-wrap the ORIGINAL transform
+	// rather than nesting our own wrapper on every reload.
+	private _baseTransformContext?: (messages: AgentMessage[], signal?: AbortSignal) => Promise<AgentMessage[]>;
+	private _baseTransformCaptured = false;
 	private _initialActiveToolNames?: string[];
 	private _baseToolsOverride?: Record<string, AgentTool>;
 	// Resolves when the constructor's _buildRuntime() finishes wiring tools and
@@ -635,12 +641,24 @@ export class AgentSession {
 		// Gap 1 + Gap 7 + WS7: chain memory recall + repomap injection (parallel),
 		// then soft compression. Memory and repomap hit different backends so we
 		// run them concurrently and merge the two injections before compaction.
+		//
+		// Preserve any transformContext already installed on the agent (e.g. the
+		// extension `context` event emitter wired up by the SDK/harness when the
+		// agent was constructed). We chain it FIRST so extensions can rewrite
+		// messages before retrieval injection and soft compaction run. Without
+		// this chaining the extension `context` event would be silently dropped.
+		if (!this._baseTransformCaptured) {
+			this._baseTransformContext = this.agent.transformContext;
+			this._baseTransformCaptured = true;
+		}
+		const priorTransformContext = this._baseTransformContext;
 		this.agent.transformContext = async (messages) => {
+			const base = priorTransformContext ? await priorTransformContext(messages) : messages;
 			const [afterMemory, afterRepomap] = await Promise.all([
-				this._buildMemoryTransform(messages),
-				this._buildRepomapTransform(messages),
+				this._buildMemoryTransform(base),
+				this._buildRepomapTransform(base),
 			]);
-			const merged = this._mergeRetrievalInjections(messages, afterMemory, afterRepomap);
+			const merged = this._mergeRetrievalInjections(base, afterMemory, afterRepomap);
 			return this._softCompactTransform(merged);
 		};
 
@@ -1980,8 +1998,11 @@ export class AgentSession {
 	 * @throws Error if text is an extension command
 	 */
 	async steer(text: string, images?: ImageContent[]): Promise<void> {
-		// Check for extension commands (cannot be queued)
+		// Check for extension commands (cannot be queued). The extension runner is
+		// built asynchronously by `_buildRuntime`; wait for it so the command
+		// lookup below sees registered commands instead of racing the build.
 		if (text.startsWith("/")) {
+			await this._initialRuntimeReady;
 			this._throwIfExtensionCommand(text);
 		}
 
@@ -2000,8 +2021,11 @@ export class AgentSession {
 	 * @throws Error if text is an extension command
 	 */
 	async followUp(text: string, images?: ImageContent[]): Promise<void> {
-		// Check for extension commands (cannot be queued)
+		// Check for extension commands (cannot be queued). The extension runner is
+		// built asynchronously by `_buildRuntime`; wait for it so the command
+		// lookup below sees registered commands instead of racing the build.
 		if (text.startsWith("/")) {
+			await this._initialRuntimeReady;
 			this._throwIfExtensionCommand(text);
 		}
 
@@ -2221,8 +2245,13 @@ export class AgentSession {
 		previousModel: Model<any> | undefined,
 		source: "set" | "cycle" | "restore",
 	): Promise<void> {
-		if (!this._extensionRunner) return;
 		if (modelsAreEqual(previousModel, nextModel)) return;
+		// The extension runner is created asynchronously by `_buildRuntime`. A
+		// model switch can land before that build resolves (e.g. setModel called
+		// right after construction), so wait for the runtime before reading the
+		// runner — otherwise the `model_select` event is silently dropped.
+		await this._initialRuntimeReady;
+		if (!this._extensionRunner) return;
 		await this._extensionRunner.emit({
 			type: "model_select",
 			model: nextModel,
