@@ -207,6 +207,12 @@ export class HooksExecutor {
 			});
 
 			try {
+				// A hook that exits without reading stdin closes the pipe before we
+				// finish writing. The resulting EPIPE is emitted asynchronously as an
+				// 'error' event (not thrown), so the try/catch alone cannot catch it —
+				// without this listener it becomes an unhandled error and fails the
+				// whole process (and the vitest run). Swallow it; it is not fatal.
+				child.stdin?.on("error", () => {});
 				child.stdin?.write(JSON.stringify(stdin));
 				child.stdin?.end();
 			} catch {
