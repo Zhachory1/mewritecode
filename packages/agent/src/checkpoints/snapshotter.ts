@@ -53,6 +53,12 @@ function gitShadow(
 			GIT_INDEX_FILE: indexFile,
 			// Prevent git from reading the user's .git config for safety
 			GIT_CONFIG_NOSYSTEM: "1",
+			// Deterministic identity so commits work even when the user (or a CI
+			// runner) has no global git user.name/user.email configured.
+			GIT_AUTHOR_NAME: "Cave Shadow",
+			GIT_AUTHOR_EMAIL: "shadow@cave.internal",
+			GIT_COMMITTER_NAME: "Cave Shadow",
+			GIT_COMMITTER_EMAIL: "shadow@cave.internal",
 		},
 		timeout: 30_000,
 	});
