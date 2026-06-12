@@ -14,7 +14,7 @@
  */
 import { formatElapsed } from "../format-elapsed.js";
 import type { Component } from "../tui.js";
-import { visibleWidth } from "../utils.js";
+import { truncateToWidth, visibleWidth } from "../utils.js";
 
 export { formatElapsed };
 
@@ -217,8 +217,9 @@ export class ActivityOverlay implements Component {
 	}
 
 	private truncateVisible(s: string, max: number): string {
-		if (visibleWidth(s) <= max) return s;
-		return `${s.slice(0, Math.max(0, max - 1))}…`;
+		// Width-aware (handles ANSI escapes + wide chars); plain slice would
+		// corrupt colored labels by cutting mid-escape-sequence.
+		return truncateToWidth(s, max, "…");
 	}
 
 	private padRight(s: string, width: number): string {

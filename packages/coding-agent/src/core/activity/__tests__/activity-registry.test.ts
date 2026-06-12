@@ -99,4 +99,26 @@ describe("ActivityRegistry", () => {
 		r.update("m", { lastProgressAt: now + 20000 });
 		expect(r.list()[0].stalledMs).toBe(0);
 	});
+
+	it("idempotent begin preserves the original startedAt (elapsed never jumps back)", () => {
+		const r = new ActivityRegistry();
+		r.begin({ id: "t1", kind: "subagent", label: "task", startedAt: now });
+		vi.setSystemTime(now + 5000);
+		// a later duplicate begin (e.g. subagent_progress "started") must NOT reset startedAt
+		r.begin({ id: "t1", kind: "subagent", label: "task: writer", startedAt: now + 5000 });
+		const a = r.list()[0];
+		expect(a.elapsedMs).toBe(5000); // still measured from the original start
+		expect(a.label).toBe("task: writer"); // mutable fields still update
+	});
+
+	it("clear() removes all items and cancels pending prune timers", () => {
+		const r = new ActivityRegistry();
+		r.begin({ id: "a", kind: "tool", label: "x", startedAt: now });
+		r.begin({ id: "b", kind: "tool", label: "y", startedAt: now });
+		r.end("a");
+		r.clear();
+		expect(r.list()).toHaveLength(0);
+		vi.advanceTimersByTime(10000); // a pre-clear prune timer must not resurrect/throw
+		expect(r.list()).toHaveLength(0);
+	});
 });

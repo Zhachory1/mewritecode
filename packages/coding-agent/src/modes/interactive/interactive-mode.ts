@@ -1476,6 +1476,17 @@ export class InteractiveMode {
 		this.applyRuntimeSettings();
 		await this.bindCurrentSessionExtensions();
 		this.subscribeToAgent();
+		// B-1: rewire the activity spinner + F2 overlay to the NEW session's
+		// registry. After /new, /fork, or resume `this.session` points at a fresh
+		// AgentSession with its own ActivityRegistry; the old one is disposed.
+		// Without this, the spinner/overlay would keep reading the dead registry.
+		this.activitySpinnerUnsub?.();
+		const reg = this.session.activityRegistry;
+		this.activitySpinnerUnsub = reg.subscribe(() => this.refreshSpinnerMessage());
+		this.activityOverlay?.setRegistry({
+			list: () => reg.list() as ActivitySnapshot[],
+			subscribe: (fn) => reg.subscribe(fn),
+		});
 		await this.updateAvailableProviderCount();
 		this.updateEditorBorderColor();
 		this.updateTerminalTitle();
@@ -2808,9 +2819,13 @@ export class InteractiveMode {
 					component.updateResult({ ...event.partialResult, isError: false }, true);
 					this.ui.requestRender();
 				}
+				// Only patch `detail` when we actually derived one — passing
+				// `detail: undefined` would erase a previously-set detail (e.g. the
+				// bash command) on an image-only / text-less partial (m-5).
+				const d = deriveDetail(event.partialResult);
 				this.session.activityRegistry.update(event.toolCallId, {
 					lastProgressAt: Date.now(),
-					detail: deriveDetail(event.partialResult),
+					...(d !== undefined ? { detail: d } : {}),
 				});
 				this.refreshSpinnerMessage();
 				break;
@@ -2839,12 +2854,21 @@ export class InteractiveMode {
 					this.streamingComponent = undefined;
 					this.streamingMessage = undefined;
 				}
-				// Safety: end any model row that never saw a message_end (e.g. an
-				// aborted turn) so it doesn't linger as a phantom blocker.
-				if (this.currentModelRowId) {
-					this.session.activityRegistry.end(this.currentModelRowId);
-					this.currentModelRowId = undefined;
+				// Safety: end EVERY still-running/queued row at turn end — not just
+				// the model row. On Esc/abort (or a subagent whose completed/failed
+				// event never arrived) a tool/subagent row would otherwise linger as
+				// `running` and win blockingLeaf() on the NEXT turn (stale
+				// spinner/panel). end() on an already-ended id is a no-op, so
+				// double-ending the model row here is harmless.
+				{
+					const reg = this.session.activityRegistry;
+					for (const row of reg.list()) {
+						if (row.status === "running" || row.status === "queued") {
+							reg.end(row.id);
+						}
+					}
 				}
+				this.currentModelRowId = undefined;
 				this.pendingTools.clear();
 
 				await this.checkShutdownRequested();
@@ -2979,15 +3003,21 @@ export class InteractiveMode {
 				const reg = this.session.activityRegistry;
 				const detail = event.phase === "tool" ? `→ ${event.detail ?? ""}` : (event.detail ?? "");
 				if (event.phase === "started") {
-					reg.begin({
-						id: event.subagentId,
-						kind: "subagent",
-						label: event.subagentName || "task",
-						detail: event.detail ?? "starting",
-						startedAt: Date.now(),
-						lastProgressAt: Date.now(),
-					});
-					this.showStatus(`◇ ${event.subagentName}: ${event.detail ?? "starting"}`);
+					// In single-mode `subagentId === toolCallId`, already begun at
+					// tool_execution_start. Re-begin()+showStatus() here would emit a
+					// redundant status line (and reset startedAt). Only fire when no
+					// row exists yet (e.g. a subagent NOT keyed off a tool call).
+					if (!reg.list().some((a) => a.id === event.subagentId)) {
+						reg.begin({
+							id: event.subagentId,
+							kind: "subagent",
+							label: event.subagentName || "task",
+							detail: event.detail ?? "starting",
+							startedAt: Date.now(),
+							lastProgressAt: Date.now(),
+						});
+						this.showStatus(`◇ ${event.subagentName}: ${event.detail ?? "starting"}`);
+					}
 				} else if (event.phase === "tool" || event.phase === "message") {
 					reg.update(event.subagentId, { detail, lastProgressAt: Date.now() });
 				} else if (event.phase === "completed") {
@@ -3423,7 +3453,17 @@ export class InteractiveMode {
 		// elapsed/stalled columns advance even when no registry event fires.
 		this.session.activityRegistry.setPruning(false);
 		if (this.activityTicker) clearInterval(this.activityTicker);
-		this.activityTicker = setInterval(() => this.ui.requestRender(), 1000);
+		this.activityTicker = setInterval(() => {
+			// Self-guard (B6): another side panel (e.g. an extension modal) shares
+			// the single TUI side-panel slot. If it displaced/closed ours via a bare
+			// `hideSidePanel()`, our panel is gone but `this.activityPanel` + the
+			// ticker + pruning(false) would leak. Detect that and tear down cleanly.
+			if (!this.ui.hasSidePanel()) {
+				this.hideActivityOverlay();
+				return;
+			}
+			this.ui.requestRender();
+		}, 1000);
 		this.activityPanel = this.ui.showSidePanel(this.activityOverlay, { side: "right" });
 	}
 
@@ -5799,7 +5839,12 @@ export class InteractiveMode {
 		this.clearExtensionTerminalInputListeners();
 		this.footer.dispose();
 		this.footerDataProvider.dispose();
-		if (this.activityTicker) {
+		// B6: always route through hideActivityOverlay() so the ticker is cleared
+		// AND pruning is re-enabled on shutdown if the panel was open. The fallback
+		// clears any orphan ticker even when the panel was already gone.
+		if (this.activityPanel) {
+			this.hideActivityOverlay();
+		} else if (this.activityTicker) {
 			clearInterval(this.activityTicker);
 			this.activityTicker = undefined;
 		}

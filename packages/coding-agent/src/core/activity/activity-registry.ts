@@ -22,6 +22,8 @@ export interface ActivitySnapshot extends Activity {
 
 const PRUNE_MS = 4000;
 const PRUNE_ERR_MS = 8000;
+/** Cycle/runaway guard for the parent-chain depth walk. */
+const MAX_DEPTH_GUARD = 8;
 
 export class ActivityRegistry {
 	private items = new Map<string, Activity>();
@@ -36,7 +38,12 @@ export class ActivityRegistry {
 		if (this.disposed) return;
 		const existing = this.items.get(a.id);
 		if (existing) {
-			Object.assign(existing, a, { status: a.status ?? existing.status });
+			// Idempotent: a duplicate begin (e.g. subagent_progress "started"
+			// arriving after tool_execution_start for the same id) updates mutable
+			// fields but MUST preserve the original startedAt/lastProgressAt so
+			// elapsed never jumps backwards.
+			const { startedAt: _ignoredStart, lastProgressAt: _ignoredProgress, ...rest } = a;
+			Object.assign(existing, rest, { status: a.status ?? existing.status });
 			this.notify();
 			return;
 		}
@@ -124,7 +131,7 @@ export class ActivityRegistry {
 		let d = 0;
 		let cur = a.parentId;
 		let guard = 0;
-		while (cur && this.items.has(cur) && guard++ < 8) {
+		while (cur && this.items.has(cur) && guard++ < MAX_DEPTH_GUARD) {
 			d++;
 			cur = this.items.get(cur)?.parentId;
 		}
