@@ -67,6 +67,7 @@ import type { AgentSessionRuntime } from "../../core/agent-session-runtime.js";
 import { type ArchitectModeState, defaultArchitectState } from "../../core/chat-modes/architect.js";
 import { formatSessionEndSummary } from "../../core/cost-formatter.js";
 import { persistSessionCost } from "../../core/cost-persistence.js";
+import { NoUsableAuthError } from "../../core/errors.js";
 import type {
 	ExtensionContext,
 	ExtensionRunner,
@@ -77,7 +78,7 @@ import type {
 import { FooterDataProvider, type ReadonlyFooterDataProvider } from "../../core/footer-data-provider.js";
 import { type AppKeybinding, KeybindingsManager } from "../../core/keybindings.js";
 import { createCompactionSummaryMessage } from "../../core/messages.js";
-import { findExactModelReferenceMatch, resolveModelScope } from "../../core/model-resolver.js";
+import { findExactModelReferenceMatch, findInitialModel, resolveModelScope } from "../../core/model-resolver.js";
 import { DefaultPackageManager } from "../../core/package-manager.js";
 import type { ResourceDiagnostic } from "../../core/resource-loader.js";
 import { formatMissingSessionCwdPrompt, MissingSessionCwdError } from "../../core/session-cwd.js";
@@ -265,6 +266,33 @@ export interface InteractiveModeOptions {
 	initialMessages?: string[];
 	/** Force verbose startup (overrides quietStartup setting) */
 	verbose?: boolean;
+	/**
+	 * When true (set by the onboarding wizard's "configure auth now" gate), the
+	 * interactive start opens the OAuth login selector instead of running the
+	 * {@link InteractiveMode.ensureUsableModel} gate — so the user never sees two
+	 * back-to-back login prompts (M4).
+	 */
+	launchLoginOnStart?: boolean;
+}
+
+/**
+ * Parse a `/login [provider]` command (F5). Mirrors `/compact` arg parsing.
+ *  - bare `/login` (or trailing whitespace only) → open the provider selector.
+ *  - `/login <provider>` with a known provider → route directly to that provider.
+ *  - `/login <provider>` with an unknown provider → `invalid` (caller lists valid ones).
+ */
+export function parseLoginCommand(
+	text: string,
+	validProviders: string[],
+): { kind: "selector" } | { kind: "provider"; provider: string } | { kind: "invalid"; provider: string } {
+	const arg = text.startsWith("/login ") ? text.slice("/login ".length).trim() : "";
+	if (arg === "") {
+		return { kind: "selector" };
+	}
+	if (validProviders.includes(arg)) {
+		return { kind: "provider", provider: arg };
+	}
+	return { kind: "invalid", provider: arg };
 }
 
 export class InteractiveMode {
@@ -295,6 +323,12 @@ export class InteractiveMode {
 	 * silently dropped.
 	 */
 	private pendingInputQueue: string[] = [];
+	/**
+	 * A prompt the user typed while keyless. Stashed by the {@link ensureUsableModel}
+	 * gate when it opens the login selector, and replayed by {@link onLoginSuccess}
+	 * once a usable model is selected.
+	 */
+	private pendingPrompt?: string;
 	private loadingAnimation: Loader | undefined = undefined;
 	private pendingWorkingMessage: string | undefined = undefined;
 	private readonly defaultWorkingMessage = "Working...";
@@ -812,23 +846,44 @@ export class InteractiveMode {
 			this.showWarning(modelFallbackMessage);
 		}
 
-		// Process initial messages
-		if (initialMessage) {
-			try {
-				await this.session.prompt(initialMessage, { images: initialImages });
-			} catch (error: unknown) {
-				const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-				this.showError(errorMessage);
+		// Keyless-activation gate (F1/F3). Runs BEFORE initial messages so a keyless
+		// user's first prompt is stashed + replayed after login (not lost). Re-fires
+		// every keyless launch (start-time, not onboarding-gated). The wizard hand-off
+		// (launchLoginOnStart) opens the selector directly so the user never sees two
+		// prompts (M4).
+		let modelReady = true;
+		try {
+			if (this.options.launchLoginOnStart) {
+				if (initialMessage) this.pendingPrompt = initialMessage;
+				await this.showOAuthSelector("login");
+				modelReady = false; // login completes async → onLoginSuccess replays
+			} else {
+				modelReady = await this.ensureUsableModel({ pending: initialMessage });
 			}
+		} catch (error: unknown) {
+			// Never crash startup on the activation gate — degrade to the hint.
+			this.showError(error instanceof Error ? error.message : "Auth setup failed");
+			this.showKeylessHint();
+			modelReady = false;
 		}
 
-		if (initialMessages) {
-			for (const message of initialMessages) {
+		// Process initial messages only when a model is ready. If keyless, the gate
+		// stashed `initialMessage` as the pending prompt → replayed by onLoginSuccess.
+		if (modelReady) {
+			if (initialMessage) {
 				try {
-					await this.session.prompt(message);
+					await this.session.prompt(initialMessage, { images: initialImages });
 				} catch (error: unknown) {
-					const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-					this.showError(errorMessage);
+					this.showError(error instanceof Error ? error.message : "Unknown error occurred");
+				}
+			}
+			if (initialMessages) {
+				for (const message of initialMessages) {
+					try {
+						await this.session.prompt(message);
+					} catch (error: unknown) {
+						this.showError(error instanceof Error ? error.message : "Unknown error occurred");
+					}
 				}
 			}
 		}
@@ -839,8 +894,16 @@ export class InteractiveMode {
 			try {
 				await this.session.prompt(userInput);
 			} catch (error: unknown) {
-				const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-				this.showError(errorMessage);
+				if (error instanceof NoUsableAuthError) {
+					// Secondary net for the call-time auth throw (e.g. stored-but-expired
+					// OAuth that F1 could not detect): stash the prompt and route to login.
+					// For expired-oauth/no-key the stored credential is present but bad, so
+					// force interactive re-login (presence check would otherwise no-op → loop).
+					await this.ensureUsableModel({ pending: userInput, forceReauth: error.reason !== "no-model" });
+				} else {
+					const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+					this.showError(errorMessage);
+				}
 			}
 		}
 	}
@@ -2391,9 +2454,19 @@ export class InteractiveMode {
 				this.editor.setText("");
 				return;
 			}
-			if (text === "/login") {
-				this.showOAuthSelector("login");
+			if (text === "/login" || text.startsWith("/login ")) {
 				this.editor.setText("");
+				const validProviders = this.session.modelRegistry.authStorage.getOAuthProviders().map((p) => p.id);
+				const parsed = parseLoginCommand(text, validProviders);
+				if (parsed.kind === "selector") {
+					await this.showOAuthSelector("login");
+				} else if (parsed.kind === "provider") {
+					await this.showLoginDialog(parsed.provider);
+				} else {
+					this.showError(
+						`Unknown provider "${parsed.provider}". Valid providers: ${validProviders.join(", ") || "(none)"}`,
+					);
+				}
 				return;
 			}
 			if (text === "/logout") {
@@ -2579,6 +2652,13 @@ export class InteractiveMode {
 			}
 
 			// Normal message submission
+			// Keyless gate (F2): if there is no usable model, stash this prompt and
+			// route to login instead of submitting it into a guaranteed throw.
+			if (!(await this.ensureUsableModel({ pending: text }))) {
+				this.editor.setText("");
+				return;
+			}
+
 			// First, move any pending bash components to chat
 			this.flushPendingBashComponents();
 			promptTimingMark("onSubmit:beforeCallback");
@@ -4494,6 +4574,101 @@ export class InteractiveMode {
 		}
 	}
 
+	/**
+	 * The single keyless-activation gate (DD §10.2). Returns true if the session
+	 * already has — or can immediately resolve — a usable, authenticated model;
+	 * false when it cannot (in which case, on a TTY, it stashes any pending prompt
+	 * and opens the login selector).
+	 *
+	 * Reuses {@link findInitialModel} (the existing resolver) + {@link AgentSession.setModel}
+	 * (which sets, persists, and validates auth). `setModel` throws without auth,
+	 * so we refresh the registry first to make freshly-stored OAuth visible.
+	 */
+	private async ensureUsableModel(opts?: { pending?: string; forceReauth?: boolean }): Promise<boolean> {
+		const registry = this.session.modelRegistry;
+		// forceReauth: a call-time throw told us the current model's stored auth is
+		// bad (e.g. expired OAuth). hasConfiguredAuth is presence-only and would
+		// report it as fine, and findInitialModel would just re-pick the same
+		// expired model — so skip resolution and go straight to interactive
+		// re-login. Without this, the expired-OAuth catch loops forever.
+		if (!opts?.forceReauth) {
+			if (this.session.model && registry.hasConfiguredAuth(this.session.model)) {
+				this.clearKeylessHint();
+				return true;
+			}
+			// Make freshly-stored credentials (e.g. just-completed OAuth) visible.
+			registry.refresh();
+			const resolved = await findInitialModel({
+				scopedModels: [],
+				isContinuing: false,
+				modelRegistry: registry,
+			});
+			if (resolved.model) {
+				await this.session.setModel(resolved.model);
+				this.clearKeylessHint();
+				return true;
+			}
+		}
+		// No usable model. Non-interactive callers handle the print path.
+		if (!this.ui.terminal.isTTY()) {
+			return false;
+		}
+		if (opts?.pending !== undefined) {
+			this.pendingPrompt = opts.pending;
+		}
+		this.showKeylessHint();
+		await this.showOAuthSelector("login");
+		return false;
+	}
+
+	/**
+	 * The single post-login hook (F6) used by every login completion path
+	 * (selector, /login <provider>, wizard hand-off). Refreshes the registry,
+	 * updates the provider count, selects a usable model via {@link ensureUsableModel},
+	 * and replays any prompt the user stashed while keyless.
+	 *
+	 * The model-select is load-bearing: without it, login succeeds but the next
+	 * submit throws "No model selected" again. If no model can be resolved
+	 * (e.g. login cancelled mid-way), the gate re-opens the selector and the
+	 * pending prompt is preserved (not run).
+	 */
+	private async onLoginSuccess(providerId?: string): Promise<void> {
+		this.session.modelRegistry.refresh();
+		await this.updateAvailableProviderCount();
+		// Prefer a model for the provider the user JUST authenticated. Otherwise a
+		// stale cross-provider model (whose old credential still lingers in
+		// auth.json and reads as present) would be kept and the pending prompt
+		// would replay into it → fail again. Selecting the fresh provider's model
+		// closes that gap; ensureUsableModel() below is the fallback.
+		if (providerId) {
+			const fresh = this.session.modelRegistry.getAvailable().find((m) => m.provider === providerId);
+			if (fresh) await this.session.setModel(fresh);
+		}
+		const ok = await this.ensureUsableModel();
+		if (ok && this.pendingPrompt !== undefined) {
+			const pending = this.pendingPrompt;
+			this.pendingPrompt = undefined;
+			try {
+				await this.session.prompt(pending);
+			} catch (error: unknown) {
+				const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+				this.showError(errorMessage);
+			}
+		}
+	}
+
+	/** One-line status hint shown while the session has no usable model (F7). */
+	private showKeylessHint(): void {
+		this.showWarning("No model — type /login or pick a provider to authenticate.");
+	}
+
+	/** Placeholder for symmetry with {@link showKeylessHint}; status lines are transient. */
+	private clearKeylessHint(): void {
+		// Status/warning lines are transient in the chat log; nothing to actively
+		// clear. Kept as an explicit seam so callers read symmetrically and a
+		// future persistent affordance has one place to hook.
+	}
+
 	private async showOAuthSelector(mode: "login" | "logout"): Promise<void> {
 		if (mode === "logout") {
 			const providers = this.session.modelRegistry.authStorage.list();
@@ -4618,9 +4793,8 @@ export class InteractiveMode {
 
 			// Success
 			restoreEditor();
-			this.session.modelRegistry.refresh();
-			await this.updateAvailableProviderCount();
 			this.showStatus(`Logged in to ${providerName}. Credentials saved to ${getAuthPath()}`);
+			await this.onLoginSuccess(providerId);
 		} catch (error: unknown) {
 			restoreEditor();
 			const errorMsg = error instanceof Error ? error.message : String(error);

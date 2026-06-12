@@ -41,7 +41,11 @@ const WIZARD_PROVIDERS: Array<{
 ];
 
 export type ThemeAnswer = "dark" | "light" | "auto";
-export type AuthAnswer = { type: "use-env"; provider: string } | { type: "configure-later" } | { type: "skip" };
+export type AuthAnswer =
+	| { type: "use-env"; provider: string }
+	| { type: "configure-later" }
+	| { type: "launch-login" }
+	| { type: "skip" };
 
 export interface WizardAnswers {
 	theme: ThemeAnswer;
@@ -56,6 +60,13 @@ export interface WizardIO {
 	stdout: NodeJS.WritableStream;
 	stderr: NodeJS.WritableStream;
 	envProbe?: (provider: string) => string | undefined;
+	/**
+	 * Returns the ids of providers for which a credential is already stored
+	 * (e.g. OAuth in auth.json), so an already-authenticated user is not
+	 * re-prompted. Injected by the caller (which has AuthStorage); the wizard
+	 * itself stays dependency-light.
+	 */
+	oauthProbe?: () => string[];
 	terminalIsDark?: () => boolean | undefined;
 	/**
 	 * Optional override for prompt input. When provided, the wizard does not
@@ -65,7 +76,7 @@ export interface WizardIO {
 	prompt?: (question: string) => Promise<string>;
 }
 
-const DEFAULT_IO: WizardIO = {
+export const DEFAULT_IO: WizardIO = {
 	stdin: process.stdin,
 	stdout: process.stdout,
 	stderr: process.stderr,
@@ -121,15 +132,27 @@ async function askYesNo(ctx: AskCtx, title: string, def: boolean): Promise<boole
 	return askChoice(ctx, title, choices);
 }
 
-/** Detect which providers we already have credentials for (env vars only). */
+/**
+ * Detect which providers we already have credentials for: env-var API keys AND
+ * stored OAuth credentials (via the injected {@link WizardIO.oauthProbe}). An
+ * already-OAuth'd user is reported as configured so the wizard doesn't re-prompt.
+ */
 export function detectAvailableEnvProviders(io: WizardIO = DEFAULT_IO): Array<{ id: string; envHint: string }> {
 	const probe = io.envProbe ?? DEFAULT_IO.envProbe!;
 	const found: Array<{ id: string; envHint: string }> = [];
+	const seen = new Set<string>();
 	for (const p of WIZARD_PROVIDERS) {
 		const key = probe(p.id);
 		if (key && key.length > 0) {
 			found.push({ id: p.id, envHint: p.envHint });
+			seen.add(p.id);
 		}
+	}
+	for (const id of io.oauthProbe?.() ?? []) {
+		if (seen.has(id)) continue;
+		seen.add(id);
+		const wp = WIZARD_PROVIDERS.find((p) => p.id === id);
+		found.push({ id, envHint: wp?.envHint ?? "stored OAuth credentials" });
 	}
 	return found;
 }
@@ -200,9 +223,15 @@ export async function runOnboarding(settings: SettingsManager, io: WizardIO = DE
 		} else {
 			write(out, chalk.bold("\n2) Authentication\n"));
 			write(out, chalk.dim("  No API keys found in the environment.\n"));
-			write(out, chalk.dim("  Set ANTHROPIC_API_KEY / OPENAI_API_KEY / GEMINI_API_KEY (etc) and re-run,\n"));
-			write(out, chalk.dim("  or run `caveman login` for interactive OAuth, or skip for now.\n"));
-			auth = { type: "skip" };
+			write(out, chalk.dim("  Cave can log you in via OAuth now (no API key needed), or you can\n"));
+			write(out, chalk.dim("  set ANTHROPIC_API_KEY / OPENAI_API_KEY / GEMINI_API_KEY (etc) and re-run.\n"));
+			const configureNow = await askYesNo(ctx, "Configure auth now?", true);
+			if (configureNow) {
+				auth = { type: "launch-login" };
+			} else {
+				write(out, chalk.yellow("  You'll need to log in (via /login) before your first prompt.\n"));
+				auth = { type: "skip" };
+			}
 		}
 		if (auth.type === "use-env") {
 			chosenProvider = auth.provider;
