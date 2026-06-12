@@ -15,7 +15,7 @@ describe("AgentSession keyless throws NoUsableAuthError", () => {
 		const harness = await createHarness();
 		harnesses.push(harness);
 		// Force the no-model state.
-		harness.session.agent.state.model = undefined;
+		(harness.session.agent.state as { model?: unknown }).model = undefined;
 
 		await expect(harness.session.prompt("hi")).rejects.toBeInstanceOf(NoUsableAuthError);
 		await expect(harness.session.prompt("hi")).rejects.toMatchObject({ reason: "no-model" });
@@ -32,7 +32,7 @@ describe("AgentSession keyless throws NoUsableAuthError", () => {
 	it("NoUsableAuthError is a subclass of Error (generic catchers unaffected)", async () => {
 		const harness = await createHarness();
 		harnesses.push(harness);
-		harness.session.agent.state.model = undefined;
+		(harness.session.agent.state as { model?: unknown }).model = undefined;
 
 		await expect(harness.session.prompt("hi")).rejects.toBeInstanceOf(Error);
 	});
