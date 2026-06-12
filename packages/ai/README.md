@@ -1310,6 +1310,21 @@ Add an entry to `packages/ai/CHANGELOG.md` under `## [Unreleased]`:
 - Added support for [Provider Name] provider ([#PR](link) by [@author](link))
 ```
 
+## Updating the model registry
+
+`src/models.generated.ts` is a **checked-in generated artifact**. It is NOT
+regenerated during `npm run build` (the build is deterministic and offline so CI
+is reproducible). To refresh it from the live provider catalogs, run it
+intentionally and commit the result:
+
+```bash
+npm run generate-models   # fetches OpenRouter / Vercel AI Gateway / models.dev
+```
+
+Regenerating pulls whatever the upstream catalogs currently return, so review the
+diff (and run the test suite) before committing — new/removed model ids can
+require test updates.
+
 ## License
 
 MIT
