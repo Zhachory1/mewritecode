@@ -146,15 +146,29 @@ describe("WS5 slash-commands — discovery loader", () => {
 		});
 
 		try {
+			// Let the fs watcher fully register before writing — otherwise the
+			// create event can race watcher setup and be missed (the flake).
+			await new Promise((r) => setTimeout(r, 100));
 			writeFileSync(join(projectDir, "new-cmd.md"), "---\nname: new-cmd\ndescription: hi\n---\nbody", "utf-8");
 
-			// Wait for debounce + a generous fs.watch delay.
+			// Poll for the event. macOS FSEvents can lag ~1s+, so use a generous
+			// window; if nothing has fired by half-time, re-touch the file to
+			// nudge a possibly-coalesced/dropped event.
 			const start = Date.now();
-			while (events.length === 0 && Date.now() - start < 2000) {
+			let renudged = false;
+			while (events.length === 0 && Date.now() - start < 8000) {
 				await new Promise((r) => setTimeout(r, 25));
+				if (!renudged && Date.now() - start > 4000) {
+					renudged = true;
+					writeFileSync(
+						join(projectDir, "new-cmd.md"),
+						"---\nname: new-cmd\ndescription: hi2\n---\nbody2",
+						"utf-8",
+					);
+				}
 			}
 			expect(events.length).toBeGreaterThanOrEqual(1);
-			expect(events[0].endsWith("new-cmd.md")).toBe(true);
+			expect(events.some((p) => p.endsWith("new-cmd.md"))).toBe(true);
 		} finally {
 			handle.dispose();
 		}

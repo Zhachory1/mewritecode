@@ -178,6 +178,13 @@ export class HooksExecutor {
 					stderrBuf += chunk.toString("utf8");
 				}
 			});
+			// When the child is killed (timeout SIGKILL) or exits abruptly, its
+			// stdout/stderr pipes can emit an async 'error' (EPIPE/ECONNRESET) that,
+			// if unhandled, crashes the whole process and fails the test run. The
+			// child 'error'/'close' handlers already settle the result; swallow
+			// stream-level errors so they never become unhandled.
+			child.stdout?.on("error", () => {});
+			child.stderr?.on("error", () => {});
 			child.on("error", (err) => {
 				clearTimeout(timer);
 				resolve({
