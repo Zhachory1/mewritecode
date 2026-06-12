@@ -22,3 +22,8 @@ export function keyHint(keybinding: Keybinding, description: string): string {
 export function rawKeyHint(key: string, description: string): string {
 	return theme.fg("dim", key) + theme.fg("muted", ` ${description}`);
 }
+
+/** Hint advertising the activity monitor overlay (bound to F2 by default). */
+export function activityMonitorHint(): string {
+	return keyHint("app.subagent.toggle", "activity");
+}

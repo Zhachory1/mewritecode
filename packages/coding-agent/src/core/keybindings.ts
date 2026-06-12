@@ -136,7 +136,7 @@ export const KEYBINDINGS = {
 		description: "Delete session when query is empty",
 	},
 	"app.help": { defaultKeys: "f1", description: "Show keyboard help" },
-	"app.subagent.toggle": { defaultKeys: "f2", description: "Toggle subagent overlay" },
+	"app.subagent.toggle": { defaultKeys: "f2", description: "Toggle activity monitor" },
 	"app.message.editQueue": {
 		defaultKeys: "ctrl+q",
 		description: "Edit queued messages",
