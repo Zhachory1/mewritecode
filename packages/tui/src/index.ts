@@ -12,6 +12,18 @@ export {
 export { type ChordResult, type ChordSegment, ChordSession, parseChord } from "./chord.js";
 // Color depth emission
 export { type ColorDepth, detectColorDepth, hexToSgr, resetColorDepthCache, sgrReset } from "./color-depth.js";
+// Activity monitor overlay (F2) — replaces the legacy SubagentOverlay.
+export {
+	type ActivityKind,
+	ActivityOverlay,
+	type ActivityOverlayOptions,
+	type ActivityOverlayRegistry,
+	type ActivityOverlayTheme,
+	type ActivitySnapshot,
+	type ActivityStatus,
+	formatElapsed,
+	NULL_ACTIVITY_REGISTRY,
+} from "./components/ActivityOverlay.js";
 // Components
 export { Box } from "./components/box.js";
 // Chapters (auto-folded transcript intent groups)
@@ -63,9 +75,10 @@ export {
 	sanitizeOneLine,
 	tailPath,
 } from "./components/StatusLine.js";
-// Subagent observability overlay (F2)
+// Legacy subagent overlay — kept as a backward-compat published-API surface for
+// one release (N4). Existing consumers importing SubagentOverlay /
+// SubagentSnapshot / SubagentRegistry / NULL_SUBAGENT_REGISTRY keep working.
 export {
-	formatElapsed,
 	NULL_SUBAGENT_REGISTRY,
 	SubagentOverlay,
 	type SubagentOverlayOptions,
