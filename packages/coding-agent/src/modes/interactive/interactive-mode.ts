@@ -25,6 +25,8 @@ import type {
 	StatusLineResult,
 } from "@juliusbrussee/caveman-tui";
 import {
+	ActivityOverlay,
+	type ActivitySnapshot,
 	CombinedAutocompleteProvider,
 	type Component,
 	Container,
@@ -37,7 +39,6 @@ import {
 	renderStatusLineDefault,
 	type SidePanelHandle,
 	Spacer,
-	SubagentOverlay,
 	setKeybindings,
 	Text,
 	TruncatedText,
@@ -55,6 +56,7 @@ import {
 	getUpdateInstruction,
 	VERSION,
 } from "../../config.js";
+import type { ActivityKind } from "../../core/activity/activity-registry.js";
 import {
 	type AgentSession,
 	type AgentSessionEvent,
@@ -97,7 +99,6 @@ import {
 	runTokensCommand,
 } from "../../core/slash-commands.js";
 import type { SourceInfo } from "../../core/source-info.js";
-import { InMemorySubagentRegistry } from "../../core/subagents-registry.js";
 import type { TruncationResult } from "../../core/tools/truncate.js";
 import { resolveCurrentCaveInvocation } from "../../utils/cave-invocation.js";
 import { getChangelogPath, getNewEntries, parseChangelog } from "../../utils/changelog.js";
@@ -175,6 +176,72 @@ function mapSkillScope(scope: string): SkillSourceTag {
 	if (scope === "user") return "user";
 	if (scope === "project") return "project";
 	return "bundled";
+}
+
+/**
+ * Activity-monitor display threshold: render `· stalled Ns` once a running row
+ * has had no progress for this long. Smaller than the 120s stream watchdog so
+ * the user sees a slow tool well before any auto-recover kicks in.
+ */
+const SPINNER_STALL_THRESHOLD_MS = 10_000;
+
+const SUBAGENT_TOOL_NAMES = new Set(["task", "agent"]);
+
+/** Map a tool name to an activity kind (DD §11.3). MCP stays generic in v1 (B8). */
+function kindOf(toolName: string): ActivityKind {
+	if (SUBAGENT_TOOL_NAMES.has(toolName)) return "subagent";
+	return "tool";
+}
+
+/** Human label for the row. Subagents show the agent name when derivable. */
+function labelOf(toolName: string, args: Record<string, unknown>): string {
+	if (SUBAGENT_TOOL_NAMES.has(toolName)) {
+		const agent = typeof args.agent === "string" ? args.agent : undefined;
+		if (agent) return agent;
+		if (Array.isArray(args.tasks) && args.tasks.length > 0) {
+			const first = args.tasks[0] as { agent?: string } | undefined;
+			if (first?.agent) return `${first.agent} +${args.tasks.length - 1}`;
+		}
+		if (Array.isArray(args.chain) && args.chain.length > 0) {
+			const first = args.chain[0] as { agent?: string } | undefined;
+			if (first?.agent) return `chain:${first.agent} +${args.chain.length - 1}`;
+		}
+		return "task";
+	}
+	return toolName;
+}
+
+/** Initial detail for a tool row (e.g. the bash command — the "which is slow" signal, B7). */
+function detailOf(toolName: string, args: Record<string, unknown>): string | undefined {
+	if (toolName === "bash") {
+		const cmd = typeof args.command === "string" ? args.command : undefined;
+		return cmd ? truncateDetail(cmd) : undefined;
+	}
+	const path =
+		typeof args.path === "string" ? args.path : typeof args.file_path === "string" ? args.file_path : undefined;
+	return path ? truncateDetail(path) : undefined;
+}
+
+/** Best-effort detail derived from a streaming partial tool result. */
+function deriveDetail(partialResult: unknown): string | undefined {
+	if (!partialResult || typeof partialResult !== "object") return undefined;
+	const pr = partialResult as { content?: unknown };
+	if (Array.isArray(pr.content)) {
+		const firstText = pr.content.find(
+			(c): c is { type: "text"; text: string } =>
+				typeof c === "object" && c !== null && (c as { type?: string }).type === "text",
+		);
+		if (firstText) {
+			const line = firstText.text.split("\n").find((l) => l.trim().length > 0);
+			if (line) return truncateDetail(line.trim());
+		}
+	}
+	return undefined;
+}
+
+function truncateDetail(s: string): string {
+	const oneLine = s.replace(/\s+/g, " ").trim();
+	return oneLine.length > 80 ? `${oneLine.slice(0, 79)}…` : oneLine;
 }
 
 type CompactionQueuedMessage = {
@@ -270,10 +337,16 @@ export class InteractiveMode {
 	// Agent subscription unsubscribe function
 	private unsubscribe?: () => void;
 
-	// F2 subagent overlay backed by the in-memory registry.
-	private subagentOverlay: SubagentOverlay | undefined = undefined;
-	private subagentPanel: SidePanelHandle | null = null;
-	private subagentRegistry: InMemorySubagentRegistry = new InMemorySubagentRegistry();
+	// F2 activity monitor overlay, backed by the session's ActivityRegistry.
+	private activityOverlay: ActivityOverlay | undefined = undefined;
+	private activityPanel: SidePanelHandle | null = null;
+	// Live-refresh ticker for the open panel (re-renders elapsed/stalled each second).
+	private activityTicker: ReturnType<typeof setInterval> | undefined = undefined;
+	// Unsubscribe handle for the registry → spinner-message refresh.
+	private activitySpinnerUnsub: (() => void) | undefined = undefined;
+	// Stable model-row id for the current assistant LLM call (per-call, not per-turn).
+	private currentModelRowId: string | undefined = undefined;
+	private modelRowSeq = 0;
 	// SIGINT-double or other forced-shutdown paths set this to bypass the
 	// confirm prompt. Reset on a normal /quit so future shutdowns confirm
 	// again.
@@ -371,8 +444,21 @@ export class InteractiveMode {
 		this.version = VERSION;
 		this.ui = new TUI(new ProcessTerminal(), this.settingsManager.getShowHardwareCursor());
 		this.ui.setClearOnShrink(this.settingsManager.getClearOnShrink());
-		this.subagentOverlay = new SubagentOverlay({ registry: this.subagentRegistry });
-		this.subagentOverlay.bindRedraw(() => this.ui.requestRender());
+		// Activity monitor (F2): reads the session's authoritative ActivityRegistry.
+		// The registry's ActivitySnapshot is structurally identical to the
+		// tui-local one, so a thin list()/subscribe() adapter is all that's needed.
+		const activityRegistry = this.session.activityRegistry;
+		this.activityOverlay = new ActivityOverlay({
+			registry: {
+				list: () => activityRegistry.list() as ActivitySnapshot[],
+				subscribe: (fn) => activityRegistry.subscribe(fn),
+			},
+		});
+		this.activityOverlay.bindRedraw(() => this.ui.requestRender());
+		// Keep the spinner's blocking-leaf label fresh on every registry change
+		// (covers stall transitions / subagent chatter that arrive without a
+		// matching interactive-mode branch).
+		this.activitySpinnerUnsub = activityRegistry.subscribe(() => this.refreshSpinnerMessage());
 		this.headerContainer = new Container();
 		this.chatContainer = new Container();
 		this.pendingMessagesContainer = new Container();
@@ -2176,7 +2262,7 @@ export class InteractiveMode {
 		this.defaultEditor.onAction("app.session.fork", () => this.showUserMessageSelector());
 		this.defaultEditor.onAction("app.session.resume", () => this.showSessionSelector());
 		this.defaultEditor.onAction("app.help", () => this.toggleHelpOverlay());
-		this.defaultEditor.onAction("app.subagent.toggle", () => this.toggleSubagentOverlay());
+		this.defaultEditor.onAction("app.subagent.toggle", () => this.toggleActivityOverlay());
 		this.defaultEditor.onAction("app.message.editQueue", () => this.openQueuedMessagesEditor());
 		this.defaultEditor.onAction("app.tools.shelfExpand", () => this.toggleLastToolShelf());
 
@@ -2571,6 +2657,19 @@ export class InteractiveMode {
 					this.streamingMessage = event.message;
 					this.chatContainer.addChild(this.streamingComponent);
 					this.streamingComponent.updateContent(this.streamingMessage);
+					// Activity: one model row per LLM call (DD §11.3 / B4). Mint a
+					// stable per-call id; `responseId` is often absent at start.
+					const responseId = event.message.role === "assistant" ? event.message.responseId : undefined;
+					this.currentModelRowId = `model:${responseId ?? `${++this.modelRowSeq}`}`;
+					const startedAt = Date.now();
+					this.session.activityRegistry.begin({
+						id: this.currentModelRowId,
+						kind: "model",
+						label: "model response",
+						startedAt,
+						lastProgressAt: startedAt,
+					});
+					this.refreshSpinnerMessage();
 					this.ui.requestRender();
 				}
 				break;
@@ -2579,6 +2678,12 @@ export class InteractiveMode {
 				if (this.streamingComponent && event.message.role === "assistant") {
 					this.streamingMessage = event.message;
 					this.streamingComponent.updateContent(this.streamingMessage);
+					if (this.currentModelRowId) {
+						this.session.activityRegistry.update(this.currentModelRowId, {
+							lastProgressAt: Date.now(),
+							detail: "streaming",
+						});
+					}
 
 					for (const content of this.streamingMessage.content) {
 						if (content.type === "toolCall") {
@@ -2652,6 +2757,11 @@ export class InteractiveMode {
 					this.streamingComponent = undefined;
 					this.streamingMessage = undefined;
 					this.footer.invalidate();
+					if (this.currentModelRowId) {
+						this.session.activityRegistry.end(this.currentModelRowId);
+						this.currentModelRowId = undefined;
+					}
+					this.refreshSpinnerMessage();
 				}
 				this.ui.requestRender();
 				break;
@@ -2675,7 +2785,19 @@ export class InteractiveMode {
 					this.pendingTools.set(event.toolCallId, component);
 				}
 				component.markExecutionStarted();
-				this.subagentRegistry.onToolStart(event.toolCallId, event.toolName, event.args ?? {});
+				{
+					const args = (event.args ?? {}) as Record<string, unknown>;
+					const startedAt = event.startedAt ?? Date.now();
+					this.session.activityRegistry.begin({
+						id: event.toolCallId,
+						kind: kindOf(event.toolName),
+						label: labelOf(event.toolName, args),
+						detail: detailOf(event.toolName, args),
+						startedAt,
+						lastProgressAt: startedAt,
+					});
+					this.refreshSpinnerMessage();
+				}
 				this.ui.requestRender();
 				break;
 			}
@@ -2686,6 +2808,11 @@ export class InteractiveMode {
 					component.updateResult({ ...event.partialResult, isError: false }, true);
 					this.ui.requestRender();
 				}
+				this.session.activityRegistry.update(event.toolCallId, {
+					lastProgressAt: Date.now(),
+					detail: deriveDetail(event.partialResult),
+				});
+				this.refreshSpinnerMessage();
 				break;
 			}
 
@@ -2696,7 +2823,8 @@ export class InteractiveMode {
 					this.pendingTools.delete(event.toolCallId);
 					this.ui.requestRender();
 				}
-				this.subagentRegistry.onToolEnd(event.toolCallId, event.toolName, event.isError);
+				this.session.activityRegistry.end(event.toolCallId, { error: event.isError });
+				this.refreshSpinnerMessage();
 				break;
 			}
 
@@ -2710,6 +2838,12 @@ export class InteractiveMode {
 					this.chatContainer.removeChild(this.streamingComponent);
 					this.streamingComponent = undefined;
 					this.streamingMessage = undefined;
+				}
+				// Safety: end any model row that never saw a message_end (e.g. an
+				// aborted turn) so it doesn't linger as a phantom blocker.
+				if (this.currentModelRowId) {
+					this.session.activityRegistry.end(this.currentModelRowId);
+					this.currentModelRowId = undefined;
 				}
 				this.pendingTools.clear();
 
@@ -2836,18 +2970,34 @@ export class InteractiveMode {
 
 			case "subagent_progress": {
 				// Gap 6: live subagent activity from spawned cave children.
-				// Render only "started" / "tool" / "completed" / "failed" — the
-				// "message" phase is too chatty for the inline transcript.
-				if (event.phase === "tool") {
-					this.showStatus(`◇ ${event.subagentName}: tool ${event.detail ?? ""}`);
-				} else if (event.phase === "started") {
+				// After B1, `subagentId` is keyed off the task tool's toolCallId
+				// (or `${toolCallId}#i` for parallel/chain), so the registry row
+				// created at tool_execution_start is the SAME one we mutate here.
+				// The panel + spinner own live chatter (U-A5); the transcript keeps
+				// milestone lines only (started / completed / failed), NOT every
+				// "tool" phase.
+				const reg = this.session.activityRegistry;
+				const detail = event.phase === "tool" ? `→ ${event.detail ?? ""}` : (event.detail ?? "");
+				if (event.phase === "started") {
+					reg.begin({
+						id: event.subagentId,
+						kind: "subagent",
+						label: event.subagentName || "task",
+						detail: event.detail ?? "starting",
+						startedAt: Date.now(),
+						lastProgressAt: Date.now(),
+					});
 					this.showStatus(`◇ ${event.subagentName}: ${event.detail ?? "starting"}`);
+				} else if (event.phase === "tool" || event.phase === "message") {
+					reg.update(event.subagentId, { detail, lastProgressAt: Date.now() });
 				} else if (event.phase === "completed") {
+					reg.end(event.subagentId);
 					this.showStatus(`✓ ${event.subagentName}: done`);
 					try {
 						notify({ title: "cave subagent", body: `${event.subagentName} done` });
 					} catch {}
 				} else if (event.phase === "failed") {
+					reg.end(event.subagentId, { error: true });
 					this.showStatus(`✗ ${event.subagentName}: ${event.detail ?? "failed"}`);
 					try {
 						notify({
@@ -2856,6 +3006,7 @@ export class InteractiveMode {
 						});
 					} catch {}
 				}
+				this.refreshSpinnerMessage();
 				break;
 			}
 		}
@@ -2895,6 +3046,27 @@ export class InteractiveMode {
 		this.lastStatusSpacer = spacer;
 		this.lastStatusText = text;
 		this.ui.requestRender();
+	}
+
+	/**
+	 * U-A1: feed the current blocking leaf into the spinner so the user sees
+	 * *why* the reply is slow (`Working… bash: npm install (58s)`), without
+	 * opening the panel. Falls back to the default message when nothing is
+	 * running. Keeps the existing "(Esc to interrupt)" affordance.
+	 */
+	private refreshSpinnerMessage(): void {
+		if (!this.loadingAnimation) return;
+		const interruptHint = `(${keyText("app.interrupt")} to interrupt)`;
+		const b = this.session.activityRegistry.blockingLeaf();
+		if (!b) {
+			this.loadingAnimation.setMessage(`${this.defaultWorkingMessage} ${interruptHint}`);
+			return;
+		}
+		let msg = b.detail ? `${b.label}: ${b.detail}` : b.label;
+		if (b.stalledMs > SPINNER_STALL_THRESHOLD_MS) {
+			msg += ` · stalled ${Math.round(b.stalledMs / 1000)}s`;
+		}
+		this.loadingAnimation.setMessage(`${msg} ${interruptHint}`);
 	}
 
 	private addMessageToChat(message: AgentMessage, options?: { populateHistory?: boolean }): void {
@@ -3241,14 +3413,35 @@ export class InteractiveMode {
 		}
 	}
 
-	private toggleSubagentOverlay(): void {
-		if (!this.subagentOverlay) return;
-		if (this.subagentPanel) {
-			this.subagentPanel.hide();
-			this.subagentPanel = null;
+	private toggleActivityOverlay(): void {
+		if (!this.activityOverlay) return;
+		if (this.activityPanel) {
+			this.hideActivityOverlay();
 			return;
 		}
-		this.subagentPanel = this.ui.showSidePanel(this.subagentOverlay, { side: "right" });
+		// SHOW: keep finished rows visible (U-A3) and start a 1s ticker so the
+		// elapsed/stalled columns advance even when no registry event fires.
+		this.session.activityRegistry.setPruning(false);
+		if (this.activityTicker) clearInterval(this.activityTicker);
+		this.activityTicker = setInterval(() => this.ui.requestRender(), 1000);
+		this.activityPanel = this.ui.showSidePanel(this.activityOverlay, { side: "right" });
+	}
+
+	/**
+	 * Tear down the activity panel. `SidePanelHandle.hide()` does NOT dispose the
+	 * overlay or stop our ticker, so the toggle (and any other close path) MUST
+	 * route through here to clear the interval and re-enable pruning (B6).
+	 */
+	private hideActivityOverlay(): void {
+		if (this.activityTicker) {
+			clearInterval(this.activityTicker);
+			this.activityTicker = undefined;
+		}
+		this.session.activityRegistry.setPruning(true);
+		if (this.activityPanel) {
+			this.activityPanel.hide();
+			this.activityPanel = null;
+		}
 	}
 
 	private toggleHelpOverlay(): void {
@@ -5606,6 +5799,13 @@ export class InteractiveMode {
 		this.clearExtensionTerminalInputListeners();
 		this.footer.dispose();
 		this.footerDataProvider.dispose();
+		if (this.activityTicker) {
+			clearInterval(this.activityTicker);
+			this.activityTicker = undefined;
+		}
+		this.activitySpinnerUnsub?.();
+		this.activitySpinnerUnsub = undefined;
+		this.activityOverlay?.dispose();
 		if (this.unsubscribe) {
 			this.unsubscribe();
 		}
