@@ -9,7 +9,22 @@
  */
 
 import { describe, expect, test } from "vitest";
-import { parseCommandArgs, substituteArgs } from "../src/core/prompt-templates.js";
+import {
+	expandPromptTemplate,
+	type PromptTemplate,
+	parseCommandArgs,
+	substituteArgs,
+} from "../src/core/prompt-templates.js";
+
+function makeTemplate(name: string, content: string): PromptTemplate {
+	return {
+		name,
+		content,
+		description: "",
+		filePath: `/fake/${name}.md`,
+		sourceInfo: { source: "local" } as PromptTemplate["sourceInfo"],
+	};
+}
 
 // ============================================================================
 // substituteArgs
@@ -377,5 +392,41 @@ describe("parseCommandArgs + substituteArgs integration", () => {
 		const template1 = "Implement: $@";
 		const template2 = "Implement: $ARGUMENTS";
 		expect(substituteArgs(template1, args)).toBe(substituteArgs(template2, args));
+	});
+});
+
+describe("expandPromptTemplate — commands anywhere (#2)", () => {
+	const templates = [makeTemplate("writing-plans", "PLAN BODY"), makeTemplate("review", "REVIEW: $ARGUMENTS")];
+
+	test("front-anchored single command keeps full arg substitution (backward compatible)", () => {
+		expect(expandPromptTemplate("/review the diff please", templates)).toBe("REVIEW: the diff please");
+	});
+
+	test("front-anchored single command with no args", () => {
+		expect(expandPromptTemplate("/writing-plans", templates)).toBe("PLAN BODY");
+	});
+
+	test("recognized command NOT at the front is expanded in place (positional)", () => {
+		expect(expandPromptTemplate("please run /writing-plans now", templates)).toBe("please run PLAN BODY now");
+	});
+
+	test("multiple recognized commands expand inline, prose preserved", () => {
+		expect(expandPromptTemplate("do /writing-plans then /review and stop", templates)).toBe(
+			"do PLAN BODY then REVIEW:  and stop",
+		);
+	});
+
+	test("unregistered slash tokens are left untouched (file paths, urls, regex)", () => {
+		const text = "look in /usr/bin and at http://x.com and run s/foo/bar/ on /unknown-cmd";
+		expect(expandPromptTemplate(text, templates)).toBe(text);
+	});
+
+	test("slash mid-word (not a boundary) is not a command", () => {
+		expect(expandPromptTemplate("path a/writing-plans/b", templates)).toBe("path a/writing-plans/b");
+	});
+
+	test("no templates / no match returns text unchanged", () => {
+		expect(expandPromptTemplate("just a normal message", templates)).toBe("just a normal message");
+		expect(expandPromptTemplate("/writing-plans", [])).toBe("/writing-plans");
 	});
 });
