@@ -42,6 +42,7 @@ import { getDocsPath } from "../config.js";
 import { theme } from "../modes/interactive/theme/theme.js";
 import { stripFrontmatter } from "../utils/frontmatter.js";
 import { sleep } from "../utils/sleep.js";
+import { ActivityRegistry } from "./activity/activity-registry.js";
 import { type BashResult, executeBashWithOperations } from "./bash-executor.js";
 import { applyStructuredCompressionToContentBlocks } from "./cave-structured-compression.js";
 import {
@@ -354,6 +355,10 @@ export class AgentSession {
 	// Model registry for API key resolution
 	private _modelRegistry: ModelRegistry;
 
+	// Session-scoped live activity monitor (model calls / tools / foreground subagents).
+	// Fed by interactive-mode's event fan-out; read by the F2 activity overlay + spinner.
+	private _activityRegistry = new ActivityRegistry();
+
 	// Tool registry for extension getTools/setTools
 	private _toolRegistry: Map<string, AgentTool> = new Map();
 	private _toolDefinitions: Map<string, ToolDefinitionEntry> = new Map();
@@ -449,6 +454,11 @@ export class AgentSession {
 	/** Model registry for API key resolution and model discovery */
 	get modelRegistry(): ModelRegistry {
 		return this._modelRegistry;
+	}
+
+	/** Session-scoped live activity monitor (model calls / tools / foreground subagents). */
+	get activityRegistry(): ActivityRegistry {
+		return this._activityRegistry;
 	}
 
 	private async _getRequiredRequestAuth(model: Model<any>): Promise<{
@@ -1547,6 +1557,12 @@ export class AgentSession {
 	dispose(): void {
 		this._disconnectFromAgent();
 		this._eventListeners = [];
+		// The /clear (and /new, /fork) path is dispose + recreate: AgentSessionRuntime
+		// .newSession() calls teardownCurrent() -> session.dispose() then builds a fresh
+		// AgentSession with a new ActivityRegistry. There is no distinct in-place clear
+		// path, so disposing here covers session reset; ActivityRegistry.clear() is
+		// reserved for any future in-place reset.
+		this._activityRegistry.dispose();
 	}
 
 	// =========================================================================
