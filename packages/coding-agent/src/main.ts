@@ -64,7 +64,7 @@ import { runMigrations, showDeprecationWarnings } from "./migrations.js";
 import { InteractiveMode, runPrintMode, runRpcMode } from "./modes/index.js";
 import { ExtensionSelectorComponent } from "./modes/interactive/components/extension-selector.js";
 import { initTheme, setDetectedBackground, stopThemeWatcher } from "./modes/interactive/theme/theme.js";
-import { runOnboarding, shouldRunOnboarding } from "./onboarding/wizard.js";
+import { DEFAULT_IO, runOnboarding, shouldRunOnboarding } from "./onboarding/wizard.js";
 import { handleConfigCommand, handlePackageCommand } from "./package-manager-cli.js";
 import { isLocalPath } from "./utils/paths.js";
 
@@ -648,9 +648,20 @@ export async function main(args: string[]) {
 	// WS11: First-run wizard — only in interactive mode, only when stdin is a TTY,
 	// only when the user hasn't completed it before. Bounded to ≤5s on the happy
 	// path because we ask at most 4 questions and never load any heavy modules.
+	let launchLoginOnStart = false;
 	if (appMode === "interactive" && shouldRunOnboarding(startupSettingsManager)) {
 		try {
-			await runOnboarding(startupSettingsManager);
+			// Surface stored OAuth credentials to the wizard so an already-authed
+			// user isn't re-prompted (F3). Keep the wizard dependency-light by
+			// injecting the probe rather than importing AuthStorage there.
+			const onboardingAuth = AuthStorage.create();
+			const answers = await runOnboarding(startupSettingsManager, {
+				...DEFAULT_IO,
+				oauthProbe: () => onboardingAuth.list().filter((p) => onboardingAuth.get(p)?.type === "oauth"),
+			});
+			// F3 hand-off: if the user chose "configure auth now", open the login
+			// selector on interactive start instead of the F1 auto-gate (M4).
+			launchLoginOnStart = answers.auth.type === "launch-login";
 		} catch (err) {
 			// Don't block startup if the wizard fails — log and continue.
 			const msg = err instanceof Error ? err.message : String(err);
@@ -851,6 +862,22 @@ export async function main(args: string[]) {
 		console.error(chalk.yellow("\nSet an API key environment variable:"));
 		console.error("  ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, etc.");
 		console.error(chalk.yellow(`\nOr create ${getModelsPath()}`));
+		console.error(chalk.yellow("\nOr log in with OAuth (no API key needed):"));
+		console.error("  caveman login            (or `caveman login --device-auth` over SSH)");
+		process.exit(1);
+	}
+
+	// OQ-B: a model is selected but its auth is missing/expired (e.g. stored-but-expired
+	// OAuth). Print mode would otherwise fail only at call time — surface the actionable
+	// login instruction up front, mirroring F2's broadened interactive coverage.
+	if (appMode !== "interactive" && session.model && !session.modelRegistry.hasConfiguredAuth(session.model)) {
+		console.error(chalk.red(`No usable credentials for ${session.model.provider}.`));
+		console.error(chalk.yellow("\nSet an API key environment variable:"));
+		console.error("  ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, etc.");
+		console.error(chalk.yellow("\nOr log in with OAuth (no API key needed):"));
+		console.error(
+			`  caveman login --provider ${session.model.provider}   (or \`caveman login --device-auth\` over SSH)`,
+		);
 		process.exit(1);
 	}
 
@@ -881,6 +908,7 @@ export async function main(args: string[]) {
 			initialImages,
 			initialMessages: parsed.messages,
 			verbose: parsed.verbose,
+			launchLoginOnStart,
 		});
 		if (startupBenchmark) {
 			await interactiveMode.init();
