@@ -524,6 +524,13 @@ async function runOne(
 		resolveModel?: SpawnOptions["resolveModel"];
 		envOverrides?: SpawnOptions["envOverrides"];
 		onProgress?: SubagentProgressCallback;
+		/**
+		 * Correlation id for `subagent_progress` events. Threaded down from the
+		 * task tool's `toolCallId` so the emitted `subagentId` matches the tool
+		 * row the parent created at `tool_execution_start` (DD §11.1 B1). When
+		 * unset, falls back to the internally-minted worktree id.
+		 */
+		subagentId?: string;
 		/** Per-call override for the agent's frontmatter model. */
 		modelOverride?: string;
 		/** Per-call chat-mode override (plan = read-only, auto = full). */
@@ -561,7 +568,7 @@ async function runOne(
 			mockSpawn: options.mockSpawn,
 			resolveModel: options.resolveModel,
 			envOverrides: childEnvForMode,
-			subagentId: id,
+			subagentId: options.subagentId ?? id,
 			onProgress: options.onProgress,
 		});
 	} catch (err) {
@@ -726,7 +733,7 @@ export function createTaskToolDefinition(
 			"Always pick the most specific agent for the job; fall back to `explore` only when no specialist fits.",
 		],
 		parameters: TaskSchema,
-		async execute(_id, params: TaskToolInput, signal) {
+		async execute(toolCallId, params: TaskToolInput, signal) {
 			if (currentSubagentDepth() >= MAX_SUBAGENT_DEPTH) {
 				return {
 					content: [
@@ -820,6 +827,9 @@ export function createTaskToolDefinition(
 					resolveModel: options?.resolveModel,
 					envOverrides: options?.envOverrides,
 					onProgress: options?.onProgress,
+					// Single subagent under this task call → correlate progress directly
+					// to the tool row (DD §11.1 B1).
+					subagentId: toolCallId,
 					modelOverride: params.model,
 					modeOverride: params.mode,
 				});
@@ -842,6 +852,9 @@ export function createTaskToolDefinition(
 						resolveModel: options?.resolveModel,
 						envOverrides: options?.envOverrides,
 						onProgress: options?.onProgress,
+						// N subagents under ONE task call → stable per-index id derived
+						// from the tool row (DD §11.1 B1).
+						subagentId: `${toolCallId}#${idx}`,
 						modelOverride: t.model,
 						modeOverride: t.mode,
 					}),
@@ -874,6 +887,9 @@ export function createTaskToolDefinition(
 					resolveModel: options?.resolveModel,
 					envOverrides: options?.envOverrides,
 					onProgress: options?.onProgress,
+					// Sequential steps under ONE task call → stable per-index id
+					// derived from the tool row (DD §11.1 B1).
+					subagentId: `${toolCallId}#${i}`,
 					modelOverride: step.model,
 					modeOverride: step.mode,
 				});

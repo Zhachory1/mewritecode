@@ -385,7 +385,7 @@ export type AgentEvent =
 	| { type: "message_update"; message: AgentMessage; assistantMessageEvent: AssistantMessageEvent }
 	| { type: "message_end"; message: AgentMessage }
 	// Tool execution lifecycle
-	| { type: "tool_execution_start"; toolCallId: string; toolName: string; args: any }
+	| { type: "tool_execution_start"; toolCallId: string; toolName: string; args: any; startedAt: number }
 	| { type: "tool_execution_update"; toolCallId: string; toolName: string; args: any; partialResult: any }
 	| { type: "tool_execution_end"; toolCallId: string; toolName: string; result: any; isError: boolean }
 	// Checkpoint snapshot taken before a mutating tool call (Gap 4)

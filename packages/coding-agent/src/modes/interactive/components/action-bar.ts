@@ -114,6 +114,9 @@ export class ActionBarComponent implements Component {
 			chips.push(chip(keyText("app.tools.expand"), state.toolsExpanded ? "tools:on" : "tools"));
 		}
 
+		// Activity monitor (F2)
+		chips.push(chip(keyText("app.subagent.toggle"), "activity"));
+
 		// Cave mode
 		if (state.caveModeEnabled) {
 			chips.push(labelChip(`cave:${state.caveModeIntensity}`, "accent"));

@@ -301,6 +301,9 @@ describe("agentLoop with AgentMessage", () => {
 		const toolStart = events.find((e) => e.type === "tool_execution_start");
 		const toolEnd = events.find((e) => e.type === "tool_execution_end");
 		expect(toolStart).toBeDefined();
+		if (toolStart?.type === "tool_execution_start") {
+			expect(typeof toolStart.startedAt).toBe("number");
+		}
 		expect(toolEnd).toBeDefined();
 		if (toolEnd?.type === "tool_execution_end") {
 			expect(toolEnd.isError).toBe(false);
