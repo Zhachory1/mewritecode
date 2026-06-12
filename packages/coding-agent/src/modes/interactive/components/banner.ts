@@ -1,6 +1,7 @@
-import { Container, Text, truncateToWidth, visibleWidth } from "@juliusbrussee/caveman-tui";
+import { Container, Text, truncateToWidth } from "@juliusbrussee/caveman-tui";
 import { theme } from "../theme/theme.js";
 
+// Retained for backwards-compatible call sites; the value is ignored.
 export type BannerSprite = "rock" | "rock-eyes" | "rock-ascii";
 
 export interface BannerOptions {
@@ -12,51 +13,38 @@ export interface BannerOptions {
 	sprite?: BannerSprite;
 }
 
-const SPRITES: Record<BannerSprite, readonly string[]> = {
-	rock: [" ▄████▄ ", "████████", "▀██████▀"],
-	"rock-eyes": [" ▄████▄ ", "██●  ●██", "▀██████▀"],
-	"rock-ascii": [" _####_ ", "|#    #|", " \\####/ "],
-};
-
-const SPRITE_WIDTH = 8;
-const GAP = "   ";
+// "Rokt Cave" rendered via figlet `small` font. Pure ASCII so it renders in
+// every terminal without needing a non-UTF-8 fallback.
+const WORDMARK: readonly string[] = [
+	" ___     _   _      ___              ",
+	"| _ \\___| |_| |_   / __|__ ___ _____ ",
+	"|   / _ \\ / /  _| | (__/ _` \\ V / -_)",
+	"|_|_\\___/_\\_\\\\__|  \\___\\__,_|\\_/\\___|",
+];
 
 export class BannerComponent extends Container {
 	constructor(options: BannerOptions) {
 		super();
-		const sprite = options.sprite ?? autoDetectSprite();
-		const frames = SPRITES[sprite];
-
-		const lines = composeLines(frames, options);
-		for (const line of lines) {
-			this.addChild(new Text(line, 1, 0));
+		for (const row of WORDMARK) {
+			this.addChild(new Text(theme.fg("accent", row), 1, 0));
+		}
+		const info = composeInfoLine(options);
+		if (info) {
+			this.addChild(new Text(info, 1, 0));
 		}
 	}
 }
 
-function composeLines(spriteRows: readonly string[], options: BannerOptions): string[] {
-	const right = composeRightColumn(options);
-	const lines: string[] = [];
-	for (let i = 0; i < spriteRows.length; i++) {
-		const sprite = theme.fg("accent", spriteRows[i]);
-		const rightText = right[i] ?? "";
-		lines.push(`${sprite}${GAP}${rightText}`);
-	}
-	return lines;
-}
-
-function composeRightColumn(options: BannerOptions): string[] {
-	const title = `Cave  v${options.version}`;
-	const modelLine = formatModelLine(options.model, options.contextWindow, options.effort);
-	const cwd = formatCwd(options.cwd);
+function composeInfoLine(options: BannerOptions): string {
 	const cols = process.stdout.columns ?? 80;
-	const budget = Math.max(20, cols - SPRITE_WIDTH - GAP.length - 2);
-
-	return [
-		theme.bold(theme.fg("accent", truncateToWidth(title, budget, "…"))),
-		theme.fg("dim", truncateToWidth(modelLine, budget, "…")),
-		theme.fg("dim", truncateLeft(cwd, budget)),
-	];
+	const budget = Math.max(20, cols - 2);
+	const parts: string[] = [`v${options.version}`];
+	const modelPart = formatModelLine(options.model, options.contextWindow, options.effort);
+	if (modelPart) parts.push(modelPart);
+	const cwd = formatCwd(options.cwd);
+	if (cwd) parts.push(cwd);
+	const text = parts.join("  ·  ");
+	return theme.fg("dim", truncateToWidth(text, budget, "…"));
 }
 
 function formatModelLine(model: string | undefined, ctx: string | undefined, effort: string | undefined): string {
@@ -73,19 +61,4 @@ function formatCwd(cwd: string | undefined): string {
 		return `~${cwd.slice(home.length)}`;
 	}
 	return cwd;
-}
-
-function truncateLeft(text: string, budget: number): string {
-	if (visibleWidth(text) <= budget) return text;
-	const tailBudget = Math.max(1, budget - 1);
-	const tail = text.slice(Math.max(0, text.length - tailBudget));
-	return `…${tail}`;
-}
-
-function autoDetectSprite(): BannerSprite {
-	const term = process.env.TERM ?? "";
-	const lang = process.env.LANG ?? process.env.LC_ALL ?? "";
-	if (term === "dumb" || term === "linux") return "rock-ascii";
-	if (lang && !/utf-?8/i.test(lang)) return "rock-ascii";
-	return "rock";
 }

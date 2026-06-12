@@ -2,6 +2,8 @@
 	"$schema": "https://raw.githubusercontent.com/JuliusBrussee/caveman-code/main/packages/coding-agent/src/modes/interactive/theme/theme-schema.json",
 	"name": "light",
 	"vars": {
+		"beetroot": "#C20075",
+		"wine": "#480029",
 		"teal": "#00b8d4",
 		"blue": "#547da7",
 		"green": "#588458",
@@ -10,8 +12,8 @@
 		"mediumGray": "#6c6c6c",
 		"dimGray": "#767676",
 		"lightGray": "#b0b0b0",
-		"brand": "#E8A840",
-		"selectedBg": "#d0d0e0",
+		"brand": "beetroot",
+		"selectedBg": "#f5d0e4",
 		"userMsgBg": "",
 		"toolPendingBg": "",
 		"toolSuccessBg": "",
@@ -19,9 +21,9 @@
 		"customMsgBg": ""
 	},
 	"colors": {
-		"accent": "teal",
+		"accent": "beetroot",
 		"border": "blue",
-		"borderAccent": "teal",
+		"borderAccent": "wine",
 		"borderMuted": "lightGray",
 		"success": "green",
 		"error": "red",
