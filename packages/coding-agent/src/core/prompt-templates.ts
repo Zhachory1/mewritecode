@@ -273,22 +273,90 @@ export function loadPromptTemplates(options: LoadPromptTemplatesOptions = {}): P
 	return templates;
 }
 
+/** A recognized `/command` token located within a message. */
+export interface CommandToken {
+	name: string;
+	/** Index of the leading `/`. */
+	slashIndex: number;
+	/** Index just past the end of the command name. */
+	nameEnd: number;
+}
+
+// A command token is a `/name` at a word boundary (start-of-string or whitespace).
+// Names allow letters, digits, `_`, `-`, and `:` (for the `skill:<name>` namespace).
+// This boundary requirement is what keeps file paths (`/usr/bin`), URLs
+// (`http://…`), and regexes (`s/foo/bar/`) from ever matching.
+const COMMAND_TOKEN_RE = /(^|\s)(\/[A-Za-z0-9_:-]+)/g;
+
 /**
- * Expand a prompt template if it matches a template name.
- * Returns the expanded content or the original text if not a template.
+ * Scan `text` for `/command` tokens at word boundaries whose name satisfies
+ * `isCommand`. Tokens whose name is not recognized are ignored, so ordinary
+ * slashes in prose/paths/URLs are never treated as commands.
  */
-export function expandPromptTemplate(text: string, templates: PromptTemplate[]): string {
-	if (!text.startsWith("/")) return text;
+export function scanCommandTokens(text: string, isCommand: (name: string) => boolean): CommandToken[] {
+	const tokens: CommandToken[] = [];
+	COMMAND_TOKEN_RE.lastIndex = 0;
+	let m = COMMAND_TOKEN_RE.exec(text);
+	while (m !== null) {
+		const slashIndex = m.index + m[1].length; // skip the boundary char (empty for ^, else the whitespace)
+		const name = m[2].slice(1); // drop the leading "/"
+		if (isCommand(name)) {
+			tokens.push({ name, slashIndex, nameEnd: slashIndex + m[2].length });
+		}
+		m = COMMAND_TOKEN_RE.exec(text);
+	}
+	return tokens;
+}
 
-	const spaceIndex = text.indexOf(" ");
-	const templateName = spaceIndex === -1 ? text.slice(1) : text.slice(1, spaceIndex);
-	const argsString = spaceIndex === -1 ? "" : text.slice(spaceIndex + 1);
+/**
+ * Expand recognized `/command` tokens anywhere in the message (issue #2),
+ * supporting multiple per message. Only tokens whose name satisfies
+ * `isCommand` are touched — everything else (paths, URLs, code) is preserved.
+ *
+ * - A single recognized command at the FRONT keeps full argument substitution
+ *   (args = the rest of the message) for backward compatibility.
+ * - Otherwise each recognized token is expanded in place with no args, and the
+ *   surrounding prose is preserved verbatim.
+ */
+export function expandInlineCommands(
+	text: string,
+	isCommand: (name: string) => boolean,
+	expand: (name: string, argsString: string) => string,
+): string {
+	const tokens = scanCommandTokens(text, isCommand);
+	if (tokens.length === 0) return text;
 
-	const template = templates.find((t) => t.name === templateName);
-	if (template) {
-		const args = parseCommandArgs(argsString);
-		return substituteArgs(template.content, args);
+	// Front-anchored single command → classic arg-substitution behavior.
+	if (tokens.length === 1 && text.slice(0, tokens[0].slashIndex).trim() === "") {
+		const t = tokens[0];
+		return text.slice(0, t.slashIndex) + expand(t.name, text.slice(t.nameEnd).trim());
 	}
 
-	return text;
+	// Positional / multiple → expand each token in place, no args, keep prose.
+	let result = "";
+	let cursor = 0;
+	for (const t of tokens) {
+		result += text.slice(cursor, t.slashIndex);
+		result += expand(t.name, "");
+		cursor = t.nameEnd;
+	}
+	result += text.slice(cursor);
+	return result;
+}
+
+/**
+ * Expand prompt templates referenced as `/name` anywhere in the text.
+ * Returns the expanded content, or the original text if nothing matched.
+ */
+export function expandPromptTemplate(text: string, templates: PromptTemplate[]): string {
+	const byName = new Map(templates.map((t) => [t.name, t]));
+	return expandInlineCommands(
+		text,
+		(name) => byName.has(name),
+		(name, argsString) => {
+			const template = byName.get(name);
+			if (!template) return `/${name}`;
+			return substituteArgs(template.content, parseCommandArgs(argsString));
+		},
+	);
 }

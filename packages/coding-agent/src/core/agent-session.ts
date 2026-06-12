@@ -95,7 +95,7 @@ import { composeStartupPrelude } from "./memory-bridge.js";
 import { resolveMemoryProvider } from "./memory-factory.js";
 import type { BashExecutionMessage, CustomMessage } from "./messages.js";
 import type { ModelRegistry } from "./model-registry.js";
-import { expandPromptTemplate, type PromptTemplate } from "./prompt-templates.js";
+import { expandInlineCommands, expandPromptTemplate, type PromptTemplate } from "./prompt-templates.js";
 import type { ResourceExtensionPaths, ResourceLoader } from "./resource-loader.js";
 import { createRtkSpawnHook, getRtkStatus } from "./rtk.js";
 import type { BranchSummaryEntry, CompactionEntry, SessionManager } from "./session-manager.js";
@@ -1980,29 +1980,34 @@ export class AgentSession {
 	 * Emits errors via extension runner if file read fails.
 	 */
 	private _expandSkillCommand(text: string): string {
-		if (!text.startsWith("/skill:")) return text;
-
-		const spaceIndex = text.indexOf(" ");
-		const skillName = spaceIndex === -1 ? text.slice(7) : text.slice(7, spaceIndex);
-		const args = spaceIndex === -1 ? "" : text.slice(spaceIndex + 1).trim();
-
-		const skill = this.resourceLoader.getSkills().skills.find((s) => s.name === skillName);
-		if (!skill) return text; // Unknown skill, pass through
-
-		try {
-			const content = readFileSync(skill.filePath, "utf-8");
-			const body = stripFrontmatter(content).trim();
-			const skillBlock = `<skill name="${skill.name}" location="${skill.filePath}">\nReferences are relative to ${skill.baseDir}.\n\n${body}\n</skill>`;
-			return args ? `${skillBlock}\n\n${args}` : skillBlock;
-		} catch (err) {
-			// Emit error like extension commands do
-			this._extensionRunner?.emitError({
-				extensionPath: skill.filePath,
-				event: "skill_expansion",
-				error: err instanceof Error ? err.message : String(err),
-			});
-			return text; // Return original on error
-		}
+		const SKILL_PREFIX = "skill:";
+		const skills = this.resourceLoader.getSkills().skills;
+		// Expand `/skill:<name>` referenced anywhere in the message (issue #2),
+		// supporting multiple per message. Front-anchored single use keeps its
+		// trailing text as args (appended after the skill block); positional /
+		// multiple uses expand the block in place with no args.
+		return expandInlineCommands(
+			text,
+			(name) => name.startsWith(SKILL_PREFIX) && skills.some((s) => s.name === name.slice(SKILL_PREFIX.length)),
+			(name, args) => {
+				const skillName = name.slice(SKILL_PREFIX.length);
+				const skill = skills.find((s) => s.name === skillName);
+				if (!skill) return `/${name}`; // gated by isCommand; defensive
+				try {
+					const content = readFileSync(skill.filePath, "utf-8");
+					const body = stripFrontmatter(content).trim();
+					const skillBlock = `<skill name="${skill.name}" location="${skill.filePath}">\nReferences are relative to ${skill.baseDir}.\n\n${body}\n</skill>`;
+					return args ? `${skillBlock}\n\n${args}` : skillBlock;
+				} catch (err) {
+					this._extensionRunner?.emitError({
+						extensionPath: skill.filePath,
+						event: "skill_expansion",
+						error: err instanceof Error ? err.message : String(err),
+					});
+					return `/${name}`; // keep the literal token on read error
+				}
+			},
+		);
 	}
 
 	/**
