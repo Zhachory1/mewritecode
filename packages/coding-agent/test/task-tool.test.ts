@@ -200,6 +200,84 @@ describe("Task tool — single-mode happy path (mocked LLM)", () => {
 	});
 });
 
+describe("Task tool — subagent_progress correlation (DD §11.1 B1)", () => {
+	it("single-mode emits progress ids equal to the toolCallId", async () => {
+		const mock = makeMockSpawn({});
+		const events: { subagentId: string; phase: string }[] = [];
+		const tool = createTaskToolDefinition(cwd, {
+			mockSpawn: mock,
+			loader: () => loadAgentDefs({ cwd, userDir, packageDir, skipBundled: true }),
+			onProgress: (e) => events.push({ subagentId: e.subagentId, phase: e.phase }),
+		});
+		await tool.execute(
+			"tool-call-abc",
+			{ agent: "explore", task: "explore me" } as any,
+			undefined,
+			undefined,
+			undefined as any,
+		);
+		expect(events.length).toBeGreaterThan(0);
+		// Single subagent → subagentId IS the toolCallId (no index suffix).
+		expect(events.every((e) => e.subagentId === "tool-call-abc")).toBe(true);
+		expect(events.some((e) => e.phase === "started")).toBe(true);
+	});
+
+	it("parallel-mode emits stable per-index ids prefixed by the toolCallId", async () => {
+		const mock = makeMockSpawn({});
+		const events: { subagentId: string; phase: string }[] = [];
+		const tool = createTaskToolDefinition(cwd, {
+			mockSpawn: mock,
+			loader: () => loadAgentDefs({ cwd, userDir, packageDir, skipBundled: true }),
+			onProgress: (e) => events.push({ subagentId: e.subagentId, phase: e.phase }),
+		});
+		await tool.execute(
+			"tool-call-par",
+			{
+				tasks: [
+					{ agent: "explore", task: "alpha" },
+					{ agent: "reviewer", task: "beta" },
+				],
+			} as any,
+			undefined,
+			undefined,
+			undefined as any,
+		);
+		expect(events.length).toBeGreaterThan(0);
+		// Every id derivable from the tool call id; both indexed rows present.
+		expect(events.every((e) => e.subagentId.startsWith("tool-call-par"))).toBe(true);
+		const ids = new Set(events.map((e) => e.subagentId));
+		expect(ids.has("tool-call-par#0")).toBe(true);
+		expect(ids.has("tool-call-par#1")).toBe(true);
+	});
+
+	it("chain-mode emits stable per-step ids prefixed by the toolCallId", async () => {
+		const mock = makeMockSpawn({});
+		const events: { subagentId: string; phase: string }[] = [];
+		const tool = createTaskToolDefinition(cwd, {
+			mockSpawn: mock,
+			loader: () => loadAgentDefs({ cwd, userDir, packageDir, skipBundled: true }),
+			onProgress: (e) => events.push({ subagentId: e.subagentId, phase: e.phase }),
+		});
+		await tool.execute(
+			"tool-call-chn",
+			{
+				chain: [
+					{ agent: "explore", task: "step one" },
+					{ agent: "reviewer", task: "review {previous}" },
+				],
+			} as any,
+			undefined,
+			undefined,
+			undefined as any,
+		);
+		expect(events.length).toBeGreaterThan(0);
+		expect(events.every((e) => e.subagentId.startsWith("tool-call-chn"))).toBe(true);
+		const ids = new Set(events.map((e) => e.subagentId));
+		expect(ids.has("tool-call-chn#0")).toBe(true);
+		expect(ids.has("tool-call-chn#1")).toBe(true);
+	});
+});
+
 describe("Task tool — chain-mode with {previous} substitution", () => {
 	it("threads each step's output into the next via {previous}", async () => {
 		const calls: string[] = [];
