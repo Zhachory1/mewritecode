@@ -55,6 +55,8 @@ export interface StatusLineContext {
 		queuedMessages?: number;
 		tokensIn?: number;
 		tokensOut?: number;
+		/** Savings Meter (DD §10.8): caveman bytes eliminated this session. */
+		savedBytes?: number;
 	};
 }
 
@@ -94,6 +96,9 @@ export function renderDetailed(ctx: StatusLineContext): string {
 	const queued = ctx.cave?.queuedMessages ?? 0;
 	if (queued > 0) parts.push(`q:${queued}`);
 
+	const savedBytes = ctx.cave?.savedBytes ?? 0;
+	if (savedBytes > 0) parts.push(`saved ${formatSavedBytes(savedBytes)}`);
+
 	if (ctx.cost && ctx.cost.total_cost_usd > 0) {
 		parts.push(`$${ctx.cost.total_cost_usd.toFixed(4)}`);
 	}
@@ -101,6 +106,13 @@ export function renderDetailed(ctx: StatusLineContext): string {
 	if (ctx.exceeds_200k_tokens) parts.push("⚠ 200k");
 
 	return parts.join(" · ");
+}
+
+/** Compact saved-bytes for the status line: 940 → "940B", 4200 → "4kB", 1.5M → "1.4MB". */
+function formatSavedBytes(n: number): string {
+	if (n < 1024) return `${n}B`;
+	if (n < 1024 * 1024) return `${Math.round(n / 1024)}kB`;
+	return `${(n / (1024 * 1024)).toFixed(1)}MB`;
 }
 
 /**

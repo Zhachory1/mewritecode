@@ -4,9 +4,11 @@
 
 import { describe, expect, it } from "vitest";
 import {
+	formatByteCount,
 	formatCostSummary,
 	formatInlineCost,
 	formatInlineCostWithRates,
+	formatSavingsLine,
 	formatSessionEndSummary,
 	formatTokenBuckets,
 	formatTokenCount,
@@ -268,5 +270,29 @@ describe("weekKeyForDate", () => {
 		const week26 = weekKeyForDate("2026-04-26");
 		const week27 = weekKeyForDate("2026-04-27");
 		expect(week26).not.toBe(week27);
+	});
+});
+
+describe("formatByteCount", () => {
+	it("formats B / KB / MB", () => {
+		expect(formatByteCount(940)).toBe("940 B");
+		expect(formatByteCount(4200)).toBe("4.1 KB");
+		expect(formatByteCount(1_500_000)).toBe("1.4 MB");
+	});
+});
+
+describe("formatSavingsLine (DD §10.8)", () => {
+	it("leads with bytes + % + all-time when bytes were saved", () => {
+		const line = formatSavingsLine({ bytesSaved: 5427, percentCompressed: 0.31, cumulativeAllTimeBytes: 1_992_294 });
+		expect(line).toBe("Caveman eliminated 5.3 KB of context (31% of tool output) · 1.9 MB all-time");
+	});
+
+	it("omits the all-time suffix when cumulative is 0", () => {
+		const line = formatSavingsLine({ bytesSaved: 5427, percentCompressed: 0.31, cumulativeAllTimeBytes: 0 });
+		expect(line).toBe("Caveman eliminated 5.3 KB of context (31% of tool output)");
+	});
+
+	it("returns undefined when nothing was saved (line omitted on exit)", () => {
+		expect(formatSavingsLine({ bytesSaved: 0, percentCompressed: 0, cumulativeAllTimeBytes: 100 })).toBeUndefined();
 	});
 });

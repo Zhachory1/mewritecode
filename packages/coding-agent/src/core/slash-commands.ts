@@ -99,6 +99,11 @@ export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 		description: "Show token usage by source bucket (system, repomap, chat-history, files, tool-results) (WS19).",
 	},
 	{ name: "cost", description: "Show session cost + today + this-week totals (WS19)." },
+	{
+		name: "savings",
+		description:
+			"Show context bytes Caveman eliminated this session (dedup + compression + compaction) + cumulative. /savings --share for a one-liner.",
+	},
 	{ name: "checkpoint", description: "Create a labeled shadow-git snapshot (WS17). /checkpoint <name>" },
 	{ name: "rollback", description: "Restore from a shadow-git snapshot (WS17). /rollback [N] [--file <path>] | list" },
 	{

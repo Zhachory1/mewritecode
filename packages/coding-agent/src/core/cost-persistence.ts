@@ -30,10 +30,38 @@ export interface PeriodTotal {
 	dollars: number;
 }
 
+/** Savings Meter (DD §10.7): cumulative caveman BYTES eliminated. */
+export interface SavingsPeriodTotal {
+	bytes: number;
+}
+
+export interface SavingsAggregate {
+	daily: Record<string, SavingsPeriodTotal>;
+	weekly: Record<string, SavingsPeriodTotal>;
+	allTime: SavingsPeriodTotal;
+	/**
+	 * Ring of recently-applied session ids (DD §10.7 idempotency). An add is
+	 * applied at most once per session id, so resume/replay never double-counts.
+	 */
+	appliedSessionIds: string[];
+}
+
 export interface CostTotalsFile {
 	daily: Record<string, PeriodTotal>;
 	weekly: Record<string, PeriodTotal>;
+	/** Optional — absent in pre-savings files; created on first savings persist. */
+	savings?: SavingsAggregate;
 }
+
+export interface SessionSavingsDelta {
+	/** Stable session id (idempotency key). */
+	sessionId: string;
+	/** Caveman bytes eliminated this session (exact, durable figure). */
+	bytes: number;
+}
+
+/** Max session ids retained in the idempotency ring. */
+const APPLIED_SESSION_ID_RING = 256;
 
 export interface SessionCostDelta {
 	inputTokens: number;
@@ -131,6 +159,82 @@ export function persistSessionCost(delta: SessionCostDelta, filePath?: string): 
 }
 
 /**
+ * Savings Meter (DD §10.7): merge a session's savings BYTES into the totals file
+ * atomically, IDEMPOTENT by session id. Persisting the same session id twice
+ * (resume/replay) does NOT double-add. Guards the read-modify-write with the
+ * same atomic rename-on-write as cost. Persists BYTES (exact) as the durable
+ * figure; $ is derived on read elsewhere.
+ *
+ * NOTE: savings-only sessions (no cost) MUST still persist — this function is
+ * NOT gated by the `cost === 0` early-return that `persistSessionCost` applies.
+ */
+export function persistSessionSavings(delta: SessionSavingsDelta, filePath?: string): void {
+	if (!delta.sessionId || delta.bytes <= 0) {
+		return; // Nothing meaningful / no key to dedupe on.
+	}
+
+	const p = filePath ?? getCostTotalsPath();
+	const dir = path.dirname(p);
+
+	try {
+		fs.mkdirSync(dir, { recursive: true });
+	} catch {
+		// Already exists or can't create — best effort
+	}
+
+	const totals = readCostTotals(p);
+	const savings = ensureSavings(totals);
+
+	// Idempotency: compare-and-set against the applied-session-id ring.
+	if (savings.appliedSessionIds.includes(delta.sessionId)) {
+		return; // Already applied for this session id — do not double-count.
+	}
+
+	const today = todayDateString();
+	const week = weekKeyForDate(today);
+
+	savings.daily[today] = { bytes: (savings.daily[today]?.bytes ?? 0) + delta.bytes };
+	savings.weekly[week] = { bytes: (savings.weekly[week]?.bytes ?? 0) + delta.bytes };
+	savings.allTime = { bytes: savings.allTime.bytes + delta.bytes };
+
+	// Record the session id, capping the ring (FIFO).
+	savings.appliedSessionIds.push(delta.sessionId);
+	if (savings.appliedSessionIds.length > APPLIED_SESSION_ID_RING) {
+		savings.appliedSessionIds.splice(0, savings.appliedSessionIds.length - APPLIED_SESSION_ID_RING);
+	}
+
+	pruneDailyEntries(totals);
+	pruneWeeklyEntries(totals);
+	pruneSavingsEntries(savings);
+
+	// Atomic write (rename-on-write).
+	const tmp = `${p}.tmp.${process.pid}.${Date.now()}`;
+	try {
+		fs.writeFileSync(tmp, JSON.stringify(totals, null, 2), "utf8");
+		fs.renameSync(tmp, p);
+	} catch (err) {
+		try {
+			fs.unlinkSync(tmp);
+		} catch {
+			/* ignore */
+		}
+		throw err;
+	}
+}
+
+/** All-time cumulative savings bytes (read-only). */
+export function getAllTimeSavingsBytes(filePath?: string): number {
+	return readCostTotals(filePath).savings?.allTime.bytes ?? 0;
+}
+
+/** This-week cumulative savings bytes (read-only). */
+export function getThisWeekSavingsBytes(filePath?: string): number {
+	const totals = readCostTotals(filePath);
+	const week = weekKeyForDate(todayDateString());
+	return totals.savings?.weekly[week]?.bytes ?? 0;
+}
+
+/**
  * Return today's aggregate from the file (read-only).
  */
 export function getTodayTotal(filePath?: string): PeriodTotal | undefined {
@@ -162,6 +266,50 @@ function addPeriodTotal(existing: PeriodTotal | undefined, delta: SessionCostDel
 		cacheRead: base.cacheRead + delta.cacheReadTokens,
 		dollars: base.dollars + delta.dollars,
 	};
+}
+
+/**
+ * Ensure the savings aggregate exists and is well-formed (back-fills a missing
+ * or malformed `savings` block on pre-savings files).
+ */
+function ensureSavings(totals: CostTotalsFile): SavingsAggregate {
+	const s = totals.savings;
+	if (
+		s &&
+		typeof s === "object" &&
+		typeof s.daily === "object" &&
+		typeof s.weekly === "object" &&
+		typeof s.allTime === "object" &&
+		Array.isArray(s.appliedSessionIds)
+	) {
+		return s;
+	}
+	const fresh: SavingsAggregate = { daily: {}, weekly: {}, allTime: { bytes: 0 }, appliedSessionIds: [] };
+	totals.savings = fresh;
+	return fresh;
+}
+
+function pruneSavingsEntries(savings: SavingsAggregate): void {
+	const dailyCutoff = new Date();
+	dailyCutoff.setDate(dailyCutoff.getDate() - DAILY_RETENTION_DAYS);
+	const dailyCutoffStr = dailyCutoff.toISOString().slice(0, 10);
+	for (const key of Object.keys(savings.daily)) {
+		if (key < dailyCutoffStr) delete savings.daily[key];
+	}
+
+	const currentWeek = weekKeyForDate(todayDateString());
+	const [yearStr, weekStr] = currentWeek.split("-W");
+	const currentYear = Number(yearStr);
+	const currentWeekNo = Number(weekStr);
+	for (const key of Object.keys(savings.weekly)) {
+		const match = /^(\d{4})-W(\d{2})$/.exec(key);
+		if (!match) {
+			delete savings.weekly[key];
+			continue;
+		}
+		const weeksAgo = (currentYear - Number(match[1])) * 52 + (currentWeekNo - Number(match[2]));
+		if (weeksAgo > WEEKLY_RETENTION_WEEKS) delete savings.weekly[key];
+	}
 }
 
 function pruneDailyEntries(totals: CostTotalsFile): void {

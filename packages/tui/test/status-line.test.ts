@@ -103,6 +103,16 @@ describe("renderDefault / renderDetailed", () => {
 		const text = renderStatusLineDetailed(ctx({ exceeds_200k_tokens: true }));
 		assert.ok(text.includes("200k"));
 	});
+
+	it("detailed shows saved bytes when > 0", () => {
+		const text = renderStatusLineDetailed(ctx({ cave: { savedBytes: 12_288 } }));
+		assert.ok(text.includes("saved 12kB"), text);
+	});
+
+	it("detailed omits saved segment when 0/absent", () => {
+		assert.ok(!renderStatusLineDetailed(ctx({ cave: { savedBytes: 0 } })).includes("saved"));
+		assert.ok(!renderStatusLineDetailed(ctx()).includes("saved"));
+	});
 });
 
 describe("renderStatusLineSync", () => {
