@@ -2461,6 +2461,11 @@ export class InteractiveMode {
 				this.editor.setText("");
 				return;
 			}
+			if (text === "/help") {
+				this.editor.setText("");
+				this.handleHelpCommand();
+				return;
+			}
 			if (text === "/skills" || text === "/plugins") {
 				this.editor.setText("");
 				this.handleSkillsCommand(text === "/plugins" ? "marketplace" : undefined);
@@ -5475,6 +5480,28 @@ export class InteractiveMode {
 		this.chatContainer.addChild(new DynamicBorder());
 		this.chatContainer.addChild(new Text(theme.bold(theme.fg("accent", "Keyboard Shortcuts")), 1, 0));
 		this.chatContainer.addChild(new Spacer(1));
+		this.chatContainer.addChild(new Markdown(hotkeys.trim(), 1, 1, this.getMarkdownThemeWithSettings()));
+		this.chatContainer.addChild(new DynamicBorder());
+		this.ui.requestRender();
+	}
+
+	private handleHelpCommand(): void {
+		let commands = `
+**Commands**
+| Command | Description |
+|---------|-------------|
+`;
+		for (const c of BUILTIN_SLASH_COMMANDS.filter((c) => c.wired)) {
+			commands += `| \`/${c.name}\` | ${c.description} |\n`;
+		}
+
+		const hotkeys = this.buildHotkeysMarkdown();
+
+		this.chatContainer.addChild(new Spacer(1));
+		this.chatContainer.addChild(new DynamicBorder());
+		this.chatContainer.addChild(new Text(theme.bold(theme.fg("accent", "Help")), 1, 0));
+		this.chatContainer.addChild(new Spacer(1));
+		this.chatContainer.addChild(new Markdown(commands.trim(), 1, 1, this.getMarkdownThemeWithSettings()));
 		this.chatContainer.addChild(new Markdown(hotkeys.trim(), 1, 1, this.getMarkdownThemeWithSettings()));
 		this.chatContainer.addChild(new DynamicBorder());
 		this.ui.requestRender();

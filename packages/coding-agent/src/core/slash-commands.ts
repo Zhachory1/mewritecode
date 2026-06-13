@@ -52,76 +52,115 @@ export interface SlashCommandInfo {
 export interface BuiltinSlashCommand {
 	name: string;
 	description: string;
+	/**
+	 * Whether the command has a live dispatch branch in interactive-mode. The
+	 * /help command index lists only wired commands; unwired entries surface a
+	 * "registered but not wired in this build" notice via isUnwiredBuiltinSlash.
+	 */
+	wired: boolean;
 }
 
 export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
-	{ name: "settings", description: "Open settings menu" },
-	{ name: "model", description: "Select model (opens selector UI)" },
-	{ name: "scoped-models", description: "Enable/disable models for Ctrl+P cycling" },
-	{ name: "export", description: "Export session (HTML default, or specify path: .html/.jsonl)" },
-	{ name: "import", description: "Import and resume a session from a JSONL file" },
-	{ name: "share", description: "Share session as a secret GitHub gist" },
-	{ name: "copy", description: "Copy last agent message to clipboard" },
-	{ name: "name", description: "Set session display name" },
-	{ name: "session", description: "Show session info and stats" },
-	{ name: "changelog", description: "Show changelog entries" },
-	{ name: "hotkeys", description: "Show all keyboard shortcuts" },
-	{ name: "fork", description: "Create a new fork from a previous message" },
-	{ name: "tree", description: "Navigate session tree (switch branches)" },
-	{ name: "login", description: "Login with OAuth provider" },
-	{ name: "logout", description: "Logout from OAuth provider" },
-	{ name: "new", description: "Start a new session" },
-	{ name: "clear", description: "Clear the current context and start a new session (alias for /new)" },
-	{ name: "compact", description: "Manually compact the session context" },
-	{ name: "freeze", description: "Cave-optimized compaction checkpoint (optional label)" },
-	{ name: "checkpoints", description: "List manual freeze checkpoints in this session" },
-	{ name: "cave", description: "Control cave mode (on/off/lite/full/ultra/stats)" },
-	{ name: "resume", description: "Resume a different session" },
-	{ name: "reload", description: "Reload keybindings, extensions, skills, prompts, and themes" },
-	{ name: "hooks", description: "List, test, and manage Claude Code-compatible lifecycle hooks (WS4)" },
-	{ name: "mcp", description: "Manage MCP servers (list, doctor, login, reload). See: caveman mcp --help." },
+	{ name: "help", description: "Show commands and keyboard shortcuts", wired: true },
+	{ name: "settings", description: "Open settings menu", wired: true },
+	{ name: "model", description: "Select model (opens selector UI)", wired: true },
+	{ name: "scoped-models", description: "Enable/disable models for Ctrl+P cycling", wired: true },
+	{ name: "export", description: "Export session (HTML default, or specify path: .html/.jsonl)", wired: true },
+	{ name: "import", description: "Import and resume a session from a JSONL file", wired: true },
+	{ name: "share", description: "Share session as a secret GitHub gist", wired: true },
+	{ name: "copy", description: "Copy last agent message to clipboard", wired: true },
+	{ name: "name", description: "Set session display name", wired: true },
+	{ name: "session", description: "Show session info and stats", wired: true },
+	{ name: "changelog", description: "Show changelog entries", wired: true },
+	{ name: "hotkeys", description: "Show all keyboard shortcuts", wired: true },
+	{ name: "fork", description: "Create a new fork from a previous message", wired: true },
+	{ name: "tree", description: "Navigate session tree (switch branches)", wired: true },
+	{ name: "login", description: "Login with OAuth provider", wired: true },
+	{ name: "logout", description: "Logout from OAuth provider", wired: true },
+	{ name: "new", description: "Start a new session", wired: true },
+	{
+		name: "clear",
+		description: "Clear the current context and start a new session (alias for /new)",
+		wired: true,
+	},
+	{ name: "compact", description: "Manually compact the session context", wired: true },
+	{ name: "freeze", description: "Cave-optimized compaction checkpoint (optional label)", wired: true },
+	{ name: "checkpoints", description: "List manual freeze checkpoints in this session", wired: true },
+	{ name: "cave", description: "Control cave mode (on/off/lite/full/ultra/stats)", wired: true },
+	{ name: "resume", description: "Resume a different session", wired: true },
+	{ name: "reload", description: "Reload keybindings, extensions, skills, prompts, and themes", wired: true },
+	{
+		name: "hooks",
+		description: "List, test, and manage Claude Code-compatible lifecycle hooks (WS4)",
+		wired: true,
+	},
+	{
+		name: "mcp",
+		description: "Manage MCP servers (list, doctor, login, reload). See: caveman mcp --help.",
+		wired: true,
+	},
 	{
 		name: "memory",
 		description:
 			"Memory layer (cavemem-backed). Subcommands: search, save, show, forget, export, consolidate, sync, off, on, config.",
+		wired: true,
 	},
-	{ name: "repomap", description: "Show the Aider-style PageRank repo map (WS8). /repomap help for subcommands." },
+	{
+		name: "repomap",
+		description: "Show the Aider-style PageRank repo map (WS8). /repomap help for subcommands.",
+		wired: true,
+	},
 	{
 		name: "architect",
 		description: "Toggle architect/editor split chat mode (WS8). /architect help for subcommands.",
+		wired: true,
 	},
 	{
 		name: "recipe",
 		description: "Run a Goose-style YAML recipe in the current session (WS14). /recipe help for subcommands.",
+		wired: true,
 	},
 	{
 		name: "tokens",
 		description: "Show token usage by source bucket (system, repomap, chat-history, files, tool-results) (WS19).",
+		wired: true,
 	},
-	{ name: "cost", description: "Show session cost + today + this-week totals (WS19)." },
+	{ name: "cost", description: "Show session cost + today + this-week totals (WS19).", wired: true },
+	{ name: "checkpoint", description: "Create a labeled shadow-git snapshot (WS17). /checkpoint <name>", wired: true },
+	{
+		name: "rollback",
+		description: "Restore from a shadow-git snapshot (WS17). /rollback [N] [--file <path>] | list",
+		wired: true,
+	},
 	{
 		name: "savings",
 		description:
 			"Show context bytes Caveman eliminated this session (dedup + compression + compaction) + cumulative. /savings --share for a one-liner.",
+		wired: true,
 	},
-	{ name: "checkpoint", description: "Create a labeled shadow-git snapshot (WS17). /checkpoint <name>" },
-	{ name: "rollback", description: "Restore from a shadow-git snapshot (WS17). /rollback [N] [--file <path>] | list" },
 	{
 		name: "goal",
 		description:
 			"Start an autonomous goal loop (Ralph-style). Usage: /goal <text>. Runs until sentinel, caps, or paused.",
+		wired: true,
 	},
 	{
 		name: "plan",
 		description: "Enter read-only plan mode. Agent produces a written plan; type /act to execute.",
+		wired: true,
 	},
-	{ name: "act", description: "Exit plan mode and restore edit tools so the agent can execute its plan." },
-	{ name: "skills", description: "Open the skills hub overlay (browse user/project/bundled skills)." },
+	{
+		name: "act",
+		description: "Exit plan mode and restore edit tools so the agent can execute its plan.",
+		wired: true,
+	},
+	{ name: "skills", description: "Open the skills hub overlay (browse user/project/bundled skills).", wired: true },
 	{
 		name: "plugins",
 		description: "Open the plugins surface (alias for /skills marketplace stage; placeholder for now).",
+		wired: true,
 	},
-	{ name: "quit", description: "Quit pi" },
+	{ name: "quit", description: "Quit pi", wired: true },
 ];
 
 // =============================================================================
