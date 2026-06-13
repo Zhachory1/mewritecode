@@ -368,6 +368,7 @@ export async function loginGitHubCopilot(options: {
 export const githubCopilotOAuthProvider: OAuthProviderInterface = {
 	id: "github-copilot",
 	name: "GitHub Copilot",
+	aliases: ["copilot", "github"],
 
 	async login(callbacks: OAuthLoginCallbacks): Promise<OAuthCredentials> {
 		return loginGitHubCopilot({

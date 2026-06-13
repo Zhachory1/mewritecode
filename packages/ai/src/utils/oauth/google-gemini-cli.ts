@@ -574,6 +574,7 @@ export async function loginGeminiCli(
 export const geminiCliOAuthProvider: OAuthProviderInterface = {
 	id: "google-gemini-cli",
 	name: "Google Cloud Code Assist (Gemini CLI)",
+	aliases: ["gemini", "google"],
 	usesCallbackServer: true,
 
 	async login(callbacks: OAuthLoginCallbacks): Promise<OAuthCredentials> {

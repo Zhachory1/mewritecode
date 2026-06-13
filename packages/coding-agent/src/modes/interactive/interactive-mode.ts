@@ -287,16 +287,30 @@ export interface InteractiveModeOptions {
  *  - `/login <provider>` with a known provider → route directly to that provider.
  *  - `/login <provider>` with an unknown provider → `invalid` (caller lists valid ones).
  */
+/** Resolve a user-typed provider name (id or alias) to a canonical id, or undefined. Case-insensitive. */
+export function resolveProviderAlias(
+	input: string,
+	providers: ReadonlyArray<{ id: string; aliases?: readonly string[] }>,
+): string | undefined {
+	const q = input.trim().toLowerCase();
+	for (const p of providers) {
+		if (p.id.toLowerCase() === q) return p.id;
+		if (p.aliases?.some((a) => a.toLowerCase() === q)) return p.id;
+	}
+	return undefined;
+}
+
 export function parseLoginCommand(
 	text: string,
-	validProviders: string[],
+	providers: ReadonlyArray<{ id: string; aliases?: readonly string[] }>,
 ): { kind: "selector" } | { kind: "provider"; provider: string } | { kind: "invalid"; provider: string } {
 	const arg = text.startsWith("/login ") ? text.slice("/login ".length).trim() : "";
 	if (arg === "") {
 		return { kind: "selector" };
 	}
-	if (validProviders.includes(arg)) {
-		return { kind: "provider", provider: arg };
+	const id = resolveProviderAlias(arg, providers);
+	if (id) {
+		return { kind: "provider", provider: id };
 	}
 	return { kind: "invalid", provider: arg };
 }
@@ -2464,16 +2478,15 @@ export class InteractiveMode {
 			}
 			if (text === "/login" || text.startsWith("/login ")) {
 				this.editor.setText("");
-				const validProviders = this.session.modelRegistry.authStorage.getOAuthProviders().map((p) => p.id);
-				const parsed = parseLoginCommand(text, validProviders);
+				const providers = this.session.modelRegistry.authStorage.getOAuthProviders();
+				const parsed = parseLoginCommand(text, providers);
 				if (parsed.kind === "selector") {
 					await this.showOAuthSelector("login");
 				} else if (parsed.kind === "provider") {
 					await this.showLoginDialog(parsed.provider);
 				} else {
-					this.showError(
-						`Unknown provider "${parsed.provider}". Valid providers: ${validProviders.join(", ") || "(none)"}`,
-					);
+					const names = providers.map((p) => (p.aliases?.length ? `${p.aliases[0]} (${p.id})` : p.id)).join(", ");
+					this.showError(`Unknown provider "${parsed.provider}". Try: ${names || "(none)"}`);
 				}
 				return;
 			}

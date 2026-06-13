@@ -34,6 +34,8 @@ export interface OAuthLoginCallbacks {
 export interface OAuthProviderInterface {
 	readonly id: OAuthProviderId;
 	readonly name: string;
+	/** Friendly alternate names a user may type, e.g. ["claude"] for "anthropic". Lowercase. */
+	readonly aliases?: readonly string[];
 
 	/** Run the login flow, return credentials to persist */
 	login(callbacks: OAuthLoginCallbacks): Promise<OAuthCredentials>;
