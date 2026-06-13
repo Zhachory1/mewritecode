@@ -196,15 +196,10 @@ export const allToolDefinitions = {
 
 export type ToolName = keyof typeof allTools;
 
-/** Canonical built-in tool names — exactly the set the child CLI accepts (`name in allTools`, args.ts:118).
- *  Source of truth for agent `tools:` validation. Runtime-registered tools (memory_*, mcp__*) are
- *  NOT here — see DYNAMIC_TOOL_PREFIXES. (Skills attach via the separate `skills:` frontmatter field,
- *  not `tools:`, so they are intentionally not part of this set.) */
-export const VALID_TOOL_NAMES: readonly string[] = Object.keys(allTools);
-
-/** Prefixes for tools registered at runtime (memory layer, MCP servers). A name with one of these
- *  is plausibly real and must NOT be warned about. */
-export const DYNAMIC_TOOL_PREFIXES: readonly string[] = ["mcp__", "memory_"];
+// Tool-name constants live in the leaf `tool-names.ts` (no runtime deps) to avoid a
+// circular import with the agent-defs loader. Re-exported here for the public surface;
+// a drift-guard test asserts VALID_TOOL_NAMES === Object.keys(allTools).
+export { DYNAMIC_TOOL_PREFIXES, VALID_TOOL_NAMES } from "./tool-names.js";
 
 export interface ToolsOptions {
 	read?: ReadToolOptions;

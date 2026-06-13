@@ -1,19 +1,9 @@
-import { DYNAMIC_TOOL_PREFIXES, VALID_TOOL_NAMES } from "../tools/index.js";
+// Imports the leaf `tool-names.ts` (no runtime deps) — NOT `tools/index.ts` — so there
+// is no circular import and these can be built eagerly at module load.
+import { DYNAMIC_TOOL_PREFIXES, VALID_TOOL_NAMES } from "../tools/tool-names.js";
 
-// Lazily memoized — NOT computed at module top level. `tools/index.ts` pulls the
-// whole tool runtime, so loader → tool-name-check → tools/index is a circular
-// import; reading VALID_TOOL_NAMES at eval time would see `undefined` mid-cycle
-// (TypeError: ...map of undefined). Deferring to first call sidesteps the cycle.
-let _known: Set<string> | undefined;
-let _knownLower: Map<string, string> | undefined;
-function known(): Set<string> {
-	if (!_known) _known = new Set(VALID_TOOL_NAMES);
-	return _known;
-}
-function knownLower(): Map<string, string> {
-	if (!_knownLower) _knownLower = new Map(VALID_TOOL_NAMES.map((n) => [n.toLowerCase(), n]));
-	return _knownLower;
-}
+const KNOWN = new Set<string>(VALID_TOOL_NAMES);
+const KNOWN_LOWER = new Map<string, string>(VALID_TOOL_NAMES.map((n) => [n.toLowerCase(), n]));
 
 export type ToolNameIssue =
 	| { kind: "did-you-mean"; name: string; suggestion: string }
@@ -27,9 +17,9 @@ function isDynamicToolName(name: string): boolean {
 
 /** Classify one tool name. null = ok (known or plausibly-dynamic). */
 export function classifyToolName(name: string): ToolNameIssue | null {
-	if (known().has(name)) return null;
+	if (KNOWN.has(name)) return null;
 	if (isDynamicToolName(name)) return null;
-	const ci = knownLower().get(name.toLowerCase());
+	const ci = KNOWN_LOWER.get(name.toLowerCase());
 	if (ci) return { kind: "did-you-mean", name, suggestion: ci };
 	return { kind: "unknown", name };
 }

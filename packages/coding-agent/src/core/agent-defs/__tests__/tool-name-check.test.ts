@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
+import { allTools } from "../../tools/index.js";
+import { VALID_TOOL_NAMES } from "../../tools/tool-names.js";
 import { classifyToolName, effectiveTools, isIncompleteWriteSet } from "../tool-name-check.js";
+
+describe("VALID_TOOL_NAMES drift guard", () => {
+	it("matches Object.keys(allTools) exactly (leaf constant stays in sync)", () => {
+		expect(new Set(VALID_TOOL_NAMES)).toEqual(new Set(Object.keys(allTools)));
+	});
+});
 
 describe("classifyToolName", () => {
 	it("returns null for a known tool name", () => {

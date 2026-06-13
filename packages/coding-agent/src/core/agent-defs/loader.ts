@@ -25,7 +25,7 @@ import { parseFrontmatter } from "../../utils/frontmatter.js";
 // note: from src/core/agent-defs/loader.ts → ../../ → src/ → config.ts
 import type { ResourceDiagnostic } from "../diagnostics.js";
 import { createSyntheticSourceInfo, type SourceInfo } from "../source-info.js";
-import { VALID_TOOL_NAMES } from "../tools/index.js";
+import { VALID_TOOL_NAMES } from "../tools/tool-names.js";
 import { classifyToolName, effectiveTools, isIncompleteWriteSet } from "./tool-name-check.js";
 
 /** Loaded agent definition with source info. */
@@ -195,8 +195,8 @@ export function parseAgentDefFile(
 			message: `agent "${def.name}": has edit/write but no read/grep/ls/find — it can mutate files but cannot locate or inspect them first.`,
 		});
 	// disallowedTools cancelled out every allowed tool. The child passes no --tools
-	// flag for an empty list, so it would silently inherit the FULL default toolset —
-	// the opposite of an intended lock-down.
+	// flag for an empty list, so it would silently inherit the default toolset
+	// (read,bash,edit,write) — the opposite of an intended lock-down.
 	if ((def.tools?.length ?? 0) > 0 && eff.length === 0)
 		diagnostics.push({
 			type: "warning",
