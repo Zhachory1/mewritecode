@@ -1,7 +1,19 @@
 import { DYNAMIC_TOOL_PREFIXES, VALID_TOOL_NAMES } from "../tools/index.js";
 
-const KNOWN = new Set(VALID_TOOL_NAMES);
-const KNOWN_LOWER = new Map(VALID_TOOL_NAMES.map((n) => [n.toLowerCase(), n]));
+// Lazily memoized — NOT computed at module top level. `tools/index.ts` pulls the
+// whole tool runtime, so loader → tool-name-check → tools/index is a circular
+// import; reading VALID_TOOL_NAMES at eval time would see `undefined` mid-cycle
+// (TypeError: ...map of undefined). Deferring to first call sidesteps the cycle.
+let _known: Set<string> | undefined;
+let _knownLower: Map<string, string> | undefined;
+function known(): Set<string> {
+	if (!_known) _known = new Set(VALID_TOOL_NAMES);
+	return _known;
+}
+function knownLower(): Map<string, string> {
+	if (!_knownLower) _knownLower = new Map(VALID_TOOL_NAMES.map((n) => [n.toLowerCase(), n]));
+	return _knownLower;
+}
 
 export type ToolNameIssue =
 	| { kind: "did-you-mean"; name: string; suggestion: string }
@@ -9,9 +21,9 @@ export type ToolNameIssue =
 
 /** Classify one tool name. null = ok (known or plausibly-dynamic). */
 export function classifyToolName(name: string): ToolNameIssue | null {
-	if (KNOWN.has(name)) return null;
+	if (known().has(name)) return null;
 	if (DYNAMIC_TOOL_PREFIXES.some((p) => name.startsWith(p))) return null;
-	const ci = KNOWN_LOWER.get(name.toLowerCase());
+	const ci = knownLower().get(name.toLowerCase());
 	if (ci) return { kind: "did-you-mean", name, suggestion: ci };
 	return { kind: "unknown", name };
 }
