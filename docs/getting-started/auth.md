@@ -21,6 +21,8 @@ Use your existing paid subscription. No API key needed.
 | Google Gemini | Gemini Advanced | `/login gemini` |
 | Google Antigravity | Antigravity preview | `/login antigravity` |
 
+The raw provider ids also work: `anthropic`, `openai-codex`, `google-gemini-cli`, `github-copilot`, `antigravity`.
+
 OAuth tokens are stored in your OS keychain — macOS Keychain, Linux libsecret, Windows Credential Manager. They never touch disk in plaintext.
 
 ## API keys

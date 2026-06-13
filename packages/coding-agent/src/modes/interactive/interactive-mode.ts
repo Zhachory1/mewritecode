@@ -4616,6 +4616,17 @@ export class InteractiveMode {
 	 * (which sets, persists, and validates auth). `setModel` throws without auth,
 	 * so we refresh the registry first to make freshly-stored OAuth visible.
 	 */
+	/**
+	 * Ensure a usable (authenticated) model exists before a prompt runs. Returns
+	 * true when one is ready; false when the caller must not proceed.
+	 *
+	 * Task-first no-auth gate: when a keyless user submits a task before logging
+	 * in, `opts.pending` is stashed into {@link pendingPrompt}, the OAuth selector
+	 * is opened, and we return false so the prompt does NOT run yet. Once login
+	 * completes, {@link onLoginSuccess} resolves a model and replays the stashed
+	 * prompt — so the very first task the user typed is the one that runs, with no
+	 * silent drop and no double-prompt.
+	 */
 	private async ensureUsableModel(opts?: { pending?: string; forceReauth?: boolean }): Promise<boolean> {
 		const registry = this.session.modelRegistry;
 		// forceReauth: a call-time throw told us the current model's stored auth is
