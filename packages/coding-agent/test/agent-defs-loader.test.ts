@@ -285,4 +285,24 @@ describe("loadAgentDefs", () => {
 		expect(names).toContain("reviewer");
 		expect(names).toContain("tester");
 	});
+
+	it("bundles an in-place editor agent (edit+write+read, no isolation, no warnings)", () => {
+		const realResult = loadAgentDefs({
+			cwd,
+			userDir,
+			// no packageDir override → uses getPackageDir()
+			skipUser: true,
+			skipProject: true,
+		});
+		const editor = findAgentDef(realResult, "editor");
+		expect(editor).toBeDefined();
+		expect(editor?.def.tools).toContain("edit");
+		expect(editor?.def.tools).toContain("write");
+		expect(editor?.def.tools).toContain("read");
+		// In-place default — no isolation field (worktree is the documented opt-in).
+		expect(editor?.def.isolation).toBeUndefined();
+		// A bundled agent must not trip any tool-name / write-set warnings.
+		const editorDiagnostics = realResult.diagnostics.filter((d) => d.path?.endsWith("editor.md"));
+		expect(editorDiagnostics).toEqual([]);
+	});
 });
