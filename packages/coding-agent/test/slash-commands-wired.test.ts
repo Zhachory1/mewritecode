@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { BUILTIN_SLASH_COMMANDS } from "../src/core/slash-commands.js";
+import { BUILTIN_SLASH_COMMANDS, isUnwiredBuiltinCommand } from "../src/core/slash-commands.js";
 
 describe("BUILTIN_SLASH_COMMANDS wired flag", () => {
 	test("every entry declares a boolean wired flag", () => {
@@ -12,5 +12,23 @@ describe("BUILTIN_SLASH_COMMANDS wired flag", () => {
 		const help = BUILTIN_SLASH_COMMANDS.find((c) => c.name === "help");
 		expect(help, "/help should be registered").toBeDefined();
 		expect(help?.wired).toBe(true);
+	});
+
+	test("every currently-registered builtin is wired (none unwired today)", () => {
+		const unwired = BUILTIN_SLASH_COMMANDS.filter((c) => !c.wired).map((c) => c.name);
+		expect(unwired).toEqual([]);
+		for (const c of BUILTIN_SLASH_COMMANDS) {
+			expect(isUnwiredBuiltinCommand(c.name)).toBe(false);
+		}
+	});
+
+	test("isUnwiredBuiltinCommand fires for a wired:false entry (gate is live)", () => {
+		const fixture = [
+			{ name: "shipped", description: "has a dispatch branch", wired: true },
+			{ name: "stub", description: "registered but not wired in this build", wired: false },
+		];
+		expect(isUnwiredBuiltinCommand("stub", fixture)).toBe(true);
+		expect(isUnwiredBuiltinCommand("shipped", fixture)).toBe(false);
+		expect(isUnwiredBuiltinCommand("absent", fixture)).toBe(false);
 	});
 });

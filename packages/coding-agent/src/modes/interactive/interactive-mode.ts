@@ -97,6 +97,7 @@ import { runRollbackCommand } from "../../core/slash-commands/rollback.js";
 import { formatSavingsShare, runSavingsCommand } from "../../core/slash-commands/savings.js";
 import {
 	BUILTIN_SLASH_COMMANDS,
+	isUnwiredBuiltinCommand,
 	emptyRepomapChatState,
 	type RepomapChatState,
 	runArchitectCommand,
@@ -5012,11 +5013,7 @@ export class InteractiveMode {
 	private isUnwiredBuiltinSlash(text: string): boolean {
 		const head = text.slice(1).split(/\s+/, 1)[0];
 		if (!head) return false;
-		// A registered builtin that reached the dispatch fallthrough because it is
-		// flagged not-wired in this build. `wired` is the single source of truth:
-		// /help lists only wired commands, and this surfaces the "registered but
-		// not wired" notice for the rest.
-		return BUILTIN_SLASH_COMMANDS.some((c) => c.name === head && !c.wired);
+		return isUnwiredBuiltinCommand(head);
 	}
 
 	private async handleReloadCommand(): Promise<void> {
@@ -5510,6 +5507,9 @@ export class InteractiveMode {
 		for (const c of BUILTIN_SLASH_COMMANDS.filter((c) => c.wired)) {
 			commands += `| \`/${c.name}\` | ${c.description} |\n`;
 		}
+		// Built-ins only — skill, project, and extension commands aren't listed
+		// here. Keep the surface honest: point at `/` autocomplete for the rest.
+		commands += `\n_Your skill, project, and extension commands aren't shown above — press \`/\` to browse everything._\n`;
 
 		const hotkeys = this.buildHotkeysMarkdown();
 

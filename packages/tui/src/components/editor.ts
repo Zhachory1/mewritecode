@@ -506,6 +506,8 @@ export class Editor implements Component, Focusable {
 				lineVisibleWidth = visibleWidth(clipped);
 				const padding = " ".repeat(Math.max(0, contentWidth - lineVisibleWidth));
 				result.push(`${leftPadding}${displayText}${padding}${rightPadding}`);
+				// NOTE: placeholder is a fast-exit branch — any per-line post-processing
+				// added to the cursor/padding block below must be mirrored here.
 				continue;
 			}
 

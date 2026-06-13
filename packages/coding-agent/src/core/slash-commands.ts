@@ -163,6 +163,19 @@ export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 	{ name: "quit", description: "Quit pi", wired: true },
 ];
 
+/**
+ * A registered builtin flagged not-wired in this build (no live dispatch branch).
+ * The dispatch fallthrough uses this to surface a "registered but not wired"
+ * notice for such commands instead of treating the input as a chat message.
+ * Single source of truth with the `/help` index, which lists only wired commands.
+ */
+export function isUnwiredBuiltinCommand(
+	name: string,
+	commands: ReadonlyArray<BuiltinSlashCommand> = BUILTIN_SLASH_COMMANDS,
+): boolean {
+	return commands.some((c) => c.name === name && !c.wired);
+}
+
 // =============================================================================
 // Markdown command loader
 // =============================================================================
