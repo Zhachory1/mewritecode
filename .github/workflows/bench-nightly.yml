@@ -21,6 +21,9 @@ jobs:
         with:
           node-version: "20"
       - run: npm ci
+      # Build all workspaces so @juliusbrussee/caveman-* dist/ exists — the bench
+      # imports them via package `exports` (dist paths), not src (issue #28).
+      - run: npm run build
       - run: npm run bench:nightly
       - name: Commit results
         run: |
