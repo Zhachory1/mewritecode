@@ -5357,7 +5357,7 @@ export class InteractiveMode {
 		return this.capitalizeKey(keyText(action));
 	}
 
-	private handleHotkeysCommand(): void {
+	private buildHotkeysMarkdown(): string {
 		// Navigation keybindings
 		const cursorUp = this.getEditorKeyDisplay("tui.editor.cursorUp");
 		const cursorDown = this.getEditorKeyDisplay("tui.editor.cursorDown");
@@ -5464,6 +5464,12 @@ export class InteractiveMode {
 				}
 			}
 		}
+
+		return hotkeys;
+	}
+
+	private handleHotkeysCommand(): void {
+		const hotkeys = this.buildHotkeysMarkdown();
 
 		this.chatContainer.addChild(new Spacer(1));
 		this.chatContainer.addChild(new DynamicBorder());
