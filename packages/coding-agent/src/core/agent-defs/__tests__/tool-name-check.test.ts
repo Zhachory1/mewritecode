@@ -29,6 +29,11 @@ describe("classifyToolName", () => {
 	it("flags an unrelated tool name as unknown", () => {
 		expect(classifyToolName("str_replace")).toEqual({ kind: "unknown", name: "str_replace" });
 	});
+
+	it("flags a bare dynamic prefix (no tool segment) as unknown", () => {
+		expect(classifyToolName("mcp__")).toEqual({ kind: "unknown", name: "mcp__" });
+		expect(classifyToolName("memory_")).toEqual({ kind: "unknown", name: "memory_" });
+	});
 });
 
 describe("isIncompleteWriteSet", () => {
@@ -54,6 +59,10 @@ describe("isIncompleteWriteSet", () => {
 
 	it("is false for an empty set", () => {
 		expect(isIncompleteWriteSet([])).toBe(false);
+	});
+
+	it("is false when a dynamic tool (mcp__) may provide read capability", () => {
+		expect(isIncompleteWriteSet(["edit", "write", "mcp__fs__read"])).toBe(false);
 	});
 });
 

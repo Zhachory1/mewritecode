@@ -178,6 +178,19 @@ describe("parseAgentDefFile — tool-name validation (warnings)", () => {
 			diagnostics.some((d) => d.message.includes("can mutate files") && d.message.includes("cannot locate")),
 		).toBe(true);
 	});
+
+	it("warns when disallowedTools cancels out the entire tools list (effective set empty)", () => {
+		const filePath = writeAgent(join(cwd, ".cave", "agents"), "lockedout", {
+			name: "lockedout",
+			description: "tools fully disallowed",
+			tools: ["read"],
+			disallowedTools: ["read"],
+		});
+		const { def, diagnostics } = parseAgentDefFile(filePath, "project");
+		expect(def).not.toBeNull();
+		expect(diagnostics.every((d) => d.type === "warning")).toBe(true);
+		expect(diagnostics.some((d) => d.message.includes("effective set is empty"))).toBe(true);
+	});
 });
 
 describe("loadAgentDefs", () => {

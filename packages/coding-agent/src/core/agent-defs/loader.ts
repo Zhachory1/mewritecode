@@ -175,7 +175,7 @@ export function parseAgentDefFile(
 			diagnostics.push({
 				type: "warning",
 				path: filePath,
-				message: `agent "${def.name}": unknown tool "${name}" — check spelling; it will be silently dropped. Known: ${VALID_TOOL_NAMES.join(", ")}`,
+				message: `agent "${def.name}": unknown tool "${name}" — check spelling; it will be silently dropped. Known: ${VALID_TOOL_NAMES.join(", ")} (or an mcp__*/memory_* tool).`,
 			});
 	}
 	for (const name of def.disallowedTools ?? []) {
@@ -193,6 +193,15 @@ export function parseAgentDefFile(
 			type: "warning",
 			path: filePath,
 			message: `agent "${def.name}": has edit/write but no read/grep/ls/find — it can mutate files but cannot locate or inspect them first.`,
+		});
+	// disallowedTools cancelled out every allowed tool. The child passes no --tools
+	// flag for an empty list, so it would silently inherit the FULL default toolset —
+	// the opposite of an intended lock-down.
+	if ((def.tools?.length ?? 0) > 0 && eff.length === 0)
+		diagnostics.push({
+			type: "warning",
+			path: filePath,
+			message: `agent "${def.name}": disallowedTools removes every entry in tools — the effective set is empty, so the agent inherits the default toolset instead of being restricted.`,
 		});
 
 	return { def, diagnostics };
