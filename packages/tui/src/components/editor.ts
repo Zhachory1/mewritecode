@@ -486,7 +486,11 @@ export class Editor implements Component, Focusable {
 				layoutLine.text === "";
 
 			if (showPlaceholder) {
-				const clipped = truncateToWidth(this.placeholder, contentWidth, "");
+				// Clip to layoutWidth (the wrap budget), not contentWidth: with the
+				// default paddingX=0, layoutWidth = contentWidth - 1 reserves the last
+				// column for the cursor, so a full-width placeholder cannot autowrap
+				// the border line on narrow terminals.
+				const clipped = truncateToWidth(this.placeholder, layoutWidth, "");
 				const graphemes = [...this.segment(clipped)];
 				const first = graphemes[0]?.segment ?? "";
 				const rest = clipped.slice(first.length);

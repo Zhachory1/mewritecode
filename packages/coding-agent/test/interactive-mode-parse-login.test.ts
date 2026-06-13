@@ -5,6 +5,7 @@ const valid = [
 	{ id: "anthropic", aliases: ["claude"] },
 	{ id: "openai-codex", aliases: ["chatgpt"] },
 	{ id: "github-copilot", aliases: ["copilot"] },
+	{ id: "antigravity" }, // no aliases — guards the id-only resolution branch
 ];
 
 describe("parseLoginCommand", () => {
@@ -36,6 +37,11 @@ describe("parseLoginCommand", () => {
 
 	test("alias resolution is case-insensitive", () => {
 		expect(parseLoginCommand("/login CHATGPT", valid)).toEqual({ kind: "provider", provider: "openai-codex" });
+	});
+
+	test("/login <id-only provider with no aliases> resolves by raw id", () => {
+		expect(parseLoginCommand("/login antigravity", valid)).toEqual({ kind: "provider", provider: "antigravity" });
+		expect(parseLoginCommand("/login ANTIGRAVITY", valid)).toEqual({ kind: "provider", provider: "antigravity" });
 	});
 
 	test("/login <unknown provider> is invalid", () => {

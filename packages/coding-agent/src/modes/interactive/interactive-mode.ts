@@ -5012,7 +5012,11 @@ export class InteractiveMode {
 	private isUnwiredBuiltinSlash(text: string): boolean {
 		const head = text.slice(1).split(/\s+/, 1)[0];
 		if (!head) return false;
-		return BUILTIN_SLASH_COMMANDS.some((c) => c.name === head);
+		// A registered builtin that reached the dispatch fallthrough because it is
+		// flagged not-wired in this build. `wired` is the single source of truth:
+		// /help lists only wired commands, and this surfaces the "registered but
+		// not wired" notice for the rest.
+		return BUILTIN_SLASH_COMMANDS.some((c) => c.name === head && !c.wired);
 	}
 
 	private async handleReloadCommand(): Promise<void> {
