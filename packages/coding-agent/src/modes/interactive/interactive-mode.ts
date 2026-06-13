@@ -528,6 +528,7 @@ export class InteractiveMode {
 		this.defaultEditor = new CustomEditor(this.ui, getEditorTheme(), this.keybindings, {
 			paddingX: editorPaddingX,
 			autocompleteMaxVisible,
+			placeholder: "Type a task, or / for commands · F1 help",
 		});
 		this.editor = this.defaultEditor;
 		this.editorContainer = new Container();
