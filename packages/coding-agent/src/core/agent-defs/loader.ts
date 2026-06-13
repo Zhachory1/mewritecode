@@ -25,6 +25,8 @@ import { parseFrontmatter } from "../../utils/frontmatter.js";
 // note: from src/core/agent-defs/loader.ts → ../../ → src/ → config.ts
 import type { ResourceDiagnostic } from "../diagnostics.js";
 import { createSyntheticSourceInfo, type SourceInfo } from "../source-info.js";
+import { VALID_TOOL_NAMES } from "../tools/index.js";
+import { classifyToolName, effectiveTools, isIncompleteWriteSet } from "./tool-name-check.js";
 
 /** Loaded agent definition with source info. */
 export interface LoadedAgentDef {
@@ -158,6 +160,40 @@ export function parseAgentDefFile(
 			errors.some((e) => e.startsWith("prompt body is required"));
 		if (fatal) return { def: null, diagnostics };
 	}
+
+	// Validate tool / disallowedTools allow-list names — warn (never error) so a
+	// typo or unknown tool is legible instead of being silently dropped by the child.
+	for (const name of def.tools ?? []) {
+		const issue = classifyToolName(name);
+		if (issue?.kind === "did-you-mean")
+			diagnostics.push({
+				type: "warning",
+				path: filePath,
+				message: `agent "${def.name}": tool "${name}" — did you mean "${issue.suggestion}"? (dropped as-is)`,
+			});
+		else if (issue?.kind === "unknown")
+			diagnostics.push({
+				type: "warning",
+				path: filePath,
+				message: `agent "${def.name}": unknown tool "${name}" — check spelling; it will be silently dropped. Known: ${VALID_TOOL_NAMES.join(", ")}`,
+			});
+	}
+	for (const name of def.disallowedTools ?? []) {
+		const issue = classifyToolName(name);
+		if (issue)
+			diagnostics.push({
+				type: "warning",
+				path: filePath,
+				message: `agent "${def.name}": disallowedTools "${name}" matches no known tool — it won't block anything${issue.kind === "did-you-mean" ? ` (did you mean "${issue.suggestion}"?)` : ""}.`,
+			});
+	}
+	const eff = effectiveTools(def.tools ?? [], def.disallowedTools ?? []);
+	if (isIncompleteWriteSet(eff))
+		diagnostics.push({
+			type: "warning",
+			path: filePath,
+			message: `agent "${def.name}": has edit/write but no read/grep/ls/find — it can mutate files but cannot locate or inspect them first.`,
+		});
 
 	return { def, diagnostics };
 }

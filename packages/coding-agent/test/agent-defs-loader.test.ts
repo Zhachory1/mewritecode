@@ -132,6 +132,54 @@ describe("parseAgentDefFile", () => {
 	});
 });
 
+describe("parseAgentDefFile — tool-name validation (warnings)", () => {
+	it("warns on a case-mismatched tool, an unknown tool, and a bad disallowedTools name", () => {
+		const filePath = writeAgent(join(cwd, ".cave", "agents"), "badtools", {
+			name: "badtools",
+			description: "has bad tool names",
+			tools: ["Write", "bogus"],
+			disallowedTools: ["Bahs"],
+		});
+		const { def, diagnostics } = parseAgentDefFile(filePath, "project");
+		// Still parses — these are warnings, not fatal errors.
+		expect(def).not.toBeNull();
+		expect(diagnostics.every((d) => d.type === "warning")).toBe(true);
+		// did-you-mean for "Write" → "write"
+		expect(diagnostics.some((d) => d.message.includes('"Write"') && d.message.includes('"write"'))).toBe(true);
+		// unknown "bogus"
+		expect(diagnostics.some((d) => d.message.includes("unknown tool") && d.message.includes('"bogus"'))).toBe(true);
+		// disallowedTools "Bahs" won't block anything
+		expect(diagnostics.some((d) => d.message.includes('"Bahs"') && d.message.includes("won't block anything"))).toBe(
+			true,
+		);
+	});
+
+	it("does not warn on dynamic tool names (memory_*, mcp__*)", () => {
+		const filePath = writeAgent(join(cwd, ".cave", "agents"), "dyntools", {
+			name: "dyntools",
+			description: "dynamic tools",
+			tools: ["memory_save", "mcp__x__y"],
+		});
+		const { def, diagnostics } = parseAgentDefFile(filePath, "project");
+		expect(def).not.toBeNull();
+		expect(diagnostics).toEqual([]);
+	});
+
+	it("warns when the effective tool set can write but cannot locate files", () => {
+		const filePath = writeAgent(join(cwd, ".cave", "agents"), "writeonly", {
+			name: "writeonly",
+			description: "edit + write only",
+			tools: ["edit", "write"],
+		});
+		const { def, diagnostics } = parseAgentDefFile(filePath, "project");
+		expect(def).not.toBeNull();
+		expect(diagnostics.every((d) => d.type === "warning")).toBe(true);
+		expect(
+			diagnostics.some((d) => d.message.includes("can mutate files") && d.message.includes("cannot locate")),
+		).toBe(true);
+	});
+});
+
 describe("loadAgentDefs", () => {
 	it("loads from project scope only when other scopes empty", () => {
 		writeAgent(join(cwd, ".cave", "agents"), "alpha", {
