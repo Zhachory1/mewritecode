@@ -99,6 +99,7 @@ import type { ModelRegistry } from "./model-registry.js";
 import { expandInlineCommands, expandPromptTemplate, type PromptTemplate } from "./prompt-templates.js";
 import type { ResourceExtensionPaths, ResourceLoader } from "./resource-loader.js";
 import { createRtkSpawnHook, getRtkStatus } from "./rtk.js";
+import { SavingsTracker } from "./savings-tracker.js";
 import type { BranchSummaryEntry, CompactionEntry, SessionManager } from "./session-manager.js";
 import { CURRENT_SESSION_VERSION, getLatestCompactionEntry, type SessionHeader } from "./session-manager.js";
 import type { SettingsManager } from "./settings-manager.js";
@@ -360,6 +361,12 @@ export class AgentSession {
 	// Fed by interactive-mode's event fan-out; read by the F2 activity overlay + spinner.
 	private _activityRegistry = new ActivityRegistry();
 
+	// Savings Meter (DD §10): session-scoped, bytes-led savings tracker. Fed at
+	// the afterToolCall cave pipeline (dedup + net compression) and soft-compaction;
+	// cache-reuse is derived-on-read in getSavings(). Fresh per session (reset =
+	// dispose + recreate, like the activity registry).
+	private _savings = new SavingsTracker();
+
 	// Tool registry for extension getTools/setTools
 	private _toolRegistry: Map<string, AgentTool> = new Map();
 	private _toolDefinitions: Map<string, ToolDefinitionEntry> = new Map();
@@ -462,6 +469,65 @@ export class AgentSession {
 		return this._activityRegistry;
 	}
 
+	/** Session-scoped savings tracker (DD §10) — caveman bytes eliminated. */
+	get savings(): SavingsTracker {
+		return this._savings;
+	}
+
+	/**
+	 * Savings totals (DD §10) priced at the CURRENT model input rate, with
+	 * prompt-cache-reuse $ DERIVED-ON-READ from the message list (DD §10.5):
+	 * `Σ msg.usage.cacheRead × (rate.input − rate.cacheRead)/1e6`, resolving
+	 * rates from each message's OWN `model` id via the model registry. This is
+	 * an idempotent fold over `state.messages` — never accumulated — so it can't
+	 * double-count on resume/replay. Degrades to 0 for an unresolvable model id.
+	 * Cache-reuse is kept SEPARATE from the caveman total.
+	 */
+	getSavings(): import("./savings-tracker.js").SavingsTotals {
+		this._savings.setCacheReuseDollars(this._deriveCacheReuseDollars());
+		const inputRate = this.model?.cost?.input ?? 0;
+		return this._savings.totals(inputRate);
+	}
+
+	/**
+	 * Pure fold over the message list deriving the provider prompt-cache-reuse $
+	 * saving. Resolves each assistant message's rates from its OWN model id (so a
+	 * mid-session model switch prices correctly); skips messages whose model id
+	 * can't be resolved or that lack cache reads. Uses `model.cost` rates ($/Mtok)
+	 * — NOT `usage.cost.cacheRead` (that is the billed cost, not the saving).
+	 */
+	/**
+	 * Σ of text-block `.text.length` over a tool-result content array (DD §10.1).
+	 * Excludes non-text / image blocks.
+	 */
+	private _sumTextLen(content: unknown): number {
+		if (!Array.isArray(content)) return 0;
+		let total = 0;
+		for (const block of content as Array<{ type?: string; text?: unknown }>) {
+			if (block && block.type === "text" && typeof block.text === "string") {
+				total += Buffer.byteLength(block.text, "utf8"); // true UTF-8 bytes (honest on CJK/emoji)
+			}
+		}
+		return total;
+	}
+
+	private _deriveCacheReuseDollars(): number {
+		let dollars = 0;
+		const models = this._modelRegistry.getAll();
+		for (const message of this.state.messages) {
+			if (message.role !== "assistant") continue;
+			const assistant = message as AssistantMessage;
+			const cacheRead = assistant.usage?.cacheRead ?? 0;
+			if (cacheRead <= 0) continue;
+			const resolved = models.find((m) => m.id === assistant.model);
+			if (!resolved) continue; // unresolvable model id → degrade to 0
+			const delta = resolved.cost.input - resolved.cost.cacheRead;
+			if (delta <= 0) continue;
+			dollars += (cacheRead * delta) / 1e6;
+		}
+		return dollars;
+	}
+
 	private async _getRequiredRequestAuth(model: Model<any>): Promise<{
 		apiKey: string;
 		headers?: Record<string, string>;
@@ -547,6 +613,12 @@ export class AgentSession {
 							.join("");
 						const stub = this._readDeduplicationCache.checkRead(filePath, fullText);
 						if (stub) {
+							// Savings Meter (DD §10.2): dedup short-circuits the cave pipeline
+							// (disjoint from compression). Book this result's full bytes into the
+							// denominator and the re-read-avoided delta as a "dedup" saving.
+							const fullBytes = Buffer.byteLength(fullText, "utf8");
+							this._savings.recordToolOutput(fullBytes);
+							this._savings.recordSaving("dedup", fullBytes - Buffer.byteLength(stub, "utf8"));
 							// Replace full content with dedup stub — skip further compression
 							const stubContent = [{ type: "text" as const, text: stub }] as typeof result.content;
 							const runner = this._extensionRunner;
@@ -576,6 +648,14 @@ export class AgentSession {
 
 			// Cave mode tool result compression (runs before extension hooks, never on errors)
 			let processedContent = result.content;
+			// Savings Meter (DD §10.1/§10.4): measure ONE net delta per tool result.
+			// `before` is captured BEFORE the cave pipeline; it feeds the honest
+			// denominator (every non-error result, compressed or not). The dedup path
+			// above short-circuits and books its own bytes, so it never reaches here.
+			const beforeBytes = !isError ? this._sumTextLen(result.content) : 0;
+			if (!isError) {
+				this._savings.recordToolOutput(beforeBytes);
+			}
 			if (!isError && caveEnabled) {
 				if (this.settingsManager.getCaveModeMLCompression()) {
 					// ML compression (LLMLingua-2 ONNX) — runs INSTEAD of rule-based stages
@@ -619,6 +699,15 @@ export class AgentSession {
 					) as typeof result.content;
 				} catch {
 					processedContent = result.content;
+				}
+			}
+
+			// Savings Meter (DD §10.1): the net pipeline delta booked ONCE per result
+			// (covers ML + the rule-based stages — they aren't cleanly separable).
+			if (!isError) {
+				const afterBytes = this._sumTextLen(processedContent);
+				if (beforeBytes > afterBytes) {
+					this._savings.recordSaving("compression", beforeBytes - afterBytes);
 				}
 			}
 
@@ -1220,11 +1309,20 @@ export class AgentSession {
 					const compressedContent = await Promise.all(
 						(m.content as Array<{ type: string; text?: string; [key: string]: unknown }>).map(async (block) => {
 							if (block.type !== "text" || typeof block.text !== "string") return block;
+							const inLen = Buffer.byteLength(block.text, "utf8");
 							const r = await this._llmlingua!.compressAsync(block.text, {
 								targetRatio: 0.5,
 								activationThreshold: 4000,
 							});
-							return r.compressed ? { ...block, text: r.bytes } : block;
+							if (r.compressed) {
+								// Savings Meter (DD §10.2): soft-compaction is disjoint from inline
+								// compression (operates on stored post-inline text) and idempotent
+								// via `_softCompressedTimestamps` — book once per compressed message.
+								// UTF-8 bytes (consistent with dedup/compression).
+								this._savings.recordSaving("compaction", inLen - Buffer.byteLength(r.bytes, "utf8"));
+								return { ...block, text: r.bytes };
+							}
+							return block;
 						}),
 					);
 					this._softCompressedTimestamps.add(m.timestamp);

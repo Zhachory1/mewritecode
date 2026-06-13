@@ -216,6 +216,31 @@ export function formatSessionEndSummary(opts: {
 }
 
 /**
+ * Savings Meter (DD §10.8): session-end savings line. Bytes-led, with the
+ * honest % of tool output and the cumulative all-time bytes. Returns undefined
+ * when nothing was saved (the line is omitted on exit).
+ *
+ * Example: "Caveman eliminated 5.3 KB of context (31% of tool output) · 1.9 MB all-time"
+ */
+export function formatSavingsLine(opts: {
+	bytesSaved: number;
+	percentCompressed: number;
+	cumulativeAllTimeBytes: number;
+}): string | undefined {
+	if (opts.bytesSaved <= 0) return undefined;
+	const pct = Math.round(opts.percentCompressed * 100);
+	const allTime = opts.cumulativeAllTimeBytes > 0 ? ` · ${formatByteCount(opts.cumulativeAllTimeBytes)} all-time` : "";
+	return `Caveman eliminated ${formatByteCount(opts.bytesSaved)} of context (${pct}% of tool output)${allTime}`;
+}
+
+/** Compact byte count: 940 → "940 B", 4200 → "4.1 KB", 1_500_000 → "1.4 MB". */
+export function formatByteCount(n: number): string {
+	if (n < 1024) return `${n} B`;
+	if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+	return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/**
  * Compact token count: 800 → "0.8k", 1200 → "1.2k", 1_500_000 → "1.5M"
  *
  * Uses k suffix for values >= 100 to match WS19 spec (1.2k in / 0.8k out).

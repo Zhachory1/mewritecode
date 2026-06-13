@@ -65,8 +65,13 @@ import {
 } from "../../core/agent-session.js";
 import type { AgentSessionRuntime } from "../../core/agent-session-runtime.js";
 import { type ArchitectModeState, defaultArchitectState } from "../../core/chat-modes/architect.js";
-import { formatSessionEndSummary } from "../../core/cost-formatter.js";
-import { persistSessionCost } from "../../core/cost-persistence.js";
+import { formatSavingsLine, formatSessionEndSummary } from "../../core/cost-formatter.js";
+import {
+	getAllTimeSavingsBytes,
+	getThisWeekSavingsBytes,
+	persistSessionCost,
+	persistSessionSavings,
+} from "../../core/cost-persistence.js";
 import { NoUsableAuthError } from "../../core/errors.js";
 import type {
 	ExtensionContext,
@@ -89,6 +94,7 @@ import { runGoalSlashCommand } from "../../core/slash-commands/goal.js";
 import { runMcpSlashCommand } from "../../core/slash-commands/mcp.js";
 import { runPlanCommand } from "../../core/slash-commands/plan.js";
 import { runRollbackCommand } from "../../core/slash-commands/rollback.js";
+import { formatSavingsShare, runSavingsCommand } from "../../core/slash-commands/savings.js";
 import {
 	BUILTIN_SLASH_COMMANDS,
 	emptyRepomapChatState,
@@ -329,6 +335,8 @@ export class InteractiveMode {
 	 * once a usable model is selected.
 	 */
 	private pendingPrompt?: string;
+	/** Per-run id for idempotent savings persistence (set lazily on first persist). */
+	private _savingsActivationId?: string;
 	private loadingAnimation: Loader | undefined = undefined;
 	private pendingWorkingMessage: string | undefined = undefined;
 	private readonly defaultWorkingMessage = "Working...";
@@ -2509,6 +2517,11 @@ export class InteractiveMode {
 			if (text === "/cost") {
 				this.editor.setText("");
 				this.handleCostCommand();
+				return;
+			}
+			if (text === "/savings" || text.startsWith("/savings ")) {
+				this.editor.setText("");
+				await this.handleSavingsCommand(text.slice("/savings".length).trim());
 				return;
 			}
 			if (text === "/reload") {
@@ -5884,6 +5897,39 @@ export class InteractiveMode {
 		this.ui.requestRender();
 	}
 
+	// Savings Meter (DD §10): /savings — context bytes Caveman eliminated this
+	// session (dedup + compression + compaction) + cumulative. `--share` copies a
+	// bytes+% one-liner (no $, no cache-reuse).
+	private async handleSavingsCommand(arg: string): Promise<void> {
+		const totals = this.session.getSavings();
+
+		if (arg === "--share") {
+			const share = formatSavingsShare(totals);
+			let copied = false;
+			try {
+				await copyToClipboard(share);
+				copied = true;
+			} catch {
+				copied = false;
+			}
+			this.chatContainer.addChild(new Spacer(1));
+			this.chatContainer.addChild(new Text(`${share}${copied ? "\n(copied to clipboard)" : ""}`, 1, 0));
+			this.ui.requestRender();
+			return;
+		}
+
+		const pricingKnown = (this.session.model?.cost?.input ?? 0) > 0;
+		const result = runSavingsCommand({
+			totals,
+			pricingKnown,
+			cumulativeWeekBytes: getThisWeekSavingsBytes(),
+			cumulativeAllTimeBytes: getAllTimeSavingsBytes(),
+		});
+		this.chatContainer.addChild(new Spacer(1));
+		this.chatContainer.addChild(new Text(result.lines.join("\n"), 1, 0));
+		this.ui.requestRender();
+	}
+
 	private updateSmokeSignal(): void {
 		this.setExtensionWidget("smoke-signal", undefined);
 	}
@@ -6040,26 +6086,51 @@ export class InteractiveMode {
 	private printAndPersistSessionCost(): void {
 		try {
 			const stats = this.session.getSessionStats();
-			if (stats.tokens.input === 0 && stats.tokens.output === 0) return;
+			const savings = this.session.getSavings();
 
-			const pricingKnown = stats.cost > 0;
-			const summary = formatSessionEndSummary({
-				inputTokens: stats.tokens.input,
-				outputTokens: stats.tokens.output,
-				dollars: stats.cost,
-				pricingKnown,
+			// Savings Meter (DD §10.7): persist BYTES idempotently by a PER-RUN key
+			// (session id + this activation), independent of the cost early-return so
+			// savings-only sessions still land. The per-run key blocks double-apply if
+			// persist fires twice in one run, while still counting a process relaunch /
+			// resume of the same session (new activation → new key → counted).
+			// persistSessionSavings no-ops on 0 bytes or a duplicate key.
+			this._savingsActivationId ??= `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+			persistSessionSavings({
+				sessionId: `${this.session.sessionId}:${this._savingsActivationId}`,
+				bytes: savings.bytesSaved,
 			});
-			// Write to stderr so it appears after TUI teardown without interfering with stdout
-			process.stderr.write(`\n${summary}\n`);
 
-			// Persist to ~/.cave/cost-totals.json atomically
-			persistSessionCost({
-				inputTokens: stats.tokens.input,
-				outputTokens: stats.tokens.output,
-				cacheCreateTokens: stats.tokens.cacheWrite,
-				cacheReadTokens: stats.tokens.cacheRead,
-				dollars: stats.cost,
+			const hasCost = stats.tokens.input !== 0 || stats.tokens.output !== 0;
+			if (hasCost) {
+				const pricingKnown = stats.cost > 0;
+				const summary = formatSessionEndSummary({
+					inputTokens: stats.tokens.input,
+					outputTokens: stats.tokens.output,
+					dollars: stats.cost,
+					pricingKnown,
+				});
+				// Write to stderr so it appears after TUI teardown without interfering with stdout
+				process.stderr.write(`\n${summary}\n`);
+
+				// Persist to ~/.cave/cost-totals.json atomically
+				persistSessionCost({
+					inputTokens: stats.tokens.input,
+					outputTokens: stats.tokens.output,
+					cacheCreateTokens: stats.tokens.cacheWrite,
+					cacheReadTokens: stats.tokens.cacheRead,
+					dollars: stats.cost,
+				});
+			}
+
+			// Savings Meter (DD §10.8): session-end savings line (only when bytes>0).
+			const savingsLine = formatSavingsLine({
+				bytesSaved: savings.bytesSaved,
+				percentCompressed: savings.percentCompressed,
+				cumulativeAllTimeBytes: getAllTimeSavingsBytes(),
 			});
+			if (savingsLine) {
+				process.stderr.write(`${savingsLine}\n`);
+			}
 		} catch {
 			// Best-effort — never crash on exit
 		}
@@ -6091,6 +6162,7 @@ export class InteractiveMode {
 			workspace: { current_dir: cwd, project_dir: cwd },
 			cave: {
 				queuedMessages: this.compactionQueuedMessages?.length ?? 0,
+				savedBytes: this.session.getSavings().bytesSaved,
 			},
 		};
 		const renderer = this.statusLineRenderer;

@@ -8,10 +8,13 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { todayDateString, weekKeyForDate } from "../cost-formatter.js";
 import {
+	getAllTimeSavingsBytes,
 	getCostTotalsPath,
+	getThisWeekSavingsBytes,
 	getThisWeekTotal,
 	getTodayTotal,
 	persistSessionCost,
+	persistSessionSavings,
 	readCostTotals,
 	type SessionCostDelta,
 } from "../cost-persistence.js";
@@ -206,5 +209,64 @@ describe("weekly rollover pruning", () => {
 
 		const totals = readCostTotals(totalsPath);
 		expect(totals.weekly["2024-W01"]).toBeUndefined();
+	});
+});
+
+describe("persistSessionSavings (DD §10.7)", () => {
+	it("increments daily/weekly/all-time bytes", () => {
+		persistSessionSavings({ sessionId: "s1", bytes: 4096 }, totalsPath);
+
+		const totals = readCostTotals(totalsPath);
+		const today = todayDateString();
+		const week = weekKeyForDate(today);
+		expect(totals.savings?.daily[today]?.bytes).toBe(4096);
+		expect(totals.savings?.weekly[week]?.bytes).toBe(4096);
+		expect(totals.savings?.allTime.bytes).toBe(4096);
+		expect(getAllTimeSavingsBytes(totalsPath)).toBe(4096);
+		expect(getThisWeekSavingsBytes(totalsPath)).toBe(4096);
+	});
+
+	it("is idempotent by session id — same id twice does NOT double-add", () => {
+		persistSessionSavings({ sessionId: "dupe", bytes: 1000 }, totalsPath);
+		persistSessionSavings({ sessionId: "dupe", bytes: 1000 }, totalsPath);
+		expect(getAllTimeSavingsBytes(totalsPath)).toBe(1000);
+		expect(getThisWeekSavingsBytes(totalsPath)).toBe(1000);
+	});
+
+	it("accumulates distinct session ids", () => {
+		persistSessionSavings({ sessionId: "a", bytes: 1000 }, totalsPath);
+		persistSessionSavings({ sessionId: "b", bytes: 500 }, totalsPath);
+		expect(getAllTimeSavingsBytes(totalsPath)).toBe(1500);
+	});
+
+	it("persists savings-only sessions (no cost gating)", () => {
+		// No cost ever written; savings should still land.
+		persistSessionSavings({ sessionId: "savings-only", bytes: 2048 }, totalsPath);
+		expect(getAllTimeSavingsBytes(totalsPath)).toBe(2048);
+	});
+
+	it("ignores zero/negative bytes and missing session id", () => {
+		persistSessionSavings({ sessionId: "z", bytes: 0 }, totalsPath);
+		persistSessionSavings({ sessionId: "n", bytes: -5 }, totalsPath);
+		persistSessionSavings({ sessionId: "", bytes: 100 }, totalsPath);
+		expect(getAllTimeSavingsBytes(totalsPath)).toBe(0);
+	});
+
+	it("back-fills savings onto a pre-existing cost-only file without clobbering cost", () => {
+		persistSessionCost(
+			{ inputTokens: 1000, outputTokens: 500, cacheCreateTokens: 0, cacheReadTokens: 0, dollars: 0.02 },
+			totalsPath,
+		);
+		persistSessionSavings({ sessionId: "mix", bytes: 4096 }, totalsPath);
+
+		const totals = readCostTotals(totalsPath);
+		const today = todayDateString();
+		expect(totals.daily[today]?.dollars).toBeCloseTo(0.02, 12); // cost preserved
+		expect(totals.savings?.allTime.bytes).toBe(4096);
+	});
+
+	it("read helpers return 0 on a missing/pre-savings file", () => {
+		expect(getAllTimeSavingsBytes(join(tmpDir, "nope.json"))).toBe(0);
+		expect(getThisWeekSavingsBytes(join(tmpDir, "nope.json"))).toBe(0);
 	});
 });
