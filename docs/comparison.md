@@ -39,22 +39,13 @@ This is the comparison table from the v2 master plan, kept current as features l
 - **opencode** — strong daemon / multi-client story. Newer; ecosystem still maturing.
 - **Cave** — borrows the best of all five and adds **Caveman Mode compression** + **20+ provider OAuth** as native, unique differentiators.
 
-## Tokens — the headline
+## Tokens — under revalidation
 
-25-task MicroBench, `gpt-5.5` on both sides, `xhigh` reasoning (2026-05-18):
+**Token efficiency under revalidation — see [#8](https://github.com/JuliusBrussee/caveman-code/issues/8).**
 
-| Agent | Fresh tokens | Pass rate | Cost |
-|---|---|---|---|
-| Codex CLI | 1,010,185 | 15/25 (60%) | $0 (codex sub) |
-| **Caveman Code** | **524,703** | **14/25 (56%)** | **$1.78** |
+The prior caveman-vs-Codex token comparison was never independently measured: it ran against a different model tier, Codex emits no structured token accounting, and the comparison was never actually executed end to end. We have pulled the number rather than restate an unverified claim.
 
-**1.93× fewer tokens for ~equivalent pass rate.** Reproduce in one command:
-
-```bash
-npx tsx research/evals/run-honest-bench.ts --tools caveman,codex
-```
-
-Raw CSV and per-task logs live in [`research/results/`](https://github.com/JuliusBrussee/caveman-cli/tree/main/research/results). Methodology spawns each CLI as a real child process — no SDK shortcuts.
+We are rebuilding an honest, controlled measurement — caveman-mode ON vs OFF at a **fixed model**, with a **shared external scorer** setting pass/fail for every run, a single dated price table, and bootstrap confidence intervals. The accounting math is unit-tested; the published table awaits the controlled run. Track progress in [#8](https://github.com/JuliusBrussee/caveman-code/issues/8).
 
 ## Format compatibility
 

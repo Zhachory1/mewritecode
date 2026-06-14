@@ -7,7 +7,7 @@ import { defineConfig } from "vitepress";
 export default defineConfig({
     title: "Cave",
     description:
-        "Best-in-class terminal coding agent. 40x token savings. 20+ provider OAuth. MIT.",
+        "Best-in-class terminal coding agent. Token efficiency under revalidation — see #8. 20+ provider OAuth. MIT.",
     lastUpdated: true,
     cleanUrls: true,
     base: "/docs/",
@@ -23,7 +23,7 @@ export default defineConfig({
             {
                 property: "og:description",
                 content:
-                    "2x fewer tokens than Codex CLI on identical gpt-5.5 tasks. 20+ provider OAuth. Plan mode, subagents, MCP, sandbox, hooks. MIT.",
+                    "Token efficiency under revalidation — see #8. 20+ provider OAuth. Plan mode, subagents, MCP, sandbox, hooks. MIT.",
             },
         ],
         ["meta", { property: "og:url", content: "https://getcaveman.dev/docs/" }],

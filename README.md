@@ -2,9 +2,9 @@
 
 # 🪨 Caveman Code
 
-**The terminal coding agent that talks like a caveman — and burns half the tokens doing it.**
+**The terminal coding agent that talks like a caveman — and compresses at every layer.**
 
-Same model. Same task. **~2× fewer tokens than Codex.** 20+ providers · plan mode · autopilot loop · MIT.
+Same model. Same task. **Token efficiency under revalidation — see [#8](https://github.com/JuliusBrussee/caveman-code/issues/8).** 20+ providers · plan mode · autopilot loop · MIT.
 
 <p>
   <a href="https://github.com/JuliusBrussee/caveman-code/stargazers"><img src="https://img.shields.io/github/stars/JuliusBrussee/caveman-code?color=d97757&style=flat-square" alt="Stars" /></a>
@@ -48,15 +48,10 @@ That is the entire product. Everything below is the coding agent it ships inside
 
 *25-task MicroBench · `gpt-5.5` · xhigh reasoning · 2026-05-18*
 
-| Tool | Fresh tokens | Pass rate |
-|---|---|---|
-| **🪨 caveman** | `████████████▌` **524k** | 14 / 25 |
-| codex | `████████████████████████` 1,010k | 15 / 25 |
-
-> **1.93× fewer tokens than Codex CLI on identical tasks.**
-> Same `gpt-5.5` model. Same `xhigh` reasoning. Pass rate within one task.
+> **Token efficiency under revalidation — see [#8](https://github.com/JuliusBrussee/caveman-code/issues/8).**
+> A prior caveman-vs-Codex token comparison was never independently measured — different model tier, no structured token accounting from Codex, and the comparison was never actually run. We are rebuilding an honest, controlled ON-vs-OFF ablation at a fixed model with a shared external scorer before publishing any number.
 >
-> No marketing-deck baselines. Each tool spawned as a real child process. Each task verified by a task-specific `verify.sh`. Raw CSV + per-task logs published.
+> Methodology under #8: each tool spawned as a real child process, each task verified by a shared external scorer, raw CSV + per-task logs published.
 
 ```bash
 npx tsx research/evals/run-honest-bench.ts --tools caveman,codex   # reproduce in one command
