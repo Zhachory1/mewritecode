@@ -104,6 +104,9 @@ export const PRICING_TABLE: Record<string, PricingRow> = {
 	// $/Mtok — PLACEHOLDER, verify before publishing.
 	"gpt-5.4": { input: 1.25, output: 10, cacheRead: 0.125, cacheWrite: 1.25 },
 	"gpt-5.5": { input: 1.25, output: 10, cacheRead: 0.125, cacheWrite: 1.25 },
+	// gpt-4o-mini — published OpenAI rates (2026-06): in $0.15, out $0.60, cached-in $0.075/Mtok.
+	// OpenAI has no separate cache-write premium; cacheWrite priced at the input rate.
+	"gpt-4o-mini": { input: 0.15, output: 0.6, cacheRead: 0.075, cacheWrite: 0.15 },
 };
 
 // ===========================================================================
