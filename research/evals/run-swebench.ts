@@ -6,6 +6,15 @@
  * per instance. This ensures proper tool calling (read/edit/bash/grep) instead
  * of the model generating text-only responses.
  *
+ * HANG GUARD (#32): the agent-loop idle-timeout (DEFAULT_STREAM_IDLE_TIMEOUT_MS,
+ * see packages/agent/src/agent-loop.ts) did NOT protect this SDK `session.prompt`
+ * path — a real run froze on a model turn that stalled WITHOUT tripping the
+ * mid-stream idle watchdog (0% CPU, 27 min, no output), and the cost-based --cap
+ * never fires on a stalled request (no cost accrues), so one hung instance freezes
+ * the whole condition forever. The `--instance-timeout` wall-clock bound below is
+ * the belt: it aborts the in-flight turn (session.abort) and returns an errored
+ * InstanceResult so the per-instance loop moves on.
+ *
  * Usage:
  *   npx tsx research/evals/run-swebench.ts [options]
  *
@@ -14,6 +23,11 @@
  *   --instance-id <id>     Run a single instance by ID
  *   --repos <r1,r2>        Filter to specific repos
  *   --cap <dollars>        Per-instance cost cap (default: $5, env: CAVE_BENCH_INSTANCE_CAP_DOLLARS)
+ *   --instance-timeout <s> Hard per-instance WALL-CLOCK timeout in seconds (default: 900,
+ *                          env: CAVE_BENCH_INSTANCE_TIMEOUT_SEC). On timeout the in-flight
+ *                          turn is aborted and the instance is recorded as an error so the
+ *                          run continues (belt for the idle-timeout gap, #32). 900s is well
+ *                          above the longest legit run observed (~580s) to avoid false aborts.
  *   --output <path>        Output dir (default: research/results)
  *   --provider <name>      LLM provider (default: openai-codex)
  *   --model <pattern>      Model pattern (default: gpt-5.4)
@@ -63,6 +77,12 @@ interface RunConfig {
 	instanceId?: string;
 	repos?: string[];
 	capDollars: number;
+	// Hard per-instance WALL-CLOCK timeout in seconds. The cost-based `capDollars`
+	// does NOT protect against a STALLED model turn (a hung request accrues no cost
+	// so the cap never trips), and the agent-loop idle-timeout did not fire on this
+	// SDK `session.prompt` path either (#32) — so this wall-clock bound is the belt
+	// that aborts a frozen instance and lets the run continue.
+	instanceTimeoutSec: number;
 	outputDir: string;
 	provider: string;
 	model: string;
@@ -131,6 +151,7 @@ function parseRunArgs(): RunConfig {
 	const args = process.argv.slice(2);
 	const config: RunConfig = {
 		capDollars: Number(process.env.CAVE_BENCH_INSTANCE_CAP_DOLLARS) || 5,
+		instanceTimeoutSec: Number(process.env.CAVE_BENCH_INSTANCE_TIMEOUT_SEC) || 900,
 		outputDir: resolve("research/results"),
 		provider: "openai-codex",
 		model: "gpt-5.4",
@@ -157,6 +178,15 @@ function parseRunArgs(): RunConfig {
 			case "--cap":
 				config.capDollars = Number(args[++i]);
 				break;
+			case "--instance-timeout": {
+				const v = Number(args[++i]);
+				if (!Number.isFinite(v) || v <= 0) {
+					console.error(`Invalid --instance-timeout value: ${v} (expected a positive number of seconds)`);
+					process.exit(1);
+				}
+				config.instanceTimeoutSec = v;
+				break;
+			}
 			case "--output":
 				config.outputDir = resolve(args[++i]);
 				break;
@@ -266,6 +296,87 @@ interface InstanceResult {
 	error?: string;
 }
 
+/**
+ * Build an errored InstanceResult: empty patch, ALL four token fields null (not 0)
+ * so a failed run is excludable from accounting rather than counted as a
+ * zero-token success, and the supplied error message. `durationMs` is caller-
+ * supplied (the wall-clock spent before the failure).
+ */
+export function erroredInstanceResult(error: string, durationMs: number): InstanceResult {
+	return {
+		patch: "",
+		durationMs,
+		cost: 0,
+		toolCalls: 0,
+		tokens: { input: null, output: null, cacheRead: null, cacheWrite: null },
+		error,
+	};
+}
+
+/**
+ * Bound `promise` with a WALL-CLOCK timeout. PURE/testable race helper — no I/O,
+ * no AgentSession needed.
+ *
+ * If `promise` settles first, its value/rejection is passed straight through and
+ * the timer is cleared. If `timeoutMs` elapses first, `onTimeout()` is invoked
+ * (the caller wires this to a REAL cancel — `session.abort()` — so the orphaned
+ * model turn is actually aborted, not just left running) and the returned promise
+ * resolves to `timeoutValue`. The original `promise`'s later settlement is
+ * ignored (its rejection is swallowed so it can't surface as an unhandled
+ * rejection after we've already moved on).
+ *
+ * This is the belt for #32: the agent-loop idle-timeout did not fire on the SDK
+ * `session.prompt` path, so a stalled turn would hang forever; this wall-clock
+ * bound guarantees the per-instance loop makes progress.
+ *
+ * @param promise the in-flight work to bound (e.g. session.prompt(...))
+ * @param timeoutMs wall-clock budget in milliseconds
+ * @param onTimeout invoked exactly once if the timeout wins (real cancel hook)
+ * @param timeoutValue value to resolve with on timeout (e.g. an errored result)
+ */
+export async function withInstanceTimeout<T>(
+	promise: Promise<T>,
+	timeoutMs: number,
+	onTimeout: () => void,
+	timeoutValue: T,
+): Promise<T> {
+	return new Promise<T>((resolve, reject) => {
+		let settled = false;
+		const timer = setTimeout(() => {
+			if (settled) return;
+			settled = true;
+			try {
+				onTimeout();
+			} catch {
+				// A failing cancel hook must not mask the timeout — we still resolve
+				// to the errored value so the run continues.
+			}
+			resolve(timeoutValue);
+		}, timeoutMs);
+		// Avoid keeping the event loop alive purely for this timer.
+		if (typeof timer.unref === "function") timer.unref();
+
+		promise.then(
+			(v) => {
+				if (settled) return;
+				settled = true;
+				clearTimeout(timer);
+				resolve(v);
+			},
+			(err) => {
+				if (settled) {
+					// Timeout already won; swallow the late rejection from the orphaned
+					// (now-aborted) turn so it doesn't surface as unhandled.
+					return;
+				}
+				settled = true;
+				clearTimeout(timer);
+				reject(err);
+			},
+		);
+	});
+}
+
 async function runCaveOnInstance(instance: BenchInstance, workDir: string, config: RunConfig): Promise<InstanceResult> {
 	const start = Date.now();
 
@@ -328,9 +439,40 @@ async function runCaveOnInstance(instance: BenchInstance, workDir: string, confi
 		const basePrompt = session.systemPrompt;
 		session.agent.state.systemPrompt = `${basePrompt}\n\n${SWEBENCH_SYSTEM_ADDENDUM}`;
 
-		// Run the agent loop — this triggers multi-turn tool calling
+		// Run the agent loop — this triggers multi-turn tool calling.
+		//
+		// HANG GUARD (#32): bound the turn with a hard WALL-CLOCK timeout. The
+		// agent-loop idle-timeout did not fire on this path and the cost --cap can't
+		// trip on a stalled (cost-free) request, so without this a frozen turn hangs
+		// the whole condition. On timeout we call session.abort() — a REAL cancel:
+		// it aborts the active run's AbortController (propagating to the in-flight
+		// model stream) and awaits idle — then return an errored result so the loop
+		// advances to the next instance. The TIMEOUT_SENTINEL distinguishes "timed
+		// out" from "prompt resolved" without depending on prompt()'s return value.
 		log("  Running agent...");
-		await session.prompt(buildPrompt(instance), { expandPromptTemplates: false });
+		const TIMEOUT_SENTINEL = Symbol("instance-timeout");
+		const timeoutMs = config.instanceTimeoutSec * 1000;
+		// Map prompt()'s Promise<void> to Promise<undefined> so the race result type
+		// is `undefined | sentinel` (avoids a confusing `void` in a union).
+		const promptDone: Promise<undefined> = session
+			.prompt(buildPrompt(instance), { expandPromptTemplates: false })
+			.then(() => undefined);
+		const raced = await withInstanceTimeout<undefined | typeof TIMEOUT_SENTINEL>(
+			promptDone,
+			timeoutMs,
+			() => {
+				// Real cancel of the orphaned turn. Fire-and-forget: abort() returns a
+				// promise (waits for idle) but we don't block the timeout path on it.
+				log(`  TIMEOUT after ${config.instanceTimeoutSec}s — aborting in-flight turn`);
+				void session.abort();
+			},
+			TIMEOUT_SENTINEL,
+		);
+		if (raced === TIMEOUT_SENTINEL) {
+			// Per-instance SKIP recorded as an error — must NOT throw out of the loop
+			// (the orchestrator excludes errored instances honestly).
+			return erroredInstanceResult(`instance timeout after ${config.instanceTimeoutSec}s`, Date.now() - start);
+		}
 
 		// Get stats
 		const stats = session.getSessionStats();
@@ -356,16 +498,7 @@ async function runCaveOnInstance(instance: BenchInstance, workDir: string, confi
 			},
 		};
 	} catch (error) {
-		return {
-			patch: "",
-			durationMs: Date.now() - start,
-			cost: 0,
-			toolCalls: 0,
-			// null (not 0) so a failed run is excludable from accounting rather
-			// than being counted as a zero-token success.
-			tokens: { input: null, output: null, cacheRead: null, cacheWrite: null },
-			error: error instanceof Error ? error.message : String(error),
-		};
+		return erroredInstanceResult(error instanceof Error ? error.message : String(error), Date.now() - start);
 	}
 }
 
@@ -397,7 +530,7 @@ async function main() {
 
 	log("=== SWE-bench Verified Runner for Cave CLI (SDK mode) ===");
 	log(
-		`Provider: ${config.provider} | Model: ${config.model} | Thinking: ${config.thinking} | Cap: $${config.capDollars}/instance`,
+		`Provider: ${config.provider} | Model: ${config.model} | Thinking: ${config.thinking} | Cap: $${config.capDollars}/instance | Timeout: ${config.instanceTimeoutSec}s/instance`,
 	);
 	log(
 		config.cave === "off"
