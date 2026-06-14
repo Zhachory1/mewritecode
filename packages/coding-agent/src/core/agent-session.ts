@@ -624,6 +624,14 @@ export class AgentSession {
 			// so prose and compression vary independently. The prose/disabled session
 			// flag intentionally does NOT gate compression here — only the settings
 			// `getCaveModeEnabled()` (mode-on-at-all) and the effective compression knob.
+			//
+			// KNOWN EDGE (by-design / behavior-preserving, tracked as a follow-up):
+			// the gate ANDs the SETTINGS `getCaveModeEnabled()`, not the session prose
+			// flag. So an interactive `setCaveModeSessionDisabled()` alone (which only
+			// flips `_sessionCaveModeDisabled`, leaving settings.enabled=true) removes
+			// the prose block but LEAVES compression on. Disabling compression for that
+			// session requires `setCaveModeSessionToolCompression(false)`. Not changed
+			// here.
 			const caveEnabled = this._effectiveToolCompression() && this.settingsManager.getCaveModeEnabled();
 
 			// Cave Painting Diff: read dedup and write/edit invalidation
