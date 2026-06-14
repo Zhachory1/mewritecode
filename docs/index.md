@@ -3,7 +3,7 @@ layout: home
 
 hero:
   name: "Caveman Code"
-  text: "Same model. Same task. 2× fewer tokens."
+  text: "Same model. Same task. Token efficiency under revalidation — see #8."
   tagline: "Terminal coding agent that compresses at every layer. 20+ provider OAuth. Plan mode, subagents, MCP, sandbox, hooks. MIT."
   image:
     src: /logo.svg
