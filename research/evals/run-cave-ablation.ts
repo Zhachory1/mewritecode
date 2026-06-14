@@ -18,8 +18,11 @@
  *   - COMPRESSION effect at fixed prose: relabel Run[] so level=off/on(compression)
  *
  * Outputs: manifest.json (git SHA, model, pre-registered acceptanceCriteria,
- * per-condition + effect deltas/CIs, scored bool), a flat CSV of all runs, and
- * per-condition artifacts under --output.
+ * per-condition + effect deltas/CIs, and an HONEST scored status — true only if
+ * EVERY condition was really scored, false if none, "mixed" otherwise, plus the
+ * list of proxy/failed conditions), a flat CSV of all runs, and per-condition
+ * artifacts under --output. Failed conditions (run-swebench non-zero exit) are
+ * EXCLUDED from aggregates, not ingested as partial.
  *
  * IMPORTANT: this file SPENDS MONEY when actually run (it spawns paid benchmark
  * subprocesses). The human operator runs the paid sweep. `--help` and `--dry-run`
@@ -161,6 +164,17 @@ export function parseAblationArgs(argv: string[], defaultOutputRoot = resolve(RE
 			case "--seeds": {
 				const n = Number(argv[++i]);
 				if (!Number.isInteger(n) || n < 1) throw new Error(`Invalid --seeds: ${n} (expected integer >= 1)`);
+				if (n > 1) {
+					// run-swebench has no --seed and is deterministic, and no sampling-seed
+					// is forwarded — so N seeds would produce N IDENTICAL runs, tripling
+					// nPairs and FABRICATING statistical replicates (fake CI narrowing /
+					// fake power). Refuse rather than silently lie. Real per-seed sampling
+					// control is a documented TODO; see #33.
+					throw new Error(
+						"sampling-seed control is not wired; --seeds>1 would fabricate statistical replicates " +
+							"(run-swebench is deterministic and no seed is forwarded) — see #33. Use --seeds 1.",
+					);
+				}
 				config.seeds = n;
 				break;
 			}
@@ -310,6 +324,9 @@ export function allRunsView(runs: AblationRun[]): Run[] {
 // Per-condition aggregates (PURE)
 // ===========================================================================
 
+/** How a condition's `resolved` field was actually derived. */
+export type ResolvedSource = "evaluate-patches.sh" | "patch-nonempty-PROXY";
+
 export interface ConditionStat {
 	prose: Prose;
 	compression: Compression;
@@ -317,13 +334,34 @@ export interface ConditionStat {
 	n: number;
 	medianCostPerResolved: number | null;
 	nResolvedTasks: number;
+	/** ACTUAL source of this condition's resolved field (intent-independent). */
+	resolvedSource: ResolvedSource;
+	/** true iff run-swebench failed for this condition and it was excluded from aggregates. */
+	failed: boolean;
 }
 
-export function perConditionStats(runs: AblationRun[], table: Record<string, PricingRow>): ConditionStat[] {
+/**
+ * Per-condition scoring metadata, keyed by the JSON key of [prose,compression].
+ * `resolvedSource` records how the resolved field was ACTUALLY derived (not the
+ * requested intent); `failed` marks a condition whose run-swebench subprocess
+ * exited non-zero (its partial output is excluded from `runs`).
+ */
+export type ConditionMetaMap = Map<string, { resolvedSource: ResolvedSource; failed: boolean }>;
+
+/** JSON key for a (prose,compression) pair — stable, NUL-free. */
+export function conditionKey(prose: Prose, compression: Compression): string {
+	return JSON.stringify([prose, compression]);
+}
+
+export function perConditionStats(
+	runs: AblationRun[],
+	table: Record<string, PricingRow>,
+	meta?: ConditionMetaMap,
+): ConditionStat[] {
 	// Group by (prose,compression) using a JSON key (no NUL separators).
 	const groups = new Map<string, AblationRun[]>();
 	for (const r of runs) {
-		const key = JSON.stringify([r.prose, r.compression]);
+		const key = conditionKey(r.prose, r.compression);
 		const arr = groups.get(key);
 		if (arr) arr.push(r);
 		else groups.set(key, [r]);
@@ -342,6 +380,7 @@ export function perConditionStats(runs: AblationRun[], table: Record<string, Pri
 		}));
 		const pr = passRate(view)[0];
 		const cpr = costPerResolved(view, table)[0];
+		const m = meta?.get(key);
 		out.push({
 			prose,
 			compression,
@@ -349,6 +388,8 @@ export function perConditionStats(runs: AblationRun[], table: Record<string, Pri
 			n: pr ? pr.n : 0,
 			medianCostPerResolved: cpr ? cpr.medianCost : null,
 			nResolvedTasks: cpr ? cpr.nTasks : 0,
+			resolvedSource: m?.resolvedSource ?? "patch-nonempty-PROXY",
+			failed: m?.failed ?? false,
 		});
 	}
 	return out;
@@ -427,16 +468,37 @@ export interface AcceptanceCriteria {
 	minCostSavingPct: number;
 }
 
+/**
+ * An effect block is EITHER the computed per-level entries OR an explicit
+ * "not varied" omission note (when the relevant factor had <2 levels, so no
+ * within-factor contrast exists). Emitting the note instead of a structurally
+ * guaranteed `nPairs:0` artifact keeps the manifest honest.
+ */
+export type EffectBlock = EffectEntry[] | { note: string };
+
+/** Top-level scoring honesty: true (all real), false (all proxy), or mixed. */
+export type ScoredStatus = boolean | "mixed";
+
 export interface ManifestInput {
 	gitSha: string;
 	provider: string;
 	model: string;
 	seeds: number;
-	scored: boolean;
+	/** what the OPERATOR requested (--score). Honesty is derived from conditions. */
+	scoreRequested: boolean;
 	acceptanceCriteria: AcceptanceCriteria;
 	conditions: ConditionStat[];
-	proseEffectByCompression: Record<string, EffectEntry[]>;
-	compressionEffectByProse: Record<string, EffectEntry[]>;
+	proseEffectByCompression: Record<string, EffectBlock>;
+	compressionEffectByProse: Record<string, EffectBlock>;
+}
+
+export interface ManifestConditionView {
+	prose: Prose;
+	compression: Compression;
+	passRate: number;
+	medianCostPerResolved: number | null;
+	/** ACTUAL resolved source for this condition (real eval vs weak proxy). */
+	resolvedSource: ResolvedSource;
 }
 
 export interface Manifest {
@@ -445,34 +507,70 @@ export interface Manifest {
 	provider: string;
 	model: string;
 	seeds: number;
-	scored: boolean;
-	/** weak-proxy warning surfaced when unscored — never present unscored as resolved. */
-	resolvedSource: "evaluate-patches.sh" | "patch-nonempty-PROXY";
+	/**
+	 * Honest scoring status: `true` only if EVERY (non-failed) condition was
+	 * really scored by evaluate-patches.sh; `false` if none were; `"mixed"` if
+	 * some were real and some fell back to the patch-nonempty proxy.
+	 */
+	scored: ScoredStatus;
+	/** Which conditions used the weak proxy (empty when scored===true). */
+	proxyConditions: Array<{ prose: Prose; compression: Compression }>;
+	/** Conditions whose run-swebench failed and were EXCLUDED from all aggregates. */
+	failedConditions: Array<{ prose: Prose; compression: Compression }>;
+	/** Top-level resolved source: real only when every condition was real. */
+	resolvedSource: "evaluate-patches.sh" | "patch-nonempty-PROXY" | "mixed";
 	acceptanceCriteria: AcceptanceCriteria;
-	conditions: Array<{ prose: Prose; compression: Compression; passRate: number; medianCostPerResolved: number | null }>;
-	proseEffect: Record<string, EffectEntry[]>;
-	compressionEffect: Record<string, EffectEntry[]>;
+	conditions: ManifestConditionView[];
+	proseEffect: Record<string, EffectBlock>;
+	compressionEffect: Record<string, EffectBlock>;
 	/** codex cross-tool comparability — n/a in this iso-model ablation. */
 	comparable: "n/a";
 	comparableNote: string;
 }
 
 export function assembleManifest(input: ManifestInput): Manifest {
+	// Only non-failed conditions count toward the scoring-honesty verdict; failed
+	// conditions are excluded from aggregates entirely.
+	const counted = input.conditions.filter((c) => !c.failed);
+	const proxyConditions = counted
+		.filter((c) => c.resolvedSource === "patch-nonempty-PROXY")
+		.map((c) => ({ prose: c.prose, compression: c.compression }));
+	const failedConditions = input.conditions
+		.filter((c) => c.failed)
+		.map((c) => ({ prose: c.prose, compression: c.compression }));
+
+	const realCount = counted.length - proxyConditions.length;
+	let scored: ScoredStatus;
+	let resolvedSource: Manifest["resolvedSource"];
+	if (counted.length === 0 || realCount === 0) {
+		scored = false;
+		resolvedSource = "patch-nonempty-PROXY";
+	} else if (proxyConditions.length === 0) {
+		scored = true;
+		resolvedSource = "evaluate-patches.sh";
+	} else {
+		scored = "mixed";
+		resolvedSource = "mixed";
+	}
+
 	return {
 		schema: "cave-ablation/v1",
 		gitSha: input.gitSha,
 		provider: input.provider,
 		model: input.model,
 		seeds: input.seeds,
-		scored: input.scored,
-		resolvedSource: input.scored ? "evaluate-patches.sh" : "patch-nonempty-PROXY",
+		scored,
+		proxyConditions,
+		failedConditions,
+		resolvedSource,
 		acceptanceCriteria: input.acceptanceCriteria,
 		// NOTE: deliberately NO total_processed (cherry-pick vector; raw CSV only).
-		conditions: input.conditions.map((c) => ({
+		conditions: counted.map((c) => ({
 			prose: c.prose,
 			compression: c.compression,
 			passRate: c.passRate,
 			medianCostPerResolved: c.medianCostPerResolved,
+			resolvedSource: c.resolvedSource,
 		})),
 		proseEffect: input.proseEffectByCompression,
 		compressionEffect: input.compressionEffectByProse,
@@ -480,6 +578,56 @@ export function assembleManifest(input: ManifestInput): Manifest {
 		comparableNote:
 			"Iso-model 2-factor ablation (prose × compression at a fixed model); codex cross-tool token comparison is out of scope here.",
 	};
+}
+
+// ===========================================================================
+// Effect-block guards (PURE) — only emit an effect when the factor is VARIED
+// ===========================================================================
+
+/**
+ * PROSE effect blocks keyed by the fixed compression value, but ONLY when prose
+ * is actually varied (2+ levels including the "off" baseline). With a single
+ * prose value there is no within-prose contrast, so emit an explicit omission
+ * note instead of a structurally guaranteed `nPairs:0` artifact.
+ */
+export function buildProseEffectBlocks(
+	runs: AblationRun[],
+	proseLevels: Prose[],
+	compressionLevels: Compression[],
+	table: Record<string, PricingRow>,
+	prngFor: (comp: Compression) => () => number,
+): Record<string, EffectBlock> {
+	const out: Record<string, EffectBlock> = {};
+	const varied = proseLevels.includes("off") && proseLevels.length >= 2;
+	for (const comp of compressionLevels) {
+		out[comp] = varied
+			? proseEffect(runs, comp, table, prngFor(comp))
+			: { note: "prose not varied (need the 'off' baseline plus >=1 other prose level)" };
+	}
+	return out;
+}
+
+/**
+ * COMPRESSION effect blocks keyed by the fixed prose value, but ONLY when
+ * compression is actually varied (BOTH `on` and `off` present). Under the default
+ * `--compression on` there is no on-vs-off contrast, so emit an explicit omission
+ * note rather than the guaranteed `level:lite nPairs:0` artifact.
+ */
+export function buildCompressionEffectBlocks(
+	runs: AblationRun[],
+	proseLevels: Prose[],
+	compressionLevels: Compression[],
+	table: Record<string, PricingRow>,
+	prngFor: (prose: Prose) => () => number,
+): Record<string, EffectBlock> {
+	const out: Record<string, EffectBlock> = {};
+	const varied = compressionLevels.includes("on") && compressionLevels.includes("off");
+	for (const prose of proseLevels) {
+		out[prose] = varied
+			? compressionEffect(runs, prose, table, prngFor(prose))
+			: { note: "compression not varied (need both on and off)" };
+	}
+	return out;
 }
 
 // ===========================================================================
@@ -682,7 +830,10 @@ function printHelp(): void {
 			"  --prose <csv>        off,lite,full,ultra (default: all 4)",
 			"  --compression <csv>  on,off (default: on)",
 			"  --seeds <n>          repeat index for independent re-runs (default: 1)",
-			"                       NOTE: true sampling-seed control is best-effort/not wired.",
+			"                       NOTE: only --seeds 1 is supported. run-swebench is",
+			"                       deterministic and no sampling-seed is forwarded, so",
+			"                       --seeds>1 would FABRICATE replicates and is rejected.",
+			"                       Real per-seed sampling control is a TODO (#33).",
 			"  --provider <name>    LLM provider (default: openai-codex)",
 			"  --model <id>         model held fixed across conditions (default: gpt-5.4)",
 			"  --limit <n>          max instances per condition",
@@ -700,10 +851,31 @@ function printHelp(): void {
 	);
 }
 
-function runEvaluate(conditionDir: string): Set<string> | undefined {
+/**
+ * Build a UNIQUE-per-condition SWE-bench run-id. The harness writes its report
+ * to logs/run_evaluation/<run-id>/, so this MUST be unique per condition or one
+ * condition's report would contaminate another's resolved-set (cross-condition
+ * union bug). Slug + second-granular timestamp gives per-condition isolation.
+ */
+export function conditionRunId(condition: Condition, nowSec: number): string {
+	return `cave-eval-${condition.slug}-${nowSec}`;
+}
+
+/**
+ * Run evaluate-patches.sh for ONE condition with an explicit, unique run-id, then
+ * parse ONLY that run's report (scoped to logs/run_evaluation/<run-id>/).
+ *
+ * Returns:
+ *   - undefined  → could not score this condition (no predictions, eval crashed,
+ *     or no report.json found). Caller treats the condition as UNSCORED and falls
+ *     back to the patch-nonempty proxy.
+ *   - Set<string> (possibly EMPTY) → report found; the set is the REAL resolved
+ *     instance ids. An empty set means "scored, genuinely zero resolved".
+ */
+function runEvaluate(conditionDir: string, runId: string): Set<string> | undefined {
 	const predictions = join(conditionDir, "predictions.jsonl");
 	if (!existsSync(predictions)) return undefined;
-	const res = spawnSync("bash", [resolve(__dirname, "evaluate-patches.sh"), predictions], {
+	const res = spawnSync("bash", [resolve(__dirname, "evaluate-patches.sh"), predictions, runId], {
 		cwd: REPO_ROOT,
 		stdio: "inherit",
 	});
@@ -711,14 +883,22 @@ function runEvaluate(conditionDir: string): Set<string> | undefined {
 		log(`evaluate-patches.sh failed for ${conditionDir} (status ${res.status}); leaving condition unscored`);
 		return undefined;
 	}
-	// Parse resolved instance ids from the latest run_evaluation report.
-	return parseResolvedFromLogs();
+	// Scope to THIS condition's report only — never union across runs/conditions.
+	return parseResolvedFromLogs(join(REPO_ROOT, "logs", "run_evaluation", runId));
 }
 
-function parseResolvedFromLogs(): Set<string> | undefined {
-	const logsDir = join(REPO_ROOT, "logs", "run_evaluation");
-	if (!existsSync(logsDir)) return undefined;
+/**
+ * Parse the resolved instance ids from a SINGLE eval run's report tree. PURE w.r.t.
+ * the given runDir (no global walk, no cross-run union).
+ *
+ * Returns `undefined` when NO report.json exists under runDir (parse-miss →
+ * unscored). Returns a (possibly empty) Set when at least one report.json is found
+ * — an empty Set then means "report present, zero resolved", a real scored 0.
+ */
+export function parseResolvedFromLogs(runDir: string): Set<string> | undefined {
+	if (!existsSync(runDir)) return undefined;
 	const resolved = new Set<string>();
+	let foundReport = false;
 	const walk = (dir: string): void => {
 		for (const entry of readdirSync(dir, { withFileTypes: true })) {
 			const p = join(dir, entry.name);
@@ -726,15 +906,16 @@ function parseResolvedFromLogs(): Set<string> | undefined {
 			else if (entry.name === "report.json") {
 				try {
 					const data = JSON.parse(readFileSync(p, "utf8")) as Record<string, { resolved?: boolean }>;
+					foundReport = true;
 					for (const [iid, r] of Object.entries(data)) if (r.resolved) resolved.add(iid);
 				} catch {
-					// skip
+					// unreadable report → not counted as a found report
 				}
 			}
 		}
 	};
-	walk(logsDir);
-	return resolved;
+	walk(runDir);
+	return foundReport ? resolved : undefined;
 }
 
 async function main(): Promise<void> {
@@ -767,45 +948,84 @@ async function main(): Promise<void> {
 
 	mkdirSync(config.outputDir, { recursive: true });
 	const allRuns: AblationRun[] = [];
+	// Per-(prose,compression) scoring/failure metadata for honest manifest assembly.
+	const meta: ConditionMetaMap = new Map();
+	const failedSlugs: string[] = [];
 
 	for (const condition of conditions) {
+		const key = conditionKey(condition.prose, condition.compression);
 		const conditionDir = join(config.outputDir, condition.slug);
 		mkdirSync(conditionDir, { recursive: true });
 		log(`=== ${condition.slug} ===`);
 		const args = buildSwebenchArgs(config, condition, conditionDir);
 		const res = spawnSync("npx", args, { cwd: REPO_ROOT, stdio: "inherit" });
 		if (res.status !== 0) {
-			log(`run-swebench exited ${res.status} for ${condition.slug}; recording empty condition`);
+			// Partial-crash safety: a non-zero exit may have left partial traces /
+			// predictions. Do NOT ingest them as a complete condition — that would
+			// silently fold a truncated run into the aggregates. Mark FAILED and skip.
+			log(`run-swebench exited ${res.status} for ${condition.slug}; marking condition FAILED and excluding it`);
+			failedSlugs.push(condition.slug);
+			meta.set(key, { resolvedSource: "patch-nonempty-PROXY", failed: true });
+			continue;
 		}
 
 		const traces = readTracesFromDir(conditionDir);
 		const predictions = readPredictionsFromDir(conditionDir);
-		const resolvedSet = config.score ? runEvaluate(conditionDir) : undefined;
+		let resolvedSet: Set<string> | undefined;
+		let resolvedSource: ResolvedSource = "patch-nonempty-PROXY";
+		if (config.score) {
+			// Unique per-condition run-id → scoped report → no cross-condition union.
+			const runId = conditionRunId(condition, Math.floor(Date.now() / 1000));
+			resolvedSet = runEvaluate(conditionDir, runId);
+			// resolvedSet is undefined on no-report/parse-miss/crash → unscored proxy;
+			// a (possibly empty) Set means the eval really scored this condition.
+			resolvedSource = resolvedSet !== undefined ? "evaluate-patches.sh" : "patch-nonempty-PROXY";
+		}
+		meta.set(key, { resolvedSource, failed: false });
 		const runs = buildConditionRuns({ condition, model: config.model, traces, predictions, resolvedSet });
 		allRuns.push(...runs);
 	}
 
-	const scored = config.score; // best-effort: even if scoring partially failed, scored intent is recorded
-	const prng = mulberry32(0xab1a7104);
-
-	const conditionStats = perConditionStats(allRuns, PRICING_TABLE);
-
-	const proseEffectByCompression: Record<string, EffectEntry[]> = {};
-	for (const comp of config.compression) {
-		proseEffectByCompression[comp] = proseEffect(allRuns, comp, PRICING_TABLE, mulberry32(0xc0ffee));
+	const conditionStats = perConditionStats(allRuns, PRICING_TABLE, meta);
+	// Conditions that failed contribute no runs, so perConditionStats won't emit
+	// them — append explicit failed rows so the manifest records the exclusion.
+	for (const slug of failedSlugs) {
+		const cond = conditions.find((c) => c.slug === slug);
+		if (cond && !conditionStats.some((s) => s.prose === cond.prose && s.compression === cond.compression)) {
+			conditionStats.push({
+				prose: cond.prose,
+				compression: cond.compression,
+				passRate: 0,
+				n: 0,
+				medianCostPerResolved: null,
+				nResolvedTasks: 0,
+				resolvedSource: "patch-nonempty-PROXY",
+				failed: true,
+			});
+		}
 	}
-	const compressionEffectByProse: Record<string, EffectEntry[]> = {};
-	for (const prose of config.prose) {
-		compressionEffectByProse[prose] = compressionEffect(allRuns, prose, PRICING_TABLE, mulberry32(0xfacade));
-	}
-	void prng;
+
+	const proseEffectByCompression = buildProseEffectBlocks(
+		allRuns,
+		config.prose,
+		config.compression,
+		PRICING_TABLE,
+		() => mulberry32(0xc0ffee),
+	);
+	const compressionEffectByProse = buildCompressionEffectBlocks(
+		allRuns,
+		config.prose,
+		config.compression,
+		PRICING_TABLE,
+		() => mulberry32(0xfacade),
+	);
 
 	const manifest = assembleManifest({
 		gitSha: gitSha(),
 		provider: config.provider,
 		model: config.model,
 		seeds: config.seeds,
-		scored,
+		scoreRequested: config.score,
 		acceptanceCriteria: { maxQualityDropPp: 3, minCostSavingPct: 15 },
 		conditions: conditionStats,
 		proseEffectByCompression,
@@ -819,7 +1039,16 @@ async function main(): Promise<void> {
 	log("=== Done ===");
 	log(`Manifest: ${join(config.outputDir, "manifest.json")}`);
 	log(`Runs CSV: ${join(config.outputDir, "runs.csv")}`);
-	if (!scored) log("UNSCORED: resolved is a patch-nonempty WEAK proxy (scored:false). Re-run with --score for real resolved.");
+	if (manifest.scored === false) {
+		log("UNSCORED: resolved is a patch-nonempty WEAK proxy (scored:false). Re-run with --score for real resolved.");
+	} else if (manifest.scored === "mixed") {
+		log(
+			`MIXED scoring: ${manifest.proxyConditions.length} condition(s) fell back to the patch-nonempty proxy (scored:"mixed").`,
+		);
+	}
+	if (manifest.failedConditions.length > 0) {
+		log(`FAILED conditions excluded from aggregates: ${failedSlugs.join(", ")}`);
+	}
 }
 
 // Only run main when executed directly (not when imported by tests).

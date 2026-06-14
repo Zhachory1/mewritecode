@@ -8,19 +8,28 @@
  * fixtures via buildConditionRuns, exactly as the runner consumes them.
  */
 
-import { describe, expect, it } from "vitest";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { mulberry32, type PricingRow, type Usage } from "../honest-metrics.js";
 import {
 	type AblationRun,
 	assembleManifest,
+	buildCompressionEffectBlocks,
 	buildConditionRuns,
+	buildProseEffectBlocks,
 	compressionAtFixedProseView,
 	compressionEffect,
 	COMPRESSION_ON_LEVEL,
 	type Condition,
+	conditionRunId,
+	type ConditionStat,
+	type EffectEntry,
 	enumerateConditions,
 	HelpRequested,
 	parseAblationArgs,
+	parseResolvedFromLogs,
 	perConditionStats,
 	proseAtFixedCompressionView,
 	proseEffect,
@@ -70,7 +79,7 @@ describe("parseAblationArgs", () => {
 			"--compression",
 			"on,off",
 			"--seeds",
-			"3",
+			"1",
 			"--provider",
 			"anthropic",
 			"--model",
@@ -83,12 +92,19 @@ describe("parseAblationArgs", () => {
 		]);
 		expect(c.prose).toEqual(["off", "ultra"]);
 		expect(c.compression).toEqual(["on", "off"]);
-		expect(c.seeds).toBe(3);
+		expect(c.seeds).toBe(1);
 		expect(c.provider).toBe("anthropic");
 		expect(c.model).toBe("claude-x");
 		expect(c.limit).toBe(7);
 		expect(c.cap).toBe(2.5);
 		expect(c.score).toBe(true);
+	});
+
+	it("rejects --seeds>1 (would fabricate statistical replicates; #33)", () => {
+		expect(() => parseAblationArgs(["--seeds", "3"])).toThrow(/fabricate statistical replicates/);
+		expect(() => parseAblationArgs(["--seeds", "2"])).toThrow(/sampling-seed control is not wired/);
+		// --seeds 1 still works.
+		expect(parseAblationArgs(["--seeds", "1"]).seeds).toBe(1);
 	});
 
 	it("--dry-run sets dryRun", () => {
@@ -294,45 +310,102 @@ describe("buildConditionRuns", () => {
 // ---------------------------------------------------------------------------
 
 describe("assembleManifest", () => {
+	const cond = (
+		p: Partial<ConditionStat> & Pick<ConditionStat, "prose" | "compression">,
+	): ConditionStat => ({
+		passRate: 0.5,
+		n: 2,
+		medianCostPerResolved: 1,
+		nResolvedTasks: 1,
+		resolvedSource: "evaluate-patches.sh",
+		failed: false,
+		...p,
+	});
 	const base = {
 		gitSha: "abc123",
 		provider: "openai-codex",
 		model: "gpt-5.4",
-		seeds: 2,
+		seeds: 1,
 		acceptanceCriteria: { maxQualityDropPp: 3, minCostSavingPct: 15 },
-		conditions: [
-			{ prose: "ultra" as const, compression: "on" as const, passRate: 0.5, n: 2, medianCostPerResolved: 1, nResolvedTasks: 1 },
-		],
+		conditions: [cond({ prose: "ultra", compression: "on" })],
 		proseEffectByCompression: { on: [] },
 		compressionEffectByProse: { ultra: [] },
 	};
 
-	it("scored manifest declares evaluate-patches.sh as the resolved source", () => {
-		const m = assembleManifest({ ...base, scored: true });
+	it("scored=true only when EVERY condition was really scored", () => {
+		const m = assembleManifest({ ...base, scoreRequested: true });
 		expect(m.scored).toBe(true);
 		expect(m.resolvedSource).toBe("evaluate-patches.sh");
+		expect(m.proxyConditions).toEqual([]);
 	});
 
-	it("unscored manifest flags the patch-nonempty proxy and never claims real resolved", () => {
-		const m = assembleManifest({ ...base, scored: false });
+	it("all-proxy → scored=false, flags the weak proxy, never claims real resolved", () => {
+		const m = assembleManifest({
+			...base,
+			scoreRequested: false,
+			conditions: [cond({ prose: "ultra", compression: "on", resolvedSource: "patch-nonempty-PROXY" })],
+		});
 		expect(m.scored).toBe(false);
 		expect(m.resolvedSource).toBe("patch-nonempty-PROXY");
 	});
 
+	it("mixed scoring → scored='mixed' and lists the proxy conditions", () => {
+		const m = assembleManifest({
+			...base,
+			scoreRequested: true,
+			conditions: [
+				cond({ prose: "ultra", compression: "on", resolvedSource: "evaluate-patches.sh" }),
+				cond({ prose: "off", compression: "on", resolvedSource: "patch-nonempty-PROXY" }),
+			],
+		});
+		expect(m.scored).toBe("mixed");
+		expect(m.resolvedSource).toBe("mixed");
+		expect(m.proxyConditions).toEqual([{ prose: "off", compression: "on" }]);
+	});
+
+	it("failed conditions are excluded from aggregates + the scoring verdict, recorded separately", () => {
+		const m = assembleManifest({
+			...base,
+			scoreRequested: true,
+			conditions: [
+				cond({ prose: "ultra", compression: "on", resolvedSource: "evaluate-patches.sh" }),
+				cond({ prose: "off", compression: "on", failed: true, resolvedSource: "patch-nonempty-PROXY" }),
+			],
+		});
+		// failed condition does not poison the all-scored verdict
+		expect(m.scored).toBe(true);
+		expect(m.failedConditions).toEqual([{ prose: "off", compression: "on" }]);
+		// and it is not present in the headline conditions list
+		expect(m.conditions.some((c) => c.prose === "off")).toBe(false);
+	});
+
+	it("per-condition resolvedSource is surfaced in the conditions view", () => {
+		const m = assembleManifest({
+			...base,
+			scoreRequested: true,
+			conditions: [cond({ prose: "ultra", compression: "on", resolvedSource: "evaluate-patches.sh" })],
+		});
+		expect(m.conditions[0]).toEqual({
+			prose: "ultra",
+			compression: "on",
+			passRate: 0.5,
+			medianCostPerResolved: 1,
+			resolvedSource: "evaluate-patches.sh",
+		});
+	});
+
 	it("carries gitSha, acceptanceCriteria, effects; omits total_processed", () => {
-		const m = assembleManifest({ ...base, scored: true });
+		const m = assembleManifest({ ...base, scoreRequested: true });
 		expect(m.gitSha).toBe("abc123");
 		expect(m.acceptanceCriteria).toEqual({ maxQualityDropPp: 3, minCostSavingPct: 15 });
 		expect(m.proseEffect).toEqual({ on: [] });
 		expect(m.compressionEffect).toEqual({ ultra: [] });
 		expect(m.comparable).toBe("n/a");
 		expect(JSON.stringify(m)).not.toContain("total_processed");
-		// condition shape is trimmed (no n / nResolvedTasks leakage of cherry-pick fields)
-		expect(m.conditions[0]).toEqual({ prose: "ultra", compression: "on", passRate: 0.5, medianCostPerResolved: 1 });
 	});
 
 	it("manifest serializes with no NUL bytes", () => {
-		const m = assembleManifest({ ...base, scored: false });
+		const m = assembleManifest({ ...base, scoreRequested: false });
 		const NUL = String.fromCharCode(0);
 		expect(JSON.stringify(m, null, 2).includes(NUL)).toBe(false);
 	});
@@ -362,5 +435,126 @@ describe("runsToCsv", () => {
 	it("contains no NUL bytes", () => {
 		const csv = runsToCsv([ar({ prose: "lite", compression: "on", task: "t1", resolved: true })], TABLE);
 		expect(csv.includes(String.fromCharCode(0))).toBe(false);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Effect-block guards — only emit an effect when the factor is actually varied
+// ---------------------------------------------------------------------------
+
+function isEntries(b: unknown): b is EffectEntry[] {
+	return Array.isArray(b);
+}
+
+describe("buildCompressionEffectBlocks", () => {
+	it("emits a 'not varied' note when only one compression value is present", () => {
+		const runs: AblationRun[] = [ar({ prose: "ultra", compression: "on", task: "t1", resolved: true })];
+		const blocks = buildCompressionEffectBlocks(runs, ["ultra"], ["on"], TABLE, () => mulberry32(1));
+		expect(isEntries(blocks.ultra)).toBe(false);
+		expect((blocks.ultra as { note: string }).note).toMatch(/compression not varied/);
+	});
+
+	it("emits real entries when BOTH on and off are present", () => {
+		const runs: AblationRun[] = [];
+		for (let i = 0; i < 12; i++) {
+			runs.push(ar({ prose: "ultra", compression: "off", task: `t${i}`, resolved: true, usage: U(2_000_000) }));
+			runs.push(ar({ prose: "ultra", compression: "on", task: `t${i}`, resolved: true, usage: U(1_000_000) }));
+		}
+		const blocks = buildCompressionEffectBlocks(runs, ["ultra"], ["on", "off"], TABLE, () => mulberry32(1));
+		expect(isEntries(blocks.ultra)).toBe(true);
+		const on = (blocks.ultra as EffectEntry[]).find((e) => e.level === COMPRESSION_ON_LEVEL);
+		expect(on?.costMedianRatio).toBeCloseTo(0.5, 6);
+	});
+});
+
+describe("buildProseEffectBlocks", () => {
+	it("emits a 'not varied' note when prose has <2 levels or no off baseline", () => {
+		const runs: AblationRun[] = [ar({ prose: "ultra", compression: "on", task: "t1", resolved: true })];
+		const single = buildProseEffectBlocks(runs, ["ultra"], ["on"], TABLE, () => mulberry32(1));
+		expect((single.on as { note: string }).note).toMatch(/prose not varied/);
+		// 2 levels but missing the off baseline → still no contrast
+		const noOff = buildProseEffectBlocks(runs, ["lite", "ultra"], ["on"], TABLE, () => mulberry32(1));
+		expect((noOff.on as { note: string }).note).toMatch(/prose not varied/);
+	});
+
+	it("emits real entries when off + another prose level are present", () => {
+		const runs: AblationRun[] = [];
+		for (let i = 0; i < 12; i++) {
+			runs.push(ar({ prose: "off", compression: "on", task: `t${i}`, resolved: true, usage: U(1_000_000) }));
+			runs.push(ar({ prose: "ultra", compression: "on", task: `t${i}`, resolved: true, usage: U(2_000_000) }));
+		}
+		const blocks = buildProseEffectBlocks(runs, ["off", "ultra"], ["on"], TABLE, () => mulberry32(1));
+		expect(isEntries(blocks.on)).toBe(true);
+		const ultra = (blocks.on as EffectEntry[]).find((e) => e.level === "ultra");
+		expect(ultra?.costMedianRatio).toBeCloseTo(2, 6);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// conditionRunId — unique per condition (no cross-condition report collision)
+// ---------------------------------------------------------------------------
+
+describe("conditionRunId", () => {
+	it("is unique per condition slug at the same timestamp", () => {
+		const a: Condition = { prose: "off", compression: "on", seedIndex: 0, slug: "off_on_s0" };
+		const b: Condition = { prose: "ultra", compression: "off", seedIndex: 0, slug: "ultra_off_s0" };
+		expect(conditionRunId(a, 1000)).not.toBe(conditionRunId(b, 1000));
+		expect(conditionRunId(a, 1000)).toContain("off_on_s0");
+	});
+});
+
+// ---------------------------------------------------------------------------
+// parseResolvedFromLogs — scoped to ONE run dir; empty-vs-miss discrimination
+// ---------------------------------------------------------------------------
+
+describe("parseResolvedFromLogs", () => {
+	let root: string;
+	beforeEach(() => {
+		root = mkdtempSync(join(tmpdir(), "cave-eval-"));
+	});
+	afterEach(() => {
+		rmSync(root, { recursive: true, force: true });
+	});
+
+	const writeReport = (runId: string, data: Record<string, { resolved: boolean }>) => {
+		const dir = join(root, runId, "nested");
+		mkdirSync(dir, { recursive: true });
+		writeFileSync(join(dir, "report.json"), JSON.stringify(data));
+	};
+
+	it("returns undefined when no report exists (parse-miss → unscored)", () => {
+		expect(parseResolvedFromLogs(join(root, "does-not-exist"))).toBeUndefined();
+	});
+
+	it("returns an EMPTY set when a report is found with zero resolved (real scored 0)", () => {
+		writeReport("run-A", { i1: { resolved: false }, i2: { resolved: false } });
+		const res = parseResolvedFromLogs(join(root, "run-A"));
+		expect(res).toBeDefined();
+		expect(res?.size).toBe(0);
+	});
+
+	it("returns only the resolved ids from THIS run dir, never unioning siblings", () => {
+		writeReport("run-A", { a1: { resolved: true }, a2: { resolved: false } });
+		writeReport("run-B", { b1: { resolved: true } });
+		const a = parseResolvedFromLogs(join(root, "run-A"));
+		expect([...(a ?? [])]).toEqual(["a1"]);
+		expect(a?.has("b1")).toBe(false); // no cross-condition contamination
+	});
+});
+
+// ---------------------------------------------------------------------------
+// perConditionStats — surfaces resolvedSource / failed from the meta map
+// ---------------------------------------------------------------------------
+
+describe("perConditionStats resolvedSource/failed", () => {
+	it("defaults to proxy/not-failed without meta, and reflects meta when given", () => {
+		const runs: AblationRun[] = [ar({ prose: "ultra", compression: "on", task: "t1", resolved: true })];
+		const noMeta = perConditionStats(runs, TABLE);
+		expect(noMeta[0].resolvedSource).toBe("patch-nonempty-PROXY");
+		expect(noMeta[0].failed).toBe(false);
+
+		const meta = new Map([[JSON.stringify(["ultra", "on"]), { resolvedSource: "evaluate-patches.sh" as const, failed: false }]]);
+		const withMeta = perConditionStats(runs, TABLE, meta);
+		expect(withMeta[0].resolvedSource).toBe("evaluate-patches.sh");
 	});
 });
