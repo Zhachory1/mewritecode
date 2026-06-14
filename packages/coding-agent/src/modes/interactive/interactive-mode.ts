@@ -97,6 +97,7 @@ import { runRollbackCommand } from "../../core/slash-commands/rollback.js";
 import { formatSavingsShare, runSavingsCommand } from "../../core/slash-commands/savings.js";
 import {
 	BUILTIN_SLASH_COMMANDS,
+	isUnwiredBuiltinCommand,
 	emptyRepomapChatState,
 	type RepomapChatState,
 	runArchitectCommand,
@@ -287,16 +288,30 @@ export interface InteractiveModeOptions {
  *  - `/login <provider>` with a known provider → route directly to that provider.
  *  - `/login <provider>` with an unknown provider → `invalid` (caller lists valid ones).
  */
+/** Resolve a user-typed provider name (id or alias) to a canonical id, or undefined. Case-insensitive. */
+export function resolveProviderAlias(
+	input: string,
+	providers: ReadonlyArray<{ id: string; aliases?: readonly string[] }>,
+): string | undefined {
+	const q = input.trim().toLowerCase();
+	for (const p of providers) {
+		if (p.id.toLowerCase() === q) return p.id;
+		if (p.aliases?.some((a) => a.toLowerCase() === q)) return p.id;
+	}
+	return undefined;
+}
+
 export function parseLoginCommand(
 	text: string,
-	validProviders: string[],
+	providers: ReadonlyArray<{ id: string; aliases?: readonly string[] }>,
 ): { kind: "selector" } | { kind: "provider"; provider: string } | { kind: "invalid"; provider: string } {
 	const arg = text.startsWith("/login ") ? text.slice("/login ".length).trim() : "";
 	if (arg === "") {
 		return { kind: "selector" };
 	}
-	if (validProviders.includes(arg)) {
-		return { kind: "provider", provider: arg };
+	const id = resolveProviderAlias(arg, providers);
+	if (id) {
+		return { kind: "provider", provider: id };
 	}
 	return { kind: "invalid", provider: arg };
 }
@@ -514,6 +529,7 @@ export class InteractiveMode {
 		this.defaultEditor = new CustomEditor(this.ui, getEditorTheme(), this.keybindings, {
 			paddingX: editorPaddingX,
 			autocompleteMaxVisible,
+			placeholder: "Type a task, or / for commands · F1 help",
 		});
 		this.editor = this.defaultEditor;
 		this.editorContainer = new Container();
@@ -2447,6 +2463,11 @@ export class InteractiveMode {
 				this.editor.setText("");
 				return;
 			}
+			if (text === "/help") {
+				this.editor.setText("");
+				this.handleHelpCommand();
+				return;
+			}
 			if (text === "/skills" || text === "/plugins") {
 				this.editor.setText("");
 				this.handleSkillsCommand(text === "/plugins" ? "marketplace" : undefined);
@@ -2464,16 +2485,15 @@ export class InteractiveMode {
 			}
 			if (text === "/login" || text.startsWith("/login ")) {
 				this.editor.setText("");
-				const validProviders = this.session.modelRegistry.authStorage.getOAuthProviders().map((p) => p.id);
-				const parsed = parseLoginCommand(text, validProviders);
+				const providers = this.session.modelRegistry.authStorage.getOAuthProviders();
+				const parsed = parseLoginCommand(text, providers);
 				if (parsed.kind === "selector") {
 					await this.showOAuthSelector("login");
 				} else if (parsed.kind === "provider") {
 					await this.showLoginDialog(parsed.provider);
 				} else {
-					this.showError(
-						`Unknown provider "${parsed.provider}". Valid providers: ${validProviders.join(", ") || "(none)"}`,
-					);
+					const names = providers.map((p) => (p.aliases?.length ? `${p.aliases[0]} (${p.id})` : p.id)).join(", ");
+					this.showError(`Unknown provider "${parsed.provider}". Try: ${names || "(none)"}`);
 				}
 				return;
 			}
@@ -4597,6 +4617,17 @@ export class InteractiveMode {
 	 * (which sets, persists, and validates auth). `setModel` throws without auth,
 	 * so we refresh the registry first to make freshly-stored OAuth visible.
 	 */
+	/**
+	 * Ensure a usable (authenticated) model exists before a prompt runs. Returns
+	 * true when one is ready; false when the caller must not proceed.
+	 *
+	 * Task-first no-auth gate: when a keyless user submits a task before logging
+	 * in, `opts.pending` is stashed into {@link pendingPrompt}, the OAuth selector
+	 * is opened, and we return false so the prompt does NOT run yet. Once login
+	 * completes, {@link onLoginSuccess} resolves a model and replays the stashed
+	 * prompt — so the very first task the user typed is the one that runs, with no
+	 * silent drop and no double-prompt.
+	 */
 	private async ensureUsableModel(opts?: { pending?: string; forceReauth?: boolean }): Promise<boolean> {
 		const registry = this.session.modelRegistry;
 		// forceReauth: a call-time throw told us the current model's stored auth is
@@ -4982,7 +5013,7 @@ export class InteractiveMode {
 	private isUnwiredBuiltinSlash(text: string): boolean {
 		const head = text.slice(1).split(/\s+/, 1)[0];
 		if (!head) return false;
-		return BUILTIN_SLASH_COMMANDS.some((c) => c.name === head);
+		return isUnwiredBuiltinCommand(head);
 	}
 
 	private async handleReloadCommand(): Promise<void> {
@@ -5344,7 +5375,7 @@ export class InteractiveMode {
 		return this.capitalizeKey(keyText(action));
 	}
 
-	private handleHotkeysCommand(): void {
+	private buildHotkeysMarkdown(): string {
 		// Navigation keybindings
 		const cursorUp = this.getEditorKeyDisplay("tui.editor.cursorUp");
 		const cursorDown = this.getEditorKeyDisplay("tui.editor.cursorDown");
@@ -5452,10 +5483,41 @@ export class InteractiveMode {
 			}
 		}
 
+		return hotkeys;
+	}
+
+	private handleHotkeysCommand(): void {
+		const hotkeys = this.buildHotkeysMarkdown();
+
 		this.chatContainer.addChild(new Spacer(1));
 		this.chatContainer.addChild(new DynamicBorder());
 		this.chatContainer.addChild(new Text(theme.bold(theme.fg("accent", "Keyboard Shortcuts")), 1, 0));
 		this.chatContainer.addChild(new Spacer(1));
+		this.chatContainer.addChild(new Markdown(hotkeys.trim(), 1, 1, this.getMarkdownThemeWithSettings()));
+		this.chatContainer.addChild(new DynamicBorder());
+		this.ui.requestRender();
+	}
+
+	private handleHelpCommand(): void {
+		let commands = `
+**Commands**
+| Command | Description |
+|---------|-------------|
+`;
+		for (const c of BUILTIN_SLASH_COMMANDS.filter((c) => c.wired)) {
+			commands += `| \`/${c.name}\` | ${c.description} |\n`;
+		}
+		// Built-ins only — skill, project, and extension commands aren't listed
+		// here. Keep the surface honest: point at `/` autocomplete for the rest.
+		commands += `\n_Your skill, project, and extension commands aren't shown above — press \`/\` to browse everything._\n`;
+
+		const hotkeys = this.buildHotkeysMarkdown();
+
+		this.chatContainer.addChild(new Spacer(1));
+		this.chatContainer.addChild(new DynamicBorder());
+		this.chatContainer.addChild(new Text(theme.bold(theme.fg("accent", "Help")), 1, 0));
+		this.chatContainer.addChild(new Spacer(1));
+		this.chatContainer.addChild(new Markdown(commands.trim(), 1, 1, this.getMarkdownThemeWithSettings()));
 		this.chatContainer.addChild(new Markdown(hotkeys.trim(), 1, 1, this.getMarkdownThemeWithSettings()));
 		this.chatContainer.addChild(new DynamicBorder());
 		this.ui.requestRender();

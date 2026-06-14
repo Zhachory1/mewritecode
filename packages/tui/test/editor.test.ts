@@ -3509,4 +3509,70 @@ describe("Editor component", () => {
 			assert.strictEqual(submitted, pastedText);
 		});
 	});
+
+	describe("Placeholder", () => {
+		const PLACEHOLDER = "Type a task, or / for commands · F1 help";
+
+		it("renders dim placeholder text with an inverse cursor when focused and empty", () => {
+			const editor = new Editor(createTestTUI(), defaultEditorTheme, { placeholder: PLACEHOLDER });
+			editor.focused = true;
+
+			const output = editor.render(80).join("\n");
+
+			assert.ok(output.includes("\x1b[2m"), "expected dim escape for placeholder");
+			assert.ok(output.includes("\x1b[7m"), "expected inverse cursor on first grapheme");
+			assert.ok(output.includes("ype a task"), "expected placeholder text in output");
+		});
+
+		it("renders dim placeholder with NO inverse cursor when unfocused", () => {
+			const editor = new Editor(createTestTUI(), defaultEditorTheme, { placeholder: PLACEHOLDER });
+			editor.focused = false;
+
+			const output = editor.render(80).join("\n");
+
+			assert.ok(output.includes("\x1b[2m"), "expected dim escape for placeholder");
+			assert.ok(!output.includes("\x1b[7m"), "expected no inverse cursor when unfocused");
+			assert.ok(output.includes("Type a task"), "expected placeholder text in output");
+		});
+
+		it("hides the placeholder once text is entered", () => {
+			const editor = new Editor(createTestTUI(), defaultEditorTheme, { placeholder: PLACEHOLDER });
+			editor.focused = true;
+			editor.handleInput("x");
+
+			const output = editor.render(80).join("\n");
+
+			assert.ok(!output.includes("Type a task"), "placeholder text should be gone after typing");
+			assert.strictEqual(editor.getText(), "x");
+		});
+
+		it("keeps the editor logically empty while the placeholder shows", () => {
+			const editor = new Editor(createTestTUI(), defaultEditorTheme, { placeholder: PLACEHOLDER });
+			editor.focused = true;
+			editor.render(80);
+
+			assert.strictEqual(editor.getText(), "");
+		});
+
+		it("setPlaceholder updates the rendered ghost text", () => {
+			const editor = new Editor(createTestTUI(), defaultEditorTheme);
+			editor.focused = true;
+			editor.setPlaceholder("hello there friend");
+
+			const output = editor.render(80).join("\n");
+			assert.ok(output.includes("ello there"), "expected updated placeholder text");
+		});
+
+		it("does not throw and stays within content width at narrow and wide widths", () => {
+			for (const width of [20, 200]) {
+				const editor = new Editor(createTestTUI(width, 24), defaultEditorTheme, { placeholder: PLACEHOLDER });
+				editor.focused = true;
+
+				const lines = editor.render(width);
+				for (const line of lines) {
+					assert.ok(visibleWidth(line) <= width, `line width ${visibleWidth(line)} exceeds ${width}`);
+				}
+			}
+		});
+	});
 });

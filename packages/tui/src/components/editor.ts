@@ -205,6 +205,8 @@ export interface EditorTheme {
 export interface EditorOptions {
 	paddingX?: number;
 	autocompleteMaxVisible?: number;
+	/** Ghost text shown (dimmed) while the editor is empty. Display-only. */
+	placeholder?: string;
 }
 
 const SLASH_COMMAND_SELECT_LIST_LAYOUT: SelectListLayoutOptions = {
@@ -227,6 +229,9 @@ export class Editor implements Component, Focusable {
 	protected tui: TUI;
 	private theme: EditorTheme;
 	private paddingX: number = 0;
+
+	// Display-only ghost text shown while the editor is empty.
+	private placeholder: string = "";
 
 	// Store last render width for cursor navigation
 	private lastWidth: number = 80;
@@ -286,6 +291,14 @@ export class Editor implements Component, Focusable {
 		this.paddingX = Number.isFinite(paddingX) ? Math.max(0, Math.floor(paddingX)) : 0;
 		const maxVisible = options.autocompleteMaxVisible ?? 5;
 		this.autocompleteMaxVisible = Number.isFinite(maxVisible) ? Math.max(3, Math.min(20, Math.floor(maxVisible))) : 5;
+		this.placeholder = options.placeholder ?? "";
+	}
+
+	setPlaceholder(placeholder: string): void {
+		if (this.placeholder !== placeholder) {
+			this.placeholder = placeholder;
+			this.tui.requestRender();
+		}
 	}
 
 	/** Set of currently valid paste IDs, for marker-aware segmentation. */
@@ -463,6 +476,40 @@ export class Editor implements Component, Focusable {
 			let displayText = layoutLine.text;
 			let lineVisibleWidth = visibleWidth(layoutLine.text);
 			let cursorInPadding = false;
+
+			// Show ghost placeholder text on the (empty) cursor line.
+			const showPlaceholder =
+				!!this.placeholder &&
+				this.isEditorEmpty() &&
+				layoutLine.hasCursor &&
+				layoutLine.cursorPos === 0 &&
+				layoutLine.text === "";
+
+			if (showPlaceholder) {
+				// Clip to layoutWidth (the wrap budget), not contentWidth: with the
+				// default paddingX=0, layoutWidth = contentWidth - 1 reserves the last
+				// column for the cursor, so a full-width placeholder cannot autowrap
+				// the border line on narrow terminals.
+				const clipped = truncateToWidth(this.placeholder, layoutWidth, "");
+				const graphemes = [...this.segment(clipped)];
+				const first = graphemes[0]?.segment ?? "";
+				const rest = clipped.slice(first.length);
+				const marker = emitCursorMarker ? CURSOR_MARKER : "";
+				if (this.focused) {
+					// Inverse-cursor the first grapheme, dim the remainder.
+					const head = `\x1b[7m${first}\x1b[0m`;
+					displayText = marker + head + (rest.length > 0 ? `\x1b[2m${rest}\x1b[0m` : "");
+				} else {
+					// No cursor when unfocused; whole placeholder is dimmed.
+					displayText = `\x1b[2m${clipped}\x1b[0m`;
+				}
+				lineVisibleWidth = visibleWidth(clipped);
+				const padding = " ".repeat(Math.max(0, contentWidth - lineVisibleWidth));
+				result.push(`${leftPadding}${displayText}${padding}${rightPadding}`);
+				// NOTE: placeholder is a fast-exit branch — any per-line post-processing
+				// added to the cursor/padding block below must be mirrored here.
+				continue;
+			}
 
 			// Add cursor if this line has it
 			if (layoutLine.hasCursor && layoutLine.cursorPos !== undefined) {

@@ -1,7 +1,12 @@
 import { describe, expect, test } from "vitest";
 import { parseLoginCommand } from "../src/modes/interactive/interactive-mode.js";
 
-const valid = ["anthropic", "openai", "github-copilot"];
+const valid = [
+	{ id: "anthropic", aliases: ["claude"] },
+	{ id: "openai-codex", aliases: ["chatgpt"] },
+	{ id: "github-copilot", aliases: ["copilot"] },
+	{ id: "antigravity" }, // no aliases — guards the id-only resolution branch
+];
 
 describe("parseLoginCommand", () => {
 	test("bare /login opens the selector", () => {
@@ -13,12 +18,30 @@ describe("parseLoginCommand", () => {
 		expect(parseLoginCommand("/login   ", valid)).toEqual({ kind: "selector" });
 	});
 
-	test("/login <valid provider> routes to that provider", () => {
+	test("/login <raw id> routes to that provider", () => {
 		expect(parseLoginCommand("/login anthropic", valid)).toEqual({ kind: "provider", provider: "anthropic" });
+		expect(parseLoginCommand("/login openai-codex", valid)).toEqual({
+			kind: "provider",
+			provider: "openai-codex",
+		});
 		expect(parseLoginCommand("/login github-copilot", valid)).toEqual({
 			kind: "provider",
 			provider: "github-copilot",
 		});
+	});
+
+	test("/login <friendly alias> resolves to the canonical id", () => {
+		expect(parseLoginCommand("/login claude", valid)).toEqual({ kind: "provider", provider: "anthropic" });
+		expect(parseLoginCommand("/login copilot", valid)).toEqual({ kind: "provider", provider: "github-copilot" });
+	});
+
+	test("alias resolution is case-insensitive", () => {
+		expect(parseLoginCommand("/login CHATGPT", valid)).toEqual({ kind: "provider", provider: "openai-codex" });
+	});
+
+	test("/login <id-only provider with no aliases> resolves by raw id", () => {
+		expect(parseLoginCommand("/login antigravity", valid)).toEqual({ kind: "provider", provider: "antigravity" });
+		expect(parseLoginCommand("/login ANTIGRAVITY", valid)).toEqual({ kind: "provider", provider: "antigravity" });
 	});
 
 	test("/login <unknown provider> is invalid", () => {
@@ -26,6 +49,6 @@ describe("parseLoginCommand", () => {
 	});
 
 	test("trims surrounding whitespace around the provider arg", () => {
-		expect(parseLoginCommand("/login  anthropic  ", valid)).toEqual({ kind: "provider", provider: "anthropic" });
+		expect(parseLoginCommand("/login  claude  ", valid)).toEqual({ kind: "provider", provider: "anthropic" });
 	});
 });
