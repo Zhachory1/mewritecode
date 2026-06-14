@@ -178,14 +178,17 @@ function resample(xs: number[], prng: () => number): number[] {
 
 const BOOTSTRAP_ITERS = 2000;
 
+/** Symmetric nearest-rank percentile indices into a sorted array of length n. */
+function pctIndex(n: number, p: number): number {
+	return Math.min(n - 1, Math.max(0, Math.round(p * (n - 1))));
+}
+
 /** Percentile (2.5/97.5) bootstrap CI of the median of `xs`. */
 function bootstrapMedianCI(xs: number[], prng: () => number): [number, number] {
 	const stats = new Array<number>(BOOTSTRAP_ITERS);
 	for (let b = 0; b < BOOTSTRAP_ITERS; b++) stats[b] = median(resample(xs, prng));
 	stats.sort((a, b) => a - b);
-	const lo = stats[Math.floor(0.025 * BOOTSTRAP_ITERS)];
-	const hi = stats[Math.min(BOOTSTRAP_ITERS - 1, Math.floor(0.975 * BOOTSTRAP_ITERS))];
-	return [lo, hi];
+	return [stats[pctIndex(BOOTSTRAP_ITERS, 0.025)], stats[pctIndex(BOOTSTRAP_ITERS, 0.975)]];
 }
 
 // ---------------------------------------------------------------------------
@@ -230,7 +233,10 @@ function resolvedCostsByPair(
  *  - pairedRate (nPairs / totalTasksAtLevel) < 0.5 → note flags "low_paired_rate".
  *
  * The model is held fixed across levels by construction; `off` rows define the
- * baseline model used for matching.
+ * baseline model used for matching. A level on a DIFFERENT model (e.g. `codex`)
+ * matches no `off` pair → nPairs 0, medianRatio null — by design: cross-model
+ * cost is not an iso-model ratio (report it separately as model-tier-mismatch),
+ * never folded into this delta.
  */
 export function costDeltaVsOff(
 	runs: Run[],
@@ -335,12 +341,18 @@ export function passRateDeltaVsOff(
 	const out: { level: string; delta: number; ci95: [number, number]; nPairs: number }[] = [];
 
 	for (const level of present) {
-		const diffs: number[] = [];
+		// Dedup to one cell per (task,seed) — mirrors the cost path so pairing is
+		// strictly 1:1 on unique pairs and duplicate runs can't phantom-inflate nPairs.
+		// One run per (level,task,seed) is the expected input; duplicates → last wins.
+		const lvlResolved = new Map<string, boolean>();
 		for (const r of runs) {
-			if (r.level !== level || r.model !== model) continue;
-			const off = offResolved.get(JSON.stringify([r.task, r.seed]));
+			if (r.level === level && r.model === model) lvlResolved.set(JSON.stringify([r.task, r.seed]), r.resolved);
+		}
+		const diffs: number[] = [];
+		for (const [pair, resolved] of lvlResolved) {
+			const off = offResolved.get(pair);
 			if (off === undefined) continue;
-			diffs.push((r.resolved ? 1 : 0) - (off ? 1 : 0));
+			diffs.push((resolved ? 1 : 0) - (off ? 1 : 0));
 		}
 		const nPairs = diffs.length;
 		const delta = nPairs === 0 ? 0 : diffs.reduce((a, b) => a + b, 0) / nPairs;
@@ -354,10 +366,7 @@ export function passRateDeltaVsOff(
 				stats[b] = rs.reduce((a, c) => a + c, 0) / rs.length;
 			}
 			stats.sort((a, b) => a - b);
-			ci95 = [
-				stats[Math.floor(0.025 * BOOTSTRAP_ITERS)],
-				stats[Math.min(BOOTSTRAP_ITERS - 1, Math.floor(0.975 * BOOTSTRAP_ITERS))],
-			];
+			ci95 = [stats[pctIndex(BOOTSTRAP_ITERS, 0.025)], stats[pctIndex(BOOTSTRAP_ITERS, 0.975)]];
 		}
 
 		out.push({ level, delta, ci95, nPairs });

@@ -248,6 +248,17 @@ describe("passRateDeltaVsOff", () => {
 		expect(ultra?.nPairs).toBe(10);
 	});
 
+	it("dedups duplicate (task,seed) runs — nPairs counts unique pairs, not runs", () => {
+		const runs: Run[] = [
+			run({ level: "off", task: "a", seed: 0, resolved: true }),
+			run({ level: "ultra", task: "a", seed: 0, resolved: true }),
+			// accidental duplicate (task,seed) at the level — must NOT inflate nPairs
+			run({ level: "ultra", task: "a", seed: 0, resolved: false }),
+		];
+		const ultra = passRateDeltaVsOff(runs).find((r) => r.level === "ultra");
+		expect(ultra?.nPairs).toBe(1);
+	});
+
 	function both(task: string, off: boolean, lvl: boolean): Run[] {
 		return [
 			run({ level: "off", task, seed: 0, resolved: off }),
