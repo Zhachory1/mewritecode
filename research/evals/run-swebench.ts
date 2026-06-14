@@ -18,7 +18,10 @@
  *   --provider <name>      LLM provider (default: openai-codex)
  *   --model <pattern>      Model pattern (default: gpt-5.4)
  *   --thinking <level>     Thinking level (default: high)
- *   --cave <level>         Caveman level: off|lite|full|ultra (default: ultra — current behavior)
+ *   --cave <level>         Caveman PROSE level: off|lite|full|ultra (default: ultra — current behavior)
+ *   --compression <on|off> Tool-output compression knob, INDEPENDENT of --cave
+ *                          (default: follow settings/current — no behavior change when omitted).
+ *                          The ablation runner (#33) sets this to isolate the compression effect.
  *   --dataset <path>       Local JSONL file instead of HuggingFace
  *   --dry-run              Load dataset and print instance IDs without running
  */
@@ -56,6 +59,11 @@ interface RunConfig {
 	model: string;
 	thinking: string;
 	cave: CaveLevel;
+	// Tool-output compression override, INDEPENDENT of `cave` (prose). undefined =
+	// follow settings/current (no behavior change). true/false = force via the
+	// session-level knob setCaveModeSessionToolCompression. The ablation runner
+	// (#33) uses this to vary compression while holding prose fixed.
+	compression?: boolean;
 	datasetPath?: string;
 	dryRun: boolean;
 }
@@ -107,6 +115,15 @@ function parseRunArgs(): RunConfig {
 					process.exit(1);
 				}
 				config.cave = level;
+				break;
+			}
+			case "--compression": {
+				const v = args[++i];
+				if (v !== "on" && v !== "off") {
+					console.error(`Invalid --compression value: ${v} (expected on|off)`);
+					process.exit(1);
+				}
+				config.compression = v === "on";
 				break;
 			}
 			case "--dataset":
@@ -226,6 +243,17 @@ async function runCaveOnInstance(instance: BenchInstance, workDir: string, confi
 			session.setCaveModeSessionDisabled();
 		}
 
+		// Tool-output COMPRESSION override (#33), INDEPENDENT of prose (--cave).
+		// When --compression is omitted (undefined), leave the knob alone so behavior
+		// matches the settings configured above (no change). When provided, force it
+		// at the session level so the ablation can vary compression while holding
+		// prose fixed. Note: the compression gate still ANDs with getCaveModeEnabled(),
+		// so `--cave off` (which sets settings.enabled=false) keeps compression off
+		// regardless — by design, "off" means caveman fully off.
+		if (config.compression !== undefined) {
+			session.setCaveModeSessionToolCompression(config.compression);
+		}
+
 		// Append SWE-bench-specific system prompt
 		const basePrompt = session.systemPrompt;
 		session.agent.state.systemPrompt = `${basePrompt}\n\n${SWEBENCH_SYSTEM_ADDENDUM}`;
@@ -303,9 +331,12 @@ async function main() {
 	);
 	log(
 		config.cave === "off"
-			? `Caveman: off (cave mode + tool/ML compression disabled)`
-			: `Caveman: ${config.cave} + tool + ML compression`,
+			? `Caveman prose: off (cave mode disabled)`
+			: `Caveman prose: ${config.cave} + tool + ML compression`,
 	);
+	if (config.compression !== undefined) {
+		log(`Compression override: ${config.compression ? "on" : "off"} (independent of --cave prose)`);
+	}
 
 	// Load dataset
 	log("Loading SWE-bench Verified dataset...");
@@ -439,7 +470,16 @@ async function main() {
 			thinking: config.thinking,
 			capDollars: config.capDollars,
 			cave: config.cave,
-			compression: config.cave === "off" ? "off" : `${config.cave}+tool+ml`,
+			// `compression` reflects the EFFECTIVE override when one was supplied via
+			// --compression (the #33 independent knob), else the cave-derived default.
+			compression:
+				config.compression !== undefined
+					? config.compression
+						? "on"
+						: "off"
+					: config.cave === "off"
+						? "off"
+						: `${config.cave}+tool+ml`,
 		},
 		aggregate: agg,
 		results,
