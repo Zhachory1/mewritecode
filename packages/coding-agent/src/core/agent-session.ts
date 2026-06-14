@@ -280,20 +280,33 @@ const THINKING_LEVELS: ThinkingLevel[] = ["off", "minimal", "low", "medium", "hi
 const THINKING_LEVELS_WITH_XHIGH: ThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh"];
 
 /**
- * Resolve the effective tool-output COMPRESSION knob: the per-session override
- * when set, otherwise the persisted settings value. Pure (no I/O) so it is
+ * Resolve the effective tool-output COMPRESSION gate. Pure (no I/O) so it is
  * unit-testable without constructing an AgentSession.
  *
- * Separation of concerns (#33): this is ONLY the compression knob. The full
- * compression gate ANDs this with getCaveModeEnabled(); the prose/disabled
- * session flag does NOT participate here — prose and compression vary
- * independently, which is what the ablation runner requires.
+ * Decoupling (#33): an explicit per-session override FULLY determines the gate,
+ * independent of BOTH the prose/disabled session flag AND the settings
+ * `getCaveModeEnabled()` mode-on flag. This is what makes the 2×2
+ * (prose × compression) reachable: prose-off (setCaveModeSessionDisabled, or even
+ * settings.enabled=false) no longer forces compression off when the ablation
+ * runner has set an explicit compression override. Only when the override is
+ * `null` (no explicit knob) does the gate fall back to the old coupled behavior:
+ * `settingsToolCompression && caveModeEnabled`.
+ *
+ *   override === true  → gate true   (compression forced on, decoupled)
+ *   override === false → gate false  (compression forced off, decoupled)
+ *   override === null  → settingsToolCompression && caveModeEnabled
  *
  * @param override per-session override (null = fall back to settings)
- * @param settingsValue settingsManager.getCaveModeToolCompression()
+ * @param settingsToolCompression settingsManager.getCaveModeToolCompression()
+ * @param caveModeEnabled settingsManager.getCaveModeEnabled()
  */
-export function resolveToolCompression(override: boolean | null, settingsValue: boolean): boolean {
-	return override ?? settingsValue;
+export function resolveToolCompression(
+	override: boolean | null,
+	settingsToolCompression: boolean,
+	caveModeEnabled: boolean,
+): boolean {
+	if (override !== null) return override;
+	return settingsToolCompression && caveModeEnabled;
 }
 
 // ============================================================================
@@ -621,18 +634,14 @@ export class AgentSession {
 			}
 
 			// Compression gate: honor the per-session tool-compression override (#33)
-			// so prose and compression vary independently. The prose/disabled session
-			// flag intentionally does NOT gate compression here — only the settings
-			// `getCaveModeEnabled()` (mode-on-at-all) and the effective compression knob.
-			//
-			// KNOWN EDGE (by-design / behavior-preserving, tracked as a follow-up):
-			// the gate ANDs the SETTINGS `getCaveModeEnabled()`, not the session prose
-			// flag. So an interactive `setCaveModeSessionDisabled()` alone (which only
-			// flips `_sessionCaveModeDisabled`, leaving settings.enabled=true) removes
-			// the prose block but LEAVES compression on. Disabling compression for that
-			// session requires `setCaveModeSessionToolCompression(false)`. Not changed
-			// here.
-			const caveEnabled = this._effectiveToolCompression() && this.settingsManager.getCaveModeEnabled();
+			// so prose and compression vary INDEPENDENTLY and the 2×2 is reachable.
+			// An explicit override FULLY determines this gate, decoupled from BOTH the
+			// prose/disabled session flag AND the settings `getCaveModeEnabled()`
+			// mode-on flag — so "prose off + compression on" (and vice versa) is now a
+			// real, reachable condition. Only when NO override is set does the gate
+			// fall back to the old coupled `toolCompression && getCaveModeEnabled()`.
+			// (Decoupling lives in resolveToolCompression / _effectiveToolCompression.)
+			const caveEnabled = this._effectiveToolCompression();
 
 			// Cave Painting Diff: read dedup and write/edit invalidation
 			if (!isError && caveEnabled) {
@@ -3748,10 +3757,11 @@ export class AgentSession {
 	 * This is independent of prose/disabled (setCaveModeSessionDisabled /
 	 * setCaveModeSessionIntensity): caveman-mode is two separable features and the
 	 * ablation runner (#33) needs the 4 combos (prose on/off × compression on/off)
-	 * all reachable in-process. Pass:
-	 *   true  → force tool compression on for this session
+	 * all reachable in-process. An explicit override (true/false) FULLY decouples
+	 * the compression gate from the prose flag AND from getCaveModeEnabled(). Pass:
+	 *   true  → force tool compression on for this session (even if prose off / mode off)
 	 *   false → force tool compression off for this session
-	 *   null  → fall back to settingsManager.getCaveModeToolCompression()
+	 *   null  → fall back to getCaveModeToolCompression() && getCaveModeEnabled()
 	 *
 	 * No prompt rebuild: compression is a runtime gate (afterToolCall), not a
 	 * system-prompt concern.
@@ -3761,27 +3771,29 @@ export class AgentSession {
 	}
 
 	/**
-	 * Effective tool-compression knob for this session: the per-session override
-	 * if set, else the persisted settings value. Pure read of two fields — the
-	 * compression GATE additionally ANDs this with getCaveModeEnabled(). Delegates
-	 * to the standalone `resolveToolCompression` so the decision is unit-testable
-	 * without constructing a full session.
+	 * Effective tool-compression GATE for this session. Delegates to the standalone
+	 * `resolveToolCompression` so the decision is unit-testable without constructing
+	 * a full session. An explicit per-session override FULLY decouples this from the
+	 * prose/disabled flag AND from getCaveModeEnabled() (#33); only a null override
+	 * falls back to `settingsToolCompression && caveModeEnabled`.
 	 */
 	private _effectiveToolCompression(): boolean {
 		return resolveToolCompression(
 			this._sessionToolCompressionOverride,
 			this.settingsManager.getCaveModeToolCompression(),
+			this.settingsManager.getCaveModeEnabled(),
 		);
 	}
 
 	/**
-	 * Effective compression GATE for this session (test/diagnostic accessor):
-	 * `_effectiveToolCompression() && getCaveModeEnabled()`. Mirrors the gate at
-	 * the afterToolCall compression site so the ablation runner / tests can assert
-	 * it without driving a full tool call. Independent of the prose/disabled flag.
+	 * Effective compression GATE for this session (test/diagnostic accessor).
+	 * Mirrors the gate at the afterToolCall compression site so the ablation
+	 * runner / tests can assert it without driving a full tool call. With an
+	 * explicit override it is fully decoupled from the prose/disabled flag and from
+	 * getCaveModeEnabled(); the 2×2 (prose × compression) is therefore reachable.
 	 */
 	getEffectiveCaveCompressionGate(): boolean {
-		return this._effectiveToolCompression() && this.settingsManager.getCaveModeEnabled();
+		return this._effectiveToolCompression();
 	}
 
 	// =========================================================================

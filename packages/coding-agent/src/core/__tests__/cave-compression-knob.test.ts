@@ -1,13 +1,17 @@
 /**
  * Cave compression knob (#33) — the per-session tool-output COMPRESSION override
- * must vary INDEPENDENTLY of prose/disabled.
+ * must vary INDEPENDENTLY of prose/disabled so the 2×2 (prose × compression) is
+ * REACHABLE.
  *
  * caveman-mode is two separable features: prose/reasoning-style injection (the
  * system-prompt block, gated by getCaveModeEnabled() + the _sessionCaveModeDisabled
- * flag) and tool-output compression (the afterToolCall gate at agent-session.ts:627,
- * `effectiveToolCompression && getCaveModeEnabled()`). A naive ON/OFF confounds
- * them; the ablation runner needs all 4 combos (prose on/off × compression on/off)
- * reachable in-process.
+ * flag) and tool-output compression (the afterToolCall gate). Before the decoupling,
+ * prose-off forced compression off (the gate ANDed getCaveModeEnabled(), and
+ * `--cave off` sets settings.enabled=false), so "compression-only" (prose off +
+ * compression on) was UNREACHABLE. The fix: an explicit per-session compression
+ * override FULLY determines the gate, decoupled from BOTH the prose/disabled flag
+ * AND getCaveModeEnabled(). Only a null override falls back to the old coupled
+ * `toolCompression && getCaveModeEnabled()`.
  *
  * This file unit-tests the PURE decision (`resolveToolCompression`) AND the REAL
  * session gate accessor (`getEffectiveCaveCompressionGate`) plus its real
@@ -22,24 +26,28 @@ import { describe, expect, it } from "vitest";
 import { AgentSession, resolveToolCompression } from "../agent-session.js";
 
 // ---------------------------------------------------------------------------
-// Pure decision — the override-vs-settings truth table.
+// Pure decision — the override-vs-settings truth table (now full gate).
 // ---------------------------------------------------------------------------
 
 describe("resolveToolCompression (pure)", () => {
-	it("null override falls back to the settings value (on)", () => {
-		expect(resolveToolCompression(null, true)).toBe(true);
+	it("null override falls back to settingsToolCompression && caveModeEnabled (both on → on)", () => {
+		expect(resolveToolCompression(null, true, true)).toBe(true);
 	});
 
-	it("null override falls back to the settings value (off)", () => {
-		expect(resolveToolCompression(null, false)).toBe(false);
+	it("null override + settings compression off → off", () => {
+		expect(resolveToolCompression(null, false, true)).toBe(false);
 	});
 
-	it("override true forces compression on regardless of settings", () => {
-		expect(resolveToolCompression(true, false)).toBe(true);
+	it("null override + mode disabled → off (the coupled fallback)", () => {
+		expect(resolveToolCompression(null, true, false)).toBe(false);
 	});
 
-	it("override false forces compression off regardless of settings", () => {
-		expect(resolveToolCompression(false, true)).toBe(false);
+	it("override true forces compression on regardless of settings OR mode-enabled", () => {
+		expect(resolveToolCompression(true, false, false)).toBe(true);
+	});
+
+	it("override false forces compression off regardless of settings OR mode-enabled", () => {
+		expect(resolveToolCompression(false, true, true)).toBe(false);
 	});
 });
 
@@ -84,49 +92,74 @@ function makeGateHarness(args: {
 	};
 }
 
-describe("getEffectiveCaveCompressionGate × prose independence (#33)", () => {
-	// The two council combos called out explicitly in the issue, driven through
-	// the REAL accessor (not a local mirror):
+describe("getEffectiveCaveCompressionGate × prose independence (#33) — the REACHABLE 2×2", () => {
+	// The four council-required combos on the REAL gate. "prose off" is modeled the
+	// way run-swebench does it: setCaveModeEnabled(false) at the settings level (so
+	// getCaveModeEnabled()=false). Before the decoupling, that forced the gate false
+	// regardless of the override — making "compression-only" unreachable. With the
+	// override decoupled, all four are reachable.
 
-	it("prose disabled + compression forced ON → gate true (prose flag does not gate compression)", () => {
-		// "prose disabled" = setCaveModeSessionDisabled() in real use; here the
-		// _sessionCaveModeDisabled field is set so we prove the gate ignores it.
+	it("prose OFF + compression override ON → gate TRUE (compression-only is now reachable)", () => {
 		const h = makeGateHarness({
-			settingsToolCompression: false, // even with settings compression off
-			settingsCaveModeEnabled: true, // mode is on at all
+			settingsToolCompression: false,
+			settingsCaveModeEnabled: false, // prose off ⇒ mode disabled at settings
 			proseDisabled: true,
 		});
-		h.setOverride(true); // setCaveModeSessionToolCompression(true)
+		h.setOverride(true);
 		expect(h.gate()).toBe(true);
 	});
 
-	it("prose on + compression forced OFF → gate false", () => {
+	it("prose OFF + compression override OFF → gate FALSE", () => {
 		const h = makeGateHarness({
-			settingsToolCompression: true, // even with settings compression on
-			settingsCaveModeEnabled: true,
-			proseDisabled: false,
+			settingsToolCompression: true,
+			settingsCaveModeEnabled: false,
+			proseDisabled: true,
 		});
-		h.setOverride(false); // setCaveModeSessionToolCompression(false)
+		h.setOverride(false);
 		expect(h.gate()).toBe(false);
 	});
 
-	it("all 4 (override × settings) combos are reachable through the real gate", () => {
-		const cases: Array<{ override: boolean | null; settingsComp: boolean; want: boolean }> = [
-			{ override: true, settingsComp: false, want: true },
-			{ override: false, settingsComp: true, want: false },
-			{ override: null, settingsComp: true, want: true },
-			{ override: null, settingsComp: false, want: false },
-		];
-		for (const c of cases) {
-			const h = makeGateHarness({ settingsToolCompression: c.settingsComp, settingsCaveModeEnabled: true });
-			h.setOverride(c.override);
-			expect(h.gate()).toBe(c.want);
-		}
+	it("prose FULL + compression override ON → gate TRUE", () => {
+		const h = makeGateHarness({
+			settingsToolCompression: false, // override wins regardless of settings
+			settingsCaveModeEnabled: true,
+			proseDisabled: false,
+		});
+		h.setOverride(true);
+		expect(h.gate()).toBe(true);
 	});
 
-	it("the gate is independent of the prose-disabled flag at every override setting", () => {
+	it("prose FULL + compression override OFF → gate FALSE", () => {
+		const h = makeGateHarness({
+			settingsToolCompression: true,
+			settingsCaveModeEnabled: true,
+			proseDisabled: false,
+		});
+		h.setOverride(false);
+		expect(h.gate()).toBe(false);
+	});
+
+	it("NO override preserves the old coupled behavior: prose off (mode disabled) → gate false", () => {
+		const h = makeGateHarness({
+			settingsToolCompression: true, // settings want compression on…
+			settingsCaveModeEnabled: false, // …but mode is disabled (prose off)
+			proseDisabled: true,
+		});
+		// no setOverride → override stays null → coupled fallback applies
+		expect(h.gate()).toBe(false);
+	});
+
+	it("NO override, mode enabled + settings compression on → gate true (coupled fallback)", () => {
+		const h = makeGateHarness({
+			settingsToolCompression: true,
+			settingsCaveModeEnabled: true,
+		});
+		expect(h.gate()).toBe(true);
+	});
+
+	it("an explicit override is independent of the prose-disabled flag at every setting", () => {
 		for (const proseDisabled of [false, true]) {
-			for (const override of [true, false, null] as Array<boolean | null>) {
+			for (const override of [true, false] as boolean[]) {
 				const enabled = makeGateHarness({
 					settingsToolCompression: true,
 					settingsCaveModeEnabled: true,
@@ -141,15 +174,9 @@ describe("getEffectiveCaveCompressionGate × prose independence (#33)", () => {
 				disabled.setOverride(override);
 				// flipping ONLY the prose flag must not change the compression gate.
 				expect(enabled.gate()).toBe(disabled.gate());
+				// and the override fully determines the gate.
+				expect(enabled.gate()).toBe(override);
 			}
 		}
-	});
-
-	it("mode off at the settings level forces the gate false even if compression overridden on", () => {
-		// getCaveModeEnabled()=false means caveman-mode is off entirely; compression
-		// cannot run. This is the one coupling that DOES remain (by design).
-		const h = makeGateHarness({ settingsToolCompression: true, settingsCaveModeEnabled: false });
-		h.setOverride(true);
-		expect(h.gate()).toBe(false);
 	});
 });
