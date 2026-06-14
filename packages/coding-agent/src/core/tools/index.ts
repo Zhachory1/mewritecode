@@ -196,6 +196,11 @@ export const allToolDefinitions = {
 
 export type ToolName = keyof typeof allTools;
 
+// Tool-name constants live in the leaf `tool-names.ts` (no runtime deps) to avoid a
+// circular import with the agent-defs loader. Re-exported here for the public surface;
+// a drift-guard test asserts VALID_TOOL_NAMES === Object.keys(allTools).
+export { DYNAMIC_TOOL_PREFIXES, VALID_TOOL_NAMES } from "./tool-names.js";
+
 export interface ToolsOptions {
 	read?: ReadToolOptions;
 	bash?: BashToolOptions;

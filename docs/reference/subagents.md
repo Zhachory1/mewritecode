@@ -61,8 +61,44 @@ For implementer-class agents, set `isolation: worktree` to spawn the agent in a 
 | `Tester` | Run the test suite, summarize failures |
 | `Implementer` | Edit-class agent, runs in a worktree |
 | `Critic` | Adversarial review of a proposed plan |
+| `Editor` | Apply a specific, already-decided edit in-place (no worktree) |
 
 Override or extend in `.cave/agents/`.
+
+## Giving a subagent write capability
+
+A subagent can mutate files only if its `tools` allowlist includes write-class
+tools. The minimal write toolset is:
+
+```yaml
+tools: read, grep, find, ls, edit, write
+```
+
+`edit` and `write` mutate; `read`, `grep`, `find`, and `ls` let the agent locate
+and inspect a file before changing it. The loader emits a **warning** (never an
+error) when an agent has `edit`/`write` but none of the locate tools — it can
+mutate files it cannot first find. Unknown or mis-cased tool names are also
+warned about (and otherwise silently dropped), so a typo in `tools:` is legible
+rather than a silent no-op.
+
+### In-place vs. worktree
+
+| Mode | Frontmatter | Where edits land | Trade-off |
+|---|---|---|---|
+| In-place (default) | omit `isolation`, or `isolation: none` | The parent's working tree | No merge step — matches cave's autopilot model. Use for "just make this edit." |
+| Isolated | `isolation: worktree` | A fresh `git worktree` at `.cave/worktrees/<id>` | Reviewable, parent index stays clean, but you must merge the worktree yourself. Use for larger or risky change sets. |
+
+The bundled `Editor` agent ships in-place (no `isolation`) with a tight
+description so it is dispatched only for concrete, already-decided edits. Set
+`isolation: worktree` if you want an isolated, reviewable change instead (see
+`Implementer`, which is worktree-isolated by default).
+
+### `task` omission prevents fan-out
+
+Omitting `task` (and `agent`) from an edit-class agent's `tools:` is intentional:
+without those tools the agent **cannot spawn its own subagents**, so an editor or
+implementer stays a single focused worker rather than fanning out into a tree of
+nested agents.
 
 ## Dispatch from the parent
 

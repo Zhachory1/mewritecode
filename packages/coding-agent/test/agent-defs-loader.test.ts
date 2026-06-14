@@ -132,6 +132,67 @@ describe("parseAgentDefFile", () => {
 	});
 });
 
+describe("parseAgentDefFile — tool-name validation (warnings)", () => {
+	it("warns on a case-mismatched tool, an unknown tool, and a bad disallowedTools name", () => {
+		const filePath = writeAgent(join(cwd, ".cave", "agents"), "badtools", {
+			name: "badtools",
+			description: "has bad tool names",
+			tools: ["Write", "bogus"],
+			disallowedTools: ["Bahs"],
+		});
+		const { def, diagnostics } = parseAgentDefFile(filePath, "project");
+		// Still parses — these are warnings, not fatal errors.
+		expect(def).not.toBeNull();
+		expect(diagnostics.every((d) => d.type === "warning")).toBe(true);
+		// did-you-mean for "Write" → "write"
+		expect(diagnostics.some((d) => d.message.includes('"Write"') && d.message.includes('"write"'))).toBe(true);
+		// unknown "bogus"
+		expect(diagnostics.some((d) => d.message.includes("unknown tool") && d.message.includes('"bogus"'))).toBe(true);
+		// disallowedTools "Bahs" won't block anything
+		expect(diagnostics.some((d) => d.message.includes('"Bahs"') && d.message.includes("won't block anything"))).toBe(
+			true,
+		);
+	});
+
+	it("does not warn on dynamic tool names (memory_*, mcp__*)", () => {
+		const filePath = writeAgent(join(cwd, ".cave", "agents"), "dyntools", {
+			name: "dyntools",
+			description: "dynamic tools",
+			tools: ["memory_save", "mcp__x__y"],
+		});
+		const { def, diagnostics } = parseAgentDefFile(filePath, "project");
+		expect(def).not.toBeNull();
+		expect(diagnostics).toEqual([]);
+	});
+
+	it("warns when the effective tool set can write but cannot locate files", () => {
+		const filePath = writeAgent(join(cwd, ".cave", "agents"), "writeonly", {
+			name: "writeonly",
+			description: "edit + write only",
+			tools: ["edit", "write"],
+		});
+		const { def, diagnostics } = parseAgentDefFile(filePath, "project");
+		expect(def).not.toBeNull();
+		expect(diagnostics.every((d) => d.type === "warning")).toBe(true);
+		expect(
+			diagnostics.some((d) => d.message.includes("can mutate files") && d.message.includes("cannot locate")),
+		).toBe(true);
+	});
+
+	it("warns when disallowedTools cancels out the entire tools list (effective set empty)", () => {
+		const filePath = writeAgent(join(cwd, ".cave", "agents"), "lockedout", {
+			name: "lockedout",
+			description: "tools fully disallowed",
+			tools: ["read"],
+			disallowedTools: ["read"],
+		});
+		const { def, diagnostics } = parseAgentDefFile(filePath, "project");
+		expect(def).not.toBeNull();
+		expect(diagnostics.every((d) => d.type === "warning")).toBe(true);
+		expect(diagnostics.some((d) => d.message.includes("effective set is empty"))).toBe(true);
+	});
+});
+
 describe("loadAgentDefs", () => {
 	it("loads from project scope only when other scopes empty", () => {
 		writeAgent(join(cwd, ".cave", "agents"), "alpha", {
@@ -236,5 +297,25 @@ describe("loadAgentDefs", () => {
 		expect(names).toContain("explore");
 		expect(names).toContain("reviewer");
 		expect(names).toContain("tester");
+	});
+
+	it("bundles an in-place editor agent (edit+write+read, no isolation, no warnings)", () => {
+		const realResult = loadAgentDefs({
+			cwd,
+			userDir,
+			// no packageDir override → uses getPackageDir()
+			skipUser: true,
+			skipProject: true,
+		});
+		const editor = findAgentDef(realResult, "editor");
+		expect(editor).toBeDefined();
+		expect(editor?.def.tools).toContain("edit");
+		expect(editor?.def.tools).toContain("write");
+		expect(editor?.def.tools).toContain("read");
+		// In-place default — no isolation field (worktree is the documented opt-in).
+		expect(editor?.def.isolation).toBeUndefined();
+		// A bundled agent must not trip any tool-name / write-set warnings.
+		const editorDiagnostics = realResult.diagnostics.filter((d) => d.path?.endsWith("editor.md"));
+		expect(editorDiagnostics).toEqual([]);
 	});
 });
