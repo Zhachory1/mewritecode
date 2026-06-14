@@ -19,6 +19,7 @@ import {
 	buildCompressionEffectBlocks,
 	buildConditionRuns,
 	buildProseEffectBlocks,
+	buildSwebenchArgs,
 	compressionAtFixedProseView,
 	compressionEffect,
 	COMPRESSION_ON_LEVEL,
@@ -153,6 +154,54 @@ describe("enumerateConditions", () => {
 });
 
 // ---------------------------------------------------------------------------
+// REAL 2×2 — prose off,full × compression on,off enumerates 4 reachable conditions
+// ---------------------------------------------------------------------------
+
+describe("real 2×2 enumeration + per-condition swebench args", () => {
+	it("--prose off,full --compression on,off enumerates exactly 4 conditions", () => {
+		const config = parseAblationArgs(["--prose", "off,full", "--compression", "on,off"]);
+		const conds = enumerateConditions(config);
+		expect(conds).toHaveLength(4);
+		const pairs = conds.map((c) => `${c.prose}/${c.compression}`).sort();
+		expect(pairs).toEqual(["full/off", "full/on", "off/off", "off/on"]);
+		// the previously-unreachable compression-only cell is present:
+		expect(pairs).toContain("off/on");
+	});
+
+	it("forwards BOTH --cave and --compression INDEPENDENTLY per condition", () => {
+		const config = parseAblationArgs(["--prose", "off,full", "--compression", "on,off"]);
+		const conds = enumerateConditions(config);
+		for (const c of conds) {
+			const args = buildSwebenchArgs(config, c, "/tmp/out");
+			const caveIdx = args.indexOf("--cave");
+			const compIdx = args.indexOf("--compression");
+			expect(caveIdx).toBeGreaterThanOrEqual(0);
+			expect(compIdx).toBeGreaterThanOrEqual(0);
+			expect(args[caveIdx + 1]).toBe(c.prose);
+			expect(args[compIdx + 1]).toBe(c.compression);
+		}
+		// the compression-only condition forwards prose off AND compression on.
+		const compOnly = conds.find((c) => c.prose === "off" && c.compression === "on")!;
+		const args = buildSwebenchArgs(config, compOnly, "/tmp/out");
+		expect(args[args.indexOf("--cave") + 1]).toBe("off");
+		expect(args[args.indexOf("--compression") + 1]).toBe("on");
+	});
+
+	it("forwards --sample to run-swebench", () => {
+		const config = parseAblationArgs(["--sample", "diverse"]);
+		const conds = enumerateConditions(config);
+		const args = buildSwebenchArgs(config, conds[0], "/tmp/out");
+		expect(args[args.indexOf("--sample") + 1]).toBe("diverse");
+	});
+
+	it("--sample defaults to first and parses/validates", () => {
+		expect(parseAblationArgs([]).sample).toBe("first");
+		expect(parseAblationArgs(["--sample", "diverse"]).sample).toBe("diverse");
+		expect(() => parseAblationArgs(["--sample", "bogus"])).toThrow(/Invalid --sample/);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // Relabel views — the 2-factor isolation
 // ---------------------------------------------------------------------------
 
@@ -202,9 +251,28 @@ describe("perConditionStats", () => {
 		const offOff = stats.find((s) => s.prose === "off" && s.compression === "off");
 		expect(ultraOn?.passRate).toBeCloseTo(0.5, 10);
 		expect(ultraOn?.n).toBe(2);
-		expect(ultraOn?.medianCostPerResolved).toBeCloseTo(1, 10); // 1M input @ $1
+		expect(ultraOn?.medianCostPerResolved).toBeCloseTo(1, 10); // 1M input @ $1 (resolved only)
+		// cost-per-attempt aggregates BOTH attempts (resolved t1 + unresolved t2), each 1M @ $1.
+		expect(ultraOn?.medianCostPerAttempt).toBeCloseTo(1, 10);
+		expect(ultraOn?.nAttempts).toBe(2);
 		expect(offOff?.passRate).toBeCloseTo(1, 10);
 		expect(offOff?.medianCostPerResolved).toBeCloseTo(2, 10); // 2M input @ $1
+		expect(offOff?.medianCostPerAttempt).toBeCloseTo(2, 10);
+	});
+
+	it("cost-per-attempt is DEFINED at 0 resolves where cost-per-resolved is null", () => {
+		// A condition where nothing resolved: per-resolved is null, per-attempt is real.
+		const runs: AblationRun[] = [
+			ar({ prose: "off", compression: "on", task: "t1", resolved: false, usage: U(2_000_000) }),
+			ar({ prose: "off", compression: "on", task: "t2", resolved: false, usage: U(4_000_000) }),
+		];
+		const stats = perConditionStats(runs, TABLE);
+		const s = stats.find((x) => x.prose === "off" && x.compression === "on");
+		expect(s?.passRate).toBe(0);
+		expect(s?.medianCostPerResolved).toBeNull();
+		expect(s?.medianCostPerAttempt).toBeCloseTo(3, 10); // median of {2,4}
+		expect(s?.meanCostPerAttempt).toBeCloseTo(3, 10);
+		expect(s?.nAttempts).toBe(2);
 	});
 });
 
@@ -315,6 +383,9 @@ describe("assembleManifest", () => {
 	): ConditionStat => ({
 		passRate: 0.5,
 		n: 2,
+		medianCostPerAttempt: 0.8,
+		meanCostPerAttempt: 0.9,
+		nAttempts: 2,
 		medianCostPerResolved: 1,
 		nResolvedTasks: 1,
 		resolvedSource: "evaluate-patches.sh",
@@ -389,9 +460,30 @@ describe("assembleManifest", () => {
 			prose: "ultra",
 			compression: "on",
 			passRate: 0.5,
+			medianCostPerAttempt: 0.8,
+			meanCostPerAttempt: 0.9,
+			nAttempts: 2,
 			medianCostPerResolved: 1,
 			resolvedSource: "evaluate-patches.sh",
 		});
+	});
+
+	it("declares cost-per-attempt PRIMARY and cost-per-resolved SECONDARY", () => {
+		const m = assembleManifest({ ...base, scoreRequested: true });
+		expect(m.costMetrics.primary).toBe("costPerAttempt");
+		expect(m.costMetrics.secondary).toBe("costPerResolved");
+		expect(m.costMetrics.note).toMatch(/null secondary means zero resolves/i);
+	});
+
+	it("surfaces cost-per-attempt even when cost-per-resolved is null (0 resolves)", () => {
+		const m = assembleManifest({
+			...base,
+			scoreRequested: true,
+			conditions: [cond({ prose: "ultra", compression: "on", medianCostPerResolved: null, nResolvedTasks: 0 })],
+		});
+		expect(m.conditions[0].medianCostPerResolved).toBeNull();
+		expect(m.conditions[0].medianCostPerAttempt).toBe(0.8);
+		expect(m.conditions[0].nAttempts).toBe(2);
 	});
 
 	it("carries gitSha, acceptanceCriteria, effects; omits total_processed", () => {
@@ -487,6 +579,45 @@ describe("buildProseEffectBlocks", () => {
 		expect(isEntries(blocks.on)).toBe(true);
 		const ultra = (blocks.on as EffectEntry[]).find((e) => e.level === "ultra");
 		expect(ultra?.costMedianRatio).toBeCloseTo(2, 6);
+	});
+});
+
+describe("real 2×2 effect blocks (both factors vary) compute on the genuine grid", () => {
+	// Build a full off,full × on,off grid: prose adds cost (full=2× off), compression
+	// saves cost (on=0.5× off). Both effect blocks must emit real entries keyed by
+	// the FIXED factor's levels.
+	const prose: ("off" | "full")[] = ["off", "full"];
+	const compression: ("on" | "off")[] = ["on", "off"];
+	function grid(): AblationRun[] {
+		const runs: AblationRun[] = [];
+		for (let i = 0; i < 12; i++) {
+			for (const p of prose) {
+				for (const c of compression) {
+					// base 1M for off; full doubles; compression-on halves.
+					const tokens = 1_000_000 * (p === "full" ? 2 : 1) * (c === "on" ? 0.5 : 1);
+					runs.push(ar({ prose: p, compression: c, task: `t${i}`, resolved: true, usage: U(tokens) }));
+				}
+			}
+		}
+		return runs;
+	}
+
+	it("proseEffect emits per-compression entries (prose varies, compression fixed)", () => {
+		const blocks = buildProseEffectBlocks(grid(), prose, compression, TABLE, () => mulberry32(0xc0ffee));
+		for (const c of compression) {
+			expect(isEntries(blocks[c])).toBe(true);
+			const full = (blocks[c] as EffectEntry[]).find((e) => e.level === "full");
+			expect(full?.costMedianRatio).toBeCloseTo(2, 6); // full = 2× off at any fixed compression
+		}
+	});
+
+	it("compressionEffect emits per-prose entries (compression varies, prose fixed)", () => {
+		const blocks = buildCompressionEffectBlocks(grid(), prose, compression, TABLE, () => mulberry32(0xfacade));
+		for (const p of prose) {
+			expect(isEntries(blocks[p])).toBe(true);
+			const on = (blocks[p] as EffectEntry[]).find((e) => e.level === COMPRESSION_ON_LEVEL);
+			expect(on?.costMedianRatio).toBeCloseTo(0.5, 6); // on = 0.5× off at any fixed prose
+		}
 	});
 });
 

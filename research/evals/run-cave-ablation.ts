@@ -8,14 +8,25 @@
  * A naive ON/OFF confounds them. This runner varies them INDEPENDENTLY:
  *   conditions = prose ∈ {off,lite,full,ultra} × compression ∈ {on,off} × seedIndex.
  *
+ * REAL 2×2 (council change A): the compression gate is now DECOUPLED — an explicit
+ * per-session compression override fully determines tool-compression, independent
+ * of the prose/disabled flag AND of getCaveModeEnabled(). So `--prose off,full
+ * --compression on,off` enumerates and runs all 4 conditions, INCLUDING the
+ * previously unreachable "compression-only" (prose off + compression on). Each
+ * condition forwards BOTH --cave and --compression to run-swebench, which applies
+ * them independently per the new gate.
+ *
  * For each condition it spawns `run-swebench.ts` as a FRESH SUBPROCESS (clean
  * cache state) with the matching --cave / --compression / --provider / --model /
- * --limit / --cap / --dataset and a per-condition --output dir, then reads that
- * subprocess's per-instance traces + predictions, builds honest-metrics `Run[]`,
- * and computes (via honest-metrics.ts — the stats source of truth):
- *   - per (prose,compression): passRate + costPerResolved
+ * --limit / --cap / --sample / --dataset and a per-condition --output dir, then
+ * reads that subprocess's per-instance traces + predictions, builds honest-metrics
+ * `Run[]`, and computes (via honest-metrics.ts — the stats source of truth):
+ *   - per (prose,compression): passRate + costPerAttempt (PRIMARY, always defined
+ *     even at 0 resolves) + costPerResolved (SECONDARY, may be null at 0 resolves)
  *   - PROSE effect at fixed compression: relabel Run[] so level=prose → deltas
  *   - COMPRESSION effect at fixed prose: relabel Run[] so level=off/on(compression)
+ * Effect blocks emit only when that factor actually varied (else a "not varied"
+ * note). Primary reported deltas are WITHIN-model.
  *
  * Outputs: manifest.json (git SHA, model, pre-registered acceptanceCriteria,
  * per-condition + effect deltas/CIs, and an HONEST scored status — true only if
@@ -35,11 +46,14 @@
  *
  * Usage:
  *   npx tsx research/evals/run-cave-ablation.ts --help
- *   npx tsx research/evals/run-cave-ablation.ts --dry-run --limit 5
+ *   # smoke the REAL 2×2 (4 conditions), no network/money:
+ *   npx tsx research/evals/run-cave-ablation.ts --dry-run \
+ *     --prose off,full --compression on,off --limit 5
  *   # paid (operator only):
  *   npx tsx research/evals/run-cave-ablation.ts \
- *     --prose off,lite,full,ultra --compression on,off --seeds 3 \
- *     --provider openai-codex --model gpt-5.4 --limit 50 --cap 5 --score
+ *     --prose off,lite,full,ultra --compression on,off \
+ *     --provider openai-codex --model gpt-5.4 --limit 50 --cap 5 \
+ *     --sample diverse --score
  */
 
 import { execSync, spawnSync } from "node:child_process";
@@ -48,6 +62,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
 	costDeltaVsOff,
+	costPerAttempt,
 	costPerResolved,
 	mulberry32,
 	passRate,
@@ -67,6 +82,8 @@ const REPO_ROOT = resolve(__dirname, "..", "..");
 
 export type Prose = "off" | "lite" | "full" | "ultra";
 export type Compression = "on" | "off";
+/** Instance-selection mode forwarded to run-swebench (#33 change B). */
+export type SampleMode = "first" | "diverse";
 
 /** A single run record carrying BOTH factors plus the honest-metrics inputs. */
 export interface AblationRun {
@@ -87,6 +104,8 @@ export interface AblationConfig {
 	model: string;
 	limit?: number;
 	cap?: number;
+	/** instance-selection mode forwarded to run-swebench (first|diverse). */
+	sample: SampleMode;
 	datasetPath?: string;
 	outputDir: string;
 	score: boolean;
@@ -132,6 +151,7 @@ export function parseAblationArgs(argv: string[], defaultOutputRoot = resolve(RE
 		seeds: 1,
 		provider: "openai-codex",
 		model: "gpt-5.4",
+		sample: "first",
 		outputDir: resolve(defaultOutputRoot, `ablation-${runId}`),
 		score: false,
 		dryRun: false,
@@ -200,6 +220,12 @@ export function parseAblationArgs(argv: string[], defaultOutputRoot = resolve(RE
 				const n = Number(argv[++i]);
 				if (!(n > 0)) throw new Error(`Invalid --cap: ${n} (expected number > 0)`);
 				config.cap = n;
+				break;
+			}
+			case "--sample": {
+				const v = (argv[++i] ?? "").trim();
+				if (v !== "first" && v !== "diverse") throw new Error(`Invalid --sample: ${v} (expected first|diverse)`);
+				config.sample = v;
 				break;
 			}
 			case "--dataset":
@@ -338,6 +364,14 @@ export interface ConditionStat {
 	compression: Compression;
 	passRate: number;
 	n: number;
+	/**
+	 * PRIMARY cost: median (and mean) cost over ALL priced attempts. Defined even
+	 * at 0 resolves. null only when NO attempt in the condition had a priced usage.
+	 */
+	medianCostPerAttempt: number | null;
+	meanCostPerAttempt: number | null;
+	nAttempts: number;
+	/** SECONDARY cost: median cost per resolved task. null at 0 resolves (by design). */
 	medianCostPerResolved: number | null;
 	nResolvedTasks: number;
 	/** ACTUAL source of this condition's resolved field (intent-independent). */
@@ -385,6 +419,7 @@ export function perConditionStats(
 			parseStatus: "n/a" as const,
 		}));
 		const pr = passRate(view)[0];
+		const cpa = costPerAttempt(view, table)[0];
 		const cpr = costPerResolved(view, table)[0];
 		const m = meta?.get(key);
 		out.push({
@@ -392,6 +427,9 @@ export function perConditionStats(
 			compression,
 			passRate: pr ? pr.rate : 0,
 			n: pr ? pr.n : 0,
+			medianCostPerAttempt: cpa ? cpa.medianCost : null,
+			meanCostPerAttempt: cpa ? cpa.meanCost : null,
+			nAttempts: cpa ? cpa.nAttempts : 0,
 			medianCostPerResolved: cpr ? cpr.medianCost : null,
 			nResolvedTasks: cpr ? cpr.nTasks : 0,
 			resolvedSource: m?.resolvedSource ?? "patch-nonempty-PROXY",
@@ -502,6 +540,11 @@ export interface ManifestConditionView {
 	prose: Prose;
 	compression: Compression;
 	passRate: number;
+	/** PRIMARY cost — ALWAYS defined (even at 0 resolves) when any attempt was priced. */
+	medianCostPerAttempt: number | null;
+	meanCostPerAttempt: number | null;
+	nAttempts: number;
+	/** SECONDARY cost — MAY be null (null at 0 resolves, by design). */
 	medianCostPerResolved: number | null;
 	/** ACTUAL resolved source for this condition (real eval vs weak proxy). */
 	resolvedSource: ResolvedSource;
@@ -526,6 +569,17 @@ export interface Manifest {
 	/** Top-level resolved source: real only when every condition was real. */
 	resolvedSource: "evaluate-patches.sh" | "patch-nonempty-PROXY" | "mixed";
 	acceptanceCriteria: AcceptanceCriteria;
+	/**
+	 * Which cost figure is the headline. cost-per-ATTEMPT is PRIMARY (always
+	 * defined when any attempt was priced, including 0-resolve conditions);
+	 * cost-per-RESOLVED is SECONDARY and may be null at 0 resolves. Spelled out so
+	 * readers never mistake a null secondary for "no data".
+	 */
+	costMetrics: {
+		primary: "costPerAttempt";
+		secondary: "costPerResolved";
+		note: string;
+	};
 	conditions: ManifestConditionView[];
 	proseEffect: Record<string, EffectBlock>;
 	compressionEffect: Record<string, EffectBlock>;
@@ -570,11 +624,21 @@ export function assembleManifest(input: ManifestInput): Manifest {
 		failedConditions,
 		resolvedSource,
 		acceptanceCriteria: input.acceptanceCriteria,
+		costMetrics: {
+			primary: "costPerAttempt",
+			secondary: "costPerResolved",
+			note:
+				"PRIMARY = cost-per-attempt (median+mean over ALL priced attempts; defined even at 0 resolves). " +
+				"SECONDARY = cost-per-resolved (may be null at 0 resolves). A null secondary means zero resolves, NOT missing data.",
+		},
 		// NOTE: deliberately NO total_processed (cherry-pick vector; raw CSV only).
 		conditions: counted.map((c) => ({
 			prose: c.prose,
 			compression: c.compression,
 			passRate: c.passRate,
+			medianCostPerAttempt: c.medianCostPerAttempt,
+			meanCostPerAttempt: c.meanCostPerAttempt,
+			nAttempts: c.nAttempts,
 			medianCostPerResolved: c.medianCostPerResolved,
 			resolvedSource: c.resolvedSource,
 		})),
@@ -790,7 +854,13 @@ function readPredictionsFromDir(conditionDir: string): PredictionRecord[] {
 // Subprocess spawning (GLUE — used by main only)
 // ===========================================================================
 
-function buildSwebenchArgs(config: AblationConfig, condition: Condition, conditionDir: string): string[] {
+/**
+ * Build the run-swebench argv for ONE condition. Exported so tests can assert
+ * that BOTH factors are forwarded INDEPENDENTLY (--cave <prose> AND --compression
+ * <on|off>) per condition — the decoupled gate (#33 change A) then applies them
+ * separately, which is what makes the 2×2 real. PURE given its inputs.
+ */
+export function buildSwebenchArgs(config: AblationConfig, condition: Condition, conditionDir: string): string[] {
 	const args = [
 		"tsx",
 		resolve(__dirname, "run-swebench.ts"),
@@ -802,6 +872,8 @@ function buildSwebenchArgs(config: AblationConfig, condition: Condition, conditi
 		config.provider,
 		"--model",
 		config.model,
+		"--sample",
+		config.sample,
 		"--output",
 		conditionDir,
 	];
@@ -830,7 +902,15 @@ function log(msg: string): void {
 function printHelp(): void {
 	console.log(
 		[
-			"run-cave-ablation.ts — 2-factor caveman ablation (prose × compression)",
+			"run-cave-ablation.ts — REAL 2×2 caveman ablation (prose × compression)",
+			"",
+			"The compression gate is DECOUPLED (#33): with --prose off,full --compression",
+			"on,off this enumerates + runs all 4 conditions, including the previously",
+			"unreachable compression-only (prose off + compression on). Both --cave and",
+			"--compression are forwarded independently to run-swebench per condition.",
+			"",
+			"Cost reporting: cost-per-ATTEMPT is PRIMARY (always defined, even at 0",
+			"resolves); cost-per-RESOLVED is SECONDARY (may be null at 0 resolves).",
 			"",
 			"Flags:",
 			"  --prose <csv>        off,lite,full,ultra (default: all 4)",
@@ -844,6 +924,9 @@ function printHelp(): void {
 			"  --model <id>         model held fixed across conditions (default: gpt-5.4)",
 			"  --limit <n>          max instances per condition",
 			"  --cap <dollars>      per-instance cost cap",
+			"  --sample <mode>      first|diverse instance selection, forwarded to",
+			"                       run-swebench (default: first). diverse = round-robin",
+			"                       across distinct repos so --limit spreads over repos.",
 			"  --dataset <path>     local JSONL dataset",
 			"  --output <dir>       output dir (default: research/results/ablation-<runid>)",
 			"  --score              run evaluate-patches.sh per condition for REAL resolved.",
@@ -939,7 +1022,7 @@ async function main(): Promise<void> {
 
 	const conditions = enumerateConditions(config);
 	log(`Conditions: ${conditions.length} (prose=${config.prose.join("/")} × compression=${config.compression.join("/")} × seeds=${config.seeds})`);
-	log(`Provider/model: ${config.provider}/${config.model} | scored: ${config.score}`);
+	log(`Provider/model: ${config.provider}/${config.model} | sample: ${config.sample} | scored: ${config.score}`);
 	log(`Output: ${config.outputDir}`);
 
 	if (config.dryRun) {
@@ -1003,6 +1086,9 @@ async function main(): Promise<void> {
 				compression: cond.compression,
 				passRate: 0,
 				n: 0,
+				medianCostPerAttempt: null,
+				meanCostPerAttempt: null,
+				nAttempts: 0,
 				medianCostPerResolved: null,
 				nResolvedTasks: 0,
 				resolvedSource: "patch-nonempty-PROXY",
@@ -1045,6 +1131,10 @@ async function main(): Promise<void> {
 	log("=== Done ===");
 	log(`Manifest: ${join(config.outputDir, "manifest.json")}`);
 	log(`Runs CSV: ${join(config.outputDir, "runs.csv")}`);
+	log(
+		"COST: PRIMARY = cost-per-attempt (always defined, even at 0 resolves); " +
+			"SECONDARY = cost-per-resolved (null at 0 resolves — null means zero resolves, not missing data).",
+	);
 	if (manifest.scored === false) {
 		log("UNSCORED: resolved is a patch-nonempty WEAK proxy (scored:false). Re-run with --score for real resolved.");
 	} else if (manifest.scored === "mixed") {
