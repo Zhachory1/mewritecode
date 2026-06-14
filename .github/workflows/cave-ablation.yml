@@ -1,0 +1,106 @@
+name: cave-ablation
+
+# Manual, PAID, scored caveman perf-vs-cost ablation on x86 Linux — where SWE-bench
+# env images pull prebuilt (no QEMU/OOM, unlike Apple Silicon). Spends real money on
+# the repo's OPENAI_API_KEY / ANTHROPIC_API_KEY secrets, so it is workflow_dispatch
+# only (never scheduled) with small bounded defaults.
+on:
+  workflow_dispatch:
+    inputs:
+      openai_models:
+        description: "OpenAI model ids (csv, blank to skip)"
+        default: "gpt-4o-mini,gpt-4.1"
+      anthropic_models:
+        description: "Anthropic model ids (csv, blank to skip)"
+        default: "claude-haiku-4-5,claude-sonnet-4-6"
+      prose:
+        description: "Caveman prose levels (csv: off,lite,full,ultra)"
+        default: "off,full"
+      compression:
+        description: "Tool-compression (csv: on,off)"
+        default: "on"
+      limit:
+        description: "SWE-bench instances per condition"
+        default: "5"
+      cap:
+        description: "Per-instance cost cap ($)"
+        default: "2"
+
+jobs:
+  ablation:
+    runs-on: ubuntu-latest # x86_64 → SWE-bench images pull prebuilt
+    timeout-minutes: 360
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      CAVE_BENCH_INSTANCE_CAP_DOLLARS: ${{ github.event.inputs.cap }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk for Docker images
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL || true
+          df -h /
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - run: npm run build # @juliusbrussee/caveman-* dist must exist (see #28)
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install swebench
+
+      - name: Run ablation grid (scored)
+        run: |
+          set -uo pipefail
+          mkdir -p research/results/grid
+          run_model() { # provider model
+            echo "::group::ablation $1/$2"
+            npx tsx research/evals/run-cave-ablation.ts \
+              --prose "${{ github.event.inputs.prose }}" \
+              --compression "${{ github.event.inputs.compression }}" \
+              --seeds 1 --provider "$1" --model "$2" \
+              --limit "${{ github.event.inputs.limit }}" --cap "${{ github.event.inputs.cap }}" --score \
+              --output "research/results/grid/$1-$2" || echo "::warning::$1/$2 failed (continuing)"
+            echo "::endgroup::"
+          }
+          IFS=',' read -ra OAI <<< "${{ github.event.inputs.openai_models }}"
+          for m in "${OAI[@]}"; do [ -n "$m" ] && run_model openai "$m"; done
+          IFS=',' read -ra ANT <<< "${{ github.event.inputs.anthropic_models }}"
+          for m in "${ANT[@]}"; do [ -n "$m" ] && run_model anthropic "$m"; done
+
+      - name: Summarize perf-vs-cost → job summary
+        if: always()
+        run: |
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, glob, os
+          rows=[]
+          scored_all=True
+          for mf in sorted(glob.glob("research/results/grid/*/manifest.json")):
+              m=json.load(open(mf))
+              model=m.get("model"); sc=m.get("scored")
+              if sc is not True: scored_all=False
+              for c in m.get("conditions",[]):
+                  rows.append((model, c.get("prose"), c.get("compression"),
+                               c.get("passRate"), c.get("medianCostPerResolved"), sc))
+          print("## Caveman perf-vs-cost ablation\n")
+          print(f"_scored: {'real (swebench)' if scored_all else 'MIXED/proxy — check per-model resolvedSource'}_\n")
+          print("| model | prose | comp | pass-rate | $/resolved |")
+          print("|---|---|---|---|---|")
+          for r in rows:
+              pr = f"{r[3]:.2f}" if isinstance(r[3],(int,float)) else "—"
+              cost = f"${r[4]:.4f}" if isinstance(r[4],(int,float)) else "—"
+              print(f"| {r[0]} | {r[1]} | {r[2]} | {pr} | {cost} |")
+          print("\n_n per condition = --limit; small n is feasibility-grade, not powered (pre-register MDE for a real claim — see #33)._")
+          PY
+
+      - name: Upload raw results + manifests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cave-ablation-results
+          path: research/results/grid/
+          retention-days: 14
