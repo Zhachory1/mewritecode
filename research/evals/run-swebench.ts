@@ -22,6 +22,13 @@
  *   --compression <on|off> Tool-output compression knob, INDEPENDENT of --cave
  *                          (default: follow settings/current — no behavior change when omitted).
  *                          The ablation runner (#33) sets this to isolate the compression effect.
+ *   --sample <mode>        How --limit selects instances: first|diverse (default: first).
+ *                          `first`   = the first N rows (current/back-compat behavior; the
+ *                                      Verified set is repo-sorted so first-N skews to one repo,
+ *                                      e.g. all astropy).
+ *                          `diverse` = round-robin across DISTINCT repos so --limit N spreads
+ *                                      across as many repos as possible (one per repo, then a
+ *                                      second from each, …). Order within a repo is preserved.
  *   --dataset <path>       Local JSONL file instead of HuggingFace
  *   --dry-run              Load dataset and print instance IDs without running
  */
@@ -30,6 +37,7 @@ import { execSync } from "node:child_process";
 import { appendFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
 	aggregateBench,
 	type BenchInstance,
@@ -48,6 +56,7 @@ import { SettingsManager } from "../../packages/coding-agent/src/core/settings-m
 // ---------------------------------------------------------------------------
 
 type CaveLevel = "off" | "lite" | "full" | "ultra";
+export type SampleMode = "first" | "diverse";
 
 interface RunConfig {
 	limit?: number;
@@ -64,8 +73,58 @@ interface RunConfig {
 	// session-level knob setCaveModeSessionToolCompression. The ablation runner
 	// (#33) uses this to vary compression while holding prose fixed.
 	compression?: boolean;
+	// How --limit selects instances. "first" = first-N (back-compat). "diverse" =
+	// round-robin across distinct repos so --limit spreads over repos.
+	sample: SampleMode;
 	datasetPath?: string;
 	dryRun: boolean;
+}
+
+/** Minimal shape needed for diverse sampling — repo is the only key that matters. */
+interface RepoTagged {
+	repo: string;
+}
+
+/**
+ * Round-robin sample across DISTINCT repos, preserving each repo's internal order
+ * and first-seen repo order. With `limit`, take one instance from each repo in
+ * turn (round 1), then a second from each that still has more (round 2), … until
+ * `limit` is reached. This spreads a small --limit over as many repos as possible
+ * instead of taking the first-N (which, on the repo-sorted Verified set, is all
+ * one repo). PURE: no I/O, deterministic given input order.
+ */
+export function diverseSample<T extends RepoTagged>(instances: T[], limit?: number): T[] {
+	// Bucket by repo, preserving first-seen repo order and within-repo order.
+	const order: string[] = [];
+	const byRepo = new Map<string, T[]>();
+	for (const inst of instances) {
+		let bucket = byRepo.get(inst.repo);
+		if (!bucket) {
+			bucket = [];
+			byRepo.set(inst.repo, bucket);
+			order.push(inst.repo);
+		}
+		bucket.push(inst);
+	}
+
+	const out: T[] = [];
+	const cap = limit && limit > 0 ? limit : instances.length;
+	let added = true;
+	const cursor = new Map<string, number>();
+	while (added && out.length < cap) {
+		added = false;
+		for (const repo of order) {
+			if (out.length >= cap) break;
+			const bucket = byRepo.get(repo)!;
+			const idx = cursor.get(repo) ?? 0;
+			if (idx < bucket.length) {
+				out.push(bucket[idx]);
+				cursor.set(repo, idx + 1);
+				added = true;
+			}
+		}
+	}
+	return out;
 }
 
 function parseRunArgs(): RunConfig {
@@ -78,6 +137,8 @@ function parseRunArgs(): RunConfig {
 		thinking: "high",
 		// Default preserves prior behavior (enabled + ultra) so existing runs are unchanged.
 		cave: "ultra",
+		// Default "first" preserves prior first-N --limit behavior (back-compat).
+		sample: "first",
 		dryRun: false,
 	};
 
@@ -124,6 +185,15 @@ function parseRunArgs(): RunConfig {
 					process.exit(1);
 				}
 				config.compression = v === "on";
+				break;
+			}
+			case "--sample": {
+				const v = args[++i];
+				if (v !== "first" && v !== "diverse") {
+					console.error(`Invalid --sample value: ${v} (expected first|diverse)`);
+					process.exit(1);
+				}
+				config.sample = v;
 				break;
 			}
 			case "--dataset":
@@ -338,18 +408,23 @@ async function main() {
 		log(`Compression override: ${config.compression ? "on" : "off"} (independent of --cave prose)`);
 	}
 
-	// Load dataset
-	log("Loading SWE-bench Verified dataset...");
+	// Load dataset. For "diverse" sampling we must NOT push --limit into the loader
+	// (it would first-N truncate before we can spread across repos), so we load the
+	// full repo-filtered set and apply diverseSample afterward. For "first" (and a
+	// single --instance-id) the loader applies the limit as before (back-compat).
+	const loaderLimit =
+		config.instanceId || config.sample === "diverse" ? undefined : config.limit;
+	log(`Loading SWE-bench Verified dataset... (sample: ${config.sample})`);
 	let instances: BenchInstance[];
 	if (config.datasetPath) {
 		instances = await loadSweBenchFromFile(config.datasetPath, {
 			repos: config.repos,
-			limit: config.instanceId ? undefined : config.limit,
+			limit: loaderLimit,
 		});
 	} else {
 		instances = await loadSweBenchVerified({
 			repos: config.repos,
-			limit: config.instanceId ? undefined : config.limit,
+			limit: loaderLimit,
 		});
 	}
 
@@ -360,6 +435,9 @@ async function main() {
 			console.error(`Instance not found: ${config.instanceId}`);
 			process.exit(1);
 		}
+	} else if (config.sample === "diverse") {
+		// Round-robin across distinct repos so --limit N spreads over repos.
+		instances = diverseSample(instances, config.limit);
 	}
 
 	log(`Loaded ${instances.length} instances`);
@@ -507,7 +585,12 @@ async function main() {
 	log(`  bash research/evals/evaluate-patches.sh ${predictionsPath}`);
 }
 
-main().catch((err) => {
-	console.error("Fatal:", err);
-	process.exit(1);
-});
+// Only run main when executed directly (not when imported by tests, which pull in
+// the pure diverseSample helper without spawning the paid benchmark).
+const isDirect = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isDirect) {
+	main().catch((err) => {
+		console.error("Fatal:", err);
+		process.exit(1);
+	});
+}
