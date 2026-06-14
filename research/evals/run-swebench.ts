@@ -18,33 +18,33 @@
  *   --provider <name>      LLM provider (default: openai-codex)
  *   --model <pattern>      Model pattern (default: gpt-5.4)
  *   --thinking <level>     Thinking level (default: high)
+ *   --cave <level>         Caveman level: off|lite|full|ultra (default: ultra — current behavior)
  *   --dataset <path>       Local JSONL file instead of HuggingFace
  *   --dry-run              Load dataset and print instance IDs without running
  */
 
 import { execSync } from "node:child_process";
-import { mkdirSync, rmSync, writeFileSync, appendFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import {
-	loadSweBenchVerified,
-	loadSweBenchFromFile,
-	runBench,
 	aggregateBench,
 	type BenchInstance,
+	loadSweBenchFromFile,
+	loadSweBenchVerified,
+	runBench,
 } from "../../packages/agent/src/bench/index.js";
 import type { ThinkingLevel } from "../../packages/agent/src/index.js";
 import { getModel } from "../../packages/ai/src/models.js";
-import {
-	createAgentSession,
-	type CreateAgentSessionOptions,
-} from "../../packages/coding-agent/src/core/sdk.js";
+import { createAgentSession } from "../../packages/coding-agent/src/core/sdk.js";
 import { SessionManager } from "../../packages/coding-agent/src/core/session-manager.js";
 import { SettingsManager } from "../../packages/coding-agent/src/core/settings-manager.js";
 
 // ---------------------------------------------------------------------------
 // CLI arg parsing
 // ---------------------------------------------------------------------------
+
+type CaveLevel = "off" | "lite" | "full" | "ultra";
 
 interface RunConfig {
 	limit?: number;
@@ -55,6 +55,7 @@ interface RunConfig {
 	provider: string;
 	model: string;
 	thinking: string;
+	cave: CaveLevel;
 	datasetPath?: string;
 	dryRun: boolean;
 }
@@ -67,6 +68,8 @@ function parseRunArgs(): RunConfig {
 		provider: "openai-codex",
 		model: "gpt-5.4",
 		thinking: "high",
+		// Default preserves prior behavior (enabled + ultra) so existing runs are unchanged.
+		cave: "ultra",
 		dryRun: false,
 	};
 
@@ -97,6 +100,15 @@ function parseRunArgs(): RunConfig {
 			case "--thinking":
 				config.thinking = args[++i];
 				break;
+			case "--cave": {
+				const level = args[++i];
+				if (level !== "off" && level !== "lite" && level !== "full" && level !== "ultra") {
+					console.error(`Invalid --cave level: ${level} (expected off|lite|full|ultra)`);
+					process.exit(1);
+				}
+				config.cave = level;
+				break;
+			}
 			case "--dataset":
 				config.datasetPath = resolve(args[++i]);
 				break;
@@ -144,10 +156,7 @@ const SWEBENCH_SYSTEM_ADDENDUM = [
 ].join("\n");
 
 function buildPrompt(instance: BenchInstance): string {
-	return [
-		"Fix the following GitHub issue in this repository.\n",
-		instance.problem_statement,
-	].join("\n");
+	return ["Fix the following GitHub issue in this repository.\n", instance.problem_statement].join("\n");
 }
 
 // ---------------------------------------------------------------------------
@@ -159,15 +168,18 @@ interface InstanceResult {
 	durationMs: number;
 	cost: number;
 	toolCalls: number;
-	tokens: { input: number; output: number };
+	// All four token classes. On error every field is null (not 0) so failed
+	// runs are excludable from accounting rather than silently counted as zero.
+	tokens: {
+		input: number | null;
+		output: number | null;
+		cacheRead: number | null;
+		cacheWrite: number | null;
+	};
 	error?: string;
 }
 
-async function runCaveOnInstance(
-	instance: BenchInstance,
-	workDir: string,
-	config: RunConfig,
-): Promise<InstanceResult> {
+async function runCaveOnInstance(instance: BenchInstance, workDir: string, config: RunConfig): Promise<InstanceResult> {
 	const start = Date.now();
 
 	try {
@@ -177,12 +189,22 @@ async function runCaveOnInstance(
 			throw new Error(`Model not found: ${config.provider}/${config.model}`);
 		}
 
-		// Create settings manager that enables all compression modes
+		// Configure caveman mode for the chosen level. For lite/full/ultra we
+		// enable cave mode + tool/ML compression at the requested intensity. For
+		// `off` we disable cave mode entirely so BOTH the prompt block AND the
+		// tool-output compression gate (afterToolCall reads getCaveModeEnabled())
+		// are off — a true off, not just an intensity reset.
 		const settingsManager = SettingsManager.create(workDir);
-		settingsManager.setCaveModeEnabled(true);
-		settingsManager.setCaveModeIntensity("ultra");
-		settingsManager.setCaveModeToolCompression(true);
-		settingsManager.setCaveModeMLCompression(true);
+		if (config.cave === "off") {
+			settingsManager.setCaveModeEnabled(false);
+			settingsManager.setCaveModeToolCompression(false);
+			settingsManager.setCaveModeMLCompression(false);
+		} else {
+			settingsManager.setCaveModeEnabled(true);
+			settingsManager.setCaveModeIntensity(config.cave);
+			settingsManager.setCaveModeToolCompression(true);
+			settingsManager.setCaveModeMLCompression(true);
+		}
 
 		// Create agent session using the SDK
 		const { session } = await createAgentSession({
@@ -196,19 +218,17 @@ async function runCaveOnInstance(
 		// Wait for runtime to initialize (constructor fires _buildRuntime async)
 		await new Promise((r) => setTimeout(r, 100));
 
+		// For `off`, also disable cave mode at the session level so the rendered
+		// system prompt carries no cave-mode block (setCaveModeSessionDisabled sets
+		// _sessionCaveModeDisabled, which forces caveModeEnabled=false in
+		// _rebuildSystemPrompt — verified in agent-session.ts).
+		if (config.cave === "off") {
+			session.setCaveModeSessionDisabled();
+		}
+
 		// Append SWE-bench-specific system prompt
 		const basePrompt = session.systemPrompt;
 		session.agent.state.systemPrompt = `${basePrompt}\n\n${SWEBENCH_SYSTEM_ADDENDUM}`;
-
-		// Subscribe to events for logging
-		let toolCallCount = 0;
-		session.subscribe((event) => {
-			if ("type" in event) {
-				if (event.type === "tool_call_start") {
-					toolCallCount++;
-				}
-			}
-		});
 
 		// Run the agent loop — this triggers multi-turn tool calling
 		log("  Running agent...");
@@ -230,7 +250,12 @@ async function runCaveOnInstance(
 			durationMs: Date.now() - start,
 			cost: stats.cost,
 			toolCalls: stats.toolCalls,
-			tokens: { input: stats.tokens.input, output: stats.tokens.output },
+			tokens: {
+				input: stats.tokens.input,
+				output: stats.tokens.output,
+				cacheRead: stats.tokens.cacheRead,
+				cacheWrite: stats.tokens.cacheWrite,
+			},
 		};
 	} catch (error) {
 		return {
@@ -238,7 +263,9 @@ async function runCaveOnInstance(
 			durationMs: Date.now() - start,
 			cost: 0,
 			toolCalls: 0,
-			tokens: { input: 0, output: 0 },
+			// null (not 0) so a failed run is excludable from accounting rather
+			// than being counted as a zero-token success.
+			tokens: { input: null, output: null, cacheRead: null, cacheWrite: null },
 			error: error instanceof Error ? error.message : String(error),
 		};
 	}
@@ -271,8 +298,14 @@ async function main() {
 	const config = parseRunArgs();
 
 	log("=== SWE-bench Verified Runner for Cave CLI (SDK mode) ===");
-	log(`Provider: ${config.provider} | Model: ${config.model} | Thinking: ${config.thinking} | Cap: $${config.capDollars}/instance`);
-	log(`Compression: ultra + tool + ML (all active)`);
+	log(
+		`Provider: ${config.provider} | Model: ${config.model} | Thinking: ${config.thinking} | Cap: $${config.capDollars}/instance`,
+	);
+	log(
+		config.cave === "off"
+			? `Caveman: off (cave mode + tool/ML compression disabled)`
+			: `Caveman: ${config.cave} + tool + ML compression`,
+	);
 
 	// Load dataset
 	log("Loading SWE-bench Verified dataset...");
@@ -350,22 +383,31 @@ async function main() {
 					model_name_or_path: modelLabel,
 					model_patch: result.patch,
 				};
-				appendFileSync(predictionsPath, JSON.stringify(prediction) + "\n");
+				appendFileSync(predictionsPath, `${JSON.stringify(prediction)}\n`);
 
 				// Save trace
 				const traceFile = join(tracesDir, `${instance.id}.json`);
-				writeFileSync(traceFile, JSON.stringify({
-					instance_id: instance.id,
-					duration_ms: result.durationMs,
-					cost: result.cost,
-					tool_calls: result.toolCalls,
-					tokens: result.tokens,
-					patch_lines: result.patch.split("\n").length,
-					error: result.error,
-				}, null, 2));
+				writeFileSync(
+					traceFile,
+					JSON.stringify(
+						{
+							instance_id: instance.id,
+							duration_ms: result.durationMs,
+							cost: result.cost,
+							tool_calls: result.toolCalls,
+							tokens: result.tokens,
+							patch_lines: result.patch.split("\n").length,
+							error: result.error,
+						},
+						null,
+						2,
+					),
+				);
 
 				const hasPatch = result.patch.trim().length > 0;
-				log(`  ${hasPatch ? "PATCH" : "NO_PATCH"} | ${(result.durationMs / 1000).toFixed(1)}s | $${result.cost.toFixed(3)} | ${result.toolCalls} tools${result.error ? ` | ERROR: ${result.error}` : ""}`);
+				log(
+					`  ${hasPatch ? "PATCH" : "NO_PATCH"} | ${(result.durationMs / 1000).toFixed(1)}s | $${result.cost.toFixed(3)} | ${result.toolCalls} tools${result.error ? ` | ERROR: ${result.error}` : ""}`,
+				);
 
 				return {
 					resolved: hasPatch,
@@ -376,7 +418,9 @@ async function main() {
 				};
 			} finally {
 				if (!process.env.CAVE_BENCH_KEEP_WORKDIRS) {
-					try { rmSync(workDir, { recursive: true, force: true }); } catch {}
+					try {
+						rmSync(workDir, { recursive: true, force: true });
+					} catch {}
 				} else {
 					log(`  Keeping workdir: ${workDir}`);
 				}
@@ -394,7 +438,8 @@ async function main() {
 			model: config.model,
 			thinking: config.thinking,
 			capDollars: config.capDollars,
-			compression: "ultra+tool+ml",
+			cave: config.cave,
+			compression: config.cave === "off" ? "off" : `${config.cave}+tool+ml`,
 		},
 		aggregate: agg,
 		results,
