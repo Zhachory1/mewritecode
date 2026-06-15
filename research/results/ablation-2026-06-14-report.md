@@ -1,66 +1,60 @@
-# Caveman ablation — preliminary run report (2026-06-14)
+# Caveman 2×2 ablation — real scored run (2026-06-15)
 
-> **STATUS: COST ONLY. NOT a quality result.** Real SWE-bench pass-rate was **not obtained**
-> on this machine — the scoring harness OOM-failed (see §4). The "performance" column below is a
-> **patch-produced proxy** (did the model emit a non-empty patch), NOT a verified resolve. Treat
-> nothing here as a published claim. n=5, single seed, hard astropy slice → **feasibility-grade**.
+> **Real SWE-bench scoring** (patches applied + test suites run; Docker eval local via Rosetta on
+> Apple Silicon). n=20 **diverse** SWE-bench Verified instances (round-robin across ~14 repos —
+> django, matplotlib, flask, requests, xarray, pylint, pytest, scikit-learn, sympy, sphinx, seaborn,
+> astropy, …), **1 seed**, 2 models. Spend: **$81.25 / 160 runs**. Per-instance 900s wall-clock
+> timeout (≈3 stalled turns aborted + excluded). **Directional, not powered** — n=20 single-seed,
+> CIs are wide and several span 0. Supersedes the earlier proxy/cost-only report.
 
-## 1. What ran
-- Harness: `research/evals/run-cave-ablation.ts` (issue #33) → per-condition `run-swebench.ts`.
-- Corpus: SWE-bench Verified, first **5** instances (all `astropy`, hard).
-- Factor: caveman **prose** ∈ {off, full}, tool-compression = on, seeds = 1, per-instance cap $2.
-- Models (machine: Apple Silicon / ARM):
-  - OpenAI (API key): `gpt-4o-mini` (complete), `gpt-4.1` (complete), `gpt-4o` (not started — stopped before).
-  - Anthropic (OAuth): `claude-haiku-4-5` (complete), `claude-sonnet-4-6` / `claude-opus-4-7` (stopped before — opus skipped to avoid spend).
-- Spend: ≈ **$5–7** total.
+## Design (council-driven)
+2 factors varied **independently** (the compression gate was decoupled from the prose flag so the
+full 2×2 is reachable): **prose** ∈ {off, full} × **tool-compression** ∈ {on, off}. Models: a strong
+resolver (`claude-sonnet-4-6`) and a mid one (`gpt-4.1`), held fixed within each 2×2. Cost via a
+single dated price table (verify before publishing). Primary cost metric = **$/attempt** (defined
+even at 0 resolves); $/resolved secondary. Pass-rate = real resolved/attempted via the shared
+SWE-bench scorer. Effects are **within-model, paired** (matched task,seed), with percentile-bootstrap
+/ McNemar-style 95% CIs.
 
-## 2. Real cost/token data (the valid part)
+## Results
 
-Per condition, n=5, mean per run. Cost is real (priced via the committed table). "patch" = non-empty
-patch emitted (proxy, **not** resolved).
+### claude-sonnet-4-6 (n=20)
+| prose | comp | pass-rate | $/attempt | $/resolved |
+|---|---|---|---|---|
+| off | on | 0.60 | $0.410 | $0.308 |
+| off | off | 0.55 | $0.482 | $0.299 |
+| full | on | 0.60 | $0.371 | $0.324 |
+| full | off | 0.50 | $0.342 | $0.255 |
 
-| model | prose | patch/5 (proxy) | $/run | fresh input/run | cacheRead/run |
-|---|---|---|---|---|---|
-| gpt-4o-mini | off | 0 | $0.0323 | 64,729 | 255,027 |
-| gpt-4o-mini | full | 1 | **$0.0195** | 29,890 | 165,273 |
-| claude-haiku-4-5 | off | 5 | $0.2767 | 393 | 1,132,262 |
-| claude-haiku-4-5 | full | 5 | **$0.2088** | 319 | 790,625 |
-| gpt-4.1 | off | 4 | **$0.2879** | 50,047 | 339,430 |
-| gpt-4.1 | full | 4 | $0.5251 | 100,059 | 614,937 |
+- **Prose effect (full − off), paired:** comp-on **0.00** (CI [0, 0]); comp-off **−0.05** (CI [−0.15, 0]). Cost ratio ≈ 1.00 (CI 0.84–1.15).
+- **Compression effect (on − off), paired:** prose-off **+0.05** (CI [0, 0.15]); prose-full **+0.10** (CI [0, 0.25]).
 
-## 3. The finding (cost) — caveman's effect is MODEL-DEPENDENT
-Caveman ON (prose full + compression) vs OFF, cost delta:
+### gpt-4.1 (n=20)
+| prose | comp | pass-rate | $/attempt | $/resolved |
+|---|---|---|---|---|
+| off | on | 0.30 | $0.341 | $0.272 |
+| off | off | 0.20 | $0.264 | $0.249 |
+| full | on | 0.25 | $0.471 | $0.472 |
+| full | off | 0.35 | $0.319 | $0.257 |
 
-| model | Δ cost (off → full) |
-|---|---|
-| gpt-4o-mini | **−40%** (cheaper) |
-| claude-haiku-4-5 | **−25%** (cheaper) |
-| gpt-4.1 | **+82%** (MORE expensive) |
+- **Prose effect (full − off), paired:** comp-on **−0.05** (CI [−0.20, 0.10]); comp-off **+0.15** (CI [0, 0.35]) — opposite signs across compression = noise at this n.
+- **Compression effect (on − off), paired:** prose-off **+0.10** (CI [0, 0.25]); prose-full **−0.10** (CI [−0.35, 0.15]) — also sign-flipped.
 
-- On the cheap/weak models, OFF burned ~2× the fresh input + more cacheRead → caveman compression saved cost.
-- On `gpt-4.1`, caveman ON ran *longer* (≈2× input + cacheRead) → cost more.
-- **This refutes a blanket "caveman saves ~2× tokens" claim** — the effect depends on the model/agent
-  behavior. Exactly the nuance the #8 councils predicted. (n=5, noisy — directional, not powered.)
+## Findings (preliminary)
+1. **No evidence caveman PROSE degrades task quality.** Both models: prose full−off deltas are small (0, ±0.05–0.15) and **every CI includes 0**. The #9 "fragmented-reasoning hurts quality" fear is **not supported** here. (Strongest single cell: sonnet comp-on prose effect = exactly 0, CI [0,0], n=20.)
+2. **Cost effect is MODEL-DEPENDENT** (confirms the earlier feasibility read): on sonnet, prose is ~cost-neutral to slightly cheaper ($/attempt full < off); on gpt-4.1, caveman `full,on` is the *priciest* cell ($0.47) — it runs longer with caveman on. So a blanket "caveman saves ~2× tokens" claim is **not** supportable; the sign depends on the model.
+3. **Compression effect is inconclusive** — small, sign-flips across prose, CIs span 0.
 
-## 4. Why there is no real pass-rate (scoring blocker)
-`evaluate-patches.sh` → `swebench.harness.run_evaluation` failed on **every** patch-producing condition:
+## Caveats (do not over-read)
+- **Underpowered:** n=20, **1 seed**. CIs are wide; most touch/span 0. No claim is statistically firm — this is a directional read + a working harness, not a publishable frontier. A powered run needs a pre-registered MDE (~≥30 paired both-resolved tasks) and ≥3 seeds.
+- **2 models, 1 corpus.** Diverse repos (good) but still SWE-bench Verified only.
+- **Rosetta-scored:** Docker eval ran under x86 emulation on Apple Silicon. For astropy-style numerical/Cython tasks, x86-emulated test results *could* differ from canonical x86 — **spot-check a sample of "resolved" patches on a real x86 host before publishing any pass-rate.**
+- **Pricing table** (`run-cave-ablation.ts PRICING_TABLE`) is dated 2026-06; verify before quoting $.
+- ~3 instances hit the 900s timeout and were excluded (recorded as errors, not counted as failures).
+
+## Reproduce
 ```
-swebench.harness.docker_build.BuildImageError: Error building image
-sweb.env.py.x86_64...:latest: ... returned a non-zero code: 137
+npx tsx research/evals/run-cave-ablation.ts --prose off,full --compression on,off \
+  --provider <p> --model <m> --limit 20 --sample diverse --cap 2 --score
 ```
-- Exit **137 = OOM** building the **x86_64** SWE-bench env image under **QEMU emulation on Apple Silicon**.
-- Dataset loaded fine (500 instances); empty-patch conditions correctly reported "empty patches".
-- This is an **architecture limit, not a code bug** — real scoring needs an **x86 Linux** host.
-
-## 5. How to get the real performance axis
-Run the same grid on x86 (images pull **prebuilt** → no OOM):
-- **CI:** `.github/workflows/cave-ablation.yml` (manual `workflow_dispatch`; needs `OPENAI_API_KEY` +
-  `ANTHROPIC_API_KEY` repo secrets — CI is headless so Claude needs an API key, not OAuth).
-- **Any x86 box:** `pip install swebench` then
-  `npx tsx research/evals/run-cave-ablation.ts --prose off,full --provider <p> --model <m> --limit N --cap C --score`.
-- A *powered* claim needs the council's pre-registered MDE (~≥30 paired both-resolved tasks), not n=5.
-
-## 6. Provenance
-Raw per-run artifacts were generated under `research/results/grid/` then cleaned (throwaway); the cost
-numbers above were aggregated from those traces during the run. Re-run to regenerate. Pricing table:
-`research/evals/run-cave-ablation.ts` (`PRICING_TABLE`, dated 2026-06, verify before publishing).
+Raw per-condition manifests committed alongside this report; bulky per-instance traces were not.

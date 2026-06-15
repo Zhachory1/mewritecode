@@ -1,0 +1,144 @@
+{
+  "schema": "cave-ablation/v1",
+  "gitSha": "885c613e73a7769210a335a1b1b3a7371e6ed629",
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-6",
+  "seeds": 1,
+  "scored": true,
+  "proxyConditions": [],
+  "failedConditions": [],
+  "resolvedSource": "evaluate-patches.sh",
+  "acceptanceCriteria": {
+    "maxQualityDropPp": 3,
+    "minCostSavingPct": 15
+  },
+  "costMetrics": {
+    "primary": "costPerAttempt",
+    "secondary": "costPerResolved",
+    "note": "PRIMARY = cost-per-attempt (median+mean over ALL priced attempts; defined even at 0 resolves). SECONDARY = cost-per-resolved (may be null at 0 resolves). A null secondary means zero resolves, NOT missing data."
+  },
+  "conditions": [
+    {
+      "prose": "off",
+      "compression": "on",
+      "passRate": 0.6,
+      "medianCostPerAttempt": 0.410124975,
+      "meanCostPerAttempt": 0.5101162416666667,
+      "nAttempts": 18,
+      "medianCostPerResolved": 0.307722225,
+      "resolvedSource": "evaluate-patches.sh"
+    },
+    {
+      "prose": "off",
+      "compression": "off",
+      "passRate": 0.55,
+      "medianCostPerAttempt": 0.48214342499999996,
+      "meanCostPerAttempt": 0.6262698500000001,
+      "nAttempts": 18,
+      "medianCostPerResolved": 0.299091,
+      "resolvedSource": "evaluate-patches.sh"
+    },
+    {
+      "prose": "full",
+      "compression": "on",
+      "passRate": 0.6,
+      "medianCostPerAttempt": 0.37115715000000005,
+      "meanCostPerAttempt": 0.4981080000000001,
+      "nAttempts": 18,
+      "medianCostPerResolved": 0.3244851,
+      "resolvedSource": "evaluate-patches.sh"
+    },
+    {
+      "prose": "full",
+      "compression": "off",
+      "passRate": 0.5,
+      "medianCostPerAttempt": 0.3422115,
+      "meanCostPerAttempt": 0.5936192999999998,
+      "nAttempts": 17,
+      "medianCostPerResolved": 0.25452345,
+      "resolvedSource": "evaluate-patches.sh"
+    }
+  ],
+  "proseEffect": {
+    "on": [
+      {
+        "level": "full",
+        "costMedianRatio": 0.9979967957046095,
+        "costCi95": [
+          0.8366318793684155,
+          1.154322335318764
+        ],
+        "costNPairs": 12,
+        "costPairedRate": 0.6,
+        "costPowerWarning": false,
+        "passRateDelta": 0,
+        "passRateCi95": [
+          0,
+          0
+        ],
+        "passRateNPairs": 20
+      }
+    ],
+    "off": [
+      {
+        "level": "full",
+        "costMedianRatio": 1.0062520023927213,
+        "costCi95": [
+          0.8650887369647472,
+          1.2113128641503268
+        ],
+        "costNPairs": 10,
+        "costPairedRate": 0.5,
+        "costPowerWarning": false,
+        "passRateDelta": -0.05,
+        "passRateCi95": [
+          -0.15,
+          0
+        ],
+        "passRateNPairs": 20
+      }
+    ]
+  },
+  "compressionEffect": {
+    "off": [
+      {
+        "level": "lite",
+        "costMedianRatio": 1.0668274933411004,
+        "costCi95": [
+          0.860275226917299,
+          1.230593643129704
+        ],
+        "costNPairs": 11,
+        "costPairedRate": 0.55,
+        "costPowerWarning": false,
+        "passRateDelta": 0.05,
+        "passRateCi95": [
+          0,
+          0.15
+        ],
+        "passRateNPairs": 20
+      }
+    ],
+    "full": [
+      {
+        "level": "lite",
+        "costMedianRatio": 0.9601538323103616,
+        "costCi95": [
+          0.859469959630557,
+          1.3935283967755607
+        ],
+        "costNPairs": 10,
+        "costPairedRate": 0.5,
+        "costPowerWarning": false,
+        "passRateDelta": 0.1,
+        "passRateCi95": [
+          0,
+          0.25
+        ],
+        "passRateNPairs": 20
+      }
+    ]
+  },
+  "comparable": "n/a",
+  "comparableNote": "Iso-model 2-factor ablation (prose × compression at a fixed model); codex cross-tool token comparison is out of scope here."
+}
