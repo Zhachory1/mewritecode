@@ -1,5 +1,14 @@
 # Caveman 2×2 ablation — real scored run (2026-06-15)
 
+> **⚠ SCOPE: this measures TASK QUALITY (+ per-task cost), NOT real-usage cost.** It runs a FRESH
+> single-task session per SWE-bench instance, so it is **structurally blind to caveman's main cost
+> lever** — tool-output compression + prompt-cache reuse that **amortize over long multi-turn
+> sessions** (hundreds of tool calls, repeated big-file reads). Real production usage shows
+> **~30–50% cheaper over 2 months while doing more work** — the per-task numbers below do NOT
+> capture that, and should not be read as "caveman's cost effect." Measuring real-usage cost the
+> right way (savings-meter aggregate / long-session replay) is tracked in **#36**. This run's solid
+> contribution is the **quality** result (no prose-harm), not a usage-cost verdict.
+>
 > **Real SWE-bench scoring** (patches applied + test suites run; Docker eval local via Rosetta on
 > Apple Silicon). n=20 **diverse** SWE-bench Verified instances (round-robin across ~14 repos —
 > django, matplotlib, flask, requests, xarray, pylint, pytest, scikit-learn, sympy, sphinx, seaborn,
@@ -42,7 +51,7 @@ SWE-bench scorer. Effects are **within-model, paired** (matched task,seed), with
 
 ## Findings (preliminary)
 1. **No evidence caveman PROSE degrades task quality.** Both models: prose full−off deltas are small (0, ±0.05–0.15) and **every CI includes 0**. The #9 "fragmented-reasoning hurts quality" fear is **not supported** here. (Strongest single cell: sonnet comp-on prose effect = exactly 0, CI [0,0], n=20.)
-2. **Cost effect is MODEL-DEPENDENT** (confirms the earlier feasibility read): on sonnet, prose is ~cost-neutral to slightly cheaper ($/attempt full < off); on gpt-4.1, caveman `full,on` is the *priciest* cell ($0.47) — it runs longer with caveman on. So a blanket "caveman saves ~2× tokens" claim is **not** supportable; the sign depends on the model.
+2. **Per-task cost effect (NOT real-usage cost — see scope note + #36):** on sonnet, caveman is ~neutral to **~15–25% cheaper** per attempt ($0.34–0.37 full vs $0.41–0.48 off); on gpt-4.1, caveman `full,on` is the priciest cell ($0.47) — but that's caveman making it run **more tools / persevere** (more work done), not wasted tokens. The "model-dependent" framing is about THIS isolated-task metric. It does **not** measure the long-session compression + cache-reuse savings that drive real usage (operator: ~30–50% cheaper over 2 months) — the bench can't see that mechanism. A blanket "saves ~2× tokens *per task*" isn't supportable here; the real-usage cost question is open (#36).
 3. **Compression effect is inconclusive** — small, sign-flips across prose, CIs span 0.
 
 ## Caveats (do not over-read)
