@@ -89,6 +89,7 @@ import type { ResourceDiagnostic } from "../../core/resource-loader.js";
 import { formatMissingSessionCwdPrompt, MissingSessionCwdError } from "../../core/session-cwd.js";
 import { type SessionContext, SessionManager } from "../../core/session-manager.js";
 import { runActCommand } from "../../core/slash-commands/act.js";
+import { runApprovalCommand } from "../../core/slash-commands/approval.js";
 import { runCheckpointCommand } from "../../core/slash-commands/checkpoint.js";
 import { runGoalSlashCommand } from "../../core/slash-commands/goal.js";
 import { runMcpSlashCommand } from "../../core/slash-commands/mcp.js";
@@ -115,6 +116,7 @@ import { extensionForImageMimeType, readClipboardImage } from "../../utils/clipb
 import { parseGitUrl } from "../../utils/git.js";
 import { ensureTool } from "../../utils/tools-manager.js";
 import { ActionBarComponent } from "./components/action-bar.js";
+import { showApprovalPrompt } from "./components/approval-prompt.js";
 import { ArminComponent } from "./components/armin.js";
 import { AssistantMessageComponent } from "./components/assistant-message.js";
 import { BashExecutionComponent } from "./components/bash-execution.js";
@@ -314,6 +316,25 @@ export function parseLoginCommand(
 		return { kind: "provider", provider: id };
 	}
 	return { kind: "invalid", provider: arg };
+}
+
+/**
+ * One-line summary of a tool call's args for the approval dialog (#14). Prefers
+ * the bash command, then a file path, then a compact JSON fallback.
+ */
+function summarizeToolArgs(toolName: string, args: unknown): string | undefined {
+	if (args && typeof args === "object") {
+		const obj = args as Record<string, unknown>;
+		if (typeof obj.command === "string") return obj.command;
+		if (typeof obj.path === "string") return obj.path;
+		if (typeof obj.file_path === "string") return obj.file_path;
+	}
+	try {
+		const json = JSON.stringify(args);
+		return json && json !== "{}" ? `${toolName} ${json}` : undefined;
+	} catch {
+		return undefined;
+	}
 }
 
 export class InteractiveMode {
@@ -547,6 +568,13 @@ export class InteractiveMode {
 		setRegisteredThemes(this.session.resourceLoader.getThemes().themes);
 		initTheme(this.settingsManager.getTheme(), true);
 		this.ui.setGlobalBackground(theme.getPageBgFn());
+
+		// #14: wire the interactive TUI approval provider. Inert unless approval
+		// mode is ON (the gate only consults it then). Headless/print mode never
+		// constructs InteractiveMode, so it correctly has no callback → deny.
+		this.session.setApprovalCallback((toolName, args, tier, signal) =>
+			showApprovalPrompt(this.ui, { toolName, tier, summary: summarizeToolArgs(toolName, args), signal }),
+		);
 	}
 
 	private getAutocompleteSourceTag(sourceInfo?: SourceInfo): string | undefined {
@@ -832,6 +860,10 @@ export class InteractiveMode {
 	 */
 	async run(): Promise<void> {
 		await this.init();
+
+		// #14: reflect approval mode in the footer at startup (e.g. launched with
+		// CAVE_APPROVAL_MODE=1 or a persisted approvalMode setting).
+		this._refreshApprovalFooter();
 
 		// Start version check asynchronously
 		this.checkForNewVersion().then((newVersion) => {
@@ -2648,6 +2680,12 @@ export class InteractiveMode {
 				const args = text.startsWith("/act ") ? text.slice(5) : "";
 				this.editor.setText("");
 				this.handleActSlashCommand(args);
+				return;
+			}
+			if (text === "/approval" || text.startsWith("/approval ")) {
+				const args = text.startsWith("/approval ") ? text.slice(10) : "";
+				this.editor.setText("");
+				this.handleApprovalSlashCommand(args);
 				return;
 			}
 
@@ -5025,6 +5063,25 @@ export class InteractiveMode {
 		});
 		this.appendSlashOutput(result.output, result.exitCode !== 0);
 		this._refreshChatModeFooter();
+	}
+
+	private handleApprovalSlashCommand(args: string): void {
+		const result = runApprovalCommand(args, {
+			getApprovalMode: () => this.session.approvalMode,
+			setApprovalMode: (enabled) => this.session.setApprovalMode(enabled),
+		});
+		this.appendSlashOutput(result.output, result.exitCode !== 0);
+		this._refreshApprovalFooter();
+	}
+
+	/** #14: surface approval mode as a footer extension status. */
+	private _refreshApprovalFooter(): void {
+		this.footerDataProvider.setExtensionStatus(
+			"approval-mode",
+			this.session.approvalMode ? theme.fg("warning", "⛉ approval") : undefined,
+		);
+		this.footer.invalidate();
+		this.ui.requestRender();
 	}
 
 	/** Gap 6: surface the active chat mode as a footer extension status. */

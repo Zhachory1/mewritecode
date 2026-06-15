@@ -154,6 +154,12 @@ export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 		description: "Exit plan mode and restore edit tools so the agent can execute its plan.",
 		wired: true,
 	},
+	{
+		name: "approval",
+		description:
+			"Toggle OPT-IN approval mode (writes/bash prompt before running). /approval [on|off|status]. Human-review, NOT a sandbox.",
+		wired: true,
+	},
 	{ name: "skills", description: "Open the skills hub overlay (browse user/project/bundled skills).", wired: true },
 	{
 		name: "plugins",

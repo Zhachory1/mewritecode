@@ -45,6 +45,16 @@ describe("parseArgs", () => {
 		});
 	});
 
+	describe("--approval flag (#14)", () => {
+		test("parses --approval flag", () => {
+			expect(parseArgs(["--approval"]).approval).toBe(true);
+		});
+
+		test("defaults to undefined when absent", () => {
+			expect(parseArgs([]).approval).toBeUndefined();
+		});
+	});
+
 	describe("--continue flag", () => {
 		test("parses --continue flag", () => {
 			const result = parseArgs(["--continue"]);

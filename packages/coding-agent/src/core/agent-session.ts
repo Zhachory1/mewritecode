@@ -23,6 +23,7 @@ import type {
 	AgentState,
 	AgentTool,
 	ThinkingLevel,
+	ToolExecutionMode,
 } from "@juliusbrussee/caveman-agent";
 import { checkpoints, LLMLinguaMiddleware, memory as memoryNs } from "@juliusbrussee/caveman-agent";
 
@@ -43,6 +44,7 @@ import { theme } from "../modes/interactive/theme/theme.js";
 import { stripFrontmatter } from "../utils/frontmatter.js";
 import { sleep } from "../utils/sleep.js";
 import { ActivityRegistry } from "./activity/activity-registry.js";
+import { classifyToolCall, needsApproval, type RiskTier } from "./approval-policy.js";
 import { type BashResult, executeBashWithOperations } from "./bash-executor.js";
 import { applyStructuredCompressionToContentBlocks } from "./cave-structured-compression.js";
 import {
@@ -160,6 +162,27 @@ export type AgentSessionEvent =
 
 /** Listener function for agent session events */
 export type AgentSessionEventListener = (event: AgentSessionEvent) => void;
+
+/**
+ * Approval decision returned by the host's approval provider (#14).
+ * - `once`: allow this single call.
+ * - `session`: allow this call AND remember the tool so it isn't re-prompted.
+ * - `deny`: block this call (the loop emits an error tool result).
+ */
+export type ApprovalDecision = "once" | "session" | "deny";
+
+/**
+ * Host-provided approval provider for OPT-IN approval mode (#14). Interactive
+ * mode wires a TUI dialog; headless/subagent contexts leave it unset, which the
+ * gate treats as deny-by-default (NEVER silent-allow). The classifier-derived
+ * `tier` is passed for honest UX copy only ("wants to write/run …").
+ */
+export type RequestApprovalFn = (
+	toolName: string,
+	args: unknown,
+	tier: RiskTier,
+	signal?: AbortSignal,
+) => Promise<ApprovalDecision>;
 
 // ============================================================================
 // Types
@@ -444,6 +467,19 @@ export class AgentSession {
 	private _chatMode: ChatMode =
 		process.env.CAVE_CHAT_MODE === "plan" ? "plan" : process.env.CAVE_CHAT_MODE === "edit" ? "edit" : "auto";
 
+	// #14: OPT-IN approval mode. The callback is injected by the host (interactive
+	// mode wires a TUI dialog; headless/subagent leave it unset → deny-by-default).
+	// Tools the user "approved for session" are remembered here so we don't
+	// re-prompt for the same tool. Both are inert unless approval mode is ON, and
+	// the autopilot path (mode OFF) never touches the classifier or the callback.
+	private _requestApproval?: RequestApprovalFn;
+	private _sessionApprovedTools = new Set<string>();
+	// MED-1: the agent's tool-execution mode as it was BEFORE approval mode first
+	// forced it to "sequential". Captured once (lazily, on the first override) so
+	// turning approval mode OFF restores the REAL prior value instead of blindly
+	// hardcoding "parallel" — which would clobber an intentionally-sequential host.
+	private _priorToolExecution?: ToolExecutionMode;
+
 	// Gap 7: soft compaction state. Threshold = fraction of context window above
 	// which we proactively LLMLingua-compress oldest tool-result blocks. Hard
 	// compaction (whole-history summary) still runs as a safety net.
@@ -471,6 +507,10 @@ export class AgentSession {
 		// (session persistence, extensions, auto-compaction, retry logic)
 		this._unsubscribeAgent = this.agent.subscribe(this._handleAgentEvent);
 		this._installAgentToolHooks();
+		// #14: if approval mode is already on at construction (setting or
+		// CAVE_APPROVAL_MODE env, e.g. a guarded subagent), force sequential tool
+		// execution up front so the gate never races concurrent calls.
+		this._applyApprovalToolExecution();
 
 		this._initialRuntimeReady = this._buildRuntime({
 			activeToolNames: this._initialActiveToolNames,
@@ -600,7 +640,16 @@ export class AgentSession {
 	 * happens here instead of in wrappers.
 	 */
 	private _installAgentToolHooks(): void {
-		this.agent.beforeToolCall = async ({ toolCall, args }) => {
+		this.agent.beforeToolCall = async ({ toolCall, args }, signal) => {
+			// #14: OPT-IN approval gate. The classifier and approval callback are
+			// reached ONLY when approval mode is ON. When OFF (autopilot, the
+			// default) this single boolean short-circuits before any policy code —
+			// the path below is byte-for-byte the pre-#14 behavior.
+			if (this.settingsManager.getApprovalMode()) {
+				const approvalBlock = await this._approvalGate(toolCall.name, args, signal);
+				if (approvalBlock) return approvalBlock;
+			}
+
 			// Gap 4: take a shadow-git snapshot before mutating tools so the user
 			// can /rollback. preToolSnapshot is a no-op for non-mutating tools.
 			await this._maybeAutoSnapshot(toolCall.name);
@@ -815,6 +864,130 @@ export class AgentSession {
 			if (this._chatMode === "plan") return planSystemPrompt(ctx.systemPrompt);
 			return ctx.systemPrompt;
 		};
+	}
+
+	// =========================================================================
+	// Approval mode (#14) — OPT-IN human-review speed-bump (NOT a sandbox)
+	// =========================================================================
+
+	/**
+	 * Inject the host's approval provider (#14). Interactive mode passes a
+	 * TUI-dialog-backed callback; headless/subagent contexts leave it unset so the
+	 * gate denies-by-default. Inert unless approval mode is ON.
+	 */
+	setApprovalCallback(cb: RequestApprovalFn | undefined): void {
+		this._requestApproval = cb;
+	}
+
+	/** True when approval mode is enabled (setting or CAVE_APPROVAL_MODE env). */
+	get approvalMode(): boolean {
+		return this.settingsManager.getApprovalMode();
+	}
+
+	/**
+	 * Toggle approval mode (#14). Forces `toolExecution: "sequential"` while ON so
+	 * concurrent tool calls can't race the single approval prompt; restores
+	 * "parallel" when OFF. Honest framing: human-review, NOT containment (#46).
+	 */
+	setApprovalMode(enabled: boolean): void {
+		this.settingsManager.setApprovalMode(enabled);
+		this._applyApprovalToolExecution();
+		if (!enabled) this._sessionApprovedTools.clear();
+	}
+
+	/**
+	 * Approval gate body. Reached ONLY when approval mode is ON (the caller
+	 * short-circuits otherwise, so the classifier never runs on the autopilot
+	 * path). Returns a block result to deny, or undefined to allow.
+	 */
+	private async _approvalGate(
+		toolName: string,
+		args: unknown,
+		signal?: AbortSignal,
+	): Promise<{ block: true; reason: string } | undefined> {
+		const tier = classifyToolCall(toolName, args);
+		if (!needsApproval(tier)) return undefined; // reads run free
+		if (this._sessionApprovedTools.has(toolName)) return undefined; // approved-for-session
+
+		// No interactive channel (headless / spawned subagent) → deny-by-default.
+		// NEVER silent-allow. A guarded parent forwards CAVE_APPROVAL_MODE into
+		// subagents, which have no TTY and thus leave _requestApproval unset; their
+		// write/exec tools are denied. This is the safe interim until #41 (subagent
+		// write access) lands a real delegated-approval channel.
+		if (!this._requestApproval) {
+			return { block: true, reason: "denied by user (approval mode: no interactive approval channel)" };
+		}
+
+		// LOW-3: if the loop is already aborted, deny without ever invoking the
+		// prompt — the safe outcome, and nothing should be prompting on a dead loop.
+		if (signal?.aborted) {
+			return { block: true, reason: "denied by user (approval mode)" };
+		}
+
+		// LOW-3: a programmatic session.abort() while the dialog is open must not
+		// hang the loop. Race the (possibly long-lived) approval prompt against the
+		// abort signal — an abort resolves to the safe choice (deny). We thread the
+		// signal into the callback too so the prompt can self-dismiss, and we race
+		// here so a callback that ignores the signal still can't wedge the loop.
+		const decision = await this._raceApprovalAgainstAbort(
+			this._requestApproval(toolName, args, tier, signal),
+			signal,
+		);
+		if (decision === "deny") {
+			return { block: true, reason: "denied by user (approval mode)" };
+		}
+		if (decision === "session") {
+			this._sessionApprovedTools.add(toolName);
+		}
+		return undefined; // once / session → allow
+	}
+
+	/**
+	 * LOW-3: race a pending approval decision against the loop's abort signal. If
+	 * the signal is/becomes aborted, resolve to "deny" (the safe choice) so an
+	 * in-flight dialog can never wedge the loop on `session.abort()`. Without a
+	 * signal we just await the decision (nothing to race against). The abort
+	 * listener is removed once the race settles to avoid a dangling listener.
+	 */
+	private async _raceApprovalAgainstAbort(
+		decision: Promise<ApprovalDecision>,
+		signal?: AbortSignal,
+	): Promise<ApprovalDecision> {
+		if (!signal) return decision;
+		if (signal.aborted) return "deny";
+		let onAbort: (() => void) | undefined;
+		const aborted = new Promise<ApprovalDecision>((resolve) => {
+			onAbort = () => resolve("deny");
+			signal.addEventListener("abort", onAbort, { once: true });
+		});
+		try {
+			return await Promise.race([decision, aborted]);
+		} finally {
+			if (onAbort) signal.removeEventListener("abort", onAbort);
+		}
+	}
+
+	/**
+	 * Force sequential tool execution while approval mode is ON (architect fix:
+	 * parallel calls would race the single prompt); restore the ORIGINAL mode when
+	 * OFF. MED-1: we snapshot the prior value the first time we override it (default
+	 * "parallel" if approval was already on at construction) so we don't clobber a
+	 * host that intentionally ran sequential.
+	 */
+	private _applyApprovalToolExecution(): void {
+		if (this.settingsManager.getApprovalMode()) {
+			// Capture the real prior mode exactly once, before the first override.
+			if (this._priorToolExecution === undefined) {
+				this._priorToolExecution = this.agent.toolExecution;
+			}
+			this.agent.toolExecution = "sequential";
+		} else {
+			// Restore whatever the mode was before we ever forced sequential. If we
+			// never overrode (mode was off all along), leave it untouched.
+			if (this._priorToolExecution !== undefined) {
+				this.agent.toolExecution = this._priorToolExecution;
+			}
+		}
 	}
 
 	// =========================================================================

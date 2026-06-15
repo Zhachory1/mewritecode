@@ -52,6 +52,11 @@ export interface Args {
 	watch?: boolean;
 	/** Hard cap on assistant turns within a run (subagent.maxTurns parity). */
 	maxTurns?: number;
+	/**
+	 * #14: OPT-IN approval mode. When set, writes/bash require interactive human
+	 * approval before running. Human-review speed-bump, NOT a security perimeter.
+	 */
+	approval?: boolean;
 	messages: string[];
 	fileArgs: string[];
 	/** Unknown flags (potentially extension flags) - map of flag name to value */
@@ -186,6 +191,8 @@ export function parseArgs(args: string[]): Args {
 					message: `--max-turns expects a positive integer, got "${args[i]}"`,
 				});
 			}
+		} else if (arg === "--approval") {
+			result.approval = true;
 		} else if (arg === "--offline") {
 			result.offline = true;
 		} else if (arg.startsWith("@")) {
@@ -281,6 +288,7 @@ ${chalk.bold("Options:")}
   --offline                      Disable startup network operations (same as PI_OFFLINE=1)
   --watch                        Start watch mode (alias for \`cave watch\`)
   --max-turns <n>                Cap assistant turns within a run (subagent.maxTurns parity)
+  --approval                     OPT-IN approval mode: prompt before writes/bash (human-review, NOT a sandbox)
   --help, -h                     Show this help
   --version, -v                  Show version number
 

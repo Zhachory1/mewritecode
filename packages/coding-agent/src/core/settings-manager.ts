@@ -177,6 +177,16 @@ export interface Settings {
 	favoriteModels?: ModelRef[];
 	/** Most-recently selected models, capped to a small N (LRU). */
 	recentModels?: ModelRef[];
+	/**
+	 * OPT-IN approval mode (#14). When true, writes/bash/destructive/unknown tool
+	 * calls require interactive human approval before running; reads run free.
+	 * Default false (autopilot — the documented default — stays unchanged).
+	 *
+	 * This is ORTHOGONAL to chat mode (plan/edit/auto): it composes with them and
+	 * is NOT a 4th ChatMode value. It is a "human-review speed-bump", NOT a
+	 * security perimeter (real containment = enforced sandbox, #46).
+	 */
+	approvalMode?: boolean;
 }
 
 export interface ModelRef {
@@ -1167,6 +1177,37 @@ export class SettingsManager {
 			toolCompression: this.getCaveModeToolCompression(),
 			mlCompression: this.getCaveModeMLCompression(),
 		};
+	}
+
+	/**
+	 * OPT-IN approval mode (#14). Resolution order: explicit setting wins; if
+	 * unset, the `CAVE_APPROVAL_MODE` env var (truthy "1"/"true") enables it; else
+	 * false. The env path lets a guarded parent process force approval into
+	 * spawned subagents (which inherit env) without writing to disk.
+	 *
+	 * Honest framing: this forces human review of writes/bash — it is NOT a
+	 * security perimeter. See #46 for the enforced sandbox.
+	 */
+	getApprovalMode(): boolean {
+		if (this.settings.approvalMode !== undefined) {
+			return this.settings.approvalMode;
+		}
+		const env = process.env.CAVE_APPROVAL_MODE;
+		return env === "1" || env === "true";
+	}
+
+	setApprovalMode(enabled: boolean): void {
+		this.globalSettings.approvalMode = enabled;
+		this.markModified("approvalMode");
+		this.save();
+		// Mirror into the process env so subagents spawned by this process (whose
+		// childEnv spreads process.env) inherit the guard unconditionally (#14;
+		// ties #41). A runtime `/approval on` toggle must propagate to children.
+		if (enabled) {
+			process.env.CAVE_APPROVAL_MODE = "1";
+		} else {
+			delete process.env.CAVE_APPROVAL_MODE;
+		}
 	}
 
 	getRtkEnabled(): boolean {

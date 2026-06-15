@@ -245,6 +245,13 @@ async function spawnSubagent(opts: SpawnOptions): Promise<SpawnResult> {
 	let finalText = "";
 
 	const childDepth = currentSubagentDepth() + 1;
+	// #14: CAVE_APPROVAL_MODE is forwarded UNCONDITIONALLY via `...process.env`
+	// (SettingsManager.setApprovalMode mirrors the runtime toggle into the parent
+	// process env). A guarded parent therefore can't be bypassed by delegating
+	// writes to a subagent: the spawned child has no interactive TTY, so its
+	// approval callback is unset and write/exec tools are denied-by-default. That
+	// deny-by-default is the safe interim until #41 (subagent write access) adds a
+	// real delegated-approval channel — do NOT relax it to silent-allow here.
 	const childEnv: NodeJS.ProcessEnv = {
 		...process.env,
 		...(opts.envOverrides ?? {}),
@@ -410,6 +417,9 @@ function spawnSubagentBackground(opts: SpawnBackgroundOptions): {
 
 	const invocation = resolveCaveInvocation(args, opts.caveBin);
 	const childDepth = currentSubagentDepth() + 1;
+	// #14: CAVE_APPROVAL_MODE forwarded unconditionally via `...process.env` (see
+	// the foreground spawnSubagent comment) — background subagents are likewise
+	// denied-by-default in approval mode (no interactive channel).
 	const childEnv: NodeJS.ProcessEnv = {
 		...process.env,
 		...(opts.envOverrides ?? {}),
