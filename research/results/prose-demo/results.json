@@ -1,0 +1,107 @@
+{
+  "generatedAt": "2026-06-15T14:45:14.741Z",
+  "config": {
+    "model": "gpt-4o-mini",
+    "provider": "openai"
+  },
+  "honestyNote": "OUTPUT-prose compression on SINGLE turns only — a clean but PARTIAL view. Real savings also come from input/tool-output compression + prompt-cache reuse over long sessions (#36). Do NOT present this as total cost savings.",
+  "aggregate": {
+    "medianOutputReductionPct": 0.18995633187772926,
+    "meanOutputReductionPct": 0.18714768940513427,
+    "sd": 0.06996099935793532,
+    "nPrompts": 5,
+    "nExcludedZeroBaseline": 0
+  },
+  "prompts": [
+    {
+      "id": "agent-roles",
+      "off": {
+        "input": 6213,
+        "output": 492,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "full": {
+        "input": 6365,
+        "output": 427,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "outputDelta": 65,
+      "reductionPct": 0.13211382113821138,
+      "inputDelta": -152
+    },
+    {
+      "id": "honest-metrics-header",
+      "off": {
+        "input": 6571,
+        "output": 458,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "full": {
+        "input": 6723,
+        "output": 371,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "outputDelta": 87,
+      "reductionPct": 0.18995633187772926,
+      "inputDelta": -152
+    },
+    {
+      "id": "ai-types-messages",
+      "off": {
+        "input": 6647,
+        "output": 631,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "full": {
+        "input": 6799,
+        "output": 569,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "outputDelta": 62,
+      "reductionPct": 0.098256735340729,
+      "inputDelta": -152
+    },
+    {
+      "id": "settings-cave-knobs",
+      "off": {
+        "input": 6555,
+        "output": 571,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "full": {
+        "input": 6707,
+        "output": 448,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "outputDelta": 123,
+      "reductionPct": 0.21541155866900175,
+      "inputDelta": -152
+    },
+    {
+      "id": "readme-trick",
+      "off": {
+        "input": 1588,
+        "output": 420,
+        "cacheRead": 4992,
+        "cacheWrite": 0
+      },
+      "full": {
+        "input": 6732,
+        "output": 294,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "outputDelta": 126,
+      "reductionPct": 0.3,
+      "inputDelta": -5144
+    }
+  ]
+}
