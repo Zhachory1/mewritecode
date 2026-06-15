@@ -282,8 +282,6 @@ export class InteractiveMode {
 	 * once a usable model is selected.
 	 */
 	private pendingPrompt?: string;
-	/** Per-run id for idempotent savings persistence (set lazily on first persist). */
-	private _savingsActivationId?: string;
 	private loadingAnimation: Loader | undefined = undefined;
 	private pendingWorkingMessage: string | undefined = undefined;
 	private readonly defaultWorkingMessage = "Working...";
@@ -6147,14 +6145,15 @@ export class InteractiveMode {
 			const savings = this.session.getSavings();
 
 			// Savings Meter (DD §10.7): persist BYTES idempotently by a PER-RUN key
-			// (session id + this activation), independent of the cost early-return so
-			// savings-only sessions still land. The per-run key blocks double-apply if
-			// persist fires twice in one run, while still counting a process relaunch /
-			// resume of the same session (new activation → new key → counted).
-			// persistSessionSavings no-ops on 0 bytes or a duplicate key.
-			this._savingsActivationId ??= `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+			// (session id + the tracker's activation id), independent of the cost
+			// early-return so savings-only sessions still land. The per-run key blocks
+			// double-apply if persist fires twice in one run, while still counting a
+			// process relaunch OR an in-process resume of the same session — the
+			// activation id is minted by the SavingsTracker lifecycle (regenerated on
+			// reset/recreate), so a resumed run gets a fresh key (#23). no-ops on 0
+			// bytes or a duplicate key.
 			persistSessionSavings({
-				sessionId: `${this.session.sessionId}:${this._savingsActivationId}`,
+				sessionId: `${this.session.sessionId}:${savings.activationId}`,
 				bytes: savings.bytesSaved,
 			});
 

@@ -131,4 +131,25 @@ describe("SavingsTracker", () => {
 		expect(t.totals().bytesSaved).toBe(1300);
 		expect(t.percentCompressed()).toBe(1); // clamped, never >1
 	});
+
+	// #23: the savings-meter persist key is `${sessionId}:${activationId}`. An
+	// in-process resume resets/recreates the tracker; a fresh activationId then
+	// yields a NEW key so the resumed run's savings are counted, not de-duped away.
+	it("exposes a non-empty activationId", () => {
+		const t = new SavingsTracker();
+		expect(typeof t.totals().activationId).toBe("string");
+		expect(t.totals().activationId.length).toBeGreaterThan(0);
+	});
+
+	it("regenerates activationId on reset() so an in-process resume gets a fresh persist key (#23)", () => {
+		const t = new SavingsTracker();
+		const before = t.totals().activationId;
+		t.recordSaving("compression", 500);
+		t.reset();
+		expect(t.totals().activationId).not.toBe(before); // fresh key → resumed savings counted
+	});
+
+	it("two trackers (process relaunch / recreate) have distinct activationIds", () => {
+		expect(new SavingsTracker().totals().activationId).not.toBe(new SavingsTracker().totals().activationId);
+	});
 });

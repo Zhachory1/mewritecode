@@ -45,6 +45,17 @@ export interface SavingsTotals {
 	cacheReuseDollars: number;
 	/** bytesSaved / totalToolOutputBytes, /0-guarded. */
 	percentCompressed: number;
+	/**
+	 * Unique id for THIS tracker lifecycle (minted on construct, regenerated on
+	 * reset). Used by the savings-meter persist key so an in-process resume of the
+	 * same session (which resets/recreates the tracker) gets a fresh key and its
+	 * freshly-accrued savings are counted, not de-duped away (#23).
+	 */
+	activationId: string;
+}
+
+function mintActivationId(): string {
+	return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function emptyBySource(): Record<SavingsSource, { bytes: number }> {
@@ -61,6 +72,8 @@ export class SavingsTracker {
 	private _totalToolOutputBytes = 0;
 	/** Set by the caller (derived-on-read from the message list); not accumulated. */
 	private _cacheReuseDollars = 0;
+	/** Per-lifecycle id for the savings-meter persist key (#23). Regenerated on reset(). */
+	private _activationId = mintActivationId();
 
 	/**
 	 * Record that the model received a tool result of `totalBytes` (the
@@ -121,14 +134,16 @@ export class SavingsTracker {
 			dollarsSavedApprox,
 			cacheReuseDollars: this._cacheReuseDollars,
 			percentCompressed: this.percentCompressed(),
+			activationId: this._activationId,
 		};
 	}
 
-	/** Reset all event-accumulated state. (Session reset normally recreates the instance.) */
+	/** Reset all event-accumulated state + mint a fresh activation id (#23: in-process resume counts). */
 	reset(): void {
 		this._bytesSaved = 0;
 		this._bySource = emptyBySource();
 		this._totalToolOutputBytes = 0;
 		this._cacheReuseDollars = 0;
+		this._activationId = mintActivationId();
 	}
 }

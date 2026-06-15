@@ -18,6 +18,7 @@ function totals(over: Partial<SavingsTotals> = {}): SavingsTotals {
 		dollarsSavedApprox: 0,
 		cacheReuseDollars: 0,
 		percentCompressed: 0,
+		activationId: "test-activation",
 		...over,
 	};
 }
