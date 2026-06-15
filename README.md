@@ -38,9 +38,9 @@ Big agent waffle. Waffle cost token. Caveman no waffle.
 |---|---|
 | Great question! A React component can re-render on every keystroke for several reasons. The most common cause is passing a fresh object or function reference as a prop on each render, which defeats React's referential-equality bail-out and forces the child to reconcile again … *(three more paragraphs)* | New object ref each render. Inline prop = new ref = re-render. Wrap in `useMemo`. |
 
-Same answer. Same model. Caveman version costs **~9× less to read back** — and the agent reads its own context back on *every single turn*. The saving compounds across the whole session.
+Same answer. Same model. The terse reply is the **visible** layer — fun, and it trims the model's own output.
 
-That is the entire product. Everything below is the coding agent it ships inside.
+But the reply is the *smallest* token sink. The compounding saving in a real session comes from what the agent reads **back** every turn: tool output (what the shell returns) and the cached context prefix. Caveman compresses the first and rides the second — see [How It Saves Tokens](#how-it-saves-tokens). The caveman voice is the hood ornament; the engine is input-context compression + prompt-cache reuse.
 
 ---
 
@@ -117,16 +117,17 @@ Type `/` inside the TUI for every slash command. Reference: [docs/reference/slas
 
 ## How It Saves Tokens
 
-Four compression layers, always on — and they hit **two** separate token sinks: what the model *says* and what the shell *returns*.
+Always-on, hitting token sinks in order of **size**. The agent re-reads its whole context every turn, so the big wins are on the **input** side (what the shell returns + the cached prefix) — not the model's reply.
 
 | Token sink | Layer | What happens | Cut |
 |---|---|---|---|
-| **Model reply** | Caveman Mode | Terse technical fragments — no filler, no hedging. Levels `lite` · `full` · `ultra`. | prompt + reply |
-| **Tool output** | Tool Budgets | Per-tool line caps (bash 80 · read 300 · grep 120), ANSI strip, blank-line collapse, semantic JSON/XML extraction. | **−67% to −94%** |
+| **Tool output** (biggest sink) | Tool Budgets | Per-tool line caps (bash 80 · read 300 · grep 120), ANSI strip, blank-line collapse, semantic JSON/XML extraction. | **−67% to −94%** |
 | | Read Dedup | Files fingerprinted per session — re-reads return a stub, not the bytes. | **−99%** on repeats |
 | | **[RTK](https://github.com/rtk-ai/rtk)** | Optional external Rust binary ("Rust Token Killer") — pipes bash output through `rtk` before it enters context. | **−60% to −90%** (RTK's own bench) |
+| **Cached prefix** (dominant over long sessions) | Prompt-cache reuse | The stable system+tools+history prefix is re-read at the provider's cache rate (~10% of input) every turn. In long multi-turn sessions the large majority of context tokens are cache hits — the single biggest cost lever, and it compounds. | provider cache rate |
+| **Model reply** (smallest sink) | Caveman Mode | Terse technical fragments — no filler, no hedging. Levels `lite` · `full` · `ultra`. The visible layer; trims the model's own output, but it's the smallest of the four (dense technical answers don't compress far without dropping substance). | reply only |
 
-Pays for itself after one tool call.
+Pays for itself after one tool call. The headline saving is the input side; Caveman Mode is the cherry on top.
 
 <details>
 <summary><strong>Benchmark</strong> — 10 real tool-output fixtures · −86% aggregate</summary>
