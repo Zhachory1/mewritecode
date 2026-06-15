@@ -15,6 +15,8 @@ import { join } from "node:path";
 import { MAX_PARALLEL_SUBAGENTS } from "@juliusbrussee/caveman-agent";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { loadAgentDefs } from "../src/core/agent-defs/loader.js";
+import { filterToolsForPlanMode } from "../src/core/chat-modes/plan.js";
+import { codingTools } from "../src/core/tools/index.js";
 import { createTaskToolDefinition, type TaskToolDetails } from "../src/core/tools/task.js";
 
 // ─── Mocked spawner that returns a JSON-mode message_end event ─────────────
@@ -70,6 +72,51 @@ function makeMockSpawn(responses: Record<string, FakeAgentResponse>) {
 	}) as any;
 }
 
+// ─── Spawn-capturing mock (records args + env per child) ───────────────────
+//
+// The plain `makeMockSpawn` above ignores the spawn `opts` (env). Subagent
+// write-access regressions (#41) hinge on BOTH the `--tools` allow-list args
+// AND the child env (CAVE_APPROVAL_MODE strip, CAVE_CHAT_MODE plan flag), so
+// this variant records the third spawn argument too.
+
+interface CapturedSpawn {
+	args: string[];
+	env: NodeJS.ProcessEnv;
+}
+
+function makeCapturingSpawn(captured: CapturedSpawn[]) {
+	return ((_command: string, args: readonly string[], opts?: { env?: NodeJS.ProcessEnv }) => {
+		captured.push({ args: [...(args as string[])], env: opts?.env ?? {} });
+		const child = new EventEmitter() as ChildProcess & EventEmitter;
+		const stdout = new EventEmitter();
+		const stderr = new EventEmitter();
+		(child as any).stdout = stdout;
+		(child as any).stderr = stderr;
+		(child as any).kill = () => true;
+		(child as any).killed = false;
+		(child as any).unref = () => {};
+		setTimeout(() => {
+			stdout.emit(
+				"data",
+				Buffer.from(
+					`${JSON.stringify({
+						type: "message_end",
+						message: { role: "assistant", content: [{ type: "text", text: "done" }] },
+					})}\n`,
+				),
+			);
+			child.emit("close", 0);
+		}, 5);
+		return child;
+	}) as any;
+}
+
+/** Extract the value passed to `--tools` (the allow-list), or undefined if absent. */
+function toolsArg(args: string[]): string | undefined {
+	const i = args.indexOf("--tools");
+	return i >= 0 ? args[i + 1] : undefined;
+}
+
 // ─── Test scaffolding ──────────────────────────────────────────────────────
 
 let tmpRoot: string;
@@ -96,6 +143,57 @@ beforeEach(() => {
 		["---", "name: reviewer", "description: critique", "tools: read, grep", "---", "", "You are reviewer."].join(
 			"\n",
 		),
+	);
+
+	// Write-capable agent (#41): edit + write in its allow-list. Used to assert a
+	// subagent can actually receive write tools / autopilot env.
+	writeFileSync(
+		join(cwd, ".cave", "agents", "implementer.md"),
+		[
+			"---",
+			"name: implementer",
+			"description: writes code",
+			"tools: read, edit, write",
+			"---",
+			"",
+			"You are implementer.",
+		].join("\n"),
+	);
+
+	// Write-capable agent with one tool disallowed (allow-list + deny-list).
+	writeFileSync(
+		join(cwd, ".cave", "agents", "implementer-nobash.md"),
+		[
+			"---",
+			"name: implementer-nobash",
+			"description: writes code, no shell",
+			"tools: read, edit, write, bash",
+			"disallowedTools: bash",
+			"---",
+			"",
+			"You are implementer-nobash.",
+		].join("\n"),
+	);
+
+	// Agent with ONLY disallowedTools (no `tools:` allow-list). Pre-existing gap:
+	// the deny-list was ignored unless `tools:` was also set (#41 finding).
+	writeFileSync(
+		join(cwd, ".cave", "agents", "denylist-only.md"),
+		[
+			"---",
+			"name: denylist-only",
+			"description: full tools minus bash",
+			"disallowedTools: bash",
+			"---",
+			"",
+			"You are denylist-only.",
+		].join("\n"),
+	);
+
+	// Agent with no tool scoping at all → child should default to full write.
+	writeFileSync(
+		join(cwd, ".cave", "agents", "unscoped.md"),
+		["---", "name: unscoped", "description: full access", "---", "", "You are unscoped."].join("\n"),
 	);
 });
 
@@ -328,5 +426,167 @@ describe("Task tool — chain-mode with {previous} substitution", () => {
 		expect(details.results).toHaveLength(2);
 		// The second call's task text must include the first call's response.
 		expect(calls[1]).toContain("review <from-0>step one</from-0>");
+	});
+});
+
+// ─── #41: subagent write access — tool scoping + delegated approval ─────────
+//
+// Regression coverage for the silent-neuter bug: a write-capable subagent was
+// receiving the parent's CAVE_APPROVAL_MODE env, but with no interactive TTY
+// its approval gate denied every write/edit/bash → exit 0, zero work done.
+// Plus the pre-existing disallowedTools gap (deny-list ignored when no
+// `tools:` allow-list was set).
+
+describe("Task tool — #41 subagent tool scoping", () => {
+	it("write-capable agent (tools: read,edit,write) → child --tools includes edit + write", async () => {
+		const captured: CapturedSpawn[] = [];
+		const tool = makeTool(makeCapturingSpawn(captured));
+		await tool.execute(
+			"id-impl",
+			{ agent: "implementer", task: "write a file" } as any,
+			undefined,
+			undefined,
+			undefined as any,
+		);
+		expect(captured).toHaveLength(1);
+		const tools = toolsArg(captured[0].args);
+		expect(tools).toBeDefined();
+		const set = new Set((tools as string).split(","));
+		expect(set.has("edit")).toBe(true);
+		expect(set.has("write")).toBe(true);
+		expect(set.has("read")).toBe(true);
+	});
+
+	it("disallowedTools: [bash] with tools: [...,bash] → bash absent from child --tools", async () => {
+		const captured: CapturedSpawn[] = [];
+		const tool = makeTool(makeCapturingSpawn(captured));
+		await tool.execute(
+			"id-nobash",
+			{ agent: "implementer-nobash", task: "write a file" } as any,
+			undefined,
+			undefined,
+			undefined as any,
+		);
+		const tools = toolsArg(captured[0].args);
+		expect(tools).toBeDefined();
+		const set = new Set((tools as string).split(","));
+		expect(set.has("bash")).toBe(false);
+		expect(set.has("edit")).toBe(true);
+		expect(set.has("write")).toBe(true);
+	});
+
+	it("disallowedTools-only agent (no tools:) → child --tools = default codingTools minus disallowed", async () => {
+		const captured: CapturedSpawn[] = [];
+		const tool = makeTool(makeCapturingSpawn(captured));
+		await tool.execute(
+			"id-deny",
+			{ agent: "denylist-only", task: "write a file" } as any,
+			undefined,
+			undefined,
+			undefined as any,
+		);
+		const tools = toolsArg(captured[0].args);
+		// GAP FIX: a deny-list with no allow-list must still constrain the child.
+		expect(tools).toBeDefined();
+		const set = new Set((tools as string).split(","));
+		expect(set.has("bash")).toBe(false);
+		// Remaining default coding tools survive (read/edit/write).
+		expect(set.has("edit")).toBe(true);
+		expect(set.has("write")).toBe(true);
+	});
+
+	it("no-tools agent def → no --tools flag (child defaults to full write)", async () => {
+		const captured: CapturedSpawn[] = [];
+		const tool = makeTool(makeCapturingSpawn(captured));
+		await tool.execute(
+			"id-unscoped",
+			{ agent: "unscoped", task: "do anything" } as any,
+			undefined,
+			undefined,
+			undefined as any,
+		);
+		expect(toolsArg(captured[0].args)).toBeUndefined();
+		expect(captured[0].args).not.toContain("--tools");
+	});
+});
+
+describe("Task tool — #41 delegated approval (CAVE_APPROVAL_MODE strip)", () => {
+	const KEY = "CAVE_APPROVAL_MODE";
+	let prev: string | undefined;
+
+	beforeEach(() => {
+		prev = process.env[KEY];
+	});
+	afterEach(() => {
+		if (prev === undefined) delete process.env[KEY];
+		else process.env[KEY] = prev;
+	});
+
+	it("parent in approval mode → child env does NOT carry CAVE_APPROVAL_MODE", async () => {
+		process.env[KEY] = "1";
+		const captured: CapturedSpawn[] = [];
+		const tool = makeTool(makeCapturingSpawn(captured));
+		await tool.execute(
+			"id-approval",
+			{ agent: "implementer", task: "write a file" } as any,
+			undefined,
+			undefined,
+			undefined as any,
+		);
+		expect(captured).toHaveLength(1);
+		// The spawn was already gated by the parent's beforeToolCall (task is not a
+		// READ_ONLY_TOOL). Reaching the child means the delegation was approved, so
+		// the child must run autopilot — NOT re-deny every write.
+		expect(captured[0].env[KEY]).toBeUndefined();
+	});
+
+	it("background subagent in approval mode → child env does NOT carry CAVE_APPROVAL_MODE", async () => {
+		process.env[KEY] = "1";
+		writeFileSync(
+			join(cwd, ".cave", "agents", "bg-impl.md"),
+			[
+				"---",
+				"name: bg-impl",
+				"description: background writer",
+				"tools: read, edit, write",
+				"background: true",
+				"---",
+				"",
+				"You are bg-impl.",
+			].join("\n"),
+		);
+		const captured: CapturedSpawn[] = [];
+		const tool = makeTool(makeCapturingSpawn(captured));
+		await tool.execute(
+			"id-bg-approval",
+			{ agent: "bg-impl", task: "write a file" } as any,
+			undefined,
+			undefined,
+			undefined as any,
+		);
+		expect(captured).toHaveLength(1);
+		expect(captured[0].env[KEY]).toBeUndefined();
+	});
+});
+
+describe("Task tool — #41 plan-mode subagent is read-only", () => {
+	it("mode: plan sets CAVE_CHAT_MODE=plan and the plan filter drops edit/write", async () => {
+		const captured: CapturedSpawn[] = [];
+		const tool = makeTool(makeCapturingSpawn(captured));
+		await tool.execute(
+			"id-plan",
+			{ agent: "implementer", task: "write a file", mode: "plan" } as any,
+			undefined,
+			undefined,
+			undefined as any,
+		);
+		expect(captured).toHaveLength(1);
+		// Plan gating happens in the CHILD via CAVE_CHAT_MODE → filterToolsForPlanMode.
+		expect(captured[0].env.CAVE_CHAT_MODE).toBe("plan");
+		// And the filter itself must strip write tools from the coding set.
+		const filteredNames = new Set(filterToolsForPlanMode(codingTools).map((t) => t.name));
+		expect(filteredNames.has("edit")).toBe(false);
+		expect(filteredNames.has("write")).toBe(false);
+		expect(filteredNames.has("read")).toBe(true);
 	});
 });

@@ -208,17 +208,84 @@ function resolveCaveInvocation(args: string[], caveBin?: string): { command: str
 // Thinking levels that map directly from agent.md `effort:`. Anything else is dropped.
 const VALID_EFFORT_LEVELS = new Set(["off", "minimal", "low", "medium", "high", "xhigh"]);
 
+/**
+ * Default tool allow-list a child cave starts with when no `--tools` flag is
+ * passed: the writeable coding set (read/bash/edit/write). Mirrors
+ * `coding-agent`'s `codingTools` and the `--tools` help default. Kept as a
+ * literal here to avoid importing the heavy tools barrel (and a cycle) into the
+ * task tool; the drift-guard test for VALID_TOOL_NAMES catches divergence.
+ */
+const DEFAULT_CHILD_TOOLS = ["read", "bash", "edit", "write"] as const;
+
+/**
+ * Compute the `--tools` allow-list to pass to a spawned child for `agent`.
+ *
+ * The child cave's `--tools` flag is allow-list ONLY (no `--disallowed-tools`),
+ * so a deny-list must be resolved into an allow-list here:
+ *   - `tools:` set      → allow-list = tools minus disallowedTools
+ *   - only `disallowed` → allow-list = DEFAULT_CHILD_TOOLS minus disallowedTools
+ *   - neither           → undefined (child uses its own full default)
+ *
+ * Returns the comma-joined allow-list, or `undefined` when no `--tools` flag
+ * should be emitted (unscoped agent → full child default).
+ *
+ * #41: previously the deny-list was only applied inside the `tools:`-present
+ * branch, so an agent with `disallowedTools` but no `tools:` silently got full
+ * access. This resolves the deny-list in BOTH cases.
+ */
+function computeChildToolsArg(agent: SubagentDef): string | undefined {
+	const blocked = new Set(agent.disallowedTools ?? []);
+	if (agent.tools && agent.tools.length > 0) {
+		const filtered = agent.tools.filter((t) => !blocked.has(t));
+		return filtered.length > 0 ? filtered.join(",") : undefined;
+	}
+	if (blocked.size > 0) {
+		const filtered = DEFAULT_CHILD_TOOLS.filter((t) => !blocked.has(t));
+		// If every default tool is denied we still emit nothing meaningful; fall
+		// back to undefined so the child keeps its own default rather than getting
+		// an empty `--tools` (which `args.ts` would treat as "no valid tools").
+		return filtered.length > 0 ? filtered.join(",") : undefined;
+	}
+	return undefined;
+}
+
+/**
+ * Build the child environment for a spawned subagent.
+ *
+ * #41 (delegated-approval-at-spawn): the `task` tool call is itself classified
+ * exec/needs-approval (`task`/`agent` are NOT in approval-policy's
+ * READ_ONLY_TOOLS), so the PARENT's `beforeToolCall` approval gate already
+ * fired and the user approved spawning this subagent BEFORE `task.execute()`
+ * ran. Reaching the spawn therefore means the delegation is authorized — one
+ * approval covers the whole delegation. We strip `CAVE_APPROVAL_MODE` from the
+ * child so it runs autopilot and can actually write, instead of inheriting an
+ * approval gate it has no interactive TTY to satisfy (which silently denied
+ * every write/edit/bash → the child did nothing while the parent saw exit 0).
+ *
+ * This is secure: the spawn was GATED, not bypassed. In headless `--approval`
+ * parents the parent's task call is denied-by-default → no spawn → the strip is
+ * moot, so doing it unconditionally is safe.
+ */
+function buildChildEnv(opts: SpawnOptions | SpawnBackgroundOptions, childDepth: number): NodeJS.ProcessEnv {
+	const childEnv: NodeJS.ProcessEnv = {
+		...process.env,
+		...(opts.envOverrides ?? {}),
+		[SUBAGENT_DEPTH_ENV]: String(childDepth),
+	};
+	// Strip the parent's approval-mode flag — see doc comment above.
+	delete childEnv.CAVE_APPROVAL_MODE;
+	if (opts.agent.omitClaudeMd === true) childEnv.CAVE_OMIT_CLAUDE_MD = "1";
+	return childEnv;
+}
+
 async function spawnSubagent(opts: SpawnOptions): Promise<SpawnResult> {
 	const args: string[] = ["--mode", "json", "-p", "--no-session"];
 	const effectiveModel = opts.resolveModel ? opts.resolveModel(opts.agent.model) : opts.agent.model;
 	if (effectiveModel) args.push("--model", effectiveModel);
-	// Tool scoping: respect `tools:` (allow-list); `disallowedTools:` is filtered
-	// out below since the child cave's `--tools` flag is allow-list only.
-	if (opts.agent.tools && opts.agent.tools.length > 0) {
-		const blocked = new Set(opts.agent.disallowedTools ?? []);
-		const filtered = opts.agent.tools.filter((t) => !blocked.has(t));
-		if (filtered.length > 0) args.push("--tools", filtered.join(","));
-	}
+	// Tool scoping: resolve `tools:` (allow-list) and `disallowedTools:` (deny-list)
+	// into the child's allow-list-only `--tools` flag. See computeChildToolsArg.
+	const childTools = computeChildToolsArg(opts.agent);
+	if (childTools) args.push("--tools", childTools);
 	if (typeof opts.agent.effort === "string" && VALID_EFFORT_LEVELS.has(opts.agent.effort)) {
 		args.push("--thinking", opts.agent.effort);
 	}
@@ -245,21 +312,7 @@ async function spawnSubagent(opts: SpawnOptions): Promise<SpawnResult> {
 	let finalText = "";
 
 	const childDepth = currentSubagentDepth() + 1;
-	// #14: CAVE_APPROVAL_MODE is forwarded UNCONDITIONALLY via `...process.env`
-	// (SettingsManager.setApprovalMode mirrors the runtime toggle into the parent
-	// process env). A guarded parent therefore can't be bypassed by delegating
-	// writes to a subagent: the spawned child has no interactive TTY, so its
-	// approval callback is unset and write/exec tools are denied-by-default. That
-	// deny-by-default is the safe interim until #41 (subagent write access) adds a
-	// real delegated-approval channel — do NOT relax it to silent-allow here.
-	const childEnv: NodeJS.ProcessEnv = {
-		...process.env,
-		...(opts.envOverrides ?? {}),
-		[SUBAGENT_DEPTH_ENV]: String(childDepth),
-	};
-	if (opts.agent.omitClaudeMd === true) {
-		childEnv.CAVE_OMIT_CLAUDE_MD = "1";
-	}
+	const childEnv = buildChildEnv(opts, childDepth);
 
 	const exitCode = await new Promise<number>((resolve) => {
 		const child = spawner(invocation.command, invocation.args, {
@@ -389,11 +442,9 @@ function spawnSubagentBackground(opts: SpawnBackgroundOptions): {
 	const args: string[] = ["--mode", "json", "-p", "--no-session"];
 	const effectiveModel = opts.resolveModel ? opts.resolveModel(opts.agent.model) : opts.agent.model;
 	if (effectiveModel) args.push("--model", effectiveModel);
-	if (opts.agent.tools && opts.agent.tools.length > 0) {
-		const blocked = new Set(opts.agent.disallowedTools ?? []);
-		const filtered = opts.agent.tools.filter((t) => !blocked.has(t));
-		if (filtered.length > 0) args.push("--tools", filtered.join(","));
-	}
+	// Tool scoping: same allow-list/deny-list resolution as the foreground path.
+	const childTools = computeChildToolsArg(opts.agent);
+	if (childTools) args.push("--tools", childTools);
 	if (typeof opts.agent.effort === "string" && VALID_EFFORT_LEVELS.has(opts.agent.effort)) {
 		args.push("--thinking", opts.agent.effort);
 	}
@@ -417,15 +468,10 @@ function spawnSubagentBackground(opts: SpawnBackgroundOptions): {
 
 	const invocation = resolveCaveInvocation(args, opts.caveBin);
 	const childDepth = currentSubagentDepth() + 1;
-	// #14: CAVE_APPROVAL_MODE forwarded unconditionally via `...process.env` (see
-	// the foreground spawnSubagent comment) — background subagents are likewise
-	// denied-by-default in approval mode (no interactive channel).
-	const childEnv: NodeJS.ProcessEnv = {
-		...process.env,
-		...(opts.envOverrides ?? {}),
-		[SUBAGENT_DEPTH_ENV]: String(childDepth),
-	};
-	if (opts.agent.omitClaudeMd === true) childEnv.CAVE_OMIT_CLAUDE_MD = "1";
+	// #41: strip CAVE_APPROVAL_MODE so the (TTY-less) background child runs
+	// autopilot — the parent's task spawn was already approval-gated. See
+	// buildChildEnv.
+	const childEnv = buildChildEnv(opts, childDepth);
 
 	const spawner = opts.mockSpawn ?? spawn;
 	const child = spawner(invocation.command, invocation.args, {
