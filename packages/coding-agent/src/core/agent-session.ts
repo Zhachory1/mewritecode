@@ -25,7 +25,7 @@ import type {
 	ThinkingLevel,
 	ToolExecutionMode,
 } from "@juliusbrussee/caveman-agent";
-import { checkpoints, LLMLinguaMiddleware, memory as memoryNs } from "@juliusbrussee/caveman-agent";
+import { checkpoints, LLMLinguaMiddleware, type memory as memoryNs } from "@juliusbrussee/caveman-agent";
 
 const { CheckpointManager } = checkpoints;
 type CheckpointManagerInstance = InstanceType<typeof CheckpointManager>;
@@ -94,7 +94,6 @@ import {
 import { buildDefaultCavememHooks } from "./hooks/cavemem-hooks.js";
 import type { HooksConfig } from "./hooks/events.js";
 import { createHooksExtension, HooksManager } from "./hooks/index.js";
-import { composeStartupPrelude } from "./memory-bridge.js";
 import { resolveMemoryProvider } from "./memory-factory.js";
 import type { BashExecutionMessage, CustomMessage } from "./messages.js";
 import type { ModelRegistry } from "./model-registry.js";
@@ -104,6 +103,8 @@ import { createRtkSpawnHook, getRtkStatus } from "./rtk.js";
 import { SavingsTracker } from "./savings-tracker.js";
 import type { BranchSummaryEntry, CompactionEntry, SessionManager } from "./session-manager.js";
 import { CURRENT_SESSION_VERSION, getLatestCompactionEntry, type SessionHeader } from "./session-manager.js";
+import { MemoryInjector } from "./session-memory-injector.js";
+import { RepomapInjector } from "./session-repomap.js";
 import type { SettingsManager } from "./settings-manager.js";
 import type { SlashCommandInfo } from "./slash-commands.js";
 import { createSyntheticSourceInfo, type SourceInfo } from "./source-info.js";
@@ -445,20 +446,17 @@ export class AgentSession {
 	private _checkpointMgr: CheckpointManagerInstance | undefined;
 	private _checkpointAutoSnapshotEnabled = true;
 
-	// Gap 1: repomap auto-injection state.
-	private _repomapEnabled = true;
-	private _repomapAddedFiles = new Set<string>();
-	private _repomapMentionedFiles = new Set<string>();
-	private _repomapCache: { hash: string; rendered: string } | undefined;
-	private _repomapBuildPromise: Promise<void> | undefined;
+	// Gap 1: repomap auto-injection. State + per-turn transform live in
+	// RepomapInjector (god-file decomposition #16, stage 1); AgentSession keeps
+	// this instance and delegates its public repomap methods to it.
+	private _repomapInjector!: RepomapInjector;
 
-	// WS7: cavemem-backed retrieval state.
-	private _memoryProvider: MemoryProviderInstance | undefined;
-	private _memoryProviderInit: Promise<MemoryProviderInstance | undefined> | undefined;
-	private _memoryEnabled = true;
-	private _memoryRecallCache: { hash: string; rendered: string } | undefined;
-	private _memoryRecallBuildPromise: Promise<void> | undefined;
-	private _memoryPreludeInjected = false;
+	// WS7: cavemem-backed retrieval. Provider lifecycle, recall cache, session
+	// prelude, and the per-turn transform live in MemoryInjector (god-file
+	// decomposition #16, stage 2); AgentSession keeps this instance and delegates
+	// its public memory methods to it. `_mergeRetrievalInjections` reads the
+	// token cap off the injector; `_buildRuntime` primes its provider.
+	private _memoryInjector!: MemoryInjector;
 	private _memoryRecallTimeoutMs = 1000;
 	private _memoryRecallTokenCap = 800;
 
@@ -497,6 +495,13 @@ export class AgentSession {
 		this._resourceLoader = config.resourceLoader;
 		this._customTools = config.customTools ?? [];
 		this._cwd = config.cwd;
+		this._repomapInjector = new RepomapInjector({ cwd: this._cwd });
+		this._memoryInjector = new MemoryInjector({
+			cwd: this._cwd,
+			timeoutMs: this._memoryRecallTimeoutMs,
+			tokenCap: this._memoryRecallTokenCap,
+			recentFileNames: () => this._repomapInjector.recentFileBasenames(5),
+		});
 		this._modelRegistry = config.modelRegistry;
 		this._extensionRunnerRef = config.extensionRunnerRef;
 		this._initialActiveToolNames = config.initialActiveToolNames;
@@ -679,7 +684,7 @@ export class AgentSession {
 		this.agent.afterToolCall = async ({ toolCall, args, result, isError }) => {
 			// Gap 1: track file-touching tool calls for repomap personalization.
 			if (!isError) {
-				this._updateRepomapStateFromTool(toolCall.name, args);
+				this._repomapInjector.updateFromTool(toolCall.name, args);
 			}
 
 			// Compression gate: honor the per-session tool-compression override (#33)
@@ -848,8 +853,8 @@ export class AgentSession {
 		this.agent.transformContext = async (messages) => {
 			const base = priorTransformContext ? await priorTransformContext(messages) : messages;
 			const [afterMemory, afterRepomap] = await Promise.all([
-				this._buildMemoryTransform(base),
-				this._buildRepomapTransform(base),
+				this._memoryInjector.buildTransform(base),
+				this._repomapInjector.buildTransform(base),
 			]);
 			const merged = this._mergeRetrievalInjections(base, afterMemory, afterRepomap);
 			return this._softCompactTransform(merged);
@@ -1033,144 +1038,17 @@ export class AgentSession {
 	// =========================================================================
 
 	setRepomapEnabled(enabled: boolean): void {
-		this._repomapEnabled = enabled;
-		if (!enabled) this._repomapCache = undefined;
+		this._repomapInjector.setEnabled(enabled);
 	}
 
 	/** Mark a file as added to chat-state (PageRank weight 10×). */
 	repomapAdd(absPath: string): void {
-		this._repomapMentionedFiles.delete(absPath);
-		this._repomapAddedFiles.add(absPath);
-		this._repomapCache = undefined;
+		this._repomapInjector.add(absPath);
 	}
 
 	/** Mark a file as mentioned (PageRank weight 0.5×). */
 	repomapMention(absPath: string): void {
-		if (this._repomapAddedFiles.has(absPath)) return;
-		this._repomapMentionedFiles.add(absPath);
-		this._repomapCache = undefined;
-	}
-
-	private _updateRepomapStateFromTool(toolName: string, args: unknown): void {
-		if (!this._repomapEnabled) return;
-		const path = (args as { path?: string } | undefined)?.path;
-		if (!path) return;
-		const abs = resolve(this._cwd, path);
-		if (toolName === "edit" || toolName === "write") {
-			this.repomapAdd(abs);
-		} else if (toolName === "read") {
-			this.repomapMention(abs);
-		}
-	}
-
-	private _scanUserMessageForFiles(text: string): void {
-		// Conservative regex: relative paths with at least one slash and a known
-		// source-file extension. Avoids matching arbitrary words.
-		const re =
-			/(?<![\w/])((?:[\w.-]+\/)+[\w.-]+\.(?:ts|tsx|js|jsx|mjs|cjs|py|go|rs|java|c|h|cc|cpp|rb|php))(?![\w])/g;
-		for (const match of text.matchAll(re)) {
-			const abs = resolve(this._cwd, match[1]);
-			this.repomapMention(abs);
-		}
-	}
-
-	private _repomapHash(): string {
-		const added = [...this._repomapAddedFiles].sort().join("|");
-		const mentioned = [...this._repomapMentionedFiles].sort().join("|");
-		return `${added}::${mentioned}`;
-	}
-
-	private async _getOrBuildRepomap(): Promise<string | undefined> {
-		const hash = this._repomapHash();
-		if (this._repomapCache?.hash === hash) return this._repomapCache.rendered;
-
-		// Single-flight: if a build is already in progress, wait for it.
-		if (this._repomapBuildPromise) {
-			await this._repomapBuildPromise;
-			if (this._repomapCache?.hash === hash) return this._repomapCache.rendered;
-		}
-
-		const buildPromise = this._buildRepomap(hash);
-		this._repomapBuildPromise = buildPromise.then(
-			() => undefined,
-			() => undefined,
-		);
-		try {
-			return await buildPromise;
-		} finally {
-			this._repomapBuildPromise = undefined;
-		}
-	}
-
-	private async _buildRepomap(hash: string): Promise<string | undefined> {
-		try {
-			const { collectSourceFiles } = await import("./slash-commands/repomap.js");
-			const { repomap: repomapNs } = await import("@juliusbrussee/caveman-agent");
-			const { buildRepomap, dynamicMapTokens } = repomapNs;
-
-			const files = collectSourceFiles(this._cwd);
-			if (files.length === 0) {
-				this._repomapCache = { hash, rendered: "" };
-				return "";
-			}
-			const tokenBudget = dynamicMapTokens({ hasFilesInChat: this._repomapAddedFiles.size > 0 });
-			const result = await buildRepomap({
-				files,
-				tokenBudget,
-				workdir: this._cwd,
-				chatState: {
-					addedFiles: [...this._repomapAddedFiles],
-					mentionedFiles: [...this._repomapMentionedFiles],
-				},
-			});
-			this._repomapCache = { hash, rendered: result.rendered };
-			return result.rendered;
-		} catch (err) {
-			const message = err instanceof Error ? err.message : String(err);
-			console.warn(`[cave/repomap] build failed: ${message}`);
-			return undefined;
-		}
-	}
-
-	private async _buildRepomapTransform(messages: AgentMessage[]): Promise<AgentMessage[]> {
-		if (!this._repomapEnabled) return messages;
-
-		// Mine the most recent user message for file path mentions.
-		for (let i = messages.length - 1; i >= 0; i--) {
-			const m = messages[i];
-			if (m.role === "user") {
-				const text = Array.isArray(m.content)
-					? m.content
-							.filter((c): c is { type: "text"; text: string } => c.type === "text")
-							.map((c) => c.text)
-							.join("\n")
-					: typeof m.content === "string"
-						? m.content
-						: "";
-				if (text) this._scanUserMessageForFiles(text);
-				break;
-			}
-		}
-
-		const rendered = await this._getOrBuildRepomap();
-		if (!rendered) return messages;
-
-		const repomapMessage: AgentMessage = {
-			role: "custom",
-			customType: "repomap",
-			content: `<repomap>\nThe following is a PageRank-ranked map of repository symbols, refreshed each turn. Use it to discover relevant files before you read them.\n\n${rendered}\n</repomap>`,
-			display: false,
-			timestamp: Date.now(),
-		};
-
-		// Inject just before the latest user message so the model reads the map
-		// as antecedent context, not a follow-up reply.
-		for (let i = messages.length - 1; i >= 0; i--) {
-			if (messages[i].role === "user") {
-				return [...messages.slice(0, i), repomapMessage, ...messages.slice(i)];
-			}
-		}
-		return [...messages, repomapMessage];
+		this._repomapInjector.mention(absPath);
 	}
 
 	// =========================================================================
@@ -1179,12 +1057,11 @@ export class AgentSession {
 
 	/** Toggle memory recall and write hooks for this session. */
 	setMemoryEnabled(enabled: boolean): void {
-		this._memoryEnabled = enabled;
-		if (!enabled) this._memoryRecallCache = undefined;
+		this._memoryInjector.setEnabled(enabled);
 	}
 
 	get memoryEnabled(): boolean {
-		return this._memoryEnabled;
+		return this._memoryInjector.enabled;
 	}
 
 	/**
@@ -1195,220 +1072,7 @@ export class AgentSession {
 	 * MCP transport, embedding model, and FTS handles are reused.
 	 */
 	async memoryProvider(): Promise<MemoryProviderInstance | undefined> {
-		if (this._memoryProvider) return this._memoryProvider;
-		if (!this._memoryProviderInit) {
-			this._memoryProviderInit = resolveMemoryProvider({ cwd: this._cwd })
-				.then((p) => {
-					this._memoryProvider = p;
-					return p;
-				})
-				.catch((err) => {
-					console.warn(`[cave/memory] provider init failed: ${err instanceof Error ? err.message : String(err)}`);
-					return undefined;
-				});
-		}
-		return this._memoryProviderInit;
-	}
-
-	private _latestUserText(messages: AgentMessage[]): string {
-		for (let i = messages.length - 1; i >= 0; i--) {
-			const m = messages[i];
-			if (m.role !== "user") continue;
-			if (Array.isArray(m.content)) {
-				return m.content
-					.filter((c): c is { type: "text"; text: string } => c.type === "text")
-					.map((c) => c.text)
-					.join("\n");
-			}
-			if (typeof m.content === "string") return m.content;
-			return "";
-		}
-		return "";
-	}
-
-	/** Build the search query from chat-state + last user message. */
-	private _memoryQuery(messages: AgentMessage[]): string {
-		const text = this._latestUserText(messages).slice(0, 500);
-		const fileNames = [...this._repomapAddedFiles, ...this._repomapMentionedFiles].slice(-5).map((p) => basename(p));
-		return [text, ...fileNames]
-			.filter((s) => s && s.length > 0)
-			.join("  ")
-			.trim();
-	}
-
-	private _memoryHash(query: string): string {
-		// Cache the rendered recall keyed by query — same input ⇒ skip provider call.
-		const trimmed = query.replace(/\s+/g, " ").trim();
-		return trimmed.length > 256 ? trimmed.slice(0, 256) : trimmed;
-	}
-
-	private async _withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
-		return new Promise<T>((resolve) => {
-			let settled = false;
-			const timer = setTimeout(() => {
-				if (settled) return;
-				settled = true;
-				resolve(fallback);
-			}, ms);
-			promise
-				.then((v) => {
-					if (settled) return;
-					settled = true;
-					clearTimeout(timer);
-					resolve(v);
-				})
-				.catch(() => {
-					if (settled) return;
-					settled = true;
-					clearTimeout(timer);
-					resolve(fallback);
-				});
-		});
-	}
-
-	private async _renderMemoryRecall(provider: MemoryProviderInstance, query: string): Promise<string | undefined> {
-		const hits = await this._withTimeout(provider.search(query, { limit: 5 }), this._memoryRecallTimeoutMs, []);
-		if (!hits || hits.length === 0) return undefined;
-		const ids = hits.map((h) => h.id).filter((id) => Number.isFinite(id) && id >= 0);
-		let bodies: memoryNs.MemoryObservation[] = [];
-		if (ids.length > 0) {
-			bodies = await this._withTimeout(
-				provider.getObservations(ids, { expand: false }),
-				this._memoryRecallTimeoutMs,
-				[],
-			);
-		}
-		const byId = new Map(bodies.map((b) => [b.id, b]));
-		const rows = hits
-			.map((h) => {
-				const body = byId.get(h.id);
-				const preview = (body?.content ?? h.preview ?? "").replace(/\s+/g, " ").trim().slice(0, 320);
-				const kind = body?.kind ?? h.kind ?? "fact";
-				const ts = body?.ts ?? h.ts ?? "";
-				return `- #${h.id} [${kind}]${ts ? ` ${ts}` : ""} — ${preview}`;
-			})
-			.filter((r) => r.includes("—"));
-		if (rows.length === 0) return undefined;
-		return rows.join("\n");
-	}
-
-	private async _getOrBuildMemoryRecall(query: string): Promise<string | undefined> {
-		if (!query) return undefined;
-		const provider = await this.memoryProvider();
-		if (!provider) return undefined;
-		const available = await this._withTimeout(provider.isAvailable(), 500, false);
-		if (!available) return undefined;
-
-		const hash = this._memoryHash(query);
-		if (this._memoryRecallCache?.hash === hash) return this._memoryRecallCache.rendered;
-
-		if (this._memoryRecallBuildPromise) {
-			await this._memoryRecallBuildPromise;
-			if (this._memoryRecallCache?.hash === hash) return this._memoryRecallCache.rendered;
-		}
-
-		const buildPromise = (async () => {
-			try {
-				const rendered = await this._renderMemoryRecall(provider, query);
-				if (rendered) {
-					this._memoryRecallCache = { hash, rendered };
-				} else {
-					this._memoryRecallCache = { hash, rendered: "" };
-				}
-			} catch (err) {
-				const message = err instanceof Error ? err.message : String(err);
-				console.warn(`[cave/memory] recall failed: ${message}`);
-				this._memoryRecallCache = { hash, rendered: "" };
-			}
-		})();
-		this._memoryRecallBuildPromise = buildPromise;
-		try {
-			await buildPromise;
-		} finally {
-			this._memoryRecallBuildPromise = undefined;
-		}
-		return this._memoryRecallCache?.rendered || undefined;
-	}
-
-	/**
-	 * Build the per-turn memory recall transform. Returns the message array
-	 * with a single `customType: "memory-recall"` entry inserted before the
-	 * latest user message when the active provider returns hits, otherwise
-	 * the input unchanged.
-	 *
-	 * Parallel with `_buildRepomapTransform` — both seed off the same chat-state.
-	 * Failures degrade silently: timeouts, missing provider, empty results all
-	 * return `messages` untouched.
-	 */
-	private async _buildMemoryTransform(messages: AgentMessage[]): Promise<AgentMessage[]> {
-		if (!this._memoryEnabled) return messages;
-
-		const query = this._memoryQuery(messages);
-		const rendered = await this._getOrBuildMemoryRecall(query);
-		const blocks: AgentMessage[] = [];
-
-		// First-turn prelude: project-local MEMORY.md + a kickoff cavemem search
-		// seeded by the cwd basename. Wires memory-bridge.composeStartupPrelude
-		// which has been dead code since WS7 landed.
-		if (!this._memoryPreludeInjected) {
-			this._memoryPreludeInjected = true;
-			const prelude = await this._buildSessionPrelude();
-			if (prelude) {
-				blocks.push({
-					role: "custom",
-					customType: "memory-prelude",
-					content: prelude,
-					display: false,
-					timestamp: Date.now(),
-				});
-			}
-		}
-
-		if (rendered) {
-			blocks.push({
-				role: "custom",
-				customType: "memory-recall",
-				content: `<memory-recall>\nTop hits from prior caveman sessions and saved facts. Search seeded by current chat-state (no extra LLM call).\n\n${rendered}\n</memory-recall>`,
-				display: false,
-				timestamp: Date.now(),
-			});
-		}
-
-		if (blocks.length === 0) return messages;
-
-		for (let i = messages.length - 1; i >= 0; i--) {
-			if (messages[i].role === "user") {
-				return [...messages.slice(0, i), ...blocks, ...messages.slice(i)];
-			}
-		}
-		return [...messages, ...blocks];
-	}
-
-	private async _buildSessionPrelude(): Promise<string | undefined> {
-		try {
-			const indexPath = join(this._cwd, ".cave", "memory", "MEMORY.md");
-			let memoryIndex: string | undefined;
-			if (existsSync(indexPath)) {
-				const raw = readFileSync(indexPath, "utf-8");
-				memoryIndex = raw.split("\n").slice(0, 200).join("\n");
-			}
-			let cavememSnippet: string | undefined;
-			const provider = await this.memoryProvider();
-			if (provider) {
-				const hits = await this._withTimeout(
-					provider.search(basename(this._cwd), { limit: 5 }),
-					this._memoryRecallTimeoutMs,
-					[] as memoryNs.MemoryHit[],
-				);
-				if (hits.length > 0) {
-					cavememSnippet = memoryNs.formatPrelude(hits);
-				}
-			}
-			return composeStartupPrelude({ memoryIndex, cavememSnippet });
-		} catch (err) {
-			console.warn(`[cave/memory] prelude failed: ${err instanceof Error ? err.message : String(err)}`);
-			return undefined;
-		}
+		return this._memoryInjector.getProvider();
 	}
 
 	/**
@@ -3651,7 +3315,7 @@ export class AgentSession {
 		// and shared with the `/memory` slash command + the recall transform.
 		try {
 			const memoryProvider = await resolveMemoryProvider({ cwd: this._cwd });
-			this._memoryProvider = memoryProvider;
+			this._memoryInjector.primeProvider(memoryProvider);
 			const available = await memoryProvider.isAvailable().catch(() => false);
 			// Always register; the tools themselves short-circuit when unavailable.
 			// FilesProvider is always available, so this never strips them locally.

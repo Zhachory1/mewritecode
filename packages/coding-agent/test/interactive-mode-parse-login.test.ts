@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { parseLoginCommand } from "../src/modes/interactive/interactive-mode.js";
+import { parseLoginCommand } from "../src/modes/interactive/activity-helpers.js";
 
 const valid = [
 	{ id: "anthropic", aliases: ["claude"] },

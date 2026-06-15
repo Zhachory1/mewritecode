@@ -56,7 +56,6 @@ import {
 	getUpdateInstruction,
 	VERSION,
 } from "../../config.js";
-import type { ActivityKind } from "../../core/activity/activity-registry.js";
 import {
 	type AgentSession,
 	type AgentSessionEvent,
@@ -115,6 +114,7 @@ import { copyToClipboard } from "../../utils/clipboard.js";
 import { extensionForImageMimeType, readClipboardImage } from "../../utils/clipboard-image.js";
 import { parseGitUrl } from "../../utils/git.js";
 import { ensureTool } from "../../utils/tools-manager.js";
+import { deriveDetail, detailOf, kindOf, labelOf, parseLoginCommand } from "./activity-helpers.js";
 import { ActionBarComponent } from "./components/action-bar.js";
 import { showApprovalPrompt } from "./components/approval-prompt.js";
 import { ArminComponent } from "./components/armin.js";
@@ -173,6 +173,10 @@ import {
 	theme,
 } from "./theme/theme.js";
 
+// Re-exported for backwards compatibility: these helpers moved to
+// `./activity-helpers.ts` (god-file decomposition #16, stage 0).
+export { parseLoginCommand, resolveProviderAlias } from "./activity-helpers.js";
+
 /** Interface for components that can be expanded/collapsed */
 interface Expandable {
 	setExpanded(expanded: boolean): void;
@@ -194,65 +198,6 @@ function mapSkillScope(scope: string): SkillSourceTag {
  * the user sees a slow tool well before any auto-recover kicks in.
  */
 const SPINNER_STALL_THRESHOLD_MS = 10_000;
-
-const SUBAGENT_TOOL_NAMES = new Set(["task", "agent"]);
-
-/** Map a tool name to an activity kind (DD §11.3). MCP stays generic in v1 (B8). */
-function kindOf(toolName: string): ActivityKind {
-	if (SUBAGENT_TOOL_NAMES.has(toolName)) return "subagent";
-	return "tool";
-}
-
-/** Human label for the row. Subagents show the agent name when derivable. */
-function labelOf(toolName: string, args: Record<string, unknown>): string {
-	if (SUBAGENT_TOOL_NAMES.has(toolName)) {
-		const agent = typeof args.agent === "string" ? args.agent : undefined;
-		if (agent) return agent;
-		if (Array.isArray(args.tasks) && args.tasks.length > 0) {
-			const first = args.tasks[0] as { agent?: string } | undefined;
-			if (first?.agent) return `${first.agent} +${args.tasks.length - 1}`;
-		}
-		if (Array.isArray(args.chain) && args.chain.length > 0) {
-			const first = args.chain[0] as { agent?: string } | undefined;
-			if (first?.agent) return `chain:${first.agent} +${args.chain.length - 1}`;
-		}
-		return "task";
-	}
-	return toolName;
-}
-
-/** Initial detail for a tool row (e.g. the bash command — the "which is slow" signal, B7). */
-function detailOf(toolName: string, args: Record<string, unknown>): string | undefined {
-	if (toolName === "bash") {
-		const cmd = typeof args.command === "string" ? args.command : undefined;
-		return cmd ? truncateDetail(cmd) : undefined;
-	}
-	const path =
-		typeof args.path === "string" ? args.path : typeof args.file_path === "string" ? args.file_path : undefined;
-	return path ? truncateDetail(path) : undefined;
-}
-
-/** Best-effort detail derived from a streaming partial tool result. */
-function deriveDetail(partialResult: unknown): string | undefined {
-	if (!partialResult || typeof partialResult !== "object") return undefined;
-	const pr = partialResult as { content?: unknown };
-	if (Array.isArray(pr.content)) {
-		const firstText = pr.content.find(
-			(c): c is { type: "text"; text: string } =>
-				typeof c === "object" && c !== null && (c as { type?: string }).type === "text",
-		);
-		if (firstText) {
-			const line = firstText.text.split("\n").find((l) => l.trim().length > 0);
-			if (line) return truncateDetail(line.trim());
-		}
-	}
-	return undefined;
-}
-
-function truncateDetail(s: string): string {
-	const oneLine = s.replace(/\s+/g, " ").trim();
-	return oneLine.length > 80 ? `${oneLine.slice(0, 79)}…` : oneLine;
-}
 
 type CompactionQueuedMessage = {
 	text: string;
@@ -282,40 +227,6 @@ export interface InteractiveModeOptions {
 	 * back-to-back login prompts (M4).
 	 */
 	launchLoginOnStart?: boolean;
-}
-
-/**
- * Parse a `/login [provider]` command (F5). Mirrors `/compact` arg parsing.
- *  - bare `/login` (or trailing whitespace only) → open the provider selector.
- *  - `/login <provider>` with a known provider → route directly to that provider.
- *  - `/login <provider>` with an unknown provider → `invalid` (caller lists valid ones).
- */
-/** Resolve a user-typed provider name (id or alias) to a canonical id, or undefined. Case-insensitive. */
-export function resolveProviderAlias(
-	input: string,
-	providers: ReadonlyArray<{ id: string; aliases?: readonly string[] }>,
-): string | undefined {
-	const q = input.trim().toLowerCase();
-	for (const p of providers) {
-		if (p.id.toLowerCase() === q) return p.id;
-		if (p.aliases?.some((a) => a.toLowerCase() === q)) return p.id;
-	}
-	return undefined;
-}
-
-export function parseLoginCommand(
-	text: string,
-	providers: ReadonlyArray<{ id: string; aliases?: readonly string[] }>,
-): { kind: "selector" } | { kind: "provider"; provider: string } | { kind: "invalid"; provider: string } {
-	const arg = text.startsWith("/login ") ? text.slice("/login ".length).trim() : "";
-	if (arg === "") {
-		return { kind: "selector" };
-	}
-	const id = resolveProviderAlias(arg, providers);
-	if (id) {
-		return { kind: "provider", provider: id };
-	}
-	return { kind: "invalid", provider: arg };
 }
 
 /**
