@@ -1,0 +1,195 @@
+{
+  "generatedAt": "2026-06-15T16:27:27.416Z",
+  "config": {
+    "model": "claude-sonnet-4-6",
+    "provider": "anthropic",
+    "split": "tune",
+    "repeats": 3,
+    "candidateCondition": "full"
+  },
+  "judge": {
+    "model": "gpt-4.1",
+    "provider": "openai",
+    "promptVersion": "prose-judge-v1"
+  },
+  "honestyNote": "GATED OUTPUT-prose compression on SINGLE turns only — a clean but PARTIAL view. Headline = gated-median reduction over PASS prompts; only valid when n_pass/n_total >= 0.80. NO bootstrap-CI claim at small n — the per-prompt distribution is reported instead. Real savings also come from input/tool-output compression + prompt-cache reuse over long sessions (#36).",
+  "aggregate": {
+    "gatedMedianReductionPct": 0,
+    "gatedMeanReductionPct": 0,
+    "nPass": 0,
+    "nTotal": 7,
+    "passRatio": 0,
+    "headlineValid": false
+  },
+  "prompts": [
+    {
+      "id": "code-explain-roles",
+      "genre": "code-explain",
+      "split": "tune",
+      "off": {
+        "input": 3,
+        "output": 359,
+        "cacheRead": 4905,
+        "cacheWrite": 2452
+      },
+      "candidate": {
+        "input": 3,
+        "output": 225,
+        "cacheRead": 5159,
+        "cacheWrite": 2579
+      },
+      "reductionPct": 0.3732590529247911,
+      "recall": 0.6666666666666666,
+      "qualifierFidelity": 1,
+      "addedUnsupported": 2,
+      "maxRelSpread": 0.1979553903345725,
+      "unstable": true,
+      "pass": false
+    },
+    {
+      "id": "code-explain-honest-metrics",
+      "genre": "code-explain",
+      "split": "tune",
+      "off": {
+        "input": 3,
+        "output": 502,
+        "cacheRead": 6698,
+        "cacheWrite": 1107
+      },
+      "candidate": {
+        "input": 3,
+        "output": 333,
+        "cacheRead": 7079,
+        "cacheWrite": 1107
+      },
+      "reductionPct": 0.33665338645418325,
+      "recall": 0.8125,
+      "qualifierFidelity": 1,
+      "addedUnsupported": 2,
+      "maxRelSpread": 0.3247011952191235,
+      "unstable": true,
+      "pass": false
+    },
+    {
+      "id": "tradeoff-median-vs-mean",
+      "genre": "trade-off",
+      "split": "tune",
+      "off": {
+        "input": 3,
+        "output": 392,
+        "cacheRead": 6230,
+        "cacheWrite": 873
+      },
+      "candidate": {
+        "input": 3,
+        "output": 322,
+        "cacheRead": 6611,
+        "cacheWrite": 873
+      },
+      "reductionPct": 0.17857142857142858,
+      "recall": 1,
+      "qualifierFidelity": 1,
+      "addedUnsupported": 2,
+      "maxRelSpread": 0.15319148936170213,
+      "unstable": true,
+      "pass": false
+    },
+    {
+      "id": "tradeoff-temp0-vs-repeats",
+      "genre": "trade-off",
+      "split": "tune",
+      "off": {
+        "input": 3,
+        "output": 556,
+        "cacheRead": 6229,
+        "cacheWrite": 872
+      },
+      "candidate": {
+        "input": 3,
+        "output": 368,
+        "cacheRead": 6610,
+        "cacheWrite": 872
+      },
+      "reductionPct": 0.3381294964028777,
+      "recall": 0.8148148148148148,
+      "qualifierFidelity": 1,
+      "addedUnsupported": 3,
+      "maxRelSpread": 0.3532608695652174,
+      "unstable": true,
+      "pass": false
+    },
+    {
+      "id": "risk-cave-always-on",
+      "genre": "risk-enumeration",
+      "split": "tune",
+      "off": {
+        "input": 3,
+        "output": 916,
+        "cacheRead": 6230,
+        "cacheWrite": 872
+      },
+      "candidate": {
+        "input": 3,
+        "output": 775,
+        "cacheRead": 6611,
+        "cacheWrite": 872
+      },
+      "reductionPct": 0.1539301310043668,
+      "recall": 0.59375,
+      "qualifierFidelity": 0,
+      "addedUnsupported": 6,
+      "maxRelSpread": 0.5705679862306369,
+      "unstable": true,
+      "pass": false
+    },
+    {
+      "id": "trace-reduction-null-baseline",
+      "genre": "multi-step-trace",
+      "split": "tune",
+      "off": {
+        "input": 3,
+        "output": 2483,
+        "cacheRead": 6242,
+        "cacheWrite": 879
+      },
+      "candidate": {
+        "input": 3,
+        "output": 4061,
+        "cacheRead": 6623,
+        "cacheWrite": 879
+      },
+      "reductionPct": -0.6355215465163109,
+      "recall": 0.4,
+      "qualifierFidelity": 1,
+      "addedUnsupported": 0,
+      "maxRelSpread": 1.83338804990151,
+      "unstable": true,
+      "pass": false
+    },
+    {
+      "id": "factual-temp0-meaning",
+      "genre": "short-factual",
+      "split": "tune",
+      "note": "EXTERNAL ground truth: temp=0 ⇒ greedy/argmax decoding ⇒ (near-)deterministic, lowest-variance output.",
+      "off": {
+        "input": 3,
+        "output": 53,
+        "cacheRead": 6221,
+        "cacheWrite": 868
+      },
+      "candidate": {
+        "input": 3,
+        "output": 40,
+        "cacheRead": 6602,
+        "cacheWrite": 868
+      },
+      "reductionPct": 0.24528301886792453,
+      "recall": 0.5,
+      "qualifierFidelity": 1,
+      "addedUnsupported": 1,
+      "maxRelSpread": 0.09917355371900825,
+      "unstable": true,
+      "pass": false
+    }
+  ]
+}

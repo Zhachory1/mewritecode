@@ -1,0 +1,688 @@
+{
+  "generatedAt": "2026-06-15T18:37:39.672Z",
+  "config": {
+    "model": "claude-sonnet-4-6",
+    "provider": "anthropic",
+    "split": "tune",
+    "repeats": 3,
+    "candidateCondition": "full"
+  },
+  "judge": {
+    "model": "gpt-4.1",
+    "provider": "openai",
+    "promptVersion": "prose-judge-v1"
+  },
+  "referenceMode": "gold",
+  "goldValidation": {
+    "model": "gpt-4.1",
+    "provider": "openai",
+    "promptVersion": "prose-gold-v1",
+    "completenessFloor": 0.85,
+    "nFlagged": 4,
+    "nTotal": 7,
+    "anySuspect": true,
+    "perPrompt": [
+      {
+        "id": "code-explain-roles",
+        "recallOffInGold": 0.875,
+        "flagged": false
+      },
+      {
+        "id": "code-explain-honest-metrics",
+        "recallOffInGold": 0.9473684210526315,
+        "flagged": false
+      },
+      {
+        "id": "tradeoff-median-vs-mean",
+        "recallOffInGold": 0.42857142857142855,
+        "flagged": true
+      },
+      {
+        "id": "tradeoff-temp0-vs-repeats",
+        "recallOffInGold": 0.09090909090909091,
+        "flagged": true
+      },
+      {
+        "id": "risk-cave-always-on",
+        "recallOffInGold": 0.25,
+        "flagged": true
+      },
+      {
+        "id": "trace-reduction-null-baseline",
+        "recallOffInGold": 0,
+        "flagged": true
+      },
+      {
+        "id": "factual-temp0-meaning",
+        "recallOffInGold": 1,
+        "flagged": false
+      }
+    ]
+  },
+  "honestyNote": "GATED OUTPUT-prose compression on SINGLE turns only — a clean but PARTIAL view. Headline = gated-median reduction over PASS prompts; only valid when n_pass/n_total >= 0.80. REDUCTION is ALWAYS measured vs the verbose OFF baseline; --reference only changes the substance-judge reference (off|gold), never the reduction denominator. NO bootstrap-CI claim at small n — the per-prompt distribution is reported instead. Real savings also come from input/tool-output compression + prompt-cache reuse over long sessions (#36).",
+  "aggregate": {
+    "gatedMedianReductionPct": 0,
+    "gatedMeanReductionPct": 0,
+    "nPass": 0,
+    "nTotal": 7,
+    "passRatio": 0,
+    "headlineValid": false
+  },
+  "prompts": [
+    {
+      "id": "code-explain-roles",
+      "genre": "code-explain",
+      "split": "tune",
+      "off": {
+        "input": 3,
+        "output": 336,
+        "cacheRead": 7255,
+        "cacheWrite": 0
+      },
+      "candidate": {
+        "input": 3,
+        "output": 175,
+        "cacheRead": 5050,
+        "cacheWrite": 2525
+      },
+      "reductionPct": 0.4791666666666667,
+      "recall": 1,
+      "qualifierFidelity": 1,
+      "addedUnsupported": 1,
+      "judgeClaims": [
+        {
+          "text": "Defines and enforces role tags for outbound agent LLM calls.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Four roles are supported: \"plan\", \"edit\", \"explore\", \"verify\".",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Every outbound call must have exactly one of these roles;",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Missing or multiple roles are considered test-visible failures.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "The Role type restricts valid roles to the four allowed string literals.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "ROLES is a readonly array listing all valid roles.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "isRole(value) checks if a value is a string and one of the allowed roles.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "RoleTagged<T> is a generic interface for objects carrying a role and a payload.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "requireRole(value) validates that value.role is a valid Role; if not, it throws an error specifying the invalid or missing role.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "If valid, requireRole returns an object with the role and payload.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Design ensures strict, runtime-enforced tagging of every outbound LLM call with a single, valid role, preventing untagged or ambiguously tagged calls.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "All role checks are explicit and fail-fast.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "No role defaults or silent coercion.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        }
+      ],
+      "maxRelSpread": 0.3314285714285714,
+      "unstable": true,
+      "pass": false,
+      "gold": {
+        "id": "code-explain-roles",
+        "model": "gpt-4.1",
+        "promptVersion": "prose-gold-v1",
+        "reused": false
+      }
+    },
+    {
+      "id": "code-explain-honest-metrics",
+      "genre": "code-explain",
+      "split": "tune",
+      "off": {
+        "input": 3,
+        "output": 475,
+        "cacheRead": 6596,
+        "cacheWrite": 1107
+      },
+      "candidate": {
+        "input": 3,
+        "output": 404,
+        "cacheRead": 6916,
+        "cacheWrite": 1107
+      },
+      "reductionPct": 0.14947368421052631,
+      "recall": 0.9411764705882353,
+      "qualifierFidelity": 0.5,
+      "addedUnsupported": 1,
+      "judgeClaims": [
+        {
+          "text": "Provides pure, deterministic accounting and statistics for ON-vs-OFF ablation and cost reporting in the caveman project (issue #8, DD §3).",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Contains no I/O, process spawning, filesystem access, clock usage, or external dependencies; all outputs are fully determined by inputs.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Designed for reproducibility: bootstrap accepts a seeded PRNG so tests yield consistent results.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Serves as the unit-tested foundation for ablation; the live ablation runner (issue #33) uses this module.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Cost computation is centralized: all costs are calculated from a single shared price table via the `computeCost` function.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Parsers (e.g., `parseCodexUsage`) only return token usage and model, never a dollar amount; pricing is not duplicated or scattered.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "There is a single source of truth for pricing.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "The `resolved` field is set externally by a shared scorer, not by tool exit codes; all functions treat `resolved` as authoritative.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Defines a `Usage` interface tracking token counts for input, output, cache reads, and cache writes.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Provides `totalProcessed(u: Usage)` to sum all token types for diagnostics; not used as a primary metric.",
+          "present": false,
+          "hasQualifier": true,
+          "qualifierPreserved": false
+        },
+        {
+          "text": "Defines a `PricingRow` interface for per-million-token (1e6) dollar rates for each usage class (input, output, cacheRead, cacheWrite).",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "`computeCost(u, table, model)` computes the dollar cost for a run’s usage and model using the price table:",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Returns `null` if the model is missing from the price table (so unpriced runs can be excluded, not silently treated as free).",
+          "present": true,
+          "hasQualifier": true,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Otherwise, multiplies each usage count by its rate, sums, and divides by 1,000,000.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Defines a `Run` interface capturing run metadata: ablation level, model, task, seed, resolved status, usage, and parse status.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Includes pure, deterministic statistical helpers (not shown in excerpt).",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "All logic is deterministic and side-effect free; suitable for unit testing and reproducible analysis.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        }
+      ],
+      "maxRelSpread": 0.1508656224237428,
+      "unstable": true,
+      "pass": false,
+      "gold": {
+        "id": "code-explain-honest-metrics",
+        "model": "gpt-4.1",
+        "promptVersion": "prose-gold-v1",
+        "reused": false
+      }
+    },
+    {
+      "id": "tradeoff-median-vs-mean",
+      "genre": "trade-off",
+      "split": "tune",
+      "off": {
+        "input": 3,
+        "output": 402,
+        "cacheRead": 6128,
+        "cacheWrite": 873
+      },
+      "candidate": {
+        "input": 3,
+        "output": 338,
+        "cacheRead": 6448,
+        "cacheWrite": 873
+      },
+      "reductionPct": 0.15920398009950248,
+      "recall": 1,
+      "qualifierFidelity": 1,
+      "addedUnsupported": 2,
+      "judgeClaims": [
+        {
+          "text": "Report the median cost when the distribution of task costs is skewed or contains outliers, as the median reflects the typical cost experienced for a single task and is robust to extreme values.",
+          "present": true,
+          "hasQualifier": true,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Use the median as the headline when you want to represent the central tendency for a typical task, especially if a few tasks are much more expensive or cheaper than the rest, which would distort the mean.",
+          "present": true,
+          "hasQualifier": true,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Report the mean cost when the distribution is approximately symmetric and free of significant outliers, or when the total cost across all tasks is the primary concern.",
+          "present": true,
+          "hasQualifier": true,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "The mean reflects the average cost per task if all costs are pooled and divided evenly, and is appropriate when every task’s cost contributes equally to the overall budget or resource planning.",
+          "present": true,
+          "hasQualifier": true,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "The mean is sensitive to outliers and can be misleading if a small number of tasks are much more or less expensive than the rest.",
+          "present": true,
+          "hasQualifier": true,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "The median ignores magnitude of outliers and may underrepresent the impact of rare but costly tasks on total expenditure.",
+          "present": true,
+          "hasQualifier": true,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Use median when you want to communicate what most users or tasks will experience, or when cost variability is high and outliers are not representative of typical performance.",
+          "present": true,
+          "hasQualifier": true,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Use mean when total cost matters most, or when costs are uniformly distributed and outliers are not a concern.",
+          "present": true,
+          "hasQualifier": true,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "If reporting only one, choose the one that best matches the intended use: median for typical-case, mean for total or budgetary impact.",
+          "present": true,
+          "hasQualifier": true,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "In some cases, report both to fully characterize the cost distribution.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        }
+      ],
+      "maxRelSpread": 0.18361303060217177,
+      "unstable": true,
+      "pass": false,
+      "gold": {
+        "id": "tradeoff-median-vs-mean",
+        "model": "gpt-4.1",
+        "promptVersion": "prose-gold-v1",
+        "reused": false
+      }
+    },
+    {
+      "id": "tradeoff-temp0-vs-repeats",
+      "genre": "trade-off",
+      "split": "tune",
+      "off": {
+        "input": 3,
+        "output": 570,
+        "cacheRead": 6127,
+        "cacheWrite": 872
+      },
+      "candidate": {
+        "input": 3,
+        "output": 448,
+        "cacheRead": 6447,
+        "cacheWrite": 872
+      },
+      "reductionPct": 0.21403508771929824,
+      "recall": 0.6666666666666666,
+      "qualifierFidelity": 0.6,
+      "addedUnsupported": 3,
+      "judgeClaims": [
+        {
+          "text": "Setting temperature=0 ensures deterministic model outputs, eliminating sampling randomness and making token counts stable across runs, provided all other inputs and settings are identical.",
+          "present": true,
+          "hasQualifier": true,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Averaging over N>1 repeats helps only when temperature>0 or other sources of nondeterminism exist, as it smooths out variability in token counts caused by stochastic sampling.",
+          "present": false,
+          "hasQualifier": true,
+          "qualifierPreserved": false
+        },
+        {
+          "text": "If the model or system is fully deterministic at temperature=0, averaging is unnecessary; a single run suffices for stable token counts.",
+          "present": true,
+          "hasQualifier": true,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "If nondeterminism remains even at temperature=0 (e.g., due to non-temperature randomness, system-level nondeterminism, or non-deterministic model implementations), averaging over repeats is required for stable measurements.",
+          "present": true,
+          "hasQualifier": true,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Both are needed only if temperature>0 (introducing sampling variability) and additional nondeterminism exists; in this case, averaging over repeats at temperature>0 is necessary to obtain stable token-count estimates.",
+          "present": false,
+          "hasQualifier": true,
+          "qualifierPreserved": false
+        },
+        {
+          "text": "In summary: use temperature=0 for determinism when possible; use averaging only if nondeterminism cannot be eliminated. Use both only if both sources of variability are present.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        }
+      ],
+      "maxRelSpread": 0.5456140350877193,
+      "unstable": true,
+      "pass": false,
+      "gold": {
+        "id": "tradeoff-temp0-vs-repeats",
+        "model": "gpt-4.1",
+        "promptVersion": "prose-gold-v1",
+        "reused": false
+      }
+    },
+    {
+      "id": "risk-cave-always-on",
+      "genre": "risk-enumeration",
+      "split": "tune",
+      "off": {
+        "input": 3,
+        "output": 974,
+        "cacheRead": 6128,
+        "cacheWrite": 872
+      },
+      "candidate": {
+        "input": 3,
+        "output": 799,
+        "cacheRead": 6448,
+        "cacheWrite": 872
+      },
+      "reductionPct": 0.17967145790554415,
+      "recall": 0.9,
+      "qualifierFidelity": 1,
+      "addedUnsupported": 2,
+      "judgeClaims": [
+        {
+          "text": "Terse-prose styling may omit necessary qualifiers, caveats, or edge-case details, leading to incomplete or misleading information in agent outputs.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Shortened responses can introduce ambiguity, making it harder for users or downstream systems to interpret intent, requirements, or constraints.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Important warnings, error explanations, or troubleshooting steps may be omitted, making debugging and incident response slower and riskier.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Legal, security, or operational caveats may be dropped, increasing the risk of non-compliance or unsafe actions.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "New users or maintainers may lack sufficient context to understand decisions, code, or system behavior, leading to onboarding friction and operational mistakes.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Users may feel unsupported or confused by overly terse responses, reducing trust and satisfaction.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Integrations or automated consumers relying on full context may malfunction or make unsafe decisions due to missing information.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Novices or non-experts are more likely to misinterpret terse outputs, increasing their risk of error.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "In domains requiring exhaustive documentation or traceability, terse outputs can cause compliance failures or safety incidents.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Over time, persistent omission of detail can degrade institutional knowledge, making future maintenance and audits more difficult.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        }
+      ],
+      "maxRelSpread": 0.31633002396439575,
+      "unstable": true,
+      "pass": false,
+      "gold": {
+        "id": "risk-cave-always-on",
+        "model": "gpt-4.1",
+        "promptVersion": "prose-gold-v1",
+        "reused": false
+      }
+    },
+    {
+      "id": "trace-reduction-null-baseline",
+      "genre": "multi-step-trace",
+      "split": "tune",
+      "off": {
+        "input": 3,
+        "output": 1536,
+        "cacheRead": 6140,
+        "cacheWrite": 879
+      },
+      "candidate": {
+        "input": 3,
+        "output": 435,
+        "cacheRead": 6460,
+        "cacheWrite": 879
+      },
+      "reductionPct": 0.716796875,
+      "recall": 0,
+      "qualifierFidelity": 1,
+      "addedUnsupported": 4,
+      "judgeClaims": [
+        {
+          "text": "The function checks if `outputOff` is 0.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Since it is, the function immediately returns `null`.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "This return value signals that there is no reduction percentage to compute because the \"off\" output is empty or missing.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "The aggregate logic detects the `null` and excludes this case from reduction calculations and averages, treating it as \"no data\" rather than zero reduction.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "The table displays a dash or placeholder (not a numeric value) in the reduction column for this row, indicating that reduction is not applicable or cannot be computed for this entry.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        }
+      ],
+      "maxRelSpread": 1.622694727706661,
+      "unstable": true,
+      "pass": false,
+      "gold": {
+        "id": "trace-reduction-null-baseline",
+        "model": "gpt-4.1",
+        "promptVersion": "prose-gold-v1",
+        "reused": false
+      }
+    },
+    {
+      "id": "factual-temp0-meaning",
+      "genre": "short-factual",
+      "split": "tune",
+      "note": "EXTERNAL ground truth: temp=0 ⇒ greedy/argmax decoding ⇒ (near-)deterministic, lowest-variance output.",
+      "off": {
+        "input": 3,
+        "output": 53,
+        "cacheRead": 6119,
+        "cacheWrite": 868
+      },
+      "candidate": {
+        "input": 3,
+        "output": 44,
+        "cacheRead": 6439,
+        "cacheWrite": 868
+      },
+      "reductionPct": 0.16981132075471697,
+      "recall": 0.75,
+      "qualifierFidelity": 0,
+      "addedUnsupported": 0,
+      "judgeClaims": [
+        {
+          "text": "Setting an LLM sampling temperature to 0 makes the model always select the highest-probability (most likely) next token at each step.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Setting an LLM sampling temperature to 0 produces deterministic, repeatable outputs for the same input.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Setting an LLM sampling temperature to 0 eliminates randomness and diversity in generation, causing the model to follow the most probable path through its learned distribution.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "No alternative phrasings or creative variations are sampled; only the single most likely completion is returned unless the model’s probability distribution is exactly tied at any step, in which case tie-breaking may be implementation-dependent.",
+          "present": false,
+          "hasQualifier": true,
+          "qualifierPreserved": false
+        }
+      ],
+      "maxRelSpread": 0.09022556390977443,
+      "unstable": true,
+      "pass": false,
+      "gold": {
+        "id": "factual-temp0-meaning",
+        "model": "gpt-4.1",
+        "promptVersion": "prose-gold-v1",
+        "reused": false
+      }
+    }
+  ]
+}

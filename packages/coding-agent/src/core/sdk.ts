@@ -74,6 +74,15 @@ export interface CreateAgentSessionOptions {
 	sessionStartEvent?: SessionStartEvent;
 	/** Hard cap on assistant turns within a single run (Cli flag `--max-turns`). */
 	maxTurns?: number;
+	/**
+	 * Sampling temperature passed to the provider. When set (e.g. 0), makes
+	 * generations deterministic — used by research benches for stable token
+	 * counts. Default: undefined (provider/model default).
+	 *
+	 * NOTE: on Anthropic models, temperature is ignored when thinking is enabled
+	 * (the API forbids both); set `thinkingLevel: "off"` for deterministic output.
+	 */
+	temperature?: number;
 }
 
 /** Result from createAgentSession */
@@ -348,6 +357,7 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		thinkingBudgets: settingsManager.getThinkingBudgets(),
 		maxRetryDelayMs: settingsManager.getRetrySettings().maxDelayMs,
 		maxTurns: options.maxTurns,
+		temperature: options.temperature,
 		// Optional override for the stream inactivity watchdog (ms). Lets you set a
 		// short window to exercise the hang-recovery path. Falsy/invalid → loop default.
 		streamIdleTimeoutMs: parseStreamIdleTimeoutEnv(process.env.CAVE_STREAM_IDLE_TIMEOUT_MS),

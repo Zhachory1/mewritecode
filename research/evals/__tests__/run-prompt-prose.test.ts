@@ -7,17 +7,29 @@
 
 import { describe, expect, it } from "vitest";
 import type { Usage } from "../honest-metrics.js";
+import type { JudgeResult } from "../prose-judge.js";
 import {
 	type ConditionResult,
+	type GatedPromptResult,
 	type PromptProseResult,
 	type PromptSpec,
 	aggregateReduction,
+	buildGatedPromptResult,
 	buildInlinedQuestion,
 	buildPromptResult,
+	filterBySplit,
+	gatedAggregate,
+	genreCounts,
+	isGenre,
+	isSplit,
 	lastAssistantText,
 	outputReductionPct,
+	outputVariance,
 	parsePromptsJsonl,
+	parseReferenceArg,
+	parseSplitArg,
 	renderMarkdownTable,
+	selectJudgeReference,
 	truncateForInline,
 } from "../run-prompt-prose.js";
 
@@ -55,7 +67,7 @@ describe("outputReductionPct", () => {
 // ---------------------------------------------------------------------------
 
 describe("buildPromptResult", () => {
-	const spec: PromptSpec = { id: "p1", question: "explain" };
+	const spec: PromptSpec = { id: "p1", question: "explain", genre: "code-explain", split: "tune" };
 
 	it("captures output delta, %reduction, and input delta", () => {
 		const r = buildPromptResult(spec, cond(100, 200), cond(60, 250));
@@ -125,10 +137,23 @@ describe("parsePromptsJsonl", () => {
 			"   ",
 		].join("\n");
 		const specs = parsePromptsJsonl(jsonl);
+		// genre/split default to code-explain/tune when omitted in an override.
 		expect(specs).toEqual([
-			{ id: "a", question: "what is this" },
-			{ id: "b", question: "summarize" },
+			{ id: "a", question: "what is this", genre: "code-explain", split: "tune" },
+			{ id: "b", question: "summarize", genre: "code-explain", split: "tune" },
 		]);
+	});
+
+	it("preserves a valid genre/split/note when present", () => {
+		const specs = parsePromptsJsonl(
+			'{"id":"x","question":"q","genre":"trade-off","split":"test","note":"ext truth"}',
+		);
+		expect(specs[0]).toEqual({ id: "x", question: "q", genre: "trade-off", split: "test", note: "ext truth" });
+	});
+
+	it("throws on an invalid genre or split", () => {
+		expect(() => parsePromptsJsonl('{"id":"x","question":"q","genre":"poetry"}')).toThrow(/genre/);
+		expect(() => parsePromptsJsonl('{"id":"x","question":"q","split":"holdout"}')).toThrow(/split/);
 	});
 
 	it("throws with the 1-based line number on invalid JSON", () => {
@@ -270,5 +295,251 @@ describe("lastAssistantText", () => {
 
 	it("returns empty string when the assistant content is not an array", () => {
 		expect(lastAssistantText([{ role: "assistant", content: "raw" }])).toBe("");
+	});
+});
+
+// ---------------------------------------------------------------------------
+// A1 — split/genre guards + filtering
+// ---------------------------------------------------------------------------
+
+describe("isGenre / isSplit", () => {
+	it("accepts the frozen members and rejects others", () => {
+		expect(isGenre("code-explain")).toBe(true);
+		expect(isGenre("risk-enumeration")).toBe(true);
+		expect(isGenre("poetry")).toBe(false);
+		expect(isSplit("tune")).toBe(true);
+		expect(isSplit("validation")).toBe(true);
+		expect(isSplit("test")).toBe(true);
+		expect(isSplit("all")).toBe(false);
+		expect(isSplit("holdout")).toBe(false);
+	});
+});
+
+describe("parseSplitArg", () => {
+	it("accepts tune|validation|test|all", () => {
+		expect(parseSplitArg("tune")).toBe("tune");
+		expect(parseSplitArg("validation")).toBe("validation");
+		expect(parseSplitArg("test")).toBe("test");
+		expect(parseSplitArg("all")).toBe("all");
+	});
+	it("throws on anything else", () => {
+		expect(() => parseSplitArg("train")).toThrow(/tune\|validation\|test\|all/);
+	});
+});
+
+describe("filterBySplit", () => {
+	const corpus: PromptSpec[] = [
+		{ id: "a", question: "q", genre: "code-explain", split: "tune" },
+		{ id: "b", question: "q", genre: "trade-off", split: "validation" },
+		{ id: "c", question: "q", genre: "short-factual", split: "test" },
+		{ id: "d", question: "q", genre: "trade-off", split: "tune" },
+	];
+	it("keeps only the matching partition", () => {
+		expect(filterBySplit(corpus, "tune").map((p) => p.id)).toEqual(["a", "d"]);
+		expect(filterBySplit(corpus, "validation").map((p) => p.id)).toEqual(["b"]);
+		expect(filterBySplit(corpus, "test").map((p) => p.id)).toEqual(["c"]);
+	});
+	it("'all' returns everything", () => {
+		expect(filterBySplit(corpus, "all")).toHaveLength(4);
+	});
+});
+
+describe("genreCounts", () => {
+	it("counts prompts per genre across all five genres", () => {
+		const corpus: PromptSpec[] = [
+			{ id: "a", question: "q", genre: "code-explain", split: "tune" },
+			{ id: "b", question: "q", genre: "code-explain", split: "tune" },
+			{ id: "c", question: "q", genre: "trade-off", split: "tune" },
+		];
+		const counts = genreCounts(corpus);
+		expect(counts["code-explain"]).toBe(2);
+		expect(counts["trade-off"]).toBe(1);
+		expect(counts["risk-enumeration"]).toBe(0);
+		expect(counts["multi-step-trace"]).toBe(0);
+		expect(counts["short-factual"]).toBe(0);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// A3 — outputVariance (stability gate)
+// ---------------------------------------------------------------------------
+
+describe("outputVariance", () => {
+	it("computes mean/min/max and relSpread", () => {
+		const v = outputVariance([100, 102, 98]);
+		expect(v.mean).toBeCloseTo(100, 10);
+		expect(v.min).toBe(98);
+		expect(v.max).toBe(102);
+		expect(v.relSpread).toBeCloseTo(0.04, 10); // (102-98)/100
+		expect(v.flagged).toBe(false); // 4% <= 5%
+	});
+
+	it("FLAGS a prompt whose spread exceeds 5% of the mean", () => {
+		const v = outputVariance([100, 110, 95]); // spread 15 / mean ~101.67 = ~14.8%
+		expect(v.flagged).toBe(true);
+		expect(v.relSpread).toBeGreaterThan(0.05);
+	});
+
+	it("does not flag the boundary (exactly 5%)", () => {
+		const v = outputVariance([100, 105, 100]); // spread 5 / mean ~101.67 = ~4.9%
+		expect(v.flagged).toBe(false);
+	});
+
+	it("empty input → all zero, not flagged (no data is not instability)", () => {
+		expect(outputVariance([])).toEqual({ mean: 0, min: 0, max: 0, relSpread: 0, flagged: false });
+	});
+
+	it("all-zero outputs → relSpread 0, not flagged (no spread to normalize)", () => {
+		const v = outputVariance([0, 0, 0]);
+		expect(v.relSpread).toBe(0);
+		expect(v.flagged).toBe(false);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// A4 — buildGatedPromptResult + gatedAggregate + headline validity
+// ---------------------------------------------------------------------------
+
+const judge = (recall: number, qualifierFidelity = 1, addedUnsupported = 0): JudgeResult => ({
+	recall,
+	qualifierFidelity,
+	addedUnsupported,
+	claims: [],
+});
+
+describe("buildGatedPromptResult", () => {
+	it("PASSES when substance holds AND token count is stable", () => {
+		const g = buildGatedPromptResult({
+			id: "p",
+			genre: "trade-off",
+			split: "tune",
+			reductionPct: 0.4,
+			judge: judge(0.95),
+			maxRelSpread: 0.02,
+		});
+		expect(g.pass).toBe(true);
+		expect(g.unstable).toBe(false);
+	});
+
+	it("FAILS when the substance gate fails (low recall) even if stable", () => {
+		const g = buildGatedPromptResult({
+			id: "p",
+			genre: "trade-off",
+			split: "tune",
+			reductionPct: 0.4,
+			judge: judge(0.8),
+			maxRelSpread: 0.01,
+		});
+		expect(g.pass).toBe(false);
+	});
+
+	it("FAILS an UNSTABLE prompt even if the substance gate would pass", () => {
+		const g = buildGatedPromptResult({
+			id: "p",
+			genre: "trade-off",
+			split: "tune",
+			reductionPct: 0.4,
+			judge: judge(0.99),
+			maxRelSpread: 0.12, // > 5%
+		});
+		expect(g.unstable).toBe(true);
+		expect(g.pass).toBe(false);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// --reference off|gold — flag parsing + which text the judge reference becomes
+// ---------------------------------------------------------------------------
+
+describe("parseReferenceArg", () => {
+	it("accepts off|gold", () => {
+		expect(parseReferenceArg("off")).toBe("off");
+		expect(parseReferenceArg("gold")).toBe("gold");
+	});
+	it("throws on anything else", () => {
+		expect(() => parseReferenceArg("baseline")).toThrow(/off\|gold/);
+	});
+});
+
+describe("selectJudgeReference", () => {
+	it("off mode → the judge reference is the OFF-mode answer (current behavior)", () => {
+		expect(selectJudgeReference("off", "the off answer", "the gold")).toBe("the off answer");
+		// gold may be absent in off mode and that's fine
+		expect(selectJudgeReference("off", "the off answer", null)).toBe("the off answer");
+	});
+
+	it("gold mode → the judge reference becomes the GOLD answer", () => {
+		expect(selectJudgeReference("gold", "the off answer", "the gold")).toBe("the gold");
+	});
+
+	it("gold mode with a missing gold throws (never silently grade against null)", () => {
+		expect(() => selectJudgeReference("gold", "the off answer", null)).toThrow(/requires a gold/);
+	});
+
+	it("the REDUCTION metric is independent of reference mode (off-token denominator unchanged)", () => {
+		// selectJudgeReference only changes the SUBSTANCE reference. The reduction is
+		// computed from output-token counts via outputReductionPct and never reads the
+		// reference text — so the SAME off/full token counts give the SAME reduction
+		// regardless of which reference the judge would use.
+		const offTokens = 100;
+		const fullTokens = 40;
+		const reduction = outputReductionPct(offTokens, fullTokens);
+		expect(reduction).toBeCloseTo(0.6, 10);
+		// switching the judge reference to gold does not touch these numbers
+		expect(selectJudgeReference("gold", "off text", "gold text")).toBe("gold text");
+		expect(outputReductionPct(offTokens, fullTokens)).toBe(reduction);
+	});
+});
+
+describe("gatedAggregate", () => {
+	const mk = (id: string, reductionPct: number | null, pass: boolean, unstable = false): GatedPromptResult => ({
+		id,
+		genre: "trade-off",
+		split: "tune",
+		reductionPct,
+		recall: pass ? 0.95 : 0.5,
+		qualifierFidelity: 1,
+		addedUnsupported: 0,
+		maxRelSpread: unstable ? 0.1 : 0.01,
+		unstable,
+		pass,
+	});
+
+	it("medians reduction over PASS prompts only", () => {
+		const results = [mk("a", 0.5, true), mk("b", 0.3, true), mk("c", 0.1, false)];
+		const agg = gatedAggregate(results);
+		// PASS reductions: 0.5, 0.3 → median 0.4
+		expect(agg.gatedMedianReduction).toBeCloseTo(0.4, 10);
+		expect(agg.nPass).toBe(2);
+		expect(agg.nTotal).toBe(3);
+	});
+
+	it("headlineValid true at >=80% PASS, false below", () => {
+		const passing = Array.from({ length: 8 }, (_, i) => mk(`p${i}`, 0.4, true));
+		const failing = [mk("f1", 0.1, false), mk("f2", 0.1, false)];
+		// 8/10 = 80% → valid
+		expect(gatedAggregate([...passing, ...failing]).headlineValid).toBe(true);
+		// 7/10 = 70% → invalid
+		expect(gatedAggregate([...passing.slice(0, 7), mk("f3", 0.1, false), ...failing]).headlineValid).toBe(false);
+	});
+
+	it("counts a PASS toward nPass even if its reduction is null, but keeps it out of the median", () => {
+		// pass=true with null reduction can't happen via passes() (the gate requires
+		// reductionPct>0), but if a result is constructed that way directly, nPass must
+		// still count the PASS verdict (n_pass/n_total integrity) while the null stays
+		// out of the median accumulator.
+		const results = [mk("a", 0.5, true), mk("weird", null, true)];
+		const agg = gatedAggregate(results);
+		expect(agg.gatedMedianReduction).toBeCloseTo(0.5, 10); // null excluded from median
+		expect(agg.nPass).toBe(2); // both PASS verdicts counted
+		expect(agg.passRatio).toBeCloseTo(1, 10);
+	});
+
+	it("empty input → zero median, headline INVALID (no claim from nothing)", () => {
+		const agg = gatedAggregate([]);
+		expect(agg.gatedMedianReduction).toBe(0);
+		expect(agg.nPass).toBe(0);
+		expect(agg.nTotal).toBe(0);
+		expect(agg.headlineValid).toBe(false);
 	});
 });

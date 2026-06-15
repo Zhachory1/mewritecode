@@ -1,0 +1,368 @@
+{
+  "generatedAt": "2026-06-15T17:03:49.340Z",
+  "config": {
+    "model": "claude-sonnet-4-6",
+    "provider": "anthropic",
+    "split": "tune",
+    "repeats": 3,
+    "candidateCondition": "full"
+  },
+  "judge": {
+    "model": "gpt-4.1",
+    "provider": "openai",
+    "promptVersion": "prose-judge-v1"
+  },
+  "honestyNote": "GATED OUTPUT-prose compression on SINGLE turns only — a clean but PARTIAL view. Headline = gated-median reduction over PASS prompts; only valid when n_pass/n_total >= 0.80. NO bootstrap-CI claim at small n — the per-prompt distribution is reported instead. Real savings also come from input/tool-output compression + prompt-cache reuse over long sessions (#36).",
+  "aggregate": {
+    "gatedMedianReductionPct": 0,
+    "gatedMeanReductionPct": 0,
+    "nPass": 0,
+    "nTotal": 3,
+    "passRatio": 0,
+    "headlineValid": false
+  },
+  "prompts": [
+    {
+      "id": "code-explain-roles",
+      "genre": "code-explain",
+      "split": "tune",
+      "off": {
+        "input": 3,
+        "output": 329,
+        "cacheRead": 4842,
+        "cacheWrite": 2421
+      },
+      "candidate": {
+        "input": 3,
+        "output": 235,
+        "cacheRead": 5055,
+        "cacheWrite": 2528
+      },
+      "reductionPct": 0.2857142857142857,
+      "recall": 0.8,
+      "qualifierFidelity": 1,
+      "addedUnsupported": 2,
+      "judgeClaims": [
+        {
+          "text": "`roles.ts` enforces that every outbound LLM call from the agent is tagged with exactly one of four semantic roles: `plan`, `edit`, `explore`, or `verify`.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "The four roles model the agent's cognitive phases: planning what to do, editing code, exploring the codebase, and verifying results.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "This mirrors a typical agentic loop.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "`Role` is a string literal union, so TypeScript catches invalid roles at compile time.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "`ROLES` is a `readonly` tuple used for runtime membership checks.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "`isRole` is a type predicate that validates unknown values (e.g. from deserialized data or dynamic construction) against the known set.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "`requireRole` is the enforcement point: it takes a partially-typed object (role may be absent or wrong) and either returns a fully-typed `RoleTagged<T>` or throws.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "The throw makes missing/invalid roles a hard failure rather than a silent gap — the comment notes these are \"test-visible failures,\" meaning tests assert on the error.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "`RoleTagged<T>` is generic so the same wrapper works for any call shape without losing payload type information.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "No dependencies, no framework coupling. Pure types + two functions. Easy to test and import anywhere in the agent.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        }
+      ],
+      "maxRelSpread": 0.11505681818181819,
+      "unstable": true,
+      "pass": false
+    },
+    {
+      "id": "code-explain-honest-metrics",
+      "genre": "code-explain",
+      "split": "tune",
+      "off": {
+        "input": 3,
+        "output": 509,
+        "cacheRead": 6604,
+        "cacheWrite": 1107
+      },
+      "candidate": {
+        "input": 3,
+        "output": 430,
+        "cacheRead": 6924,
+        "cacheWrite": 1107
+      },
+      "reductionPct": 0.15520628683693516,
+      "recall": 0.9473684210526315,
+      "qualifierFidelity": 1,
+      "addedUnsupported": 2,
+      "judgeClaims": [
+        {
+          "text": "`honest-metrics.ts` is a pure accounting and statistics library for an ablation study comparing different \"cave mode\" levels (off / lite / full / ultra / codex) on coding tasks.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "It has no side effects — no I/O, no clock, no external deps — making it fully unit-testable with deterministic outputs.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "`Usage` holds four token classes: `input`, `output`, `cacheRead`, `cacheWrite`.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "`computeCost` is the single source of truth for dollar figures.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "`computeCost` takes a `Usage`, a shared price table (`Record<string, PricingRow>`), and a model name, then returns `(tokens × rate) / 1_000_000`.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "`computeCost` returns `null` for unknown models so unpriced runs are explicitly excluded rather than silently treated as free.",
+          "present": true,
+          "hasQualifier": true,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Parsers upstream return `Usage + model` only — never a dollar amount.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "This enforces one pricing path.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "`Run` is the atomic data unit.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "`Run` has `level` — which ablation arm (`\"off\" | \"lite\" | \"full\" | \"ultra\" | \"codex\"`)",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "`Run` has `model`, `task`, `seed` — identity fields",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "`Run` has `resolved: boolean` — ground truth from an external scorer, never from the tool's own exit code",
+          "present": true,
+          "hasQualifier": true,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "`Run` has `usage: Usage | null` + `parseStatus` — token data may be absent if parsing failed",
+          "present": true,
+          "hasQualifier": true,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "The module provides pure statistical helpers over slices of `Run[]`, likely including: Pass rate (resolve rate) per level, Cost-per-resolved-task comparisons, Bootstrap confidence intervals with a seeded PRNG for reproducibility",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "`computeCost` only is the single pricing source; parsers never emit dollars",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "`resolved` is set upstream, treated as opaque boolean here",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "No I/O; seeded PRNG for bootstrap",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "`null` cost for unknown models, `parseStatus` field for failures",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "The module is described as the \"unit-tested foundation\" consumed by a live ablation runner (issue #33).",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        }
+      ],
+      "maxRelSpread": 0.10412573673870335,
+      "unstable": true,
+      "pass": false
+    },
+    {
+      "id": "tradeoff-median-vs-mean",
+      "genre": "trade-off",
+      "split": "tune",
+      "off": {
+        "input": 3,
+        "output": 427,
+        "cacheRead": 6136,
+        "cacheWrite": 873
+      },
+      "candidate": {
+        "input": 3,
+        "output": 352,
+        "cacheRead": 6456,
+        "cacheWrite": 873
+      },
+      "reductionPct": 0.1756440281030445,
+      "recall": 1,
+      "qualifierFidelity": 1,
+      "addedUnsupported": 0,
+      "judgeClaims": [
+        {
+          "text": "Median when costs are skewed; mean when you care about total budget.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Cost distributions in agent benchmarks are almost always right-skewed: most tasks complete cheaply, but a tail of hard/looping tasks burns disproportionate tokens.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "That skew is the crux of the choice.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Report the median when you want to characterize typical task cost — what a user running one task should expect to pay.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Report the median when the distribution has a long right tail (a few runaway tasks inflate the mean).",
+          "present": true,
+          "hasQualifier": true,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Report the median when you're comparing two systems where one has better tail behavior but similar typical cost — the mean would obscure the comparison.",
+          "present": true,
+          "hasQualifier": true,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Report the median when the benchmark includes tasks of varying difficulty and you don't want hard outliers to dominate the headline.",
+          "present": true,
+          "hasQualifier": true,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Report the mean when you care about total budget — if you run N tasks, N × mean is your actual spend; N × median is not.",
+          "present": true,
+          "hasQualifier": true,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Report the mean when costs are roughly symmetric or you've already trimmed outliers.",
+          "present": true,
+          "hasQualifier": true,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Report the mean when you're making a procurement or capacity-planning argument (\"this will cost $X to run the full eval suite\").",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Report the mean when stakeholders need to reason about aggregate cost, not per-task experience.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Report both, with the mean as the budget figure and the median as the typical-task figure.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "If they diverge significantly, that divergence is itself informative — it tells you the tail is expensive and worth investigating separately (e.g., report p95 or max alongside).",
+          "present": true,
+          "hasQualifier": true,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "For a headline in a paper or README: use median if you're making a \"this model is cheaper\" claim, because it's more robust to a few catastrophic runs.",
+          "present": true,
+          "hasQualifier": true,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Use mean if you're making a \"this costs $X to operate\" claim.",
+          "present": true,
+          "hasQualifier": true,
+          "qualifierPreserved": true
+        }
+      ],
+      "maxRelSpread": 0.178125,
+      "unstable": true,
+      "pass": false
+    }
+  ]
+}

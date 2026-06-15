@@ -1,0 +1,15 @@
+---
+id: code-explain-roles
+goldModel: gpt-4.1
+promptVersion: prose-gold-v1
+questionB64: QmVsb3cgaXMgdGhlIHJvbGUtdGFnZ2luZyBtb2R1bGUgYHBhY2thZ2VzL2FnZW50L3NyYy9yb2xlcy50c2AgZnJvbSBhIFR5cGVTY3JpcHQgY29kZWJhc2UuIEV4cGxhaW4gd2hhdCBpdCBkb2VzIGFuZCBzdW1tYXJpemUgaXRzIGRlc2lnbi4KCmBgYHRzCi8vIFQtMDA5LCBULTAxMDogUm9sZSB0YWdzIGZvciBvdXRib3VuZCBhZ2VudCBMTE0gY2FsbHMuCi8vCi8vIEV2ZXJ5IG91dGJvdW5kIGNhbGwgbXVzdCBjYXJyeSBleGFjdGx5IG9uZSByb2xlLiBNaXNzaW5nIG9yIG11bHRpLXJvbGUKLy8gY2FsbHMgYXJlIHRlc3QtdmlzaWJsZSBmYWlsdXJlcy4KCmV4cG9ydCB0eXBlIFJvbGUgPSAicGxhbiIgfCAiZWRpdCIgfCAiZXhwbG9yZSIgfCAidmVyaWZ5IjsKCmV4cG9ydCBjb25zdCBST0xFUzogcmVhZG9ubHkgUm9sZVtdID0gWyJwbGFuIiwgImVkaXQiLCAiZXhwbG9yZSIsICJ2ZXJpZnkiXSBhcyBjb25zdDsKCmV4cG9ydCBmdW5jdGlvbiBpc1JvbGUodmFsdWU6IHVua25vd24pOiB2YWx1ZSBpcyBSb2xlIHsKCXJldHVybiB0eXBlb2YgdmFsdWUgPT09ICJzdHJpbmciICYmIChST0xFUyBhcyByZWFkb25seSBzdHJpbmdbXSkuaW5jbHVkZXModmFsdWUpOwp9CgpleHBvcnQgaW50ZXJmYWNlIFJvbGVUYWdnZWQ8VCA9IHVua25vd24+IHsKCXJvbGU6IFJvbGU7CglwYXlsb2FkOiBUOwp9CgpleHBvcnQgZnVuY3Rpb24gcmVxdWlyZVJvbGU8VD4odmFsdWU6IHsgcm9sZT86IHVua25vd247IHBheWxvYWQ6IFQgfSk6IFJvbGVUYWdnZWQ8VD4gewoJaWYgKCFpc1JvbGUodmFsdWUucm9sZSkpIHsKCQl0aHJvdyBuZXcgRXJyb3IoYHJvbGVzOiBvdXRib3VuZCBjYWxsIG1pc3Npbmcgb3IgaW52YWxpZCByb2xlIChnb3QgJHtKU09OLnN0cmluZ2lmeSh2YWx1ZS5yb2xlKX0pYCk7Cgl9CglyZXR1cm4geyByb2xlOiB2YWx1ZS5yb2xlLCBwYXlsb2FkOiB2YWx1ZS5wYXlsb2FkIH07Cn0KCmBgYA==
+---
+Defines and enforces role tags for outbound agent LLM calls. Four roles are supported: "plan", "edit", "explore", "verify". Every outbound call must have exactly one of these roles; missing or multiple roles are considered test-visible failures.
+
+- The Role type restricts valid roles to the four allowed string literals.
+- ROLES is a readonly array listing all valid roles.
+- isRole(value) checks if a value is a string and one of the allowed roles.
+- RoleTagged<T> is a generic interface for objects carrying a role and a payload.
+- requireRole(value) validates that value.role is a valid Role; if not, it throws an error specifying the invalid or missing role. If valid, it returns an object with the role and payload.
+
+Design ensures strict, runtime-enforced tagging of every outbound LLM call with a single, valid role, preventing untagged or ambiguously tagged calls. All role checks are explicit and fail-fast. No role defaults or silent coercion.

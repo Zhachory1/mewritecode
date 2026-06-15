@@ -113,6 +113,8 @@ export interface AgentOptions {
 	toolExecution?: ToolExecutionMode;
 	/** Hard cap on assistant turns within a single run. */
 	maxTurns?: number;
+	/** Sampling temperature forwarded to the provider (e.g. 0 for deterministic). */
+	temperature?: number;
 	/** Inactivity watchdog for streaming responses, in ms (default 120000; 0 disables). */
 	streamIdleTimeoutMs?: number;
 	/** Optional model router for resolving models per outbound LLM call. */
@@ -204,6 +206,8 @@ export class Agent {
 	public role?: Role;
 	/** Optional cap on assistant turns within a single run. */
 	public maxTurns?: number;
+	/** Optional sampling temperature forwarded to the provider. */
+	public temperature?: number;
 	/** Inactivity watchdog for streaming responses, in ms (default 120000; 0 disables). */
 	public streamIdleTimeoutMs?: number;
 
@@ -228,6 +232,7 @@ export class Agent {
 		this.router = options.router;
 		this.role = options.role;
 		this.maxTurns = options.maxTurns;
+		this.temperature = options.temperature;
 		this.streamIdleTimeoutMs = options.streamIdleTimeoutMs;
 	}
 
@@ -446,6 +451,7 @@ export class Agent {
 			maxRetryDelayMs: this.maxRetryDelayMs,
 			toolExecution: this.toolExecution,
 			maxTurns: this.maxTurns,
+			temperature: this.temperature,
 			streamIdleTimeoutMs: this.streamIdleTimeoutMs,
 			beforeToolCall: this.beforeToolCall,
 			afterToolCall: this.afterToolCall,

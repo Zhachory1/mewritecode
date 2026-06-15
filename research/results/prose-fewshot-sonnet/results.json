@@ -1,0 +1,797 @@
+{
+  "generatedAt": "2026-06-15T18:06:37.954Z",
+  "config": {
+    "model": "claude-sonnet-4-6",
+    "provider": "anthropic",
+    "split": "tune",
+    "repeats": 3,
+    "candidateCondition": "full"
+  },
+  "judge": {
+    "model": "gpt-4.1",
+    "provider": "openai",
+    "promptVersion": "prose-judge-v1"
+  },
+  "honestyNote": "GATED OUTPUT-prose compression on SINGLE turns only — a clean but PARTIAL view. Headline = gated-median reduction over PASS prompts; only valid when n_pass/n_total >= 0.80. NO bootstrap-CI claim at small n — the per-prompt distribution is reported instead. Real savings also come from input/tool-output compression + prompt-cache reuse over long sessions (#36).",
+  "aggregate": {
+    "gatedMedianReductionPct": 0,
+    "gatedMeanReductionPct": 0,
+    "nPass": 0,
+    "nTotal": 7,
+    "passRatio": 0,
+    "headlineValid": false
+  },
+  "prompts": [
+    {
+      "id": "code-explain-roles",
+      "genre": "code-explain",
+      "split": "tune",
+      "off": {
+        "input": 3,
+        "output": 303,
+        "cacheRead": 4845,
+        "cacheWrite": 2423
+      },
+      "candidate": {
+        "input": 3,
+        "output": 274,
+        "cacheRead": 5200,
+        "cacheWrite": 2600
+      },
+      "reductionPct": 0.09570957095709572,
+      "recall": 1,
+      "qualifierFidelity": 1,
+      "addedUnsupported": 1,
+      "judgeClaims": [
+        {
+          "text": "The module implements a role-tagging contract for outbound LLM calls in the agent.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Every call the agent makes to an LLM must be labeled with exactly one of four roles: plan, edit, explore, or verify.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "The module enforces this at runtime and makes violations test-visible (hard throws rather than silent defaults).",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Role union type provides compile-time exhaustiveness — adding a role requires updating the union.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "ROLES readonly array enables runtime membership check without duplicating the union.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "isRole() is a type guard used internally and available to callers for narrowing.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "RoleTagged<T> is a generic wrapper that pairs a validated role with an arbitrary payload.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "requireRole() is the enforcement point — accepts an unvalidated object, throws if role is absent or unrecognized, returns a narrowed RoleTagged<T>.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "The design separates declaration (Role, ROLES) from validation (isRole, requireRole), keeping the guard reusable independently of the wrapper type.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "The generic T on RoleTagged and requireRole means callers retain full payload typing after validation without casting.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        }
+      ],
+      "maxRelSpread": 0.2448233861144945,
+      "unstable": true,
+      "pass": false
+    },
+    {
+      "id": "code-explain-honest-metrics",
+      "genre": "code-explain",
+      "split": "tune",
+      "off": {
+        "input": 3,
+        "output": 507,
+        "cacheRead": 6609,
+        "cacheWrite": 1107
+      },
+      "candidate": {
+        "input": 3,
+        "output": 346,
+        "cacheRead": 7141,
+        "cacheWrite": 1107
+      },
+      "reductionPct": 0.3175542406311637,
+      "recall": 0.9230769230769231,
+      "qualifierFidelity": 1,
+      "addedUnsupported": 1,
+      "judgeClaims": [
+        {
+          "text": "`honest-metrics.ts` is a pure accounting and statistics library for an ablation study comparing different \"cave mode\" levels (off / lite / full / ultra / codex) on coding tasks.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "It has no side effects — no I/O, no clock, no external deps — making it fully unit-testable with deterministic outputs.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "`Usage` holds four token classes: `input`, `output`, `cacheRead`, `cacheWrite`.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "`totalProcessed` sums all four — marked as diagnostic only, never a headline metric.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "`PricingRow` stores per-million-token rates for each class.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "`computeCost` is the single source of truth for dollar figures: parsers upstream return `Usage + model`, never a dollar amount.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "If a model has no pricing row, it returns `null` so unpriced runs are explicitly excludable rather than silently treated as free.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "`Run` is the atomic data unit: `level` — which ablation arm (`\"off\"` | `\"lite\"` | `\"full\"` | `\"ultra\"` | `\"codex\"`), `model`, `task`, `seed` — identity fields, `resolved: boolean` — set by a shared external scorer, never by the tool's own exit code (enforces honest ground truth), `usage: Usage | null` — nullable so parse failures don't corrupt cost math, `parseStatus` — tracks whether usage extraction succeeded",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "One pricing source — `computeCost` centralizes all dollar math; parsers are forbidden from producing cost figures.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "`resolved` is external — the module treats it as ground truth, preventing tools from self-reporting success.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Seeded PRNG for bootstrap — statistical resampling is reproducible across runs.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Null-safe throughout — `usage: null` and `computeCost` returning `null` propagate cleanly rather than silently zeroing out missing data.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "The truncated portion likely contains bootstrap confidence intervals, per-level aggregation (resolve rate, mean cost, token stats), and comparison helpers — all built on these primitives.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        }
+      ],
+      "maxRelSpread": 0.1301775147928994,
+      "unstable": true,
+      "pass": false
+    },
+    {
+      "id": "tradeoff-median-vs-mean",
+      "genre": "trade-off",
+      "split": "tune",
+      "off": {
+        "input": 3,
+        "output": 329,
+        "cacheRead": 6141,
+        "cacheWrite": 873
+      },
+      "candidate": {
+        "input": 3,
+        "output": 246,
+        "cacheRead": 6673,
+        "cacheWrite": 873
+      },
+      "reductionPct": 0.25227963525835867,
+      "recall": 0.6875,
+      "qualifierFidelity": 1,
+      "addedUnsupported": 4,
+      "judgeClaims": [
+        {
+          "text": "Median when costs have a long right tail (a few expensive tasks skew the mean up).",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Median represents the 'typical' task cost — what most runs actually experience.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Use median as the headline when you want to characterize normal operating cost.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Mean when you care about total budget.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Mean × task count = total spend.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "If you're forecasting infrastructure cost or comparing two systems on aggregate efficiency, mean is the right number.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Median is robust to outliers but ignores them.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "A benchmark with 95% cheap tasks and 5% catastrophically expensive ones looks fine by median, even if those 5% dominate your bill.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Mean is sensitive to outliers.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "One runaway task (infinite loop, context overflow, retry storm) can make a good system look expensive.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Report both, but lead with the one that matches your use case.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Lead with median if you're evaluating 'what does a typical task cost?' — e.g., comparing models for a product where most tasks are similar.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Lead with mean if you're evaluating 'what does running this benchmark cost?' or comparing total efficiency across systems.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Also report the p95 or max alongside either headline.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "A system with low median but high p95 has a reliability/cost problem that neither central tendency captures.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "The spread matters as much as the center.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        }
+      ],
+      "maxRelSpread": 0.39077340569877883,
+      "unstable": true,
+      "pass": false
+    },
+    {
+      "id": "tradeoff-temp0-vs-repeats",
+      "genre": "trade-off",
+      "split": "tune",
+      "off": {
+        "input": 3,
+        "output": 431,
+        "cacheRead": 6140,
+        "cacheWrite": 872
+      },
+      "candidate": {
+        "input": 3,
+        "output": 328,
+        "cacheRead": 6672,
+        "cacheWrite": 872
+      },
+      "reductionPct": 0.23897911832946636,
+      "recall": 0,
+      "qualifierFidelity": 0,
+      "addedUnsupported": 7,
+      "judgeClaims": [
+        {
+          "text": "Temperature=0 helps when the model is deterministic — same input always produces the same token sequence, so one run is sufficient for stable counts.",
+          "present": false,
+          "hasQualifier": true,
+          "qualifierPreserved": false
+        },
+        {
+          "text": "Averaging over N>1 helps when there's inherent variance — either the model is non-deterministic at temperature=0 (many providers don't guarantee exact reproducibility even then), or you're measuring at temperature>0 where sampling introduces randomness.",
+          "present": false,
+          "hasQualifier": true,
+          "qualifierPreserved": false
+        },
+        {
+          "text": "temperature=0 alone: Sufficient if your provider guarantees deterministic outputs and you only care about a single fixed input. Fast and cheap.",
+          "present": false,
+          "hasQualifier": true,
+          "qualifierPreserved": false
+        },
+        {
+          "text": "averaging alone: Necessary when you can't set temperature=0 (e.g., o1/o3 models, some hosted APIs), or when you want variance estimates across paraphrased inputs rather than a single canonical phrasing.",
+          "present": false,
+          "hasQualifier": true,
+          "qualifierPreserved": false
+        },
+        {
+          "text": "both together: Needed when temperature=0 doesn't fully eliminate variance (floating-point nondeterminism across hardware, batching effects, KV-cache misses) and you need tight confidence intervals.",
+          "present": false,
+          "hasQualifier": true,
+          "qualifierPreserved": false
+        },
+        {
+          "text": "both together: Also useful when the measurement itself has noise beyond model sampling — e.g., tokenizer version drift, prompt formatting differences across runs.",
+          "present": false,
+          "hasQualifier": true,
+          "qualifierPreserved": false
+        },
+        {
+          "text": "For token-count stability specifically (not output quality), token counts are usually a deterministic function of the input tokens, not the sampled output — so temperature is irrelevant for input token counting.",
+          "present": false,
+          "hasQualifier": true,
+          "qualifierPreserved": false
+        },
+        {
+          "text": "For output token counts, temperature=0 + a single run is usually enough if the provider is well-behaved.",
+          "present": false,
+          "hasQualifier": true,
+          "qualifierPreserved": false
+        },
+        {
+          "text": "Add N>1 repeats only if you observe variance empirically or your provider documents non-determinism.",
+          "present": false,
+          "hasQualifier": true,
+          "qualifierPreserved": false
+        }
+      ],
+      "maxRelSpread": 0.2853828306264501,
+      "unstable": true,
+      "pass": false
+    },
+    {
+      "id": "risk-cave-always-on",
+      "genre": "risk-enumeration",
+      "split": "tune",
+      "off": {
+        "input": 3,
+        "output": 831,
+        "cacheRead": 6141,
+        "cacheWrite": 872
+      },
+      "candidate": {
+        "input": 3,
+        "output": 746,
+        "cacheRead": 6673,
+        "cacheWrite": 872
+      },
+      "reductionPct": 0.1022864019253911,
+      "recall": 0.6666666666666666,
+      "qualifierFidelity": 1,
+      "addedUnsupported": 7,
+      "judgeClaims": [
+        {
+          "text": "Cave-mode suppresses markdown structure (headers, bullets, bold) and enforces short, dense prose.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Suppressing markdown structure and enforcing terse prose is appropriate for a TUI chat interface where rendered markdown looks like noise.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Failure modes emerge when the cave-mode constraint is applied universally.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Terse prose works for short answers.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "For multi-step explanations, migration guides, or architecture decisions, prose without structure forces the reader to parse sentence-level logic instead of scanning.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Cognitive load increases nonlinearly with length when prose lacks structure.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Users asking complex questions and users who copy agent output into docs or tickets are hurt by information density collapse.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Bullets and numbered lists carry semantic meaning in technical writing: ordered vs unordered steps.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Prose collapses the distinction between ordered and unordered steps.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "\"You should do A, then B, then C\" reads the same as \"you could do A, B, or C\" in prose.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Users following multi-step instructions and users debugging sequences are hurt by this ambiguity.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "When the agent explains a diff or set of changes, structured output (file path, what changed, why) maps naturally to a list.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Prose narration of diffs or changes is harder to skim and easier to misread.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Users reviewing agent-proposed changes before accepting them are hurt by degraded diff/review output.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "If agent output is piped into another system (web UI, Slack, PR comment, doc generator), that system may expect markdown.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Terse prose with no structure renders as a wall of text in those contexts.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Integrators and users of non-TUI surfaces (web-ui, API consumers) are hurt by downstream rendering breaks.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "The prose bench on this branch measures quality under the constraint.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "If cave-mode is always-on, evals that don't account for the style constraint will score the model lower on clarity metrics, producing misleading signal about model quality vs. prompt quality.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "The team interpreting eval results and downstream prompt tuning decisions are hurt by eval and benchmark contamination.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Screen readers and assistive tools benefit from semantic structure.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "A heading announces a section; a list announces enumerable items.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Prose provides neither headings nor list structure.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Always-on terse mode removes that structure unconditionally.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Users relying on assistive technology are hurt by accessibility regression.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "If a user explicitly asks for a bulleted list or a table, cave-mode creates a conflict between the system prompt constraint and the user instruction.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "The model will either violate the system prompt or ignore the user — both are bad.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "The current implementation likely resolves this inconsistently.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Power users who know what format they want and users pasting output into structured tools are hurt by prompt-following confusion.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "The core risk is that cave-mode is a surface-specific optimization (TUI, short answers, conversational register) being applied as a universal constraint.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "It trades structure for terseness, which is the right trade in one context and the wrong trade in most others.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "The failure modes are worst for long outputs, multi-step instructions, non-TUI surfaces, and users with accessibility needs.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "The safe production posture is to gate cave-mode on surface detection or user preference, not apply it globally.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        }
+      ],
+      "maxRelSpread": 0.21323200715243631,
+      "unstable": true,
+      "pass": false
+    },
+    {
+      "id": "trace-reduction-null-baseline",
+      "genre": "multi-step-trace",
+      "split": "tune",
+      "off": {
+        "input": 3,
+        "output": 529,
+        "cacheRead": 6153,
+        "cacheWrite": 879
+      },
+      "candidate": {
+        "input": 3,
+        "output": 2907,
+        "cacheRead": 6685,
+        "cacheWrite": 879
+      },
+      "reductionPct": -4.495274102079395,
+      "recall": 0.4666666666666667,
+      "qualifierFidelity": 1,
+      "addedUnsupported": 6,
+      "judgeClaims": [
+        {
+          "text": "I need to find the `outputReductionPct` function and its callers.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "The repo map doesn't show this function — it's likely in the eval/bench code on this branch.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Let me find it.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Looking at the recent commits, this is in the prose-40pct eval code.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Let me locate it.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "The git status shows `packages/coding-agent/src/core/system-prompt.ts` is modified, but the function is likely in the eval suite.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Let me search:",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "I don't have shell tools available.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Let me read the relevant files based on the commit history context.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "The function name `outputReductionPct` suggests it computes `(outputFull - outputOff) / outputFull * 100` or similar.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Let me find it by reading the eval files:",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Since I can't execute commands, let me reason from what I know about the branch and ask you to share the relevant file, or tell me which file contains `outputReductionPct` so I can read it directly.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "What file is `outputReductionPct` defined in?",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "If you can point me to it (or paste the relevant snippet), I can trace it precisely.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Alternatively, if you want me to search, I'd need shell access — which isn't available in this session.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        }
+      ],
+      "maxRelSpread": 1.508256880733945,
+      "unstable": true,
+      "pass": false
+    },
+    {
+      "id": "factual-temp0-meaning",
+      "genre": "short-factual",
+      "split": "tune",
+      "note": "EXTERNAL ground truth: temp=0 ⇒ greedy/argmax decoding ⇒ (near-)deterministic, lowest-variance output.",
+      "off": {
+        "input": 3,
+        "output": 53,
+        "cacheRead": 6132,
+        "cacheWrite": 868
+      },
+      "candidate": {
+        "input": 3,
+        "output": 62,
+        "cacheRead": 6664,
+        "cacheWrite": 868
+      },
+      "reductionPct": -0.16981132075471697,
+      "recall": 0.5,
+      "qualifierFidelity": 1,
+      "addedUnsupported": 1,
+      "judgeClaims": [
+        {
+          "text": "Setting temperature to 0 makes the model deterministic (or near-deterministic): it always selects the highest-probability token at each step, eliminating randomness.",
+          "present": true,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        },
+        {
+          "text": "Output becomes consistent and repetitive across runs, with no creative variation.",
+          "present": false,
+          "hasQualifier": false,
+          "qualifierPreserved": true
+        }
+      ],
+      "maxRelSpread": 0.08108108108108109,
+      "unstable": true,
+      "pass": false
+    }
+  ]
+}

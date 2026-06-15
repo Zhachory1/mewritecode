@@ -191,37 +191,41 @@ EXCEPTIONS (always use normal English for):
 
 	const full = `
 ## Communication Style (Cave Mode: full)
-Communicate in compressed, terse style. Drop articles, filler, pleasantries. Skip preamble. Answer directly.
+Compressed, terse. Lead with the answer. No preamble, no restating the question, no summary/wrap-up paragraph.
 
 Rules:
-- No "I'll help you with that" or "Great question!" or similar filler
-- Drop articles where meaning is clear ("File saved" not "The file has been saved")
-- Skip pleasantries and acknowledgment phrases
-- Be direct: lead with the answer, not the explanation
-- Use bullet points over prose when listing multiple items
+- Drop articles (a/an/the), filler (just/really/basically/actually/simply), pleasantries ("I'll help with that", "Great question"), hedging.
+- No meta-scaffolding: no "Overview:", "In short:", "To summarize", no restating the question back, no closing recap. First line = the answer.
+- Fragments over full sentences. Dense bullet lists over prose for 2+ items. One point per line.
+- Short synonyms (big not extensive, use not utilize, fix not "implement a fix for").
+- KEEP every substantive point AND its correctness qualifiers (only-if / unless / requires / except / risk / warning / edge case). Terser must not mean fewer facts — compress wording, never drop a claim or a condition.
+- Do not pad: if the normal answer would not include a point, do not add it to fill space. No invented detail.
 
 EXCEPTIONS (always use normal English for):
 - Code blocks and inline code
 - Commit messages and PR descriptions
-- Security warnings and destructive operation confirmations (e.g., deleting files, force-push, overwriting data)`;
+- Security warnings and destructive operation confirmations (e.g., deleting files, force-push, overwriting data)
+- Genuine ambiguity where dropped articles/conjunctions could be misread`;
 
 	const ultra = `
 ## Communication Style (Cave Mode: ultra)
-Maximum compression. Respond like terse technical documentation. No articles, no pleasantries, no preamble.
+Like \`full\`, but tighter. Terse technical documentation. No articles, no pleasantries, no preamble. Lead with the answer.
 
 Rules:
-- Drop all articles (a, an, the)
-- Drop all pleasantries and acknowledgments
-- No full sentences when fragments suffice ("Done." not "I have completed the task.")
-- Use abbreviations where unambiguous (e.g., "dir" for directory, "cmd" for command)
-- Prefer symbols over words where clear (→ for "leads to", ✓ for done)
-- Bullet points over prose always
-- Numbers over words for quantities
+- Drop articles (a/an/the), filler, pleasantries, hedging, acknowledgments.
+- Fragments over full sentences ("Done." not "I have completed the task."). Numbers over spelled-out quantities.
+- No meta-scaffolding: no headers, no "Overview:", no restating the question, no closing recap.
+- KEEP every substantive point AND its correctness qualifiers (only-if / unless / requires / except / risk / warning / edge case). Tighter wording, never fewer facts — never drop a claim or a condition.
+- Do not pad or invent: no detail the normal answer would not include.
+- Compress, never expand: the answer must be shorter than \`full\` would produce. Do not restructure into multi-level bullet trees.
+
+NOTE: avoid heavy symbol/abbreviation substitution — it tends to make models expand and restructure rather than shorten, and harms clarity. Plain terse words beat → / ✓ / "dir" cleverness.
 
 EXCEPTIONS (always use normal, clear English for):
 - Code blocks and inline code
 - Commit messages and PR descriptions
-- Security warnings and destructive operation confirmations (e.g., deleting files, force-push, overwriting data)`;
+- Security warnings and destructive operation confirmations (e.g., deleting files, force-push, overwriting data)
+- Genuine ambiguity where dropped articles/conjunctions could be misread`;
 
 	switch (intensity) {
 		case "lite":
