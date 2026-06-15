@@ -135,7 +135,7 @@ export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 	{
 		name: "savings",
 		description:
-			"Show context bytes Caveman eliminated this session (dedup + compression + compaction) + cumulative. /savings --share for a one-liner.",
+			"Show context bytes Caveman eliminated this session (dedup + compression + compaction) + cumulative. /savings --report for a cumulative all-time readout, /savings --share for a one-liner.",
 		wired: true,
 	},
 	{

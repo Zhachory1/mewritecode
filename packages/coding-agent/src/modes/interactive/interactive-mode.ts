@@ -70,6 +70,7 @@ import {
 	getThisWeekSavingsBytes,
 	persistSessionCost,
 	persistSessionSavings,
+	readCostTotals,
 } from "../../core/cost-persistence.js";
 import { NoUsableAuthError } from "../../core/errors.js";
 import type {
@@ -94,7 +95,7 @@ import { runGoalSlashCommand } from "../../core/slash-commands/goal.js";
 import { runMcpSlashCommand } from "../../core/slash-commands/mcp.js";
 import { runPlanCommand } from "../../core/slash-commands/plan.js";
 import { runRollbackCommand } from "../../core/slash-commands/rollback.js";
-import { formatSavingsShare, runSavingsCommand } from "../../core/slash-commands/savings.js";
+import { formatSavingsReport, formatSavingsShare, runSavingsCommand } from "../../core/slash-commands/savings.js";
 import {
 	BUILTIN_SLASH_COMMANDS,
 	emptyRepomapChatState,
@@ -5954,10 +5955,26 @@ export class InteractiveMode {
 	}
 
 	// Savings Meter (DD §10): /savings — context bytes Caveman eliminated this
-	// session (dedup + compression + compaction) + cumulative. `--share` copies a
-	// bytes+% one-liner (no $, no cache-reuse).
+	// session (dedup + compression + compaction) + cumulative. `--report` prints a
+	// cumulative all-time readout from ~/.cave/cost-totals.json (bytes durable; $
+	// estimated). `--share` copies a bytes+% one-liner (no $, no cache-reuse).
 	private async handleSavingsCommand(arg: string): Promise<void> {
 		const totals = this.session.getSavings();
+
+		if (arg === "--report" || arg === "report") {
+			// Cumulative, real-usage readout of the ALREADY-PERSISTED savings
+			// aggregate (~/.cave/cost-totals.json). Bytes are durable; the $ is an
+			// estimate at the current model input rate, else a documented default.
+			const DEFAULT_ASSUMED_RATE_PER_MTOK = 3; // ~blended input rate ($/Mtok).
+			const modelRate = this.session.model?.cost?.input ?? 0;
+			const assumedRatePerMTok = modelRate > 0 ? modelRate : DEFAULT_ASSUMED_RATE_PER_MTOK;
+			const file = readCostTotals();
+			const reportLines = formatSavingsReport(file.savings, { assumedRatePerMTok });
+			this.chatContainer.addChild(new Spacer(1));
+			this.chatContainer.addChild(new Text(reportLines.join("\n"), 1, 0));
+			this.ui.requestRender();
+			return;
+		}
 
 		if (arg === "--share") {
 			const share = formatSavingsShare(totals);
