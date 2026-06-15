@@ -48,6 +48,13 @@ import {
 const MAX_CONCURRENCY = 4;
 
 /**
+ * Grace period between SIGTERM and the forced SIGKILL escalation when killing a
+ * spawned subagent child on abort. Gives a well-behaved child time to exit
+ * cleanly before we hard-kill it.
+ */
+const SIGKILL_GRACE_MS = 5_000;
+
+/**
  * Hard cap on subagent recursion depth. Tracked via the `CAVE_SUBAGENT_DEPTH`
  * env var, incremented by each spawn. Without a cap a subagent that itself has
  * the `task` tool active can fan out indefinitely.
@@ -321,7 +328,7 @@ async function spawnSubagent(opts: SpawnOptions): Promise<SpawnResult> {
 					} catch {
 						/* ignore */
 					}
-				}, 5000);
+				}, SIGKILL_GRACE_MS);
 			};
 			if (opts.signal.aborted) kill();
 			else opts.signal.addEventListener("abort", kill, { once: true });
@@ -351,6 +358,13 @@ async function spawnSubagent(opts: SpawnOptions): Promise<SpawnResult> {
 interface SpawnBackgroundOptions extends Omit<SpawnOptions, "signal"> {
 	/** Optional addressable name to register in the subagent registry. */
 	name?: string;
+	/**
+	 * Abort signal tied to the parent tool call / session. On abort we terminate
+	 * the detached child (SIGTERM → SIGKILL escalation) and tear down the output
+	 * write stream so a long-lived parent does not leak the orphan process or its
+	 * file descriptor. Mirrors the foreground abort path in `spawnSubagent`.
+	 */
+	signal?: AbortSignal;
 }
 
 /**
@@ -466,6 +480,52 @@ function spawnSubagentBackground(opts: SpawnBackgroundOptions): {
 			child: undefined,
 		});
 	});
+
+	// Abort handling — mirrors the foreground path in `spawnSubagent` (SIGTERM,
+	// then SIGKILL after a grace period). A background subagent is detached and
+	// `unref()`'d so it can outlive the synchronous tool call; without honoring
+	// the parent's AbortSignal an aborted/disposed parent leaves an uncancellable
+	// orphan process plus the leaked `createWriteStream` FD. On abort we kill the
+	// child and close the stream so both the process and the descriptor are freed.
+	if (opts.signal) {
+		let escalation: NodeJS.Timeout | undefined;
+		// Closing the stream on abort releases the FD even if the child never
+		// emits `close` (e.g. it ignored SIGTERM and we had to SIGKILL, or it was
+		// already dead). `!writableEnded` guards against a double-end.
+		const closeStream = () => {
+			if (!out.writableEnded) out.end();
+		};
+		const kill = () => {
+			try {
+				child.kill("SIGTERM");
+			} catch {
+				/* ignore */
+			}
+			escalation = setTimeout(() => {
+				try {
+					if (!child.killed) child.kill("SIGKILL");
+				} catch {
+					/* ignore */
+				}
+				closeStream();
+			}, SIGKILL_GRACE_MS);
+			// Don't let the escalation timer keep the parent event loop alive.
+			escalation.unref?.();
+		};
+		// If the child exits on its own (SIGTERM honored, or normal completion),
+		// cancel the pending SIGKILL escalation, release the stream, AND remove
+		// the abort listener. The `{ once: true }` below only auto-removes the
+		// listener when abort FIRES; on the common normal-exit path it would
+		// otherwise linger on the signal forever, holding closures over
+		// `child`/`out`/`escalation` — the exact leak class #17 fixes.
+		child.once("close", () => {
+			if (escalation) clearTimeout(escalation);
+			closeStream();
+			opts.signal?.removeEventListener("abort", kill);
+		});
+		if (opts.signal.aborted) kill();
+		else opts.signal.addEventListener("abort", kill, { once: true });
+	}
 
 	return { agentId: subagentId, outputFile, entry };
 }
@@ -795,6 +855,7 @@ export function createTaskToolDefinition(
 						envOverrides: params.mode
 							? { ...(options?.envOverrides ?? {}), CAVE_CHAT_MODE: params.mode }
 							: options?.envOverrides,
+						signal,
 					});
 					return {
 						content: [

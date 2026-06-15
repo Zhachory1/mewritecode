@@ -204,6 +204,30 @@ export class ToolExecutionComponent extends Container {
 		this.updateDisplay();
 	}
 
+	/**
+	 * Release any long-lived handles the row's renderers stashed on
+	 * `rendererState` (e.g. bash's live elapsed-time `setInterval`). Called when
+	 * the row unmounts — `/clear`, session reset, or abort mid-partial-render —
+	 * so a torn-down row never leaks a timer that keeps firing `invalidate()`
+	 * against a detached component.
+	 *
+	 * Idempotent: safe to call more than once (callers may clear() then dispose).
+	 */
+	dispose(): void {
+		const disposeRender = this.toolDefinition?.disposeRender ?? this.builtInToolDefinition?.disposeRender;
+		if (disposeRender) {
+			try {
+				disposeRender(this.rendererState);
+			} catch {
+				/* never let renderer cleanup break teardown */
+			}
+		}
+		// Dispose child render components that own their own handles.
+		for (const c of [this.callRendererComponent, this.resultRendererComponent]) {
+			(c as (Component & { dispose?(): void }) | undefined)?.dispose?.();
+		}
+	}
+
 	override render(width: number): string[] {
 		if (this.hideComponent) {
 			return [];

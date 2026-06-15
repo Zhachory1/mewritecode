@@ -170,16 +170,26 @@ export async function handleWatchCommand(args: string[]): Promise<boolean> {
 		agentRun,
 	);
 
-	// Graceful SIGINT exit
-	process.on("SIGINT", () => {
-		process.stderr.write(chalk.dim("\n[cave watch] stopping...\n"));
+	// Graceful exit on any termination signal. Previously only SIGINT was
+	// handled, so SIGTERM (kill, container stop) and SIGHUP (terminal close)
+	// tore the process down without calling `handle.stop()`, leaking the open
+	// `fs.watch` handles. Handle all three through one shutdown path.
+	let stopping = false;
+	const shutdown = (signal: NodeJS.Signals) => {
+		if (stopping) return;
+		stopping = true;
+		process.stderr.write(chalk.dim(`\n[cave watch] stopping (${signal})...\n`));
 		handle.stop();
 		process.exit(0);
-	});
+	};
+	process.once("SIGINT", () => shutdown("SIGINT"));
+	process.once("SIGTERM", () => shutdown("SIGTERM"));
+	process.once("SIGHUP", () => shutdown("SIGHUP"));
 
 	// Keep the process alive
 	await new Promise<void>(() => {
-		// Never resolves — process lives until SIGINT
+		// Never resolves — process lives until a termination signal
+		// (SIGINT / SIGTERM / SIGHUP) triggers the shutdown handlers above.
 	});
 
 	return true;

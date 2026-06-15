@@ -47,6 +47,14 @@ export class StdioTransport implements McpTransport {
 	private connected = false;
 	private readonly requestTimeoutMs: number;
 	private readonly connectTimeoutMs: number;
+	/**
+	 * The long-lived child listeners registered in `connect()` (stdout/stderr
+	 * `data`, child `error`/`exit`). `close()` removes every one of these from
+	 * the child so they don't outlive the transport — previously they were never
+	 * detached, leaking listeners (and the `exit` handler would also fire
+	 * `fatal()` during our own teardown).
+	 */
+	private childListeners: Array<() => void> = [];
 
 	constructor(
 		private readonly config: McpServerConfig,
@@ -71,30 +79,53 @@ export class StdioTransport implements McpTransport {
 		this.child = child;
 
 		child.stdout.setEncoding("utf8");
-		child.stdout.on("data", (chunk: string) => this.onStdout(chunk));
 		child.stderr.setEncoding("utf8");
-		child.stderr.on("data", (chunk: string) => {
+
+		const onStdoutData = (chunk: string) => this.onStdout(chunk);
+		const onStderrData = (chunk: string) => {
 			if (this.config.debug) process.stderr.write(`[mcp:${this.config.name}] ${chunk}`);
-		});
-		child.on("error", (err) => this.fatal(err));
-		child.on("exit", (code, signal) => {
+		};
+		const onError = (err: Error) => this.fatal(err);
+		const onExit = (code: number | null, signal: NodeJS.Signals | null) => {
 			this.fatal(new Error(`mcp(stdio:${this.config.name}): process exited code=${code} signal=${signal}`));
-		});
+		};
+
+		child.stdout.on("data", onStdoutData);
+		child.stderr.on("data", onStderrData);
+		child.on("error", onError);
+		child.on("exit", onExit);
+
+		// Record removers so `close()` can detach every listener and avoid the
+		// `exit` handler firing `fatal()` during our own teardown.
+		this.childListeners = [
+			() => child.stdout.removeListener("data", onStdoutData),
+			() => child.stderr.removeListener("data", onStderrData),
+			() => child.removeListener("error", onError),
+			() => child.removeListener("exit", onExit),
+		];
 
 		await new Promise<void>((resolve, reject) => {
-			const t = setTimeout(
-				() => reject(new Error(`mcp(stdio:${this.config.name}): connect timeout`)),
-				this.connectTimeoutMs,
-			);
+			// Detach the unfired sibling so neither `once` handler lingers on the
+			// child after connect settles (on success the error handler would
+			// otherwise leak; on error the spawn handler would; on timeout BOTH
+			// would, since neither fired).
 			const onSpawn = () => {
 				clearTimeout(t);
+				child.removeListener("error", onSpawnError);
 				resolve();
 			};
-			child.once("spawn", onSpawn);
-			child.once("error", (err) => {
+			const onSpawnError = (err: Error) => {
 				clearTimeout(t);
+				child.removeListener("spawn", onSpawn);
 				reject(err);
-			});
+			};
+			const t = setTimeout(() => {
+				child.removeListener("spawn", onSpawn);
+				child.removeListener("error", onSpawnError);
+				reject(new Error(`mcp(stdio:${this.config.name}): connect timeout`));
+			}, this.connectTimeoutMs);
+			child.once("spawn", onSpawn);
+			child.once("error", onSpawnError);
 		});
 
 		await this.request("initialize", {
@@ -133,6 +164,17 @@ export class StdioTransport implements McpTransport {
 		this.connected = false;
 		const c = this.child;
 		this.child = undefined;
+		// Detach all long-lived child listeners before killing the process so
+		// they don't leak and the `exit` handler doesn't fire `fatal()` on our
+		// own teardown.
+		for (const remove of this.childListeners) {
+			try {
+				remove();
+			} catch {
+				/* ignore */
+			}
+		}
+		this.childListeners = [];
 		for (const [, p] of this.pending) {
 			clearTimeout(p.timeout);
 			p.reject(new Error(`mcp(stdio:${this.config.name}): closed`));

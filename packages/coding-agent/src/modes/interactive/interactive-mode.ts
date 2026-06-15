@@ -97,8 +97,8 @@ import { runRollbackCommand } from "../../core/slash-commands/rollback.js";
 import { formatSavingsShare, runSavingsCommand } from "../../core/slash-commands/savings.js";
 import {
 	BUILTIN_SLASH_COMMANDS,
-	isUnwiredBuiltinCommand,
 	emptyRepomapChatState,
+	isUnwiredBuiltinCommand,
 	type RepomapChatState,
 	runArchitectCommand,
 	runCostCommand,
@@ -1496,6 +1496,7 @@ export class InteractiveMode {
 						return { cancelled: true };
 					}
 
+					this.disposeMountedToolRows();
 					this.chatContainer.clear();
 					this.renderInitialMessages();
 					if (result.editorText && !this.editor.getText().trim()) {
@@ -1587,7 +1588,24 @@ export class InteractiveMode {
 		process.exit(1);
 	}
 
+	/**
+	 * Dispose every tool-execution row currently mounted in the chat before the
+	 * container is cleared/rebuilt. A bash row torn down mid-partial-render still
+	 * holds a live elapsed-time `setInterval`; without disposing it the timer
+	 * keeps firing `invalidate()` against a detached component forever (issue
+	 * #17 HIGH 2). Covers `/clear`, session swap/fork, and compaction rebuilds.
+	 */
+	private disposeMountedToolRows(): void {
+		for (const child of this.chatContainer.children) {
+			if (child instanceof ToolExecutionComponent) child.dispose();
+		}
+		for (const component of this.pendingTools.values()) {
+			component.dispose();
+		}
+	}
+
 	private renderCurrentSessionState(): void {
+		this.disposeMountedToolRows();
 		this.chatContainer.clear();
 		this.pendingMessagesContainer.clear();
 		this.compactionQueuedMessages = [];
@@ -3038,7 +3056,10 @@ export class InteractiveMode {
 						this.showStatus("Auto-compaction cancelled");
 					}
 				} else if (event.result) {
-					this.chatContainer.clear();
+					// `rebuildChatFromMessages()` disposes mounted tool rows then
+					// clears internally; a caller-side `chatContainer.clear()` first
+					// would empty `children` before that dispose runs, leaking the
+					// live ToolExecutionComponent intervals.
 					this.rebuildChatFromMessages();
 					this.addMessageToChat(
 						createCompactionSummaryMessage(
@@ -3406,6 +3427,7 @@ export class InteractiveMode {
 	}
 
 	private rebuildChatFromMessages(): void {
+		this.disposeMountedToolRows();
 		this.chatContainer.clear();
 		const context = this.sessionManager.buildSessionContext();
 		this.renderSessionContext(context);
@@ -3721,8 +3743,10 @@ export class InteractiveMode {
 		this.hideThinkingBlock = !this.hideThinkingBlock;
 		this.settingsManager.setHideThinkingBlock(this.hideThinkingBlock);
 
-		// Rebuild chat from session messages
-		this.chatContainer.clear();
+		// Rebuild chat from session messages. `rebuildChatFromMessages()` disposes
+		// mounted tool rows then clears internally; a caller-side clear first would
+		// empty `children` before that dispose runs, leaking the live
+		// ToolExecutionComponent intervals.
 		this.rebuildChatFromMessages();
 
 		// If streaming, re-add the streaming component with updated visibility and re-render
@@ -4133,7 +4157,10 @@ export class InteractiveMode {
 								child.setHideThinkingBlock(hidden);
 							}
 						}
-						this.chatContainer.clear();
+						// `rebuildChatFromMessages()` disposes mounted tool rows then
+						// clears internally; a caller-side clear first would empty
+						// `children` before that dispose runs, leaking the live
+						// ToolExecutionComponent intervals.
 						this.rebuildChatFromMessages();
 					},
 					onCollapseChangelogChange: (collapsed) => {
@@ -4507,6 +4534,7 @@ export class InteractiveMode {
 						}
 
 						// Update UI
+						this.disposeMountedToolRows();
 						this.chatContainer.clear();
 						this.renderInitialMessages();
 						if (result.editorText && !this.editor.getText().trim()) {

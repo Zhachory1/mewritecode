@@ -407,6 +407,19 @@ export interface ToolDefinition<TParams extends TSchema = TSchema, TDetails = un
 		theme: Theme,
 		context: ToolRenderContext<TState, Static<TParams>>,
 	) => Component;
+
+	/**
+	 * Release any long-lived handles a renderer stashed on its `TState`
+	 * (timers, intervals, watchers). Called by the TUI when the tool row
+	 * unmounts — e.g. on `/clear`, session reset, or abort mid-partial-render.
+	 *
+	 * Renderers that schedule a recurring `setInterval` (e.g. bash's live
+	 * elapsed-time tick) must clear it here, otherwise a row that unmounts
+	 * while still partial leaks the interval forever. The default render path
+	 * only clears such timers on the *next* non-partial render, which never
+	 * arrives if the row is torn down first.
+	 */
+	disposeRender?: (state: TState) => void;
 }
 
 type AnyToolDefinition = ToolDefinition<any, any, any>;

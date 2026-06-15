@@ -442,6 +442,16 @@ export function createBashToolDefinition(
 			component.invalidate();
 			return component;
 		},
+		disposeRender(state) {
+			// The row unmounted (abort / `/clear` / session reset). If it was torn
+			// down mid-partial-render the elapsed-time interval is still live and
+			// would fire `invalidate()` forever against a detached component —
+			// clear it here. Mirrors the non-partial-render cleanup in renderResult.
+			if (state?.interval) {
+				clearInterval(state.interval);
+				state.interval = undefined;
+			}
+		},
 	};
 }
 

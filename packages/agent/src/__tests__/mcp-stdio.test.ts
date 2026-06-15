@@ -82,4 +82,34 @@ describe("StdioTransport", () => {
 		const transport = new StdioTransport({ name: "fake" });
 		await expect(transport.connect()).rejects.toThrow(/command is required/);
 	});
+
+	// Issue #17 MED 4 — child process listeners were never removed in close(),
+	// leaking a listener per connect/close cycle (and the `exit` handler fired
+	// `fatal()` during our own teardown). close() must detach them.
+	it("removes all child process listeners on close (no listener leak)", async () => {
+		const transport = new StdioTransport(
+			{ name: "fake", command: process.execPath, args: [scriptPath] },
+			{ requestTimeoutMs: 5_000, connectTimeoutMs: 5_000 },
+		);
+		await transport.connect();
+
+		// Reach the live child to inspect its registered listeners.
+		const child = (transport as unknown as { child?: import("node:child_process").ChildProcess }).child;
+		expect(child).toBeDefined();
+		const c = child as import("node:child_process").ChildProcess;
+
+		// While connected, the long-lived listeners are present.
+		expect(c.listenerCount("exit")).toBeGreaterThan(0);
+		expect(c.listenerCount("error")).toBeGreaterThan(0);
+		expect(c.stdout?.listenerCount("data") ?? 0).toBeGreaterThan(0);
+		expect(c.stderr?.listenerCount("data") ?? 0).toBeGreaterThan(0);
+
+		await transport.close();
+
+		// After close every long-lived listener must be detached.
+		expect(c.listenerCount("exit")).toBe(0);
+		expect(c.listenerCount("error")).toBe(0);
+		expect(c.stdout?.listenerCount("data") ?? 0).toBe(0);
+		expect(c.stderr?.listenerCount("data") ?? 0).toBe(0);
+	});
 });

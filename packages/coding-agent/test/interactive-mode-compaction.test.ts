@@ -42,7 +42,11 @@ describe("InteractiveMode compaction events", () => {
 			willRetry: false,
 		});
 
-		expect(fakeThis.chatContainer.clear).toHaveBeenCalledTimes(1);
+		// The compaction handler must NOT call chatContainer.clear() directly:
+		// rebuildChatFromMessages() already disposes mounted tool rows then clears
+		// internally. A caller-side clear first would empty `children` before that
+		// dispose runs, leaking the live ToolExecutionComponent intervals (#17).
+		expect(fakeThis.chatContainer.clear).not.toHaveBeenCalled();
 		expect(fakeThis.rebuildChatFromMessages).toHaveBeenCalledTimes(1);
 		expect(fakeThis.addMessageToChat).toHaveBeenCalledTimes(1);
 		expect(fakeThis.addMessageToChat).toHaveBeenCalledWith(
