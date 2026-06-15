@@ -663,6 +663,14 @@ function buildParams(
 
 	if (context.tools) {
 		params.tools = convertTools(context.tools, isOAuthToken);
+		// Experimental, env-gated (#42 cache probe): anchor a cache breakpoint on the
+		// last tool so [system+tools] is a named stable segment, independent of the
+		// rolling-tail breakpoint. Default OFF — no behavior change. Used only to
+		// measure whether this beats Anthropic's automatic prefix-matching.
+		if (cacheControl && process.env.CAVE_TOOLS_CACHE_BREAKPOINT === "1" && params.tools.length > 0) {
+			(params.tools[params.tools.length - 1] as { cache_control?: typeof cacheControl }).cache_control =
+				cacheControl;
+		}
 	}
 
 	// Configure thinking mode: adaptive (Opus 4.6 and Sonnet 4.6),
