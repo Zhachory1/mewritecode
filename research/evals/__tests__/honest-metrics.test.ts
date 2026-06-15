@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	computeCost,
 	costDeltaVsOff,
+	costPerAttempt,
 	costPerResolved,
 	meanSdMedian,
 	type PricingRow,
@@ -118,6 +119,72 @@ describe("costPerResolved", () => {
 		const byLevel = Object.fromEntries(out.map((r) => [r.level, r.medianCost]));
 		expect(byLevel.off).toBeCloseTo(1, 10);
 		expect(byLevel.ultra).toBeCloseTo(2, 10);
+	});
+});
+
+describe("costPerAttempt (PRIMARY — defined at 0 resolves)", () => {
+	it("aggregates over ALL priced attempts regardless of resolved; reports median + mean", () => {
+		// 3 attempts at $1, $2, $9 → median 2, mean 4. resolved flags vary, ignored.
+		const runs: Run[] = [
+			run({ level: "ultra", task: "a", seed: 0, resolved: true, usage: U(1_000_000, 0) }),
+			run({ level: "ultra", task: "b", seed: 0, resolved: false, usage: U(2_000_000, 0) }),
+			run({ level: "ultra", task: "c", seed: 0, resolved: false, usage: U(9_000_000, 0) }),
+		];
+		const out = costPerAttempt(runs, TABLE);
+		expect(out).toHaveLength(1);
+		expect(out[0].level).toBe("ultra");
+		expect(out[0].nAttempts).toBe(3);
+		expect(out[0].medianCost).toBeCloseTo(2, 10);
+		expect(out[0].meanCost).toBeCloseTo(4, 10);
+	});
+
+	it("is DEFINED at 0 resolves where costPerResolved is null", () => {
+		// Nothing resolved → costPerResolved emits no entry for the level, but
+		// costPerAttempt still has a real cost.
+		const runs: Run[] = [
+			run({ level: "ultra", task: "a", seed: 0, resolved: false, usage: U(2_000_000, 0) }),
+			run({ level: "ultra", task: "b", seed: 0, resolved: false, usage: U(4_000_000, 0) }),
+		];
+		const resolved = costPerResolved(runs, TABLE);
+		expect(resolved.find((r) => r.level === "ultra")).toBeUndefined(); // null/absent
+		const attempt = costPerAttempt(runs, TABLE);
+		const ultra = attempt.find((r) => r.level === "ultra");
+		expect(ultra).toBeDefined();
+		expect(ultra?.nAttempts).toBe(2);
+		expect(ultra?.medianCost).toBeCloseTo(3, 10); // median of {2,4}
+		expect(ultra?.meanCost).toBeCloseTo(3, 10);
+	});
+
+	it("excludes unpriced models and usage-null runs (never silently zero-costed)", () => {
+		const runs: Run[] = [
+			run({ level: "off", task: "a", seed: 0, resolved: true, usage: U(1_000_000, 0) }),
+			// unpriced model → excluded
+			run({ level: "off", task: "b", seed: 0, resolved: true, usage: U(5_000_000, 0), model: "no-price" }),
+			// usage null → excluded
+			run({ level: "off", task: "c", seed: 0, resolved: false, usage: null }),
+		];
+		const out = costPerAttempt(runs, TABLE);
+		const off = out.find((r) => r.level === "off" && r.model === "gpt-5.4");
+		expect(off?.nAttempts).toBe(1);
+		expect(off?.medianCost).toBeCloseTo(1, 10);
+		// the unpriced model forms no priced group
+		expect(out.find((r) => r.model === "no-price")).toBeUndefined();
+	});
+
+	it("groups by (level, model)", () => {
+		const runs: Run[] = [
+			run({ level: "off", task: "a", seed: 0, resolved: false, usage: U(1_000_000, 0) }),
+			run({ level: "ultra", task: "a", seed: 0, resolved: false, usage: U(2_000_000, 0) }),
+		];
+		const out = costPerAttempt(runs, TABLE);
+		expect(out).toHaveLength(2);
+		const byLevel = Object.fromEntries(out.map((r) => [r.level, r.medianCost]));
+		expect(byLevel.off).toBeCloseTo(1, 10);
+		expect(byLevel.ultra).toBeCloseTo(2, 10);
+	});
+
+	it("empty input → no groups", () => {
+		expect(costPerAttempt([], TABLE)).toEqual([]);
 	});
 });
 

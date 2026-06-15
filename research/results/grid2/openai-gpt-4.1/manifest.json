@@ -1,0 +1,136 @@
+{
+  "schema": "cave-ablation/v1",
+  "gitSha": "885c613e73a7769210a335a1b1b3a7371e6ed629",
+  "provider": "openai",
+  "model": "gpt-4.1",
+  "seeds": 1,
+  "scored": true,
+  "proxyConditions": [],
+  "failedConditions": [],
+  "resolvedSource": "evaluate-patches.sh",
+  "acceptanceCriteria": {
+    "maxQualityDropPp": 3,
+    "minCostSavingPct": 15
+  },
+  "costMetrics": {
+    "primary": "costPerAttempt",
+    "secondary": "costPerResolved",
+    "note": "PRIMARY = cost-per-attempt (median+mean over ALL priced attempts; defined even at 0 resolves). SECONDARY = cost-per-resolved (may be null at 0 resolves). A null secondary means zero resolves, NOT missing data."
+  },
+  "conditions": [
+    {
+      "prose": "off",
+      "compression": "on",
+      "passRate": 0.3,
+      "medianCostPerAttempt": 0.341285,
+      "meanCostPerAttempt": 0.39842990000000006,
+      "nAttempts": 20,
+      "medianCostPerResolved": 0.272022,
+      "resolvedSource": "evaluate-patches.sh"
+    },
+    {
+      "prose": "off",
+      "compression": "off",
+      "passRate": 0.2,
+      "medianCostPerAttempt": 0.264478,
+      "meanCostPerAttempt": 0.3429544,
+      "nAttempts": 20,
+      "medianCostPerResolved": 0.24861100000000003,
+      "resolvedSource": "evaluate-patches.sh"
+    },
+    {
+      "prose": "full",
+      "compression": "on",
+      "passRate": 0.25,
+      "medianCostPerAttempt": 0.470645,
+      "meanCostPerAttempt": 0.8301854000000001,
+      "nAttempts": 20,
+      "medianCostPerResolved": 0.471978,
+      "resolvedSource": "evaluate-patches.sh"
+    },
+    {
+      "prose": "full",
+      "compression": "off",
+      "passRate": 0.35,
+      "medianCostPerAttempt": 0.31923999999999997,
+      "meanCostPerAttempt": 0.5153815999999999,
+      "nAttempts": 20,
+      "medianCostPerResolved": 0.256854,
+      "resolvedSource": "evaluate-patches.sh"
+    }
+  ],
+  "proseEffect": {
+    "on": [
+      {
+        "level": "full",
+        "costMedianRatio": 1.4392272251473233,
+        "costCi95": null,
+        "costNPairs": 4,
+        "costPairedRate": 0.2,
+        "costPowerWarning": false,
+        "costNote": "insufficient_pairs,low_paired_rate",
+        "passRateDelta": -0.05,
+        "passRateCi95": [
+          -0.2,
+          0.1
+        ],
+        "passRateNPairs": 20
+      }
+    ],
+    "off": [
+      {
+        "level": "full",
+        "costMedianRatio": 0.9085987633067872,
+        "costCi95": null,
+        "costNPairs": 4,
+        "costPairedRate": 0.2,
+        "costPowerWarning": false,
+        "costNote": "insufficient_pairs,low_paired_rate",
+        "passRateDelta": 0.15,
+        "passRateCi95": [
+          0,
+          0.35
+        ],
+        "passRateNPairs": 20
+      }
+    ]
+  },
+  "compressionEffect": {
+    "off": [
+      {
+        "level": "lite",
+        "costMedianRatio": 0.8049770352911572,
+        "costCi95": null,
+        "costNPairs": 4,
+        "costPairedRate": 0.2,
+        "costPowerWarning": false,
+        "costNote": "insufficient_pairs,low_paired_rate",
+        "passRateDelta": 0.1,
+        "passRateCi95": [
+          0,
+          0.25
+        ],
+        "passRateNPairs": 20
+      }
+    ],
+    "full": [
+      {
+        "level": "lite",
+        "costMedianRatio": 0.8993311400527476,
+        "costCi95": null,
+        "costNPairs": 3,
+        "costPairedRate": 0.15,
+        "costPowerWarning": false,
+        "costNote": "insufficient_pairs,low_paired_rate",
+        "passRateDelta": -0.1,
+        "passRateCi95": [
+          -0.35,
+          0.15
+        ],
+        "passRateNPairs": 20
+      }
+    ]
+  },
+  "comparable": "n/a",
+  "comparableNote": "Iso-model 2-factor ablation (prose × compression at a fixed model); codex cross-tool token comparison is out of scope here."
+}

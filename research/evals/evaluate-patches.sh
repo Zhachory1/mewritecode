@@ -2,7 +2,13 @@
 # Evaluate Cave CLI patches against SWE-bench Verified using the official harness.
 #
 # Usage:
-#   bash research/evals/evaluate-patches.sh [predictions.jsonl] [--workers N]
+#   bash research/evals/evaluate-patches.sh [predictions.jsonl] [run-id] [workers]
+#
+# The run-id MUST be unique per eval invocation. The SWE-bench harness writes its
+# report under logs/run_evaluation/<run-id>/, so a colliding run-id would let one
+# condition's report contaminate another's scoring. The orchestrator passes a
+# unique per-condition run-id; when omitted, a second-granular fallback is used
+# for ad-hoc single runs (NOT safe for concurrent/looped invocations).
 #
 # Prerequisites:
 #   pip install swebench
@@ -13,8 +19,8 @@
 set -euo pipefail
 
 PREDICTIONS="${1:-research/results/predictions.jsonl}"
-MAX_WORKERS="${2:-4}"
-RUN_ID="cave-eval-$(date -u +%Y%m%d-%H%M)"
+RUN_ID="${2:-cave-eval-$(date -u +%Y%m%d-%H%M%S)}"
+MAX_WORKERS="${3:-4}"
 
 if [ ! -f "$PREDICTIONS" ]; then
 	echo "ERROR: Predictions file not found: $PREDICTIONS"
@@ -81,6 +87,8 @@ if [ -d "$RESULTS_DIR" ]; then
 	echo ""
 	echo "=== Evaluation Complete ==="
 	echo "Results: $RESULTS_DIR/"
+	# Machine-parseable marker for the orchestrator: scope scoring to THIS run only.
+	echo "CAVE_EVAL_RESULTS_DIR=$RESULTS_DIR"
 
 	# Count resolved
 	if command -v python3 &>/dev/null; then

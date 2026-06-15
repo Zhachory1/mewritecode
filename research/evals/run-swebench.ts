@@ -6,6 +6,15 @@
  * per instance. This ensures proper tool calling (read/edit/bash/grep) instead
  * of the model generating text-only responses.
  *
+ * HANG GUARD (#32): the agent-loop idle-timeout (DEFAULT_STREAM_IDLE_TIMEOUT_MS,
+ * see packages/agent/src/agent-loop.ts) did NOT protect this SDK `session.prompt`
+ * path — a real run froze on a model turn that stalled WITHOUT tripping the
+ * mid-stream idle watchdog (0% CPU, 27 min, no output), and the cost-based --cap
+ * never fires on a stalled request (no cost accrues), so one hung instance freezes
+ * the whole condition forever. The `--instance-timeout` wall-clock bound below is
+ * the belt: it aborts the in-flight turn (session.abort) and returns an errored
+ * InstanceResult so the per-instance loop moves on.
+ *
  * Usage:
  *   npx tsx research/evals/run-swebench.ts [options]
  *
@@ -14,11 +23,26 @@
  *   --instance-id <id>     Run a single instance by ID
  *   --repos <r1,r2>        Filter to specific repos
  *   --cap <dollars>        Per-instance cost cap (default: $5, env: CAVE_BENCH_INSTANCE_CAP_DOLLARS)
+ *   --instance-timeout <s> Hard per-instance WALL-CLOCK timeout in seconds (default: 900,
+ *                          env: CAVE_BENCH_INSTANCE_TIMEOUT_SEC). On timeout the in-flight
+ *                          turn is aborted and the instance is recorded as an error so the
+ *                          run continues (belt for the idle-timeout gap, #32). 900s is well
+ *                          above the longest legit run observed (~580s) to avoid false aborts.
  *   --output <path>        Output dir (default: research/results)
  *   --provider <name>      LLM provider (default: openai-codex)
  *   --model <pattern>      Model pattern (default: gpt-5.4)
  *   --thinking <level>     Thinking level (default: high)
- *   --cave <level>         Caveman level: off|lite|full|ultra (default: ultra — current behavior)
+ *   --cave <level>         Caveman PROSE level: off|lite|full|ultra (default: ultra — current behavior)
+ *   --compression <on|off> Tool-output compression knob, INDEPENDENT of --cave
+ *                          (default: follow settings/current — no behavior change when omitted).
+ *                          The ablation runner (#33) sets this to isolate the compression effect.
+ *   --sample <mode>        How --limit selects instances: first|diverse (default: first).
+ *                          `first`   = the first N rows (current/back-compat behavior; the
+ *                                      Verified set is repo-sorted so first-N skews to one repo,
+ *                                      e.g. all astropy).
+ *                          `diverse` = round-robin across DISTINCT repos so --limit N spreads
+ *                                      across as many repos as possible (one per repo, then a
+ *                                      second from each, …). Order within a repo is preserved.
  *   --dataset <path>       Local JSONL file instead of HuggingFace
  *   --dry-run              Load dataset and print instance IDs without running
  */
@@ -27,6 +51,7 @@ import { execSync } from "node:child_process";
 import { appendFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
 	aggregateBench,
 	type BenchInstance,
@@ -45,31 +70,96 @@ import { SettingsManager } from "../../packages/coding-agent/src/core/settings-m
 // ---------------------------------------------------------------------------
 
 type CaveLevel = "off" | "lite" | "full" | "ultra";
+export type SampleMode = "first" | "diverse";
 
 interface RunConfig {
 	limit?: number;
 	instanceId?: string;
 	repos?: string[];
 	capDollars: number;
+	// Hard per-instance WALL-CLOCK timeout in seconds. The cost-based `capDollars`
+	// does NOT protect against a STALLED model turn (a hung request accrues no cost
+	// so the cap never trips), and the agent-loop idle-timeout did not fire on this
+	// SDK `session.prompt` path either (#32) — so this wall-clock bound is the belt
+	// that aborts a frozen instance and lets the run continue.
+	instanceTimeoutSec: number;
 	outputDir: string;
 	provider: string;
 	model: string;
 	thinking: string;
 	cave: CaveLevel;
+	// Tool-output compression override, INDEPENDENT of `cave` (prose). undefined =
+	// follow settings/current (no behavior change). true/false = force via the
+	// session-level knob setCaveModeSessionToolCompression. The ablation runner
+	// (#33) uses this to vary compression while holding prose fixed.
+	compression?: boolean;
+	// How --limit selects instances. "first" = first-N (back-compat). "diverse" =
+	// round-robin across distinct repos so --limit spreads over repos.
+	sample: SampleMode;
 	datasetPath?: string;
 	dryRun: boolean;
+}
+
+/** Minimal shape needed for diverse sampling — repo is the only key that matters. */
+interface RepoTagged {
+	repo: string;
+}
+
+/**
+ * Round-robin sample across DISTINCT repos, preserving each repo's internal order
+ * and first-seen repo order. With `limit`, take one instance from each repo in
+ * turn (round 1), then a second from each that still has more (round 2), … until
+ * `limit` is reached. This spreads a small --limit over as many repos as possible
+ * instead of taking the first-N (which, on the repo-sorted Verified set, is all
+ * one repo). PURE: no I/O, deterministic given input order.
+ */
+export function diverseSample<T extends RepoTagged>(instances: T[], limit?: number): T[] {
+	// Bucket by repo, preserving first-seen repo order and within-repo order.
+	const order: string[] = [];
+	const byRepo = new Map<string, T[]>();
+	for (const inst of instances) {
+		let bucket = byRepo.get(inst.repo);
+		if (!bucket) {
+			bucket = [];
+			byRepo.set(inst.repo, bucket);
+			order.push(inst.repo);
+		}
+		bucket.push(inst);
+	}
+
+	const out: T[] = [];
+	const cap = limit && limit > 0 ? limit : instances.length;
+	let added = true;
+	const cursor = new Map<string, number>();
+	while (added && out.length < cap) {
+		added = false;
+		for (const repo of order) {
+			if (out.length >= cap) break;
+			const bucket = byRepo.get(repo)!;
+			const idx = cursor.get(repo) ?? 0;
+			if (idx < bucket.length) {
+				out.push(bucket[idx]);
+				cursor.set(repo, idx + 1);
+				added = true;
+			}
+		}
+	}
+	return out;
 }
 
 function parseRunArgs(): RunConfig {
 	const args = process.argv.slice(2);
 	const config: RunConfig = {
 		capDollars: Number(process.env.CAVE_BENCH_INSTANCE_CAP_DOLLARS) || 5,
+		instanceTimeoutSec: Number(process.env.CAVE_BENCH_INSTANCE_TIMEOUT_SEC) || 900,
 		outputDir: resolve("research/results"),
 		provider: "openai-codex",
 		model: "gpt-5.4",
 		thinking: "high",
 		// Default preserves prior behavior (enabled + ultra) so existing runs are unchanged.
 		cave: "ultra",
+		// Default "first" preserves prior first-N --limit behavior (back-compat).
+		sample: "first",
 		dryRun: false,
 	};
 
@@ -88,6 +178,15 @@ function parseRunArgs(): RunConfig {
 			case "--cap":
 				config.capDollars = Number(args[++i]);
 				break;
+			case "--instance-timeout": {
+				const v = Number(args[++i]);
+				if (!Number.isFinite(v) || v <= 0) {
+					console.error(`Invalid --instance-timeout value: ${v} (expected a positive number of seconds)`);
+					process.exit(1);
+				}
+				config.instanceTimeoutSec = v;
+				break;
+			}
 			case "--output":
 				config.outputDir = resolve(args[++i]);
 				break;
@@ -107,6 +206,24 @@ function parseRunArgs(): RunConfig {
 					process.exit(1);
 				}
 				config.cave = level;
+				break;
+			}
+			case "--compression": {
+				const v = args[++i];
+				if (v !== "on" && v !== "off") {
+					console.error(`Invalid --compression value: ${v} (expected on|off)`);
+					process.exit(1);
+				}
+				config.compression = v === "on";
+				break;
+			}
+			case "--sample": {
+				const v = args[++i];
+				if (v !== "first" && v !== "diverse") {
+					console.error(`Invalid --sample value: ${v} (expected first|diverse)`);
+					process.exit(1);
+				}
+				config.sample = v;
 				break;
 			}
 			case "--dataset":
@@ -179,6 +296,87 @@ interface InstanceResult {
 	error?: string;
 }
 
+/**
+ * Build an errored InstanceResult: empty patch, ALL four token fields null (not 0)
+ * so a failed run is excludable from accounting rather than counted as a
+ * zero-token success, and the supplied error message. `durationMs` is caller-
+ * supplied (the wall-clock spent before the failure).
+ */
+export function erroredInstanceResult(error: string, durationMs: number): InstanceResult {
+	return {
+		patch: "",
+		durationMs,
+		cost: 0,
+		toolCalls: 0,
+		tokens: { input: null, output: null, cacheRead: null, cacheWrite: null },
+		error,
+	};
+}
+
+/**
+ * Bound `promise` with a WALL-CLOCK timeout. PURE/testable race helper — no I/O,
+ * no AgentSession needed.
+ *
+ * If `promise` settles first, its value/rejection is passed straight through and
+ * the timer is cleared. If `timeoutMs` elapses first, `onTimeout()` is invoked
+ * (the caller wires this to a REAL cancel — `session.abort()` — so the orphaned
+ * model turn is actually aborted, not just left running) and the returned promise
+ * resolves to `timeoutValue`. The original `promise`'s later settlement is
+ * ignored (its rejection is swallowed so it can't surface as an unhandled
+ * rejection after we've already moved on).
+ *
+ * This is the belt for #32: the agent-loop idle-timeout did not fire on the SDK
+ * `session.prompt` path, so a stalled turn would hang forever; this wall-clock
+ * bound guarantees the per-instance loop makes progress.
+ *
+ * @param promise the in-flight work to bound (e.g. session.prompt(...))
+ * @param timeoutMs wall-clock budget in milliseconds
+ * @param onTimeout invoked exactly once if the timeout wins (real cancel hook)
+ * @param timeoutValue value to resolve with on timeout (e.g. an errored result)
+ */
+export async function withInstanceTimeout<T>(
+	promise: Promise<T>,
+	timeoutMs: number,
+	onTimeout: () => void,
+	timeoutValue: T,
+): Promise<T> {
+	return new Promise<T>((resolve, reject) => {
+		let settled = false;
+		const timer = setTimeout(() => {
+			if (settled) return;
+			settled = true;
+			try {
+				onTimeout();
+			} catch {
+				// A failing cancel hook must not mask the timeout — we still resolve
+				// to the errored value so the run continues.
+			}
+			resolve(timeoutValue);
+		}, timeoutMs);
+		// Avoid keeping the event loop alive purely for this timer.
+		if (typeof timer.unref === "function") timer.unref();
+
+		promise.then(
+			(v) => {
+				if (settled) return;
+				settled = true;
+				clearTimeout(timer);
+				resolve(v);
+			},
+			(err) => {
+				if (settled) {
+					// Timeout already won; swallow the late rejection from the orphaned
+					// (now-aborted) turn so it doesn't surface as unhandled.
+					return;
+				}
+				settled = true;
+				clearTimeout(timer);
+				reject(err);
+			},
+		);
+	});
+}
+
 async function runCaveOnInstance(instance: BenchInstance, workDir: string, config: RunConfig): Promise<InstanceResult> {
 	const start = Date.now();
 
@@ -226,13 +424,55 @@ async function runCaveOnInstance(instance: BenchInstance, workDir: string, confi
 			session.setCaveModeSessionDisabled();
 		}
 
+		// Tool-output COMPRESSION override (#33), INDEPENDENT of prose (--cave).
+		// When --compression is omitted (undefined), leave the knob alone so behavior
+		// matches the settings configured above (no change). When provided, force it
+		// at the session level so the ablation can vary compression while holding
+		// prose fixed. Note: the compression gate still ANDs with getCaveModeEnabled(),
+		// so `--cave off` (which sets settings.enabled=false) keeps compression off
+		// regardless — by design, "off" means caveman fully off.
+		if (config.compression !== undefined) {
+			session.setCaveModeSessionToolCompression(config.compression);
+		}
+
 		// Append SWE-bench-specific system prompt
 		const basePrompt = session.systemPrompt;
 		session.agent.state.systemPrompt = `${basePrompt}\n\n${SWEBENCH_SYSTEM_ADDENDUM}`;
 
-		// Run the agent loop — this triggers multi-turn tool calling
+		// Run the agent loop — this triggers multi-turn tool calling.
+		//
+		// HANG GUARD (#32): bound the turn with a hard WALL-CLOCK timeout. The
+		// agent-loop idle-timeout did not fire on this path and the cost --cap can't
+		// trip on a stalled (cost-free) request, so without this a frozen turn hangs
+		// the whole condition. On timeout we call session.abort() — a REAL cancel:
+		// it aborts the active run's AbortController (propagating to the in-flight
+		// model stream) and awaits idle — then return an errored result so the loop
+		// advances to the next instance. The TIMEOUT_SENTINEL distinguishes "timed
+		// out" from "prompt resolved" without depending on prompt()'s return value.
 		log("  Running agent...");
-		await session.prompt(buildPrompt(instance), { expandPromptTemplates: false });
+		const TIMEOUT_SENTINEL = Symbol("instance-timeout");
+		const timeoutMs = config.instanceTimeoutSec * 1000;
+		// Map prompt()'s Promise<void> to Promise<undefined> so the race result type
+		// is `undefined | sentinel` (avoids a confusing `void` in a union).
+		const promptDone: Promise<undefined> = session
+			.prompt(buildPrompt(instance), { expandPromptTemplates: false })
+			.then(() => undefined);
+		const raced = await withInstanceTimeout<undefined | typeof TIMEOUT_SENTINEL>(
+			promptDone,
+			timeoutMs,
+			() => {
+				// Real cancel of the orphaned turn. Fire-and-forget: abort() returns a
+				// promise (waits for idle) but we don't block the timeout path on it.
+				log(`  TIMEOUT after ${config.instanceTimeoutSec}s — aborting in-flight turn`);
+				void session.abort();
+			},
+			TIMEOUT_SENTINEL,
+		);
+		if (raced === TIMEOUT_SENTINEL) {
+			// Per-instance SKIP recorded as an error — must NOT throw out of the loop
+			// (the orchestrator excludes errored instances honestly).
+			return erroredInstanceResult(`instance timeout after ${config.instanceTimeoutSec}s`, Date.now() - start);
+		}
 
 		// Get stats
 		const stats = session.getSessionStats();
@@ -258,16 +498,7 @@ async function runCaveOnInstance(instance: BenchInstance, workDir: string, confi
 			},
 		};
 	} catch (error) {
-		return {
-			patch: "",
-			durationMs: Date.now() - start,
-			cost: 0,
-			toolCalls: 0,
-			// null (not 0) so a failed run is excludable from accounting rather
-			// than being counted as a zero-token success.
-			tokens: { input: null, output: null, cacheRead: null, cacheWrite: null },
-			error: error instanceof Error ? error.message : String(error),
-		};
+		return erroredInstanceResult(error instanceof Error ? error.message : String(error), Date.now() - start);
 	}
 }
 
@@ -299,26 +530,34 @@ async function main() {
 
 	log("=== SWE-bench Verified Runner for Cave CLI (SDK mode) ===");
 	log(
-		`Provider: ${config.provider} | Model: ${config.model} | Thinking: ${config.thinking} | Cap: $${config.capDollars}/instance`,
+		`Provider: ${config.provider} | Model: ${config.model} | Thinking: ${config.thinking} | Cap: $${config.capDollars}/instance | Timeout: ${config.instanceTimeoutSec}s/instance`,
 	);
 	log(
 		config.cave === "off"
-			? `Caveman: off (cave mode + tool/ML compression disabled)`
-			: `Caveman: ${config.cave} + tool + ML compression`,
+			? `Caveman prose: off (cave mode disabled)`
+			: `Caveman prose: ${config.cave} + tool + ML compression`,
 	);
+	if (config.compression !== undefined) {
+		log(`Compression override: ${config.compression ? "on" : "off"} (independent of --cave prose)`);
+	}
 
-	// Load dataset
-	log("Loading SWE-bench Verified dataset...");
+	// Load dataset. For "diverse" sampling we must NOT push --limit into the loader
+	// (it would first-N truncate before we can spread across repos), so we load the
+	// full repo-filtered set and apply diverseSample afterward. For "first" (and a
+	// single --instance-id) the loader applies the limit as before (back-compat).
+	const loaderLimit =
+		config.instanceId || config.sample === "diverse" ? undefined : config.limit;
+	log(`Loading SWE-bench Verified dataset... (sample: ${config.sample})`);
 	let instances: BenchInstance[];
 	if (config.datasetPath) {
 		instances = await loadSweBenchFromFile(config.datasetPath, {
 			repos: config.repos,
-			limit: config.instanceId ? undefined : config.limit,
+			limit: loaderLimit,
 		});
 	} else {
 		instances = await loadSweBenchVerified({
 			repos: config.repos,
-			limit: config.instanceId ? undefined : config.limit,
+			limit: loaderLimit,
 		});
 	}
 
@@ -329,6 +568,9 @@ async function main() {
 			console.error(`Instance not found: ${config.instanceId}`);
 			process.exit(1);
 		}
+	} else if (config.sample === "diverse") {
+		// Round-robin across distinct repos so --limit N spreads over repos.
+		instances = diverseSample(instances, config.limit);
 	}
 
 	log(`Loaded ${instances.length} instances`);
@@ -439,7 +681,16 @@ async function main() {
 			thinking: config.thinking,
 			capDollars: config.capDollars,
 			cave: config.cave,
-			compression: config.cave === "off" ? "off" : `${config.cave}+tool+ml`,
+			// `compression` reflects the EFFECTIVE override when one was supplied via
+			// --compression (the #33 independent knob), else the cave-derived default.
+			compression:
+				config.compression !== undefined
+					? config.compression
+						? "on"
+						: "off"
+					: config.cave === "off"
+						? "off"
+						: `${config.cave}+tool+ml`,
 		},
 		aggregate: agg,
 		results,
@@ -467,7 +718,12 @@ async function main() {
 	log(`  bash research/evals/evaluate-patches.sh ${predictionsPath}`);
 }
 
-main().catch((err) => {
-	console.error("Fatal:", err);
-	process.exit(1);
-});
+// Only run main when executed directly (not when imported by tests, which pull in
+// the pure diverseSample helper without spawning the paid benchmark).
+const isDirect = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isDirect) {
+	main().catch((err) => {
+		console.error("Fatal:", err);
+		process.exit(1);
+	});
+}

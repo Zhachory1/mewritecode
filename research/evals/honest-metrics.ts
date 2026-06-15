@@ -140,6 +140,51 @@ export function costPerResolved(
 }
 
 // ---------------------------------------------------------------------------
+// Cost per ATTEMPT (PRIMARY) — defined even at 0 resolves
+// ---------------------------------------------------------------------------
+
+/**
+ * PRIMARY cost metric: cost per ATTEMPTED run, grouped by (level, model). Unlike
+ * `costPerResolved` (which divides by resolved tasks and is therefore NULL when
+ * nothing resolves), this aggregates over EVERY attempted run that has a priced
+ * usage — so it is defined even when a level resolves zero tasks. That makes it
+ * the honest headline for a cheap-but-weaker configuration: a level that resolves
+ * nothing still has a real, comparable cost.
+ *
+ * Inclusion rule: a run counts iff it has a usage AND that usage prices under the
+ * shared table (computeCost !== null). `resolved` is IGNORED. Unpriced runs
+ * (no pricing row) and usage-null runs (failed/excludable) are excluded — never
+ * silently zero-costed.
+ *
+ * Reports both the MEDIAN (robust headline) and the MEAN (total-spend sensitive)
+ * over the per-run costs, plus n = number of priced attempts contributing.
+ */
+export function costPerAttempt(
+	runs: Run[],
+	table: Record<string, PricingRow>,
+): { level: string; model: string; medianCost: number; meanCost: number; nAttempts: number }[] {
+	const groups = new Map<string, { level: string; model: string; costs: number[] }>();
+	for (const r of runs) {
+		if (!r.usage) continue;
+		const cost = computeCost(r.usage, table, r.model);
+		if (cost === null) continue;
+		const key = JSON.stringify([r.level, r.model]);
+		let g = groups.get(key);
+		if (!g) {
+			g = { level: r.level, model: r.model, costs: [] };
+			groups.set(key, g);
+		}
+		g.costs.push(cost);
+	}
+	const out: { level: string; model: string; medianCost: number; meanCost: number; nAttempts: number }[] = [];
+	for (const g of groups.values()) {
+		const stats = meanSdMedian(g.costs);
+		out.push({ level: g.level, model: g.model, medianCost: stats.median, meanCost: stats.mean, nAttempts: stats.n });
+	}
+	return out;
+}
+
+// ---------------------------------------------------------------------------
 // Pass rate
 // ---------------------------------------------------------------------------
 

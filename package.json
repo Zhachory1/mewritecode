@@ -38,6 +38,7 @@
 		"bench:micro": "npx tsx research/evals/run-microbench.ts",
 		"bench:tb": "npx tsx research/evals/run-terminal-bench.ts",
 		"bench:compare": "npx tsx research/evals/run-compare.ts",
+		"bench:ablation": "tsx research/evals/run-cave-ablation.ts",
 		"bench:test": "vitest run research/evals/__tests__",
 		"smoke:install": "bash scripts/smoke-install.sh",
 		"prepare": "husky"
