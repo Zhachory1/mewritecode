@@ -228,6 +228,295 @@ describe("AgentSession retry", () => {
 		expect(events).toEqual(["start:1", "end:success=true"]);
 	});
 
+	it("classifies a stream idle-timeout error as retryable and re-issues the turn", async () => {
+		// Mirrors the message the agent-loop surfaces when the idle watchdog trips.
+		const created = createSession({ failCount: 0 });
+		created.session.dispose();
+
+		let callCount = 0;
+		const model = getModel("anthropic", "claude-sonnet-4-5")!;
+		const agent = new Agent({
+			getApiKey: () => "test-key",
+			initialState: { model, systemPrompt: "Test", tools: [] },
+			streamFn: () => {
+				callCount++;
+				const stream = new MockAssistantStream();
+				queueMicrotask(() => {
+					if (callCount === 1) {
+						const msg = createAssistantMessage("", {
+							stopReason: "error",
+							errorMessage: "Model stream idle for 120000ms (no data from provider); timeout, aborted for retry",
+						});
+						stream.push({ type: "start", partial: msg });
+						stream.push({ type: "error", reason: "error", error: msg });
+						return;
+					}
+					const msg = createAssistantMessage("Recovered after idle-timeout retry");
+					stream.push({ type: "start", partial: msg });
+					stream.push({ type: "done", reason: "stop", message: msg });
+				});
+				return stream;
+			},
+		});
+		const sessionManager = SessionManager.inMemory();
+		const settingsManager = SettingsManager.create(tempDir, tempDir);
+		const authStorage = AuthStorage.create(join(tempDir, "auth.json"));
+		const modelRegistry = ModelRegistry.create(authStorage, tempDir);
+		authStorage.setRuntimeApiKey("anthropic", "test-key");
+		settingsManager.applyOverrides({ retry: { enabled: true, maxRetries: 2, baseDelayMs: 1 } });
+		session = new AgentSession({
+			agent,
+			sessionManager,
+			settingsManager,
+			cwd: tempDir,
+			modelRegistry,
+			resourceLoader: createTestResourceLoader(),
+		});
+
+		const events: string[] = [];
+		session.subscribe((event) => {
+			if (event.type === "auto_retry_start") events.push(`start:${event.attempt}`);
+			if (event.type === "auto_retry_end") events.push(`end:success=${event.success}`);
+		});
+
+		await session.prompt("Test");
+
+		expect(callCount).toBe(2);
+		expect(events).toEqual(["start:1", "end:success=true"]);
+	});
+
+	it("classifies a total-duration-timeout error as retryable and re-issues the turn", async () => {
+		// Mirrors the message the agent-loop surfaces when the total-duration cap trips.
+		const created = createSession({ failCount: 0 });
+		created.session.dispose();
+
+		let callCount = 0;
+		const model = getModel("anthropic", "claude-sonnet-4-5")!;
+		const agent = new Agent({
+			getApiKey: () => "test-key",
+			initialState: { model, systemPrompt: "Test", tools: [] },
+			streamFn: () => {
+				callCount++;
+				const stream = new MockAssistantStream();
+				queueMicrotask(() => {
+					if (callCount === 1) {
+						const msg = createAssistantMessage("", {
+							stopReason: "error",
+							errorMessage: "Model stream exceeded total timeout of 600000ms; aborted for retry",
+						});
+						stream.push({ type: "start", partial: msg });
+						stream.push({ type: "error", reason: "error", error: msg });
+						return;
+					}
+					const msg = createAssistantMessage("Recovered after total-timeout retry");
+					stream.push({ type: "start", partial: msg });
+					stream.push({ type: "done", reason: "stop", message: msg });
+				});
+				return stream;
+			},
+		});
+		const sessionManager = SessionManager.inMemory();
+		const settingsManager = SettingsManager.create(tempDir, tempDir);
+		const authStorage = AuthStorage.create(join(tempDir, "auth.json"));
+		const modelRegistry = ModelRegistry.create(authStorage, tempDir);
+		authStorage.setRuntimeApiKey("anthropic", "test-key");
+		settingsManager.applyOverrides({ retry: { enabled: true, maxRetries: 2, baseDelayMs: 1 } });
+		session = new AgentSession({
+			agent,
+			sessionManager,
+			settingsManager,
+			cwd: tempDir,
+			modelRegistry,
+			resourceLoader: createTestResourceLoader(),
+		});
+
+		const events: string[] = [];
+		session.subscribe((event) => {
+			if (event.type === "auto_retry_start") events.push(`start:${event.attempt}`);
+			if (event.type === "auto_retry_end") events.push(`end:success=${event.success}`);
+		});
+
+		await session.prompt("Test");
+
+		expect(callCount).toBe(2);
+		expect(events).toEqual(["start:1", "end:success=true"]);
+	});
+
+	it("bounds total-timeout auto-retry to maxRetries then surfaces terminal", async () => {
+		const created = createSession({ failCount: 0 });
+		created.session.dispose();
+
+		let callCount = 0;
+		const model = getModel("anthropic", "claude-sonnet-4-5")!;
+		const agent = new Agent({
+			getApiKey: () => "test-key",
+			initialState: { model, systemPrompt: "Test", tools: [] },
+			streamFn: () => {
+				callCount++;
+				const stream = new MockAssistantStream();
+				queueMicrotask(() => {
+					// Always time out — never recovers.
+					const msg = createAssistantMessage("", {
+						stopReason: "error",
+						errorMessage: "Model stream exceeded total timeout of 600000ms; aborted for retry",
+					});
+					stream.push({ type: "start", partial: msg });
+					stream.push({ type: "error", reason: "error", error: msg });
+				});
+				return stream;
+			},
+		});
+		const sessionManager = SessionManager.inMemory();
+		const settingsManager = SettingsManager.create(tempDir, tempDir);
+		const authStorage = AuthStorage.create(join(tempDir, "auth.json"));
+		const modelRegistry = ModelRegistry.create(authStorage, tempDir);
+		authStorage.setRuntimeApiKey("anthropic", "test-key");
+		settingsManager.applyOverrides({ retry: { enabled: true, maxRetries: 2, baseDelayMs: 1 } });
+		session = new AgentSession({
+			agent,
+			sessionManager,
+			settingsManager,
+			cwd: tempDir,
+			modelRegistry,
+			resourceLoader: createTestResourceLoader(),
+		});
+
+		const events: string[] = [];
+		session.subscribe((event) => {
+			if (event.type === "auto_retry_start") events.push(`start:${event.attempt}`);
+			if (event.type === "auto_retry_end") events.push(`end:success=${event.success}`);
+		});
+
+		await session.prompt("Test");
+
+		// Initial attempt + maxRetries(2) re-issues = 3 LLM calls total.
+		expect(callCount).toBe(3);
+		expect(events).toContain("start:1");
+		expect(events).toContain("start:2");
+		expect(events).toContain("end:success=false");
+		expect(session.isRetrying).toBe(false);
+	});
+
+	it("does NOT auto-retry a genuinely terminal error (auth / 400)", async () => {
+		const created = createSession({ failCount: 0 });
+		created.session.dispose();
+
+		let callCount = 0;
+		const model = getModel("anthropic", "claude-sonnet-4-5")!;
+		const agent = new Agent({
+			getApiKey: () => "test-key",
+			initialState: { model, systemPrompt: "Test", tools: [] },
+			streamFn: () => {
+				callCount++;
+				const stream = new MockAssistantStream();
+				queueMicrotask(() => {
+					const msg = createAssistantMessage("", {
+						stopReason: "error",
+						errorMessage: "401 Unauthorized: invalid x-api-key",
+					});
+					stream.push({ type: "start", partial: msg });
+					stream.push({ type: "error", reason: "error", error: msg });
+				});
+				return stream;
+			},
+		});
+		const sessionManager = SessionManager.inMemory();
+		const settingsManager = SettingsManager.create(tempDir, tempDir);
+		const authStorage = AuthStorage.create(join(tempDir, "auth.json"));
+		const modelRegistry = ModelRegistry.create(authStorage, tempDir);
+		authStorage.setRuntimeApiKey("anthropic", "test-key");
+		settingsManager.applyOverrides({ retry: { enabled: true, maxRetries: 2, baseDelayMs: 1 } });
+		session = new AgentSession({
+			agent,
+			sessionManager,
+			settingsManager,
+			cwd: tempDir,
+			modelRegistry,
+			resourceLoader: createTestResourceLoader(),
+		});
+
+		const events: string[] = [];
+		session.subscribe((event) => {
+			if (event.type === "auto_retry_start") events.push(`start:${event.attempt}`);
+		});
+
+		await session.prompt("Test");
+
+		// No retry: exactly one LLM call, no auto_retry_start.
+		expect(callCount).toBe(1);
+		expect(events).toEqual([]);
+		expect(session.isRetrying).toBe(false);
+	});
+
+	it("end-to-end: a slow stream past streamTotalTimeoutMs aborts and auto-retries to success", async () => {
+		// Drives the REAL agent-loop total-duration watchdog (no hand-crafted error
+		// message): first call streams slowly past the cap, second call succeeds fast.
+		const created = createSession({ failCount: 0 });
+		created.session.dispose();
+
+		let callCount = 0;
+		const model = getModel("anthropic", "claude-sonnet-4-5")!;
+		const agent = new Agent({
+			getApiKey: () => "test-key",
+			initialState: { model, systemPrompt: "Test", tools: [] },
+			// Idle window large (never trips); total cap small so the slow turn trips it.
+			streamIdleTimeoutMs: 1000,
+			streamTotalTimeoutMs: 60,
+			streamFn: (_model, _ctx, opts?: { signal?: AbortSignal }) => {
+				callCount++;
+				const stream = new MockAssistantStream();
+				if (callCount === 1) {
+					void (async () => {
+						stream.push({ type: "start", partial: createAssistantMessage("") });
+						for (let i = 0; i < 50; i++) {
+							await new Promise((r) => setTimeout(r, 20));
+							if (opts?.signal?.aborted) return;
+							stream.push({
+								type: "text_delta",
+								contentIndex: 0,
+								delta: `c${i}`,
+								partial: createAssistantMessage(`c${i}`),
+							});
+						}
+					})();
+				} else {
+					queueMicrotask(() => {
+						const msg = createAssistantMessage("Recovered after total-timeout abort");
+						stream.push({ type: "start", partial: msg });
+						stream.push({ type: "done", reason: "stop", message: msg });
+					});
+				}
+				return stream;
+			},
+		});
+		const sessionManager = SessionManager.inMemory();
+		const settingsManager = SettingsManager.create(tempDir, tempDir);
+		const authStorage = AuthStorage.create(join(tempDir, "auth.json"));
+		const modelRegistry = ModelRegistry.create(authStorage, tempDir);
+		authStorage.setRuntimeApiKey("anthropic", "test-key");
+		settingsManager.applyOverrides({ retry: { enabled: true, maxRetries: 2, baseDelayMs: 1 } });
+		session = new AgentSession({
+			agent,
+			sessionManager,
+			settingsManager,
+			cwd: tempDir,
+			modelRegistry,
+			resourceLoader: createTestResourceLoader(),
+		});
+
+		const events: string[] = [];
+		session.subscribe((event) => {
+			if (event.type === "auto_retry_start") events.push(`start:${event.attempt}`);
+			if (event.type === "auto_retry_end") events.push(`end:success=${event.success}`);
+		});
+
+		await session.prompt("Test");
+
+		expect(callCount).toBe(2);
+		expect(events).toEqual(["start:1", "end:success=true"]);
+		expect(session.isRetrying).toBe(false);
+	});
+
 	it("prompt waits for full agent loop when retry produces tool calls", async () => {
 		// Regression: when auto-retry fires and the retry response includes tool_use,
 		// session.prompt() must wait for the entire tool loop to finish before returning.

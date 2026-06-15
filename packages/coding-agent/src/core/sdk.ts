@@ -83,6 +83,24 @@ export interface CreateAgentSessionOptions {
 	 * (the API forbids both); set `thinkingLevel: "off"` for deterministic output.
 	 */
 	temperature?: number;
+
+	/**
+	 * Inactivity watchdog for a streaming model response, in milliseconds. If the
+	 * provider sends no data for this long mid-stream, the request is aborted and
+	 * surfaced as a retryable error (then auto-retried). Takes precedence over the
+	 * `CAVE_STREAM_IDLE_TIMEOUT_MS` env var. Default: 120000; 0 disables.
+	 */
+	streamIdleTimeoutMs?: number;
+
+	/**
+	 * Total wall-clock budget for a single streaming model response, in
+	 * milliseconds. Unlike the idle watchdog, this caps a turn that streams
+	 * steadily but slowly so it can never run arbitrarily long; the deadline does
+	 * NOT reset per chunk. On trip the request is aborted and surfaced as a
+	 * retryable error (then auto-retried). Takes precedence over the
+	 * `CAVE_STREAM_TOTAL_TIMEOUT_MS` env var. Default: 0 (disabled).
+	 */
+	streamTotalTimeoutMs?: number;
 }
 
 /** Result from createAgentSession */
@@ -147,6 +165,17 @@ function getDefaultAgentDir(): string {
  * (0 disables the watchdog) or undefined to fall back to the loop default (120s).
  */
 function parseStreamIdleTimeoutEnv(raw: string | undefined): number | undefined {
+	if (raw === undefined || raw.trim() === "") return undefined;
+	const n = Number(raw);
+	return Number.isFinite(n) && n >= 0 ? Math.floor(n) : undefined;
+}
+
+/**
+ * Parse the CAVE_STREAM_TOTAL_TIMEOUT_MS override. Returns a non-negative integer
+ * (0 disables the total-duration cap) or undefined to fall back to the loop
+ * default (disabled). Lets you set a wall-clock cap on a single model turn.
+ */
+function parseStreamTotalTimeoutEnv(raw: string | undefined): number | undefined {
 	if (raw === undefined || raw.trim() === "") return undefined;
 	const n = Number(raw);
 	return Number.isFinite(n) && n >= 0 ? Math.floor(n) : undefined;
@@ -358,9 +387,14 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		maxRetryDelayMs: settingsManager.getRetrySettings().maxDelayMs,
 		maxTurns: options.maxTurns,
 		temperature: options.temperature,
-		// Optional override for the stream inactivity watchdog (ms). Lets you set a
-		// short window to exercise the hang-recovery path. Falsy/invalid → loop default.
-		streamIdleTimeoutMs: parseStreamIdleTimeoutEnv(process.env.CAVE_STREAM_IDLE_TIMEOUT_MS),
+		// Optional override for the stream inactivity watchdog (ms). Per-run option
+		// wins over the env var; both falsy/invalid → loop default (120000).
+		streamIdleTimeoutMs:
+			options.streamIdleTimeoutMs ?? parseStreamIdleTimeoutEnv(process.env.CAVE_STREAM_IDLE_TIMEOUT_MS),
+		// Optional total wall-clock cap on a single model turn (ms). Per-run option
+		// wins over the env var; both falsy/invalid → loop default (0 = disabled).
+		streamTotalTimeoutMs:
+			options.streamTotalTimeoutMs ?? parseStreamTotalTimeoutEnv(process.env.CAVE_STREAM_TOTAL_TIMEOUT_MS),
 	});
 
 	// Restore messages if session has existing data

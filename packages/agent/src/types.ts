@@ -241,6 +241,17 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
 	streamIdleTimeoutMs?: number;
 
 	/**
+	 * Total wall-clock budget for a single streaming model response, in
+	 * milliseconds. Unlike {@link AgentLoopConfig.streamIdleTimeoutMs} (which only
+	 * fires on inactivity), this caps a turn that streams steadily but slowly so
+	 * it can never run arbitrarily long. The deadline does NOT reset per chunk.
+	 * On trip the request is aborted and surfaced as a retryable `error` message
+	 * (same path as the idle watchdog). Defaults to 0 (disabled) to preserve
+	 * existing behavior; set a positive value to enable.
+	 */
+	streamTotalTimeoutMs?: number;
+
+	/**
 	 * Called before a tool is executed, after arguments have been validated.
 	 *
 	 * Return `{ block: true }` to prevent execution. The loop emits an error tool result instead.

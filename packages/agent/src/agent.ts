@@ -117,6 +117,8 @@ export interface AgentOptions {
 	temperature?: number;
 	/** Inactivity watchdog for streaming responses, in ms (default 120000; 0 disables). */
 	streamIdleTimeoutMs?: number;
+	/** Total wall-clock budget for a streaming response, in ms (default 0 = disabled). */
+	streamTotalTimeoutMs?: number;
 	/** Optional model router for resolving models per outbound LLM call. */
 	router?: ModelRouter;
 	/** Current role for routing decisions. Required when router is set. */
@@ -210,6 +212,8 @@ export class Agent {
 	public temperature?: number;
 	/** Inactivity watchdog for streaming responses, in ms (default 120000; 0 disables). */
 	public streamIdleTimeoutMs?: number;
+	/** Total wall-clock budget for a streaming response, in ms (default 0 = disabled). */
+	public streamTotalTimeoutMs?: number;
 
 	constructor(options: AgentOptions = {}) {
 		this._state = createMutableAgentState(options.initialState);
@@ -234,6 +238,7 @@ export class Agent {
 		this.maxTurns = options.maxTurns;
 		this.temperature = options.temperature;
 		this.streamIdleTimeoutMs = options.streamIdleTimeoutMs;
+		this.streamTotalTimeoutMs = options.streamTotalTimeoutMs;
 	}
 
 	/**
@@ -453,6 +458,7 @@ export class Agent {
 			maxTurns: this.maxTurns,
 			temperature: this.temperature,
 			streamIdleTimeoutMs: this.streamIdleTimeoutMs,
+			streamTotalTimeoutMs: this.streamTotalTimeoutMs,
 			beforeToolCall: this.beforeToolCall,
 			afterToolCall: this.afterToolCall,
 			getSystemPrompt: this.getSystemPrompt,

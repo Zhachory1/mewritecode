@@ -792,7 +792,88 @@ describe("agentLoopContinue with AgentMessage", () => {
 		expect(assistant).toBeDefined();
 		expect(assistant?.stopReason).toBe("error");
 		expect(assistant?.errorMessage).toMatch(/idle/i);
+		expect(assistant?.errorMessage).toMatch(/timeout/i); // classified retryable by the session
 		expect(events.map((e) => e.type)).toContain("agent_end");
 		expect(aborted).toBe(true); // watchdog tore down the underlying request
+	});
+
+	it("aborts a slow-but-steady stream that exceeds the total-duration cap", async () => {
+		const context: AgentContext = { systemPrompt: "You are helpful.", messages: [], tools: [] };
+		const userPrompt = createUserMessage("Hello");
+		const config: AgentLoopConfig = {
+			model: createModel(),
+			convertToLlm: identityConverter,
+			// Idle window comfortably larger than each gap so the idle watchdog
+			// never trips — only the total-duration cap should fire.
+			streamIdleTimeoutMs: 500,
+			streamTotalTimeoutMs: 80,
+		};
+
+		let aborted = false;
+		const streamFn = ((_model: unknown, _ctx: unknown, opts?: { signal?: AbortSignal }) => {
+			const stream = new MockAssistantStream();
+			opts?.signal?.addEventListener("abort", () => {
+				aborted = true;
+			});
+			void (async () => {
+				stream.push({ type: "start", partial: createAssistantMessage([{ type: "text", text: "" }]) });
+				// Emit steadily (each gap < idle window) but never finish before the
+				// total cap — this is the gap the idle watchdog cannot catch.
+				for (let i = 0; i < 50; i++) {
+					await new Promise((r) => setTimeout(r, 25));
+					if (opts?.signal?.aborted) return;
+					stream.push({
+						type: "text_delta",
+						contentIndex: 0,
+						delta: `chunk ${i}`,
+						partial: createAssistantMessage([{ type: "text", text: `chunk ${i}` }]),
+					});
+				}
+			})();
+			return stream;
+		}) as unknown as Parameters<typeof agentLoop>[4];
+
+		const events: AgentEvent[] = [];
+		const stream = agentLoop([userPrompt], context, config, undefined, streamFn);
+		for await (const event of stream) {
+			events.push(event);
+		}
+		const messages = await stream.result();
+
+		const assistant = messages.find((m) => m.role === "assistant") as AssistantMessage | undefined;
+		expect(assistant).toBeDefined();
+		expect(assistant?.stopReason).toBe("error");
+		expect(assistant?.errorMessage).toMatch(/total timeout/i);
+		expect(assistant?.errorMessage).toMatch(/timeout/i); // retryable token
+		expect(events.map((e) => e.type)).toContain("agent_end");
+		expect(aborted).toBe(true); // total watchdog tore down the underlying request
+	});
+
+	it("does not trip either cap for a normal-speed turn (default total cap disabled)", async () => {
+		const context: AgentContext = { systemPrompt: "You are helpful.", messages: [], tools: [] };
+		const userPrompt = createUserMessage("Hello");
+		// No timeout overrides → idle default 120s, total default 0 (disabled).
+		const config: AgentLoopConfig = {
+			model: createModel(),
+			convertToLlm: identityConverter,
+		};
+
+		const streamFn = () => {
+			const stream = new MockAssistantStream();
+			queueMicrotask(() => {
+				const message = createAssistantMessage([{ type: "text", text: "All good." }]);
+				stream.push({ type: "done", reason: "stop", message });
+			});
+			return stream;
+		};
+
+		const stream = agentLoop([userPrompt], context, config, undefined, streamFn);
+		for await (const _event of stream) {
+			// drain
+		}
+		const messages = await stream.result();
+		const assistant = messages.find((m) => m.role === "assistant") as AssistantMessage | undefined;
+		expect(assistant?.stopReason).toBe("stop");
+		expect(assistant?.errorMessage).toBeUndefined();
 	});
 });

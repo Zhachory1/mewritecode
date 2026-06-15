@@ -22,7 +22,12 @@ import type {
 	AgentToolResult,
 	StreamFn,
 } from "./types.js";
-import { StreamIdleTimeoutError, withIdleTimeout } from "./utils/idle-timeout.js";
+import {
+	StreamIdleTimeoutError,
+	StreamTotalTimeoutError,
+	withIdleTimeout,
+	withTotalTimeout,
+} from "./utils/idle-timeout.js";
 
 export type AgentEventSink = (event: AgentEvent) => Promise<void> | void;
 
@@ -33,6 +38,16 @@ export type AgentEventSink = (event: AgentEvent) => Promise<void> | void;
  * `AgentLoopConfig.streamIdleTimeoutMs`; set to 0 to disable.
  */
 const DEFAULT_STREAM_IDLE_TIMEOUT_MS = 120_000;
+
+/**
+ * Default TOTAL wall-clock budget for a single streaming model response, in ms.
+ * Unlike the idle watchdog (which only fires on inactivity), this caps a turn
+ * that streams steadily but slowly so it can never run arbitrarily long. The
+ * deadline does NOT reset per chunk. Disabled by default (0) to preserve
+ * existing behavior — a turn only gets a total cap when explicitly configured
+ * via `AgentLoopConfig.streamTotalTimeoutMs`. Set to a positive value to enable.
+ */
+const DEFAULT_STREAM_TOTAL_TIMEOUT_MS = 0;
 
 const EMPTY_USAGE: Usage = {
 	input: 0,
@@ -324,8 +339,18 @@ async function streamAssistantResponse(
 	// the stack). Link a watchdog AbortController with the run signal so a trip
 	// tears down the underlying request, then surface a retryable error.
 	const idleMs = config.streamIdleTimeoutMs ?? DEFAULT_STREAM_IDLE_TIMEOUT_MS;
-	const watchdog = idleMs > 0 ? new AbortController() : undefined;
-	const streamSignal = watchdog ? (signal ? AbortSignal.any([signal, watchdog.signal]) : watchdog.signal) : signal;
+	const totalMs = config.streamTotalTimeoutMs ?? DEFAULT_STREAM_TOTAL_TIMEOUT_MS;
+	const idleWatchdog = idleMs > 0 ? new AbortController() : undefined;
+	const totalWatchdog = totalMs > 0 ? new AbortController() : undefined;
+
+	// Link both watchdogs (and the caller's signal) so a trip on either tears
+	// down the underlying request. AbortSignal.any tolerates an arbitrary set.
+	const watchdogSignals = [idleWatchdog?.signal, totalWatchdog?.signal].filter(
+		(s): s is AbortSignal => s !== undefined,
+	);
+	const allSignals = [signal, ...watchdogSignals].filter((s): s is AbortSignal => s !== undefined);
+	const streamSignal =
+		allSignals.length === 0 ? undefined : allSignals.length === 1 ? allSignals[0] : AbortSignal.any(allSignals);
 
 	const response = await streamFunction(resolvedModel, llmContext, {
 		...config,
@@ -337,7 +362,16 @@ async function streamAssistantResponse(
 	let addedPartial = false;
 
 	try {
-		for await (const event of withIdleTimeout(response, idleMs, () => watchdog?.abort())) {
+		// Compose both watchdogs: the total-duration deadline wraps the idle
+		// watchdog so a single turn is bounded on BOTH inactivity and total
+		// wall-clock time. Either trip aborts the request (via its watchdog) and
+		// throws, which we convert below into a retryable error message.
+		const guardedStream = withTotalTimeout(
+			withIdleTimeout(response, idleMs, () => idleWatchdog?.abort()),
+			totalMs,
+			() => totalWatchdog?.abort(),
+		);
+		for await (const event of guardedStream) {
 			switch (event.type) {
 				case "start":
 					partialMessage = event.partial;
@@ -383,10 +417,17 @@ async function streamAssistantResponse(
 			}
 		}
 	} catch (err) {
-		if (err instanceof StreamIdleTimeoutError) {
-			// Provider went silent mid-stream. The watchdog already aborted the
-			// request; surface a retryable error message so the session's
-			// auto-retry can re-issue the turn instead of hanging.
+		if (err instanceof StreamIdleTimeoutError || err instanceof StreamTotalTimeoutError) {
+			// A stream watchdog tripped: either the provider went silent mid-stream
+			// (idle) or the turn streamed past its total wall-clock budget. The
+			// corresponding watchdog already aborted the request; surface a
+			// retryable error so the session's auto-retry re-issues the turn
+			// instead of hanging or running unbounded. The word "timeout" keeps
+			// the message aligned with the session's retryable-error classifier.
+			const detail =
+				err instanceof StreamIdleTimeoutError
+					? `Model stream idle for ${idleMs}ms (no data from provider); timeout, aborted for retry`
+					: `Model stream exceeded total timeout of ${totalMs}ms; aborted for retry`;
 			const errorMessage: AssistantMessage = {
 				role: "assistant",
 				content: partialMessage?.content ?? [],
@@ -395,7 +436,7 @@ async function streamAssistantResponse(
 				model: resolvedModel.id,
 				usage: partialMessage?.usage ?? EMPTY_USAGE,
 				stopReason: "error",
-				errorMessage: `Model stream idle for ${idleMs}ms (no data from provider); aborted for retry`,
+				errorMessage: detail,
 				timestamp: Date.now(),
 			};
 			if (addedPartial) {
