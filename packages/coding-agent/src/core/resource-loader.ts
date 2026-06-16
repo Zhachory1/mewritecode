@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve, sep } from "node:path";
 import chalk from "chalk";
-import { CONFIG_DIR_NAME, getAgentDir } from "../config.js";
+import { CONFIG_DIR_NAME, getAgentDir, getBundledPromptsDir } from "../config.js";
 import { loadThemeFromPath, type Theme } from "../modes/interactive/theme/theme.js";
 import type { ResourceDiagnostic } from "./diagnostics.js";
 
@@ -443,9 +443,18 @@ export class DefaultResourceLoader implements ResourceLoader {
 			}
 		}
 
+		// Bundled prompts shipped with cave (#60). dedupePrompts is FIRST-write-wins,
+		// so bundled paths go LAST in the order: user/project/CLI entries appear first
+		// and win on name collision; bundled only contributes when nothing else
+		// already defined the prompt name. Opted out by `--no-prompt-templates`.
+		const bundledPromptPaths = this.collectBundledPromptPaths();
+
 		const promptPaths = this.noPromptTemplates
 			? this.mergePaths(cliEnabledPrompts, this.additionalPromptTemplatePaths)
-			: this.mergePaths([...cliEnabledPrompts, ...enabledPrompts], this.additionalPromptTemplatePaths);
+			: this.mergePaths(
+					[...cliEnabledPrompts, ...enabledPrompts, ...bundledPromptPaths],
+					this.additionalPromptTemplatePaths,
+				);
 
 		this.lastPromptPaths = promptPaths;
 		this.updatePromptsFromPaths(promptPaths, metadataByPath);
@@ -666,6 +675,33 @@ export class DefaultResourceLoader implements ResourceLoader {
 			origin: "top-level",
 			baseDir: statSync(normalizedPath).isDirectory() ? normalizedPath : resolve(normalizedPath, ".."),
 		};
+	}
+
+	private collectBundledPromptPaths(): string[] {
+		const dir = getBundledPromptsDir();
+		if (!existsSync(dir)) return [];
+		const entries: string[] = [];
+		try {
+			const dirEntries = readdirSync(dir, { withFileTypes: true });
+			for (const entry of dirEntries) {
+				if (entry.name.startsWith(".")) continue;
+				let isFile = entry.isFile();
+				const fullPath = join(dir, entry.name);
+				if (entry.isSymbolicLink()) {
+					try {
+						isFile = statSync(fullPath).isFile();
+					} catch {
+						continue;
+					}
+				}
+				if (isFile && entry.name.endsWith(".md")) {
+					entries.push(fullPath);
+				}
+			}
+		} catch {
+			return [];
+		}
+		return entries;
 	}
 
 	private mergePaths(primary: string[], additional: string[]): string[] {

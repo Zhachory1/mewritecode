@@ -19,14 +19,11 @@ Delegate tasks to specialized subagents with isolated context windows.
 subagent/
 ├── README.md            # This file
 ├── index.ts             # The extension (entry point) — default-loaded by cave
-├── agents.ts            # Agent discovery logic (scans bundled + user + project)
-└── prompts/             # Workflow presets (prompt templates) — not yet bundled, see issue #59
-    ├── implement.md     # scout -> planner -> worker
-    ├── scout-and-plan.md    # scout -> planner (no implementation)
-    └── implement-and-review.md  # worker -> reviewer -> worker
+└── agents.ts            # Agent discovery logic (scans bundled + user + project)
 ```
 
-Sample agents (`scout.md`, `planner.md`, `worker.md`) ship in `packages/coding-agent/agents/` alongside cave's other bundled agents (`critic`, `editor`, `explore`, etc.).
+- Sample agents (`scout.md`, `planner.md`, `worker.md`) ship in `packages/coding-agent/agents/` alongside cave's other bundled agents (`critic`, `editor`, `explore`, etc.).
+- Workflow prompts (`implement.md`, `scout-and-plan.md`, `implement-and-review.md`) ship in `packages/coding-agent/prompts/` and are available as `/implement`, `/scout-and-plan`, `/implement-and-review` from any cave session.
 
 ## Installation
 

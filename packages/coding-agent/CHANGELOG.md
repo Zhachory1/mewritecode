@@ -4,7 +4,8 @@
 
 ### Added
 
-- Subagent extension is now bundled by default. `caveman` loads the subagent tool on startup with no install step required — invoke it via `Use scout to find auth code` or the dispatch tool. Sample agents (`scout`, `planner`, `worker`) ship in `packages/coding-agent/agents/` alongside the existing bundled six (`critic`, `editor`, `explore`, `implementer`, `reviewer`, `tester`). Power-user override path: drop a modified `index.ts` / `agents.ts` under `~/.cave/extensions/subagent/` (user scope) or `.cave/extensions/subagent/` (project scope). Workflow prompts (`/implement`, `/scout-and-plan`, `/implement-and-review`) are tracked separately in [#60](https://github.com/JuliusBrussee/caveman-code/issues/60) — they need a bundled-prompts loader that does not yet exist ([#59](https://github.com/JuliusBrussee/caveman-code/issues/59)).
+- Subagent extension is now bundled by default. `caveman` loads the subagent tool on startup with no install step required — invoke it via `Use scout to find auth code` or the dispatch tool. Sample agents (`scout`, `planner`, `worker`) ship in `packages/coding-agent/agents/` alongside the existing bundled six (`critic`, `editor`, `explore`, `implementer`, `reviewer`, `tester`). Power-user override path: drop a modified `index.ts` / `agents.ts` under `~/.cave/extensions/subagent/` (user scope) or `.cave/extensions/subagent/` (project scope) ([#59](https://github.com/JuliusBrussee/caveman-code/issues/59)).
+- Subagent workflow prompts (`/implement`, `/scout-and-plan`, `/implement-and-review`) ship in `packages/coding-agent/prompts/` and load automatically from every cave session. New `getBundledPromptsDir()` config helper and a bundled-defaults scan path in the resource loader (lowest precedence — user/project entries override by name via `dedupePrompts`). Opted out by `--no-prompt-templates`, same as user/project discovery ([#60](https://github.com/JuliusBrussee/caveman-code/issues/60)).
 
 ### Changed
 
