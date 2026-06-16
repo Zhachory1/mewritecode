@@ -5,6 +5,7 @@
 ### Changed
 
 - Extracted the Tribal Signal (context-drift warnings) and Fire Starter (preemptive compaction) heuristics out of `InteractiveMode` into a pure `context-drift-widgets.ts` module. No behavior change; the evaluator now has direct unit-test coverage (18 tests). Part of the `interactive-mode.ts` / `agent-session.ts` god-object decomposition ([#16](https://github.com/JuliusBrussee/caveman-code/issues/16)).
+- Extracted the cave compression pipeline (afterToolCall ML + rule-based compression, read-deduplication cache, soft-compaction LLMLingua pass) out of `AgentSession` into a new `compression-pipeline.ts` module. No behavior change; behavior preserved verbatim across the four integration suites (`system-prompt`, `compression-layers`, `session-replay`, `compression-roi`). New 14-test unit suite + a regression test pinning the DD §10.1 "one savings event per non-error tool result" invariant. Part of the `interactive-mode.ts` / `agent-session.ts` god-object decomposition ([#16](https://github.com/JuliusBrussee/caveman-code/issues/16)).
 
 ### Added
 
