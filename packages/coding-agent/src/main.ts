@@ -27,6 +27,7 @@ import { handleListCommand } from "./cli/list.js";
 import { listModels } from "./cli/list-models.js";
 import { runLogin } from "./cli/login.js";
 import { handleMcpCommand } from "./cli/mcp-cli.js";
+import { handleMigrateCommand } from "./cli/migrate-cli.js";
 import { handleModelsCommand } from "./cli/models.js";
 import { handlePluginCommand } from "./cli/plugin.js";
 import { handleRollbackCommand } from "./cli/rollback.js";
@@ -529,6 +530,11 @@ export async function main(args: string[]) {
 	}
 
 	if (await handleConfigCommand(args)) {
+		return;
+	}
+
+	// #15: `caveman migrate --from claude` — one-step Claude Code config reuse.
+	if (await handleMigrateCommand(args)) {
 		return;
 	}
 
