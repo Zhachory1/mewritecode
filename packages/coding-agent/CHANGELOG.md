@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Extracted the Tribal Signal (context-drift warnings) and Fire Starter (preemptive compaction) heuristics out of `InteractiveMode` into a pure `context-drift-widgets.ts` module. No behavior change; the evaluator now has direct unit-test coverage (18 tests). Part of the `interactive-mode.ts` / `agent-session.ts` god-object decomposition ([#16](https://github.com/JuliusBrussee/caveman-code/issues/16)).
+
 ### Added
 
 - Sequential command orchestration with `/then`: chain commands across turns, e.g. `/writing-plans /then /goal implement until tests are green`. The head runs in the current turn; tail entries dispatch after each turn settles. New `/queue` built-in lists or clears the pending chain; Escape pulls queued entries back into the editor. `/then` is only treated as a separator when followed by another `/command` token, so prose like "first do X then do Y" is untouched, and `/then` inside code fences/backticks is preserved verbatim ([#5](https://github.com/JuliusBrussee/caveman-code/issues/5)).

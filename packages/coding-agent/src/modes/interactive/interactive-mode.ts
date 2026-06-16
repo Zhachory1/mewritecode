@@ -159,6 +159,12 @@ import { TreeSelectorComponent } from "./components/tree-selector.js";
 import { UserMessageComponent } from "./components/user-message.js";
 import { UserMessageSelectorComponent } from "./components/user-message-selector.js";
 import {
+	emptyFireStarterState,
+	emptyTribalSignalState,
+	evaluateFireStarter,
+	evaluateTribalSignal,
+} from "./context-drift-widgets.js";
+import {
 	getAvailableThemes,
 	getAvailableThemesWithPaths,
 	getEditorTheme,
@@ -395,20 +401,14 @@ export class InteractiveMode {
 	private widgetContainerAbove!: Container;
 	private widgetContainerBelow!: Container;
 
-	// Tribal Signal: context drift warning state
-	private tribalSignalAmberFired = false;
-	private tribalSignalRecentTurnTokens: number[] = [];
+	// Tribal Signal + Fire Starter state (heuristic evaluators live in
+	// ./context-drift-widgets.ts; this class only carries snapshot state).
+	private tribalSignalState = emptyTribalSignalState();
+	private fireStarterState = emptyFireStarterState();
 
 	// Mammoth Freeze: manual compaction checkpoints
 	private freezeCheckpoints: Array<{ label?: string; tokensBefore: number; tokensAfter: number; savedAt: string }> =
 		[];
-
-	// Fire Starter: preemptive compaction state
-	private fireStarterTurnDeltas: number[] = [];
-	private fireStarterLastCompactionTime = 0;
-	private static readonly FIRE_STARTER_MIN_GAP_MS = 60_000; // 1 minute minimum between compactions
-	private static readonly FIRE_STARTER_TURNS_AHEAD = 3;
-	private static readonly FIRE_STARTER_MIN_FILL_PCT = 55;
 
 	// Custom footer from extension (undefined = use built-in footer)
 	private customFooter: (Component & { dispose?(): void }) | undefined = undefined;
@@ -3058,12 +3058,10 @@ export class InteractiveMode {
 					this.autoCompactionLoader = undefined;
 					this.statusContainer.clear();
 				}
-				// Reset tribal signal state — context shrinks after compaction
-				this.tribalSignalAmberFired = false;
-				this.tribalSignalRecentTurnTokens = [];
-				// Reset fire starter state — compaction just happened
-				this.fireStarterTurnDeltas = [];
-				this.fireStarterLastCompactionTime = Date.now();
+				// Reset drift heuristics: tribal signal because context shrinks
+				// after compaction; fire starter because we just compacted.
+				this.tribalSignalState = emptyTribalSignalState();
+				this.fireStarterState = { turnDeltas: [], lastCompactionTime: Date.now() };
 				if (event.aborted) {
 					if (event.reason === "manual") {
 						this.showError("Compaction cancelled");
@@ -6115,119 +6113,61 @@ export class InteractiveMode {
 	}
 
 	private updateTribalSignal(): void {
-		const contextUsage = this.session.getContextUsage();
-
-		// Auto-clear when context drops below 60% (after compaction)
-		if (!contextUsage || contextUsage.percent === null || contextUsage.percent < 60) {
-			this.tribalSignalAmberFired = false;
-			this.setExtensionWidget("tribal-signal", undefined, { placement: "aboveEditor" });
-			this.setExtensionStatus("drift", undefined);
-			return;
-		}
-
-		const pct = contextUsage.percent;
-
-		// Track recent turn tokens for rate detection
-		if (contextUsage.tokens !== null) {
-			this.tribalSignalRecentTurnTokens.push(contextUsage.tokens);
-			if (this.tribalSignalRecentTurnTokens.length > 5) {
-				this.tribalSignalRecentTurnTokens.shift();
-			}
-		}
-
-		// Rate warning: 3 consecutive turns each >= 1.5x previous
-		if (this.tribalSignalRecentTurnTokens.length >= 3) {
-			const recent = this.tribalSignalRecentTurnTokens.slice(-3);
-			const accelerating = recent[1]! >= recent[0]! * 1.5 && recent[2]! >= recent[1]! * 1.5;
-			if (accelerating) {
-				this.setExtensionWidget(
-					"tribal-signal",
-					[theme.fg("warning", "Context burning fast. Rate accelerating. Consider /compact")],
-					{ placement: "aboveEditor" },
-				);
+		const { nextState, effect } = evaluateTribalSignal(this.session.getContextUsage(), this.tribalSignalState);
+		this.tribalSignalState = nextState;
+		switch (effect.kind) {
+			case "clear":
+				this.setExtensionWidget("tribal-signal", undefined, { placement: "aboveEditor" });
+				this.setExtensionStatus("drift", undefined);
 				return;
-			}
-		}
-
-		// Red widget at 85%+
-		if (pct >= 85) {
-			this.tribalSignalAmberFired = true;
-			this.setExtensionStatus("drift", undefined);
-			this.setExtensionWidget(
-				"tribal-signal",
-				[theme.fg("error", `Context ${Math.round(pct)}% full. Consider /compact or /freeze`)],
-				{ placement: "aboveEditor" },
-			);
-			return;
-		}
-
-		// Clear red widget if below 85
-		this.setExtensionWidget("tribal-signal", undefined, { placement: "aboveEditor" });
-
-		// Amber status at 70%+, fire once
-		if (pct >= 70 && !this.tribalSignalAmberFired) {
-			this.tribalSignalAmberFired = true;
-			this.setExtensionStatus("drift", `ctx:${Math.round(pct)}%`);
-		} else if (pct < 70) {
-			this.tribalSignalAmberFired = false;
-			this.setExtensionStatus("drift", undefined);
+			case "rateWarning":
+				this.setExtensionWidget("tribal-signal", [theme.fg("warning", effect.message)], {
+					placement: "aboveEditor",
+				});
+				return;
+			case "red":
+				this.setExtensionStatus("drift", undefined);
+				this.setExtensionWidget("tribal-signal", [theme.fg("error", effect.message)], {
+					placement: "aboveEditor",
+				});
+				return;
+			case "amber":
+				this.setExtensionWidget("tribal-signal", undefined, { placement: "aboveEditor" });
+				this.setExtensionStatus("drift", `ctx:${Math.round(effect.pct)}%`);
+				return;
+			case "amberClear":
+				this.setExtensionWidget("tribal-signal", undefined, { placement: "aboveEditor" });
+				// Clear footer status only if we transitioned out of amber; otherwise leave
+				// whatever was set (the evaluator returns amberClear both for "never amber"
+				// and "just stepped back below 70", but it sets amberFired=false in the
+				// latter case — the footer is idempotent either way).
+				this.setExtensionStatus("drift", undefined);
+				return;
 		}
 	}
 
 	/**
 	 * Fire Starter — preemptive compaction based on token burn rate projection.
-	 * Triggers early compaction when projected context fill < TURNS_AHEAD turns
-	 * AND current fill > MIN_FILL_PCT.
+	 * The heuristic lives in `./context-drift-widgets.ts`; this method holds
+	 * the rolling state and applies the compaction side-effect.
 	 */
 	private async checkPreemptiveCompaction(): Promise<void> {
 		const caveState = this.session.getCaveModeSessionState();
 		if (!caveState.enabled) return;
 
-		const contextUsage = this.session.getContextUsage();
-		if (!contextUsage || contextUsage.percent === null || contextUsage.tokens === null) return;
+		const { nextState, shouldCompact } = evaluateFireStarter(
+			this.session.getContextUsage(),
+			this.fireStarterState,
+			Date.now(),
+			this.session.isCompacting,
+		);
+		this.fireStarterState = nextState;
+		if (!shouldCompact) return;
 
-		const pct = contextUsage.percent;
-
-		// Track turn deltas
-		this.fireStarterTurnDeltas.push(contextUsage.tokens);
-		if (this.fireStarterTurnDeltas.length > 6) {
-			this.fireStarterTurnDeltas.shift();
-		}
-
-		// Need at least 3 data points to compute rate
-		if (this.fireStarterTurnDeltas.length < 3) return;
-
-		// Below minimum fill — no need
-		if (pct < InteractiveMode.FIRE_STARTER_MIN_FILL_PCT) return;
-
-		// Minimum gap between compactions
-		if (Date.now() - this.fireStarterLastCompactionTime < InteractiveMode.FIRE_STARTER_MIN_GAP_MS) return;
-
-		// Don't trigger if already compacting
-		if (this.session.isCompacting) return;
-
-		// Compute average delta per turn from the rolling window
-		const deltas = this.fireStarterTurnDeltas;
-		let totalDelta = 0;
-		for (let i = 1; i < deltas.length; i++) {
-			totalDelta += deltas[i]! - deltas[i - 1]!;
-		}
-		const avgDeltaPerTurn = totalDelta / (deltas.length - 1);
-
-		// Only trigger on positive burn rate (context growing)
-		if (avgDeltaPerTurn <= 0) return;
-
-		// Project turns until full
-		const remainingTokens = contextUsage.contextWindow - contextUsage.tokens;
-		const projectedTurnsToFull = remainingTokens / avgDeltaPerTurn;
-
-		if (projectedTurnsToFull < InteractiveMode.FIRE_STARTER_TURNS_AHEAD) {
-			this.fireStarterLastCompactionTime = Date.now();
-			try {
-				await this.session.compact("Preemptive compaction (high burn rate). Preserve active task context.");
-			} catch {
-				// Compaction may fail if session is too small — ignore
-			}
+		try {
+			await this.session.compact("Preemptive compaction (high burn rate). Preserve active task context.");
+		} catch {
+			// Compaction may fail if session is too small — ignore.
 		}
 	}
 
