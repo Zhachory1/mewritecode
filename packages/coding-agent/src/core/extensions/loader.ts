@@ -19,7 +19,7 @@ import { createJiti } from "@mariozechner/jiti";
 // These MUST be static so Bun bundles them into the compiled binary.
 // The virtualModules option then makes them available to extensions.
 import * as _bundledTypebox from "@sinclair/typebox";
-import { CONFIG_DIR_NAME, getAgentDir, isBunBinary } from "../../config.js";
+import { CONFIG_DIR_NAME, getAgentDir, getPackageDir, isBunBinary } from "../../config.js";
 // NOTE: This import works because loader.ts exports are NOT re-exported from index.ts,
 // avoiding a circular dependency. Extensions can import from cave.
 import * as _bundledPiCodingAgent from "../../index.js";
@@ -516,6 +516,39 @@ function discoverExtensionsInDir(dir: string): string[] {
 }
 
 /**
+ * Default-on extensions bundled with cave. Resolved from the package install
+ * dir at runtime so they ship with `npm i -g @juliusbrussee/caveman-code`
+ * without any user install step. Project-, user-, and CLI-configured paths
+ * still take precedence by registering the same tool name (last write wins
+ * inside ExtensionAPI.registerTool).
+ *
+ * Each entry is a single relative path under `getPackageDir()`. Keep the list
+ * tight — every entry runs in every cave session.
+ */
+const BUNDLED_EXTENSION_PATHS = ["examples/extensions/subagent"] as const;
+
+function resolveBundledExtensionEntries(): string[] {
+	const packageDir = getPackageDir();
+	const out: string[] = [];
+	for (const relPath of BUNDLED_EXTENSION_PATHS) {
+		const dir = path.join(packageDir, relPath);
+		if (!fs.existsSync(dir)) continue;
+		const entries = resolveExtensionEntries(dir);
+		if (entries) out.push(...entries);
+	}
+	return out;
+}
+
+export interface DiscoverAndLoadExtensionsOptions {
+	/**
+	 * Skip the bundled-defaults discovery (BUNDLED_EXTENSION_PATHS). Used by
+	 * tests that assert exact extension counts and need a clean baseline.
+	 * Mirrors `skipBundled` on `loadAgentDefs`.
+	 */
+	skipBundled?: boolean;
+}
+
+/**
  * Discover and load extensions from standard locations.
  */
 export async function discoverAndLoadExtensions(
@@ -523,6 +556,7 @@ export async function discoverAndLoadExtensions(
 	cwd: string,
 	agentDir: string = getAgentDir(),
 	eventBus?: EventBus,
+	options: DiscoverAndLoadExtensionsOptions = {},
 ): Promise<LoadExtensionsResult> {
 	const allPaths: string[] = [];
 	const seen = new Set<string>();
@@ -536,6 +570,13 @@ export async function discoverAndLoadExtensions(
 			}
 		}
 	};
+
+	// 0. Bundled defaults shipped with cave. Lowest precedence — project/user/
+	// explicit extensions registering the same tool name override at registration
+	// time. See BUNDLED_EXTENSION_PATHS.
+	if (!options.skipBundled) {
+		addPaths(resolveBundledExtensionEntries());
+	}
 
 	// 1. Project-local extensions: cwd/<configDir>/extensions/
 	const localExtDir = path.join(cwd, CONFIG_DIR_NAME, "extensions");

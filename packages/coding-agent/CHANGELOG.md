@@ -2,8 +2,13 @@
 
 ## [Unreleased]
 
+### Added
+
+- Subagent extension is now bundled by default. `caveman` loads the subagent tool on startup with no install step required — invoke it via `Use scout to find auth code` or the dispatch tool. Sample agents (`scout`, `planner`, `worker`) ship in `packages/coding-agent/agents/` alongside the existing bundled six (`critic`, `editor`, `explore`, `implementer`, `reviewer`, `tester`). Power-user override path: drop a modified `index.ts` / `agents.ts` under `~/.cave/extensions/subagent/` (user scope) or `.cave/extensions/subagent/` (project scope). Workflow prompts (`/implement`, `/scout-and-plan`, `/implement-and-review`) are tracked separately in [#60](https://github.com/JuliusBrussee/caveman-code/issues/60) — they need a bundled-prompts loader that does not yet exist ([#59](https://github.com/JuliusBrussee/caveman-code/issues/59)).
+
 ### Changed
 
+- `discoverAndLoadExtensions` accepts a new `{ skipBundled?: boolean }` options object so tests asserting exact extension counts can opt out of the bundled defaults. Mirrors `loadAgentDefs`'s `skipBundled` option ([#59](https://github.com/JuliusBrussee/caveman-code/issues/59)).
 - Extracted the Tribal Signal (context-drift warnings) and Fire Starter (preemptive compaction) heuristics out of `InteractiveMode` into a pure `context-drift-widgets.ts` module. No behavior change; the evaluator now has direct unit-test coverage (18 tests). Part of the `interactive-mode.ts` / `agent-session.ts` god-object decomposition ([#16](https://github.com/JuliusBrussee/caveman-code/issues/16)).
 - Extracted the cave compression pipeline (afterToolCall ML + rule-based compression, read-deduplication cache, soft-compaction LLMLingua pass) out of `AgentSession` into a new `compression-pipeline.ts` module. No behavior change; behavior preserved verbatim across the four integration suites (`system-prompt`, `compression-layers`, `session-replay`, `compression-roi`). New 14-test unit suite + a regression test pinning the DD §10.1 "one savings event per non-error tool result" invariant. Part of the `interactive-mode.ts` / `agent-session.ts` god-object decomposition ([#16](https://github.com/JuliusBrussee/caveman-code/issues/16)).
 

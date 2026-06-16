@@ -1,6 +1,8 @@
-# Subagent Example
+# Subagent Extension
 
 Delegate tasks to specialized subagents with isolated context windows.
+
+> **Default-installed since cave [next-version]**. No install step required — `caveman` loads this extension automatically on startup, and the sample agents (`scout`, `planner`, `worker`) are available via cave's bundled agents (`packages/coding-agent/agents/`). To override or extend, drop your own version under `~/.cave/extensions/subagent/` or your project's `.cave/extensions/subagent/`.
 
 ## Features
 
@@ -16,40 +18,33 @@ Delegate tasks to specialized subagents with isolated context windows.
 ```
 subagent/
 ├── README.md            # This file
-├── index.ts             # The extension (entry point)
-├── agents.ts            # Agent discovery logic
-├── agents/              # Sample agent definitions
-│   ├── scout.md         # Fast recon, returns compressed context
-│   ├── planner.md       # Creates implementation plans
-│   ├── reviewer.md      # Code review
-│   └── worker.md        # General-purpose (full capabilities)
-└── prompts/             # Workflow presets (prompt templates)
+├── index.ts             # The extension (entry point) — default-loaded by cave
+├── agents.ts            # Agent discovery logic (scans bundled + user + project)
+└── prompts/             # Workflow presets (prompt templates) — not yet bundled, see issue #59
     ├── implement.md     # scout -> planner -> worker
     ├── scout-and-plan.md    # scout -> planner (no implementation)
     └── implement-and-review.md  # worker -> reviewer -> worker
 ```
 
+Sample agents (`scout.md`, `planner.md`, `worker.md`) ship in `packages/coding-agent/agents/` alongside cave's other bundled agents (`critic`, `editor`, `explore`, etc.).
+
 ## Installation
 
-From the repository root, symlink the files:
+**None required.** The extension is bundled with cave and loaded on startup.
+
+If you want to override the bundled version with a local modification:
 
 ```bash
-# Symlink the extension (must be in a subdirectory with index.ts)
-mkdir -p ~/.pi/agent/extensions/subagent
-ln -sf "$(pwd)/packages/coding-agent/examples/extensions/subagent/index.ts" ~/.pi/agent/extensions/subagent/index.ts
-ln -sf "$(pwd)/packages/coding-agent/examples/extensions/subagent/agents.ts" ~/.pi/agent/extensions/subagent/agents.ts
+mkdir -p ~/.cave/extensions/subagent
+# Copy or symlink your modified index.ts / agents.ts into ~/.cave/extensions/subagent/
+# User-scope extensions register at the same tool name, overriding the bundled one.
+```
 
-# Symlink agents
-mkdir -p ~/.pi/agent/agents
-for f in packages/coding-agent/examples/extensions/subagent/agents/*.md; do
-  ln -sf "$(pwd)/$f" ~/.pi/agent/agents/$(basename "$f")
-done
+Project-local override:
 
-# Symlink workflow prompts
-mkdir -p ~/.pi/agent/prompts
-for f in packages/coding-agent/examples/extensions/subagent/prompts/*.md; do
-  ln -sf "$(pwd)/$f" ~/.pi/agent/prompts/$(basename "$f")
-done
+```bash
+mkdir -p .cave/extensions/subagent
+# Same shape — project-scope takes precedence over user-scope.
 ```
 
 ## Security Model

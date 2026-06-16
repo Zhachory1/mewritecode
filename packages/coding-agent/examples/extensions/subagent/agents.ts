@@ -4,7 +4,22 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 import { getAgentDir, parseFrontmatter } from "@juliusbrussee/caveman-code";
+
+/**
+ * Resolve the cave-bundled agents dir from inside this extension's own
+ * source location. The extension is shipped at
+ * `<cave-package>/examples/extensions/subagent/agents.ts`; the bundled
+ * agents live at `<cave-package>/agents/`. Walking up three levels gets us
+ * to the cave package root. We avoid taking a dependency on a getter exported
+ * from `@juliusbrussee/caveman-code` so the extension keeps loading cleanly
+ * against any published cave version that ships its agents at that path.
+ */
+function getBundledAgentsDir(): string {
+	const here = path.dirname(fileURLToPath(import.meta.url));
+	return path.resolve(here, "..", "..", "..", "agents");
+}
 
 export type AgentScope = "user" | "project" | "both";
 
@@ -14,7 +29,7 @@ export interface AgentConfig {
 	tools?: string[];
 	model?: string;
 	systemPrompt: string;
-	source: "user" | "project";
+	source: "user" | "project" | "bundled";
 	filePath: string;
 }
 
@@ -23,7 +38,7 @@ export interface AgentDiscoveryResult {
 	projectAgentsDir: string | null;
 }
 
-function loadAgentsFromDir(dir: string, source: "user" | "project"): AgentConfig[] {
+function loadAgentsFromDir(dir: string, source: "user" | "project" | "bundled"): AgentConfig[] {
 	const agents: AgentConfig[] = [];
 
 	if (!fs.existsSync(dir)) {
@@ -96,13 +111,20 @@ function findNearestProjectAgentsDir(cwd: string): string | null {
 
 export function discoverAgents(cwd: string, scope: AgentScope): AgentDiscoveryResult {
 	const userDir = path.join(getAgentDir(), "agents");
+	const bundledDir = getBundledAgentsDir();
 	const projectAgentsDir = findNearestProjectAgentsDir(cwd);
 
+	// Bundled agents (scout, planner, worker, etc.) shipped with cave are always
+	// available as a baseline; user-scope and project-scope override by name.
+	const bundledAgents = loadAgentsFromDir(bundledDir, "bundled");
 	const userAgents = scope === "project" ? [] : loadAgentsFromDir(userDir, "user");
 	const projectAgents = scope === "user" || !projectAgentsDir ? [] : loadAgentsFromDir(projectAgentsDir, "project");
 
 	const agentMap = new Map<string, AgentConfig>();
 
+	// Precedence (matches cave's bundled-agents pattern): bundled < user < project.
+	// Later writes override earlier on name collision.
+	for (const agent of bundledAgents) agentMap.set(agent.name, agent);
 	if (scope === "both") {
 		for (const agent of userAgents) agentMap.set(agent.name, agent);
 		for (const agent of projectAgents) agentMap.set(agent.name, agent);
