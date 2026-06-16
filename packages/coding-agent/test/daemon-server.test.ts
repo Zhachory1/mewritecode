@@ -13,7 +13,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SessionStore } from "../src/core/daemon/index.js";
 import {
 	CaveClient,
@@ -99,9 +99,16 @@ describe("WS9 daemon — REST routing", () => {
 		const s = await f.client.createSession({});
 		const msg = await f.client.send(s.id, { text: "hello" });
 		expect(msg.role).toBe("user");
-		// give the runner a moment to stream + persist the assistant reply
-		await new Promise((r) => setTimeout(r, 200));
-		const transcript = await f.client.getTranscript(s.id);
+		// Poll until the runner has streamed + persisted the assistant reply rather
+		// than sleeping a fixed window (which races on a loaded CI box).
+		const transcript = await vi.waitFor(
+			async () => {
+				const t = await f.client.getTranscript(s.id);
+				expect(t.messages.some((m) => m.role === "assistant")).toBe(true);
+				return t;
+			},
+			{ timeout: 5000, interval: 25 },
+		);
 		expect(transcript.messages.length).toBeGreaterThanOrEqual(1);
 		expect(transcript.messages[0].text).toBe("hello");
 	});
@@ -128,7 +135,15 @@ describe("WS9 daemon — SQLite round-trip survives restart", () => {
 			const c1 = new CaveClient({ host: h1.host, port: h1.port });
 			const s = await c1.createSession({ title: "persisted" });
 			await c1.send(s.id, { text: "hi" });
-			await new Promise((r) => setTimeout(r, 200));
+			// Wait for the assistant reply to be persisted before restarting, instead
+			// of a fixed sleep, so the round-trip assertion is deterministic.
+			await vi.waitFor(
+				async () => {
+					const t = await c1.getTranscript(s.id);
+					expect(t.messages.some((m) => m.role === "assistant")).toBe(true);
+				},
+				{ timeout: 5000, interval: 25 },
+			);
 			await h1.close();
 			store1.close();
 

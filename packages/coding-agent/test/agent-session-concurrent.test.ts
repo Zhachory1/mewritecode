@@ -15,7 +15,7 @@ import {
 	type TextContent,
 } from "@juliusbrussee/caveman-ai";
 import { Type } from "@sinclair/typebox";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AgentSession } from "../src/core/agent-session.js";
 import { AuthStorage } from "../src/core/auth-storage.js";
 import { ModelRegistry } from "../src/core/model-registry.js";
@@ -600,7 +600,22 @@ describe("AgentSession concurrent prompt guard", () => {
 
 		await session.prompt("hi");
 		await session.agent.waitForIdle();
-		await new Promise((resolve) => setTimeout(resolve, 100));
+
+		// The slow (40ms) extension handler defers persistence of the final
+		// message_end, so poll until all four message entries land instead of
+		// sleeping a fixed window. waitFor still asserts the exact ordering.
+		await vi.waitFor(
+			() => {
+				const entries = sessionManager.getEntries().filter((entry) => entry.type === "message");
+				expect(entries.map((entry) => entry.message.role)).toEqual([
+					"user",
+					"assistant",
+					"toolResult",
+					"assistant",
+				]);
+			},
+			{ timeout: 5000, interval: 25 },
+		);
 
 		const messageEntries = sessionManager.getEntries().filter((entry) => entry.type === "message");
 		expect(messageEntries.map((entry) => entry.message.role)).toEqual([
