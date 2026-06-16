@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Subagent extension's `discoverAgents` now scans `<cwd>/.cave/agents/` for project-scope agents (matches cave's canonical config dir). The pre-cave-rename `.pi/agents/` is honored as a fallback so projects mid-migration still resolve. When both exist, `.cave/` wins ([#62](https://github.com/JuliusBrussee/caveman-code/issues/62)).
+
 ### Added
 
 - Cross-platform agent discovery (#59 stage 2). Agents authored for Claude Code (`~/.claude/agents/*.md` and `<cwd>/.claude/agents/*.md`) can now be loaded into cave when opted in. **Default OFF** for privacy — reading from another tool's config dir is consent-bearing. Enable via the `CAVE_CROSS_PLATFORM_AGENTS=true` env var or by passing `crossPlatformDiscovery: true` to `loadAgentDefs`. V1 covers Claude Code only; Cursor / Codex / OpenCode deferred until their actual config dirs + frontmatter formats are verified ([#59](https://github.com/JuliusBrussee/caveman-code/issues/59)).

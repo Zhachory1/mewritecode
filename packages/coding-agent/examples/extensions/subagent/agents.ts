@@ -99,10 +99,15 @@ function isDirectory(p: string): boolean {
 }
 
 function findNearestProjectAgentsDir(cwd: string): string | null {
+	// #62: cave's project config dir is `.cave/`; the pre-rebrand `.pi/` is kept
+	// as a fallback so projects mid-migration still resolve. Cave-canonical wins
+	// at the same level of the tree.
 	let currentDir = cwd;
 	while (true) {
-		const candidate = path.join(currentDir, ".pi", "agents");
-		if (isDirectory(candidate)) return candidate;
+		const cave = path.join(currentDir, ".cave", "agents");
+		if (isDirectory(cave)) return cave;
+		const pi = path.join(currentDir, ".pi", "agents");
+		if (isDirectory(pi)) return pi;
 
 		const parentDir = path.dirname(currentDir);
 		if (parentDir === currentDir) return null;
