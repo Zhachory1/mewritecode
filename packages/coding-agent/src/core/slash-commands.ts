@@ -166,6 +166,11 @@ export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 		description: "Open the plugins surface (alias for /skills marketplace stage; placeholder for now).",
 		wired: true,
 	},
+	{
+		name: "queue",
+		description: "Show or clear pending /then-chained commands. Usage: /queue, /queue clear.",
+		wired: true,
+	},
 	{ name: "quit", description: "Quit pi", wired: true },
 ];
 

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Sequential command orchestration with `/then`: chain commands across turns, e.g. `/writing-plans /then /goal implement until tests are green`. The head runs in the current turn; tail entries dispatch after each turn settles. New `/queue` built-in lists or clears the pending chain; Escape pulls queued entries back into the editor. `/then` is only treated as a separator when followed by another `/command` token, so prose like "first do X then do Y" is untouched, and `/then` inside code fences/backticks is preserved verbatim ([#5](https://github.com/JuliusBrussee/caveman-code/issues/5)).
+
 ### Fixed
 
 - Added missing `@sinclair/typebox` runtime dependency. Fixes `ERR_MODULE_NOT_FOUND` on `caveman-code` startup when installed globally ([#6](https://github.com/JuliusBrussee/caveman-code/issues/6)).

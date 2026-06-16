@@ -64,6 +64,7 @@ import {
 } from "../../core/agent-session.js";
 import type { AgentSessionRuntime } from "../../core/agent-session-runtime.js";
 import { type ArchitectModeState, defaultArchitectState } from "../../core/chat-modes/architect.js";
+import { splitOnThen } from "../../core/command-queue.js";
 import { formatSavingsLine, formatSessionEndSummary } from "../../core/cost-formatter.js";
 import {
 	getAllTimeSavingsBytes,
@@ -277,6 +278,17 @@ export class InteractiveMode {
 	 * silently dropped.
 	 */
 	private pendingInputQueue: string[] = [];
+	/**
+	 * Sequential command orchestration (issue #5). A user can chain commands
+	 * across turns with `/then`:
+	 *
+	 *   /writing-plans /then /goal implement until tests are green
+	 *
+	 * The head fragment runs in the current turn; tail fragments live here and
+	 * are dispatched after the previous turn settles (agent_end), or immediately
+	 * after a synchronous slash command (which has no turn to wait on).
+	 */
+	private commandQueue: string[] = [];
 	/**
 	 * A prompt the user typed while keyless. Stashed by the {@link ensureUsableModel}
 	 * gate when it opens the login selector, and replayed by {@link onLoginSuccess}
@@ -2366,6 +2378,17 @@ export class InteractiveMode {
 			text = text.trim();
 			if (!text) return;
 
+			// Sequential command orchestration (issue #5): if the message chains
+			// commands with `/then`, run the head now and queue the tail for the
+			// next turn(s). splitOnThen returns [text] when no separator is present,
+			// so this is a no-op for plain messages.
+			const parts = splitOnThen(text);
+			if (parts.length > 1) {
+				this.commandQueue.push(...parts.slice(1));
+				text = parts[0];
+				this.updatePendingMessagesDisplay();
+			}
+
 			// Handle commands
 			if (text === "/settings") {
 				this.showSettingsSelector();
@@ -2598,6 +2621,12 @@ export class InteractiveMode {
 				this.handleApprovalSlashCommand(args);
 				return;
 			}
+			if (text === "/queue" || text.startsWith("/queue ")) {
+				const args = text.startsWith("/queue ") ? text.slice(7).trim() : "";
+				this.editor.setText("");
+				this.handleQueueSlashCommand(args);
+				return;
+			}
 
 			// Unknown built-in slash → show error rather than leaking to chat.
 			// Markdown commands, prompt templates, and extension commands are
@@ -2673,6 +2702,40 @@ export class InteractiveMode {
 			}
 			this.editor.addToHistory?.(text);
 		};
+
+		// Wrap onSubmit so that after every sync slash dispatch (which returns
+		// without starting a model turn) we get a chance to drain the next
+		// /then-queued entry. Model-turn dispatches drain on agent_end instead;
+		// the tryDrainCommandQueue guard skips when streaming is in flight.
+		//
+		// The drain is deferred via setImmediate so that for prompt-style heads
+		// (which signal the main loop via onInputCallback and return), the loop
+		// runs session.prompt() — flipping isStreaming on — BEFORE our drain
+		// check fires. Otherwise we'd race the main loop and dispatch the tail
+		// command before the head ever started its turn.
+		const rawSubmit = this.defaultEditor.onSubmit;
+		this.defaultEditor.onSubmit = async (text: string) => {
+			await rawSubmit?.(text);
+			setImmediate(() => this.tryDrainCommandQueue());
+		};
+	}
+
+	/**
+	 * If a /then chain has tail entries and we are between turns, dispatch the
+	 * next entry through the regular submit handler. Called from agent_end and
+	 * from synchronous-slash branches that finished without starting a turn.
+	 */
+	private tryDrainCommandQueue(): void {
+		if (this.commandQueue.length === 0) return;
+		if (this.session.isStreaming || this.session.isCompacting) return;
+		if (this.shutdownRequested) return;
+		const next = this.commandQueue.shift();
+		this.updatePendingMessagesDisplay();
+		if (next === undefined) return;
+		const submit = this.defaultEditor.onSubmit;
+		if (submit) {
+			void submit(next);
+		}
 	}
 
 	private subscribeToAgent(): void {
@@ -2955,6 +3018,10 @@ export class InteractiveMode {
 				this.updateSmokeSignal();
 				this.updateTribalSignal();
 				await this.checkPreemptiveCompaction();
+				// Sequential command orchestration (#5): dispatch the next /then-queued
+				// command, if any. The drain re-enters the submit handler, so the
+				// dispatched fragment runs through the regular dispatcher.
+				this.tryDrainCommandQueue();
 				this.ui.requestRender();
 				break;
 
@@ -3855,7 +3922,8 @@ export class InteractiveMode {
 	private updatePendingMessagesDisplay(): void {
 		this.pendingMessagesContainer.clear();
 		const { steering: steeringMessages, followUp: followUpMessages } = this.getAllQueuedMessages();
-		if (steeringMessages.length > 0 || followUpMessages.length > 0) {
+		const chainMessages = this.commandQueue;
+		if (steeringMessages.length > 0 || followUpMessages.length > 0 || chainMessages.length > 0) {
 			this.pendingMessagesContainer.addChild(new Spacer(1));
 			for (const message of steeringMessages) {
 				const text = theme.fg("dim", `Steering: ${message}`);
@@ -3863,6 +3931,10 @@ export class InteractiveMode {
 			}
 			for (const message of followUpMessages) {
 				const text = theme.fg("dim", `Follow-up: ${message}`);
+				this.pendingMessagesContainer.addChild(new TruncatedText(text, 1, 0));
+			}
+			for (const message of chainMessages) {
+				const text = theme.fg("dim", `Then: ${message}`);
 				this.pendingMessagesContainer.addChild(new TruncatedText(text, 1, 0));
 			}
 			const dequeueHint = this.getAppKeyDisplay("app.message.dequeue");
@@ -3873,7 +3945,11 @@ export class InteractiveMode {
 
 	private restoreQueuedMessagesToEditor(options?: { abort?: boolean; currentText?: string }): number {
 		const { steering, followUp } = this.clearAllQueues();
-		const allQueued = [...steering, ...followUp];
+		// Issue #5: also pull pending /then-queued commands back into the editor
+		// so the user can edit/reorder/resubmit them rather than losing them.
+		const chainQueued = this.commandQueue;
+		this.commandQueue = [];
+		const allQueued = [...steering, ...followUp, ...chainQueued];
 		if (allQueued.length === 0) {
 			this.updatePendingMessagesDisplay();
 			if (options?.abort) {
@@ -4984,6 +5060,31 @@ export class InteractiveMode {
 		this._refreshApprovalFooter();
 	}
 
+	/** Issue #5: show or clear the /then-chained command queue. */
+	private handleQueueSlashCommand(args: string): void {
+		const sub = args.trim();
+		if (sub === "clear") {
+			const count = this.commandQueue.length;
+			this.commandQueue = [];
+			this.updatePendingMessagesDisplay();
+			this.appendSlashOutput(
+				count === 0 ? "Queue already empty." : `Cleared ${count} queued command${count === 1 ? "" : "s"}.`,
+				false,
+			);
+			return;
+		}
+		if (sub === "" || sub === "list") {
+			if (this.commandQueue.length === 0) {
+				this.appendSlashOutput("Queue is empty. Chain commands with: /a /then /b.", false);
+				return;
+			}
+			const lines = this.commandQueue.map((cmd, idx) => `  ${idx + 1}. ${cmd}`);
+			this.appendSlashOutput(`${this.commandQueue.length} queued:\n${lines.join("\n")}`, false);
+			return;
+		}
+		this.appendSlashOutput(`Unknown /queue subcommand: ${sub}. Try /queue or /queue clear.`, true);
+	}
+
 	/** #14: surface approval mode as a footer extension status. */
 	private _refreshApprovalFooter(): void {
 		this.footerDataProvider.setExtensionStatus(
@@ -5590,6 +5691,12 @@ export class InteractiveMode {
 			this.loadingAnimation = undefined;
 		}
 		this.statusContainer.clear();
+		// Issue #5: a /clear is a reset; drop any /then-chained tail that
+		// was queued in the prior session so it doesn't carry over.
+		if (this.commandQueue.length > 0) {
+			this.commandQueue = [];
+			this.updatePendingMessagesDisplay();
+		}
 		try {
 			const result = await this.runtimeHost.newSession();
 			if (result.cancelled) {
