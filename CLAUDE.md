@@ -14,10 +14,16 @@ Minimal terminal coding agent + multi-provider LLM toolkit. TypeScript monorepo.
 | `packages/sdk` | — | `@juliusbrussee/caveman-sdk` — TS client for caveman-code daemon HTTP+WS API (openapi-generated) |
 | `packages/markdown-preview` | — | Markdown renderer used by TUI |
 
-**Out of scope for v2 (separate product surfaces, kept independent):**
-| `packages/web-ui` | — | Web components for AI chat |
-| `packages/mom` | `mom` | Slack bot → delegates to coding agent |
-| `packages/pods` | `cave-pods` | vLLM deployment on GPU pods |
+**Off-core (relocated to `contrib/`, unsupported — not in core install/build):**
+| `contrib/web-ui` | — | Web components for AI chat |
+| `contrib/mom` | `mom` | Slack bot → delegates to coding agent |
+| `contrib/pods` | `cave-pods` | vLLM deployment on GPU pods |
+
+These three were moved out of the core monorepo: they dilute the terminal
+coding-agent story and expand the threat model for zero core-adoption upside.
+They live in `contrib/`, are not part of the `packages/*` workspace glob, and
+are not built by `npm run build`. The published `caveman-code` package is
+unaffected.
 
 ## Key Commands
 

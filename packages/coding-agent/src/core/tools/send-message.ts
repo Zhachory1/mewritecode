@@ -3,7 +3,7 @@
  * observing background subagents.
  *
  * Wire-up: cave spawns a subagent with `background: true` via the `task` tool
- * and registers it in `subagent-registry.ts`. The parent later calls:
+ * and registers it in `background-task-registry.ts`. The parent later calls:
  *
  *   - `send_message({to, message})` — append a steering message to the child's
  *     inbox file and registry mailbox.
@@ -17,8 +17,8 @@ import { appendFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { Text } from "@juliusbrussee/caveman-tui";
 import { type Static, Type } from "@sinclair/typebox";
+import { getBackground, listBackground, postMessage } from "../background-task-registry.js";
 import type { ToolDefinition } from "../extensions/types.js";
-import { getBackground, listBackground, postMessage } from "../subagent-registry.js";
 
 // ─── send_message ────────────────────────────────────────────────────────
 

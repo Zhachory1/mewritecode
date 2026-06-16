@@ -14,19 +14,12 @@
 			"cave/hooks": ["./packages/coding-agent/src/core/hooks/index.ts"],
 			"cave/*": ["./packages/coding-agent/src/*"],
 			"@sinclair/typebox": ["./node_modules/@sinclair/typebox"],
-			"@juliusbrussee/caveman-mom": ["./packages/mom/src/index.ts"],
-			"@juliusbrussee/caveman-mom/*": ["./packages/mom/src/*"],
-			"@juliusbrussee/caveman-pods": ["./packages/pods/src/index.ts"],
-			"@juliusbrussee/caveman-pods/*": ["./packages/pods/src/*"],
 			"@juliusbrussee/caveman-tui": ["./packages/tui/src/index.ts"],
-			"@juliusbrussee/caveman-tui/*": ["./packages/tui/src/*"],
-			"@juliusbrussee/caveman-web-ui": ["./packages/web-ui/src/index.ts"],
-			"@juliusbrussee/caveman-web-ui/*": ["./packages/web-ui/src/*"]
+			"@juliusbrussee/caveman-tui/*": ["./packages/tui/src/*"]
 		}
 	},
 	"include": ["packages/*/src/**/*", "packages/*/test/**/*", "packages/coding-agent/examples/**/*"],
 	"exclude": [
-		"packages/web-ui/**/*",
 		"**/dist/**",
 		"packages/coding-agent/test/benchmarks/tasks/*/setup/**"
 	]

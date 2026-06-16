@@ -46,7 +46,7 @@
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/JuliusBrussee/caveman-cli.git",
-		"directory": "packages/mom"
+		"directory": "contrib/mom"
 	},
 	"engines": {
 		"node": ">=20.0.0"

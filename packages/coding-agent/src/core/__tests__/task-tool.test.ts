@@ -7,7 +7,7 @@ import { EventEmitter } from "node:events";
 import { PassThrough, Readable } from "node:stream";
 import { afterEach, describe, expect, it } from "vitest";
 import type { LoadAgentDefsResult } from "../agent-defs/loader.js";
-import { _resetRegistry, getBackground } from "../subagent-registry.js";
+import { _resetRegistry, getBackground } from "../background-task-registry.js";
 import { createTaskToolDefinition } from "../tools/task.js";
 
 function fakeChild(jsonLines: string[], exitCode = 0): any {
