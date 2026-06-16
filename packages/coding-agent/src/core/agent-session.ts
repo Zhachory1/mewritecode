@@ -113,6 +113,7 @@ import { type BashOperations, createLocalBashOperations } from "./tools/bash.js"
 import { createAllToolDefinitions } from "./tools/index.js";
 import { createMemorySaveToolDefinition, createMemorySearchToolDefinition } from "./tools/memory.js";
 import { createToolDefinitionFromAgentTool, wrapToolDefinition } from "./tools/tool-definition-wrapper.js";
+import { createTraceSink } from "./trace.js";
 
 // ============================================================================
 // Skill Block Parsing
@@ -346,6 +347,8 @@ export class AgentSession {
 
 	// Event subscription state
 	private _unsubscribeAgent?: () => void;
+	/** #19: unsubscribe handle for the opt-in CAVE_TRACE sink (undefined when off). */
+	private _unsubscribeTrace?: () => void;
 	private _eventListeners: AgentSessionEventListener[] = [];
 	private _agentEventQueue: Promise<void> = Promise.resolve();
 
@@ -524,6 +527,18 @@ export class AgentSession {
 		// Don't let an unhandled rejection crash the process before prompt()
 		// awaits it; the rejection still surfaces to whoever awaits whenReady.
 		this._initialRuntimeReady.catch(() => undefined);
+
+		// #19: opt-in CAVE_TRACE JSONL sink. Passive — just another subscriber on
+		// the public event stream, gated on the env var. Default OFF means no
+		// subscription and zero overhead. Never mutates events or throws into the
+		// loop (see createTraceSink). Captures the real stream regardless of entry
+		// point (interactive / print / rpc) because every prompt() flows through
+		// this same session instance.
+		this._unsubscribeTrace = createTraceSink({
+			envValue: process.env.CAVE_TRACE,
+			sessionId: this.sessionId,
+			subscribe: (listener) => this.subscribe(listener),
+		});
 	}
 
 	/**
@@ -1536,6 +1551,8 @@ export class AgentSession {
 	 */
 	dispose(): void {
 		this._disconnectFromAgent();
+		this._unsubscribeTrace?.();
+		this._unsubscribeTrace = undefined;
 		this._eventListeners = [];
 		// The /clear (and /new, /fork) path is dispose + recreate: AgentSessionRuntime
 		// .newSession() calls teardownCurrent() -> session.dispose() then builds a fresh
