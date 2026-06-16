@@ -34,6 +34,7 @@ import { handleRollbackCommand } from "./cli/rollback.js";
 import { handleRunRecipeCommand } from "./cli/run-recipe.js";
 import { handleServeCommand } from "./cli/serve.js";
 import { selectSession } from "./cli/session-picker.js";
+import { handleSubagentsCommand } from "./cli/subagents-cli.js";
 import { runSelfUpdate } from "./cli/update.js";
 import { handleWatchCommand } from "./cli/watch.js";
 import { handleWorkerCommand } from "./cli/worker.js";
@@ -535,6 +536,12 @@ export async function main(args: string[]) {
 
 	// #15: `caveman migrate --from claude` — one-step Claude Code config reuse.
 	if (await handleMigrateCommand(args)) {
+		return;
+	}
+
+	// #59 stage 3: `caveman subagents {list,install --from claude,install --to claude}` —
+	// explicit bidirectional install for the bundled subagent extension's agents.
+	if (await handleSubagentsCommand(args)) {
 		return;
 	}
 
