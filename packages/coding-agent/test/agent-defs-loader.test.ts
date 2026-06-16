@@ -133,7 +133,7 @@ describe("parseAgentDefFile", () => {
 });
 
 describe("parseAgentDefFile — tool-name validation (warnings)", () => {
-	it("warns on a case-mismatched tool, an unknown tool, and a bad disallowedTools name", () => {
+	it("aliases CC-cased known tools, warns on unknown tools, and reports bad disallowedTools names", () => {
 		const filePath = writeAgent(join(cwd, ".cave", "agents"), "badtools", {
 			name: "badtools",
 			description: "has bad tool names",
@@ -141,14 +141,28 @@ describe("parseAgentDefFile — tool-name validation (warnings)", () => {
 			disallowedTools: ["Bahs"],
 		});
 		const { def, diagnostics } = parseAgentDefFile(filePath, "project");
-		// Still parses — these are warnings, not fatal errors.
 		expect(def).not.toBeNull();
 		expect(diagnostics.every((d) => d.type === "warning")).toBe(true);
-		// did-you-mean for "Write" → "write"
-		expect(diagnostics.some((d) => d.message.includes('"Write"') && d.message.includes('"write"'))).toBe(true);
-		// unknown "bogus"
+
+		// #59 stage 2: "Write" is a known CC-cased alias — silently rewritten to
+		// "write" before validation. ONE consolidated alias-applied diagnostic fires
+		// (per persona, not per tool). The legacy did-you-mean warning for "Write"
+		// is now unreachable because the rewrite happens upstream of classification.
+		expect(
+			diagnostics.some(
+				(d) => d.message.includes("aliased to cave canonical") && d.message.includes("Write → write"),
+			),
+		).toBe(true);
+		expect(def?.tools, "Write was rewritten to canonical 'write'; bogus passed through unchanged").toEqual([
+			"write",
+			"bogus",
+		]);
+
+		// Unknown tool "bogus" still gets its warning — not in the alias map, not a
+		// known canonical name.
 		expect(diagnostics.some((d) => d.message.includes("unknown tool") && d.message.includes('"bogus"'))).toBe(true);
-		// disallowedTools "Bahs" won't block anything
+
+		// disallowedTools "Bahs" still won't block anything (not in alias map either).
 		expect(diagnostics.some((d) => d.message.includes('"Bahs"') && d.message.includes("won't block anything"))).toBe(
 			true,
 		);

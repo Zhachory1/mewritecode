@@ -46,9 +46,7 @@ describe("#60 bundled workflow prompts", () => {
 		const { prompts } = loader.getPrompts();
 		const names = prompts.map((p) => p.name).sort();
 
-		expect(names).toEqual(
-			expect.arrayContaining(["implement", "scout-and-plan", "implement-and-review"]),
-		);
+		expect(names).toEqual(expect.arrayContaining(["implement", "scout-and-plan", "implement-and-review"]));
 	});
 
 	it("user-scope prompt with the same name overrides the bundled version", async () => {

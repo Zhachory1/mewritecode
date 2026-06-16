@@ -3,6 +3,7 @@
  */
 
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { getAgentDir, parseFrontmatter } from "@juliusbrussee/caveman-code";
@@ -109,28 +110,53 @@ function findNearestProjectAgentsDir(cwd: string): string | null {
 	}
 }
 
+function findNearestProjectClaudeAgentsDir(cwd: string): string | null {
+	let currentDir = cwd;
+	while (true) {
+		const candidate = path.join(currentDir, ".claude", "agents");
+		if (isDirectory(candidate)) return candidate;
+
+		const parentDir = path.dirname(currentDir);
+		if (parentDir === currentDir) return null;
+		currentDir = parentDir;
+	}
+}
+
 export function discoverAgents(cwd: string, scope: AgentScope): AgentDiscoveryResult {
 	const userDir = path.join(getAgentDir(), "agents");
 	const bundledDir = getBundledAgentsDir();
 	const projectAgentsDir = findNearestProjectAgentsDir(cwd);
 
+	// #59 stage 2: cross-platform discovery (Claude Code only in V1). OFF by
+	// default; opt in via env var. Cave's canonical dirs are scanned BEFORE the
+	// CC alias dirs at the same scope, then last-write-wins inside the map keeps
+	// CC entries when there's no cave entry, or cave entries when both exist
+	// (since cave is later in the user-scope order below).
+	const crossPlatformEnabled = process.env.CAVE_CROSS_PLATFORM_AGENTS === "true";
+	const userClaudeDir = crossPlatformEnabled ? path.join(os.homedir(), ".claude", "agents") : null;
+	const projectClaudeDir = crossPlatformEnabled ? findNearestProjectClaudeAgentsDir(cwd) : null;
+
 	// Bundled agents (scout, planner, worker, etc.) shipped with cave are always
 	// available as a baseline; user-scope and project-scope override by name.
 	const bundledAgents = loadAgentsFromDir(bundledDir, "bundled");
 	const userAgents = scope === "project" ? [] : loadAgentsFromDir(userDir, "user");
+	const userClaudeAgents = scope === "project" || !userClaudeDir ? [] : loadAgentsFromDir(userClaudeDir, "user");
 	const projectAgents = scope === "user" || !projectAgentsDir ? [] : loadAgentsFromDir(projectAgentsDir, "project");
+	const projectClaudeAgents =
+		scope === "user" || !projectClaudeDir ? [] : loadAgentsFromDir(projectClaudeDir, "project");
 
 	const agentMap = new Map<string, AgentConfig>();
 
-	// Precedence (matches cave's bundled-agents pattern): bundled < user < project.
-	// Later writes override earlier on name collision.
+	// Precedence: bundled < user-CC < user-cave < project-CC < project-cave.
+	// Last write wins. Cave canonical dirs scanned AFTER CC at the same scope so
+	// a cave-native agent of the same name overrides its CC sibling.
 	for (const agent of bundledAgents) agentMap.set(agent.name, agent);
-	if (scope === "both") {
+	if (scope === "both" || scope === "user") {
+		for (const agent of userClaudeAgents) agentMap.set(agent.name, agent);
 		for (const agent of userAgents) agentMap.set(agent.name, agent);
-		for (const agent of projectAgents) agentMap.set(agent.name, agent);
-	} else if (scope === "user") {
-		for (const agent of userAgents) agentMap.set(agent.name, agent);
-	} else {
+	}
+	if (scope === "both" || scope === "project") {
+		for (const agent of projectClaudeAgents) agentMap.set(agent.name, agent);
 		for (const agent of projectAgents) agentMap.set(agent.name, agent);
 	}
 

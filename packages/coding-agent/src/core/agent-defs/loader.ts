@@ -19,6 +19,7 @@
 
 import { normalizeFrontmatterArray, type SubagentDef, validateSubagentDef } from "@juliusbrussee/caveman-agent";
 import { existsSync, readdirSync, readFileSync, statSync } from "fs";
+import { homedir } from "os";
 import { basename, join, resolve } from "path";
 import { CONFIG_DIR_NAME, getAgentDir, getPackageDir } from "../../config.js";
 import { parseFrontmatter } from "../../utils/frontmatter.js";
@@ -26,7 +27,7 @@ import { parseFrontmatter } from "../../utils/frontmatter.js";
 import type { ResourceDiagnostic } from "../diagnostics.js";
 import { createSyntheticSourceInfo, type SourceInfo } from "../source-info.js";
 import { VALID_TOOL_NAMES } from "../tools/tool-names.js";
-import { classifyToolName, effectiveTools, isIncompleteWriteSet } from "./tool-name-check.js";
+import { aliasCcToolNames, classifyToolName, effectiveTools, isIncompleteWriteSet } from "./tool-name-check.js";
 
 /** Loaded agent definition with source info. */
 export interface LoadedAgentDef {
@@ -49,6 +50,21 @@ export interface LoadAgentDefsOptions {
 	skipProject?: boolean;
 	/** Extra directories to scan (e.g. plugin-supplied). Loaded in order, after project. */
 	extraDirs?: string[];
+	/**
+	 * #59 stage 2: enable cross-platform agent discovery. When true, cave also
+	 * scans `~/.claude/agents/` (user scope) and `<cwd>/.claude/agents/` (project
+	 * scope) so personas authored for Claude Code are usable in cave without
+	 * manual install.
+	 *
+	 * **Default OFF**. Reading from another tool's config dir is a consent-bearing
+	 * action (some users may keep CC-only personas there for privacy reasons).
+	 * Enable via the `CAVE_CROSS_PLATFORM_AGENTS` env var or by passing
+	 * `crossPlatformDiscovery: true` from a caller that has user consent.
+	 *
+	 * V1 covers Claude Code only. Cursor / Codex / OpenCode are deferred until
+	 * those tools' actual config dirs + frontmatter formats are verified.
+	 */
+	crossPlatformDiscovery?: boolean;
 }
 
 export interface LoadAgentDefsResult {
@@ -104,8 +120,21 @@ export function parseAgentDefFile(
 	const name = (typeof frontmatter.name === "string" && frontmatter.name) || fileName;
 	const description = typeof frontmatter.description === "string" ? frontmatter.description : "";
 
-	const tools = normalizeFrontmatterArray(frontmatter.tools);
-	const disallowedTools = normalizeFrontmatterArray(frontmatter.disallowedTools);
+	const rawTools = normalizeFrontmatterArray(frontmatter.tools);
+	const rawDisallowedTools = normalizeFrontmatterArray(frontmatter.disallowedTools);
+
+	// #59 stage 2: alias Claude-Code-cased tool names (`Read`, `Bash`, ...) to
+	// cave's canonical lowercase names so personas authored for CC work in cave
+	// without manual edits. The raw frontmatter list is preserved in the file on
+	// disk; the canonical list is what cave dispatches against. See compat caveats
+	// in tool-name-check.ts CC_TOOL_ALIASES.
+	const toolsAlias = rawTools ? aliasCcToolNames(rawTools) : { canonical: undefined, aliasesApplied: [] };
+	const disallowedAlias = rawDisallowedTools
+		? aliasCcToolNames(rawDisallowedTools)
+		: { canonical: undefined, aliasesApplied: [] };
+	const tools = toolsAlias.canonical;
+	const disallowedTools = disallowedAlias.canonical;
+	const aliasesApplied = [...toolsAlias.aliasesApplied, ...disallowedAlias.aliasesApplied];
 	const mcpServers = normalizeFrontmatterArray(frontmatter.mcpServers);
 	const requiredMcpServers = normalizeFrontmatterArray(frontmatter.requiredMcpServers);
 	const skills = normalizeFrontmatterArray(frontmatter.skills);
@@ -159,6 +188,17 @@ export function parseAgentDefFile(
 			errors.some((e) => e.startsWith("description is required")) ||
 			errors.some((e) => e.startsWith("prompt body is required"));
 		if (fatal) return { def: null, diagnostics };
+	}
+
+	// #59 stage 2: emit ONE consolidated compatibility diagnostic per persona
+	// when alias rewrites fire. The diagnostic is informational — the rewrite
+	// already happened above; this is so the user can verify behavior.
+	if (aliasesApplied.length > 0) {
+		diagnostics.push({
+			type: "warning",
+			path: filePath,
+			message: `agent "${def.name}": Claude-Code-cased tool names aliased to cave canonical: ${aliasesApplied.join("; ")}. Output format and parameters may differ slightly from CC — see CC_TOOL_ALIASES in tool-name-check.ts for per-tool caveats.`,
+		});
 	}
 
 	// Validate tool / disallowedTools allow-list names — warn (never error) so a
@@ -279,14 +319,25 @@ export function loadAgentDefs(options: LoadAgentDefsOptions = {}): LoadAgentDefs
 		merge(scanDir(bundledDir, "builtin"));
 	}
 
-	// 2. User scope — ~/.cave/agents/ (CC-compatible alias: ~/.claude/agents/)
+	// Cross-platform agent discovery (#59 stage 2). OFF by default; opt in via
+	// option or env var. Cave's canonical dirs scanned FIRST at each scope so a
+	// matching cave agent wins over a CC alias on name collision.
+	const crossPlatformEnabled = options.crossPlatformDiscovery ?? process.env.CAVE_CROSS_PLATFORM_AGENTS === "true";
+
+	// 2. User scope — ~/.cave/agent/agents/ (canonical) then ~/.claude/agents/ if enabled.
 	if (!options.skipUser) {
 		merge(scanDir(join(userBase, "agents"), "user"));
+		if (crossPlatformEnabled) {
+			merge(scanDir(join(homedir(), ".claude", "agents"), "user"));
+		}
 	}
 
-	// 3. Project scope — <cwd>/.cave/agents/
+	// 3. Project scope — <cwd>/.cave/agents/ (canonical) then <cwd>/.claude/agents/ if enabled.
 	if (!options.skipProject) {
 		merge(scanDir(join(cwd, CONFIG_DIR_NAME, "agents"), "project"));
+		if (crossPlatformEnabled) {
+			merge(scanDir(join(cwd, ".claude", "agents"), "project"));
+		}
 	}
 
 	// 4. Plugin / extra dirs
