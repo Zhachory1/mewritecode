@@ -4,7 +4,7 @@
  * Exposes /tui to show TUI redraw stats.
  */
 
-import type { ExtensionAPI } from "@juliusbrussee/caveman-code";
+import type { ExtensionAPI } from "cave";
 import { Text } from "@juliusbrussee/caveman-tui";
 
 export default function (pi: ExtensionAPI) {

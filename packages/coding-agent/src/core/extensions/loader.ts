@@ -47,6 +47,9 @@ const VIRTUAL_MODULES: Record<string, unknown> = {
 	"@juliusbrussee/caveman-ai": _bundledPiAi,
 	"@juliusbrussee/caveman-ai/oauth": _bundledPiAiOauth,
 	cave: _bundledPiCodingAgent,
+	// Extensions import from the published package name; alias it to the same
+	// coding-agent index that `cave` resolves to.
+	"@juliusbrussee/caveman-code": _bundledPiCodingAgent,
 };
 
 const require = createRequire(import.meta.url);
@@ -85,6 +88,9 @@ function getAliases(): Record<string, string> {
 		),
 		"@sinclair/typebox": typeboxRoot,
 	};
+	// Extensions import the published package name; resolve it to the same
+	// coding-agent index that `cave` points at.
+	_aliases["@juliusbrussee/caveman-code"] = packageIndex;
 
 	return _aliases;
 }

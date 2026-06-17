@@ -5,8 +5,8 @@
  * coalesced by path and sorted newest first. Selecting a file opens it in VS Code.
  */
 
-import type { ExtensionAPI } from "@juliusbrussee/caveman-code";
-import { DynamicBorder } from "@juliusbrussee/caveman-code";
+import type { ExtensionAPI } from "cave";
+import { DynamicBorder } from "cave";
 import { Container, Key, matchesKey, type SelectItem, SelectList, Text } from "@juliusbrussee/caveman-tui";
 
 interface FileEntry {
