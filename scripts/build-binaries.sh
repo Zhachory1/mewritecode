@@ -167,7 +167,16 @@ echo "==> Extracting archives for testing..."
 for platform in "${PLATFORMS[@]}"; do
     rm -rf $platform
     if [[ "$platform" == "windows-x64" ]]; then
-        mkdir -p $platform && (cd $platform && unzip -q ../cave-$platform.zip)
+        mkdir -p "$platform"
+        if command -v powershell.exe >/dev/null 2>&1; then
+            powershell.exe -NoProfile -Command "Expand-Archive -Path cave-$platform.zip -DestinationPath $platform -Force"
+        elif command -v powershell >/dev/null 2>&1; then
+            powershell -NoProfile -Command "Expand-Archive -Path cave-$platform.zip -DestinationPath $platform -Force"
+        elif command -v pwsh >/dev/null 2>&1; then
+            pwsh -NoProfile -Command "Expand-Archive -Path cave-$platform.zip -DestinationPath $platform -Force"
+        else
+            (cd "$platform" && unzip -q "../cave-$platform.zip")
+        fi
     else
         tar -xzf cave-$platform.tar.gz && mv cave $platform
     fi
