@@ -32,11 +32,14 @@ const WORDMARK: readonly string[] = [
 	"          ░                 ░",
 ];
 
+const WORDMARK_PRIMARY_ROWS = 5;
+
 export class BannerComponent extends Container {
 	constructor(options: BannerOptions) {
 		super();
-		for (const row of WORDMARK) {
-			this.addChild(new Text(theme.fg("accent", row), 1, 0));
+		for (const [index, row] of WORDMARK.entries()) {
+			const color = index < WORDMARK_PRIMARY_ROWS ? "accent" : "mdHeading";
+			this.addChild(new Text(row ? theme.fg(color, row) : row, 1, 0));
 		}
 		const info = composeInfoLine(options);
 		if (info) {
