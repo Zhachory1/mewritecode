@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Caveman Code tarball installer — used by the Homebrew formula and CI
+# Cave installer — used by the Homebrew formula and CI
 # smoke tests. End users should install via npm:
 #
 #   npm install -g @juliusbrussee/caveman-code
