@@ -1,7 +1,7 @@
 # PRD: Fix First-Run Activation (no more keyless dead-end)
 
 - Status: draft
-- Author: Zhach Volker
+- Author: Zhachory Volker
 - Date: 2026-06-12
 - Closes: #10 (and the `/login <provider>` slice of #11)
 - Surface: `packages/coding-agent` interactive mode, onboarding wizard, print mode

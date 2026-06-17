@@ -1,7 +1,7 @@
 # Design Doc: Live Token-Savings Meter
 
 - Status: draft (pre-review)
-- Author: Zhach Volker
+- Author: Zhachory Volker
 - Date: 2026-06-12
 - Implements: [PRD.md](./PRD.md) — **§9 (authoritative)**. Closes #12.
 

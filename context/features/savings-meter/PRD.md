@@ -1,7 +1,7 @@
 # PRD: Live Token-Savings Meter
 
 - Status: draft
-- Author: Zhach Volker
+- Author: Zhachory Volker
 - Date: 2026-06-12
 - Closes: #12
 - Surface: `packages/coding-agent` (session savings tracker, `/savings`, statusline, session-end), `packages/tui` (StatusLine segment)

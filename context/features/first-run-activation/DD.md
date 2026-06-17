@@ -1,7 +1,7 @@
 # Design Doc: Fix First-Run Activation
 
 - Status: draft (pre-review)
-- Author: Zhach Volker
+- Author: Zhachory Volker
 - Date: 2026-06-12
 - Implements: [PRD.md](./PRD.md) (closes #10 + `/login <provider>` slice of #11)
 

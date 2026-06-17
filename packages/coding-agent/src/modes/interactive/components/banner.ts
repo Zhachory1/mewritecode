@@ -13,13 +13,12 @@ export interface BannerOptions {
 	sprite?: BannerSprite;
 }
 
-// "Rokt Cave" rendered via figlet `small` font. Pure ASCII so it renders in
-// every terminal without needing a non-UTF-8 fallback.
 const WORDMARK: readonly string[] = [
-	" ___     _   _      ___              ",
-	"| _ \\___| |_| |_   / __|__ ___ _____ ",
-	"|   / _ \\ / /  _| | (__/ _` \\ V / -_)",
-	"|_|_\\___/_\\_\\\\__|  \\___\\__,_|\\_/\\___|",
+	" __  __        __        __     _ _        ____          _      ",
+	"|  \\/  | ___   \\ \\      / / __ (_) |_ ___ / ___|___   __| | ___ ",
+	"| |\\/| |/ _ \\   \\ \\ /\\ / / '__|| | __/ _ \\ |   / _ \\ / _` |/ _ \\",
+	"| |  | |  __/    \\ V  V /| |   | | ||  __/ |__| (_) | (_| |  __/",
+	"|_|  |_|\\___|     \\_/\\_/ |_|   |_|\\__\\___|\\____\\___/ \\__,_|\\___|",
 ];
 
 export class BannerComponent extends Container {

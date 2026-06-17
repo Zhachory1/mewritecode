@@ -1,7 +1,7 @@
 # Design Doc: Session Activity Monitor
 
 - Status: reviewed → revised (v2 scope below supersedes conflicting earlier sections)
-- Author: Zhach Volker
+- Author: Zhachory Volker
 - Date: 2026-06-12
 - Implements: [PRD.md](./PRD.md)
 

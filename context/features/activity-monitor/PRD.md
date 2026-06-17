@@ -1,7 +1,7 @@
 # PRD: Session Activity Monitor
 
 - Status: draft
-- Author: Zhach Volker
+- Author: Zhachory Volker
 - Date: 2026-06-12
 - Surface: `packages/coding-agent` (interactive TUI) + `packages/agent` (runtime events) + `packages/tui` (overlay)
 
