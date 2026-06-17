@@ -32,6 +32,8 @@ class Cave < Formula
     libexec.install Dir["*"]
     bin.write_exec_script libexec/"cave"
     bin.install_symlink bin/"cave" => "caveman"
+    bin.install_symlink bin/"cave" => "mewrite"
+    bin.install_symlink bin/"cave" => "mewritecode"
   end
 
   test do
