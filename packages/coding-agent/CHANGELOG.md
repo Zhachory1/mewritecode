@@ -8,6 +8,7 @@
 
 ### Added
 
+- `/btw <question>` slash command and `AgentSession.askSidecar(question)` API for asking quick side questions without interrupting the running turn ([#61](https://github.com/JuliusBrussee/caveman-code/issues/61)). The handler fires a one-shot completion against the current conversation (no tools, no `transformContext` chain) and renders the answer dimmed inline in the chat scroll. The side query does NOT mutate `agent.state.messages`, so it does not contaminate the agent's working memory — even if you ask `/btw` during a running tool call, the in-flight turn finishes against the same context it started with. V1 limitations: no model override, no automatic context-isolation for the next turn (the user can reference the `/btw` exchange in subsequent prompts if they want).
 - `caveman subagents` CLI (#59 stage 3) for explicit bidirectional install:
   - `caveman subagents list` — print discovered agents (cave + bundled + cross-platform paths).
   - `caveman subagents install --from claude [--dry-run]` — copy `~/.claude/agents/*.md` into `~/.cave/agent/agents/`.

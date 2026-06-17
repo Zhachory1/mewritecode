@@ -2627,6 +2627,16 @@ export class InteractiveMode {
 				this.handleQueueSlashCommand(args);
 				return;
 			}
+			// /btw <question> — side-question (#61). Dispatched BEFORE the
+			// isStreaming guard so it works mid-turn without disturbing the running
+			// agent. The handler fires its own completion against the current
+			// conversation and renders the answer dimmed in the chat scroll.
+			if (text === "/btw" || text.startsWith("/btw ")) {
+				const question = text.startsWith("/btw ") ? text.slice(5).trim() : "";
+				this.editor.setText("");
+				void this.handleBtwSlashCommand(question);
+				return;
+			}
 
 			// Unknown built-in slash → show error rather than leaking to chat.
 			// Markdown commands, prompt templates, and extension commands are
@@ -5081,6 +5091,38 @@ export class InteractiveMode {
 			return;
 		}
 		this.appendSlashOutput(`Unknown /queue subcommand: ${sub}. Try /queue or /queue clear.`, true);
+	}
+
+	/**
+	 * /btw <question> — fire a one-shot side completion against the session's
+	 * current context (#61). Does not interrupt the running turn; the answer is
+	 * rendered dimmed inline. V1: no model override, no cancellation polish, no
+	 * automatic context-isolation for the next turn.
+	 */
+	private async handleBtwSlashCommand(question: string): Promise<void> {
+		const q = question.trim();
+		if (!q) {
+			this.showError("/btw needs a question. Usage: /btw <question>.");
+			return;
+		}
+
+		// Render the question immediately as a dimmed inline marker so the user
+		// sees their input land in the scroll while the side completion is
+		// in-flight. The answer appears below it when ready.
+		this.chatContainer.addChild(new Spacer(1));
+		this.chatContainer.addChild(new Text(theme.fg("dim", `↪ btw: ${q}`), 1, 0));
+		const pending = new Text(theme.fg("dim", "↪ btw: (thinking…)"), 1, 0);
+		this.chatContainer.addChild(pending);
+		this.ui.requestRender();
+
+		try {
+			const answer = await this.session.askSidecar(q);
+			pending.setText(theme.fg("dim", `↪ btw: ${answer || "(empty response)"}`));
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : String(err);
+			pending.setText(theme.fg("warning", `↪ btw: error — ${msg}`));
+		}
+		this.ui.requestRender();
 	}
 
 	/** #14: surface approval mode as a footer extension status. */

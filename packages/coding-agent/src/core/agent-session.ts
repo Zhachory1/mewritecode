@@ -34,6 +34,7 @@ type MemoryProviderInstance = memoryNs.MemoryProvider;
 
 import type { AssistantMessage, ImageContent, Message, Model, TextContent } from "@juliusbrussee/caveman-ai";
 import {
+	completeSimple,
 	ENV_VAR_BY_PROVIDER,
 	isContextOverflow,
 	modelsAreEqual,
@@ -92,6 +93,7 @@ import type { HooksConfig } from "./hooks/events.js";
 import { createHooksExtension, HooksManager } from "./hooks/index.js";
 import { resolveMemoryProvider } from "./memory-factory.js";
 import type { BashExecutionMessage, CustomMessage } from "./messages.js";
+import { convertToLlm } from "./messages.js";
 import type { ModelRegistry } from "./model-registry.js";
 import { expandInlineCommands, expandPromptTemplate, type PromptTemplate } from "./prompt-templates.js";
 import type { ResourceExtensionPaths, ResourceLoader } from "./resource-loader.js";
@@ -1804,6 +1806,67 @@ export class AgentSession {
 		await this.agent.prompt(messages);
 		promptTimingMark("session.prompt:agent.prompt:end");
 		await this.waitForRetry();
+	}
+
+	/**
+	 * Ask a quick side question against the current conversation context (#61).
+	 *
+	 * Fires a SEPARATE one-shot LLM completion (no tools, no transformContext
+	 * chain) that does NOT mutate `agent.state.messages`. The caller renders the
+	 * answer however they like (interactive mode dims it inline). Safe to call
+	 * while a regular `prompt()` turn is mid-flight — the running turn is
+	 * unaffected.
+	 *
+	 * Returns the assistant's text answer, or throws if no model is selected,
+	 * no API key is available, or the completion errors.
+	 *
+	 * V1 limitations (see issue #61):
+	 *   - No model override (always uses the session's current model).
+	 *   - The answer is NOT automatically excluded from the agent's working
+	 *     memory — the caller decides what to do with it.
+	 *   - No cancellation polish beyond the optional AbortSignal parameter.
+	 */
+	async askSidecar(question: string, signal?: AbortSignal): Promise<string> {
+		const question_ = question.trim();
+		if (!question_) {
+			throw new Error("askSidecar: empty question");
+		}
+		const model = this.model;
+		if (!model) {
+			throw new Error("askSidecar: no model selected for this session");
+		}
+		const auth = await this._getRequiredRequestAuth(model);
+
+		// Build context: current conversation prefix + the new user question.
+		// We DO NOT mutate agent.state.messages; this is a side query.
+		const priorMessages: Message[] = convertToLlm(this.agent.state.messages);
+		const sidecarMessages: Message[] = [
+			...priorMessages,
+			{
+				role: "user",
+				content: [{ type: "text", text: question_ }],
+				timestamp: Date.now(),
+			} as Message,
+		];
+
+		const result = await completeSimple(
+			model,
+			{ messages: sidecarMessages },
+			{
+				apiKey: auth.apiKey,
+				headers: auth.headers,
+				signal,
+			},
+		);
+
+		// Extract the assistant's text. Image / tool-call blocks shouldn't appear
+		// in a simple completion, but be defensive: filter to text-only.
+		const text = (result.content ?? [])
+			.filter((block): block is TextContent => block.type === "text")
+			.map((block) => block.text)
+			.join("\n\n")
+			.trim();
+		return text;
 	}
 
 	/**
