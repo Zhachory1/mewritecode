@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Retuned the built-in themes and two-tone startup wordmark around the Campfire Syntax palette.
 - Refreshed the built-in dark and light themes and startup wordmark with a more playful Me Write Code visual treatment, and added `mewrite`/`mewritecode` CLI aliases ([#1](https://github.com/Zhachory1/mewritecode/issues/1)).
 
 ### Fixed
