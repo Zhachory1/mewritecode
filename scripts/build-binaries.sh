@@ -143,7 +143,18 @@ for platform in "${PLATFORMS[@]}"; do
     if [[ "$platform" == "windows-x64" ]]; then
         # Windows (zip)
         echo "Creating cave-$platform.zip..."
-        (cd $platform && zip -r ../cave-$platform.zip .)
+        if command -v zip >/dev/null 2>&1; then
+            (cd "$platform" && zip -r "../cave-$platform.zip" .)
+        elif command -v powershell.exe >/dev/null 2>&1; then
+            (cd "$platform" && powershell.exe -NoProfile -Command "Compress-Archive -Path * -DestinationPath ../cave-$platform.zip -Force")
+        elif command -v powershell >/dev/null 2>&1; then
+            (cd "$platform" && powershell -NoProfile -Command "Compress-Archive -Path * -DestinationPath ../cave-$platform.zip -Force")
+        elif command -v pwsh >/dev/null 2>&1; then
+            (cd "$platform" && pwsh -NoProfile -Command "Compress-Archive -Path * -DestinationPath ../cave-$platform.zip -Force")
+        else
+            echo "zip or PowerShell is required to create cave-$platform.zip"
+            exit 1
+        fi
     else
         # Unix platforms (tar.gz) - use wrapper directory for mise compatibility
         echo "Creating cave-$platform.tar.gz..."
