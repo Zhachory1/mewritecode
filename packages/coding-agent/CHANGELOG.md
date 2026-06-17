@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Refreshed the built-in dark and light themes and startup wordmark with a more playful Me Write Code visual treatment, and added `mewrite`/`mewritecode` CLI aliases ([#1](https://github.com/Zhachory1/mewritecode/issues/1)).
+
 ### Fixed
 
 - Added missing `@sinclair/typebox` runtime dependency. Fixes `ERR_MODULE_NOT_FOUND` on `caveman-code` startup when installed globally ([#6](https://github.com/JuliusBrussee/caveman-code/issues/6)).
