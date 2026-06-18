@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Caveman Code tarball installer — used by the Homebrew formula and CI
+# Cave installer — used by the Homebrew formula and CI
 # smoke tests. End users should install via npm:
 #
 #   npm install -g @juliusbrussee/caveman-code
@@ -196,7 +196,7 @@ log_step "prefix        : ${CAVE_PREFIX}"
 log_step "tarball       : ${URL}"
 log_step "checksum file : ${SUMS_URL}"
 log_step "install dir   : ${VER_DIR}"
-log_step "shim          : ${BIN_DIR}/cave (alias: ${BIN_DIR}/caveman)"
+log_step "shim          : ${BIN_DIR}/cave (aliases: ${BIN_DIR}/caveman, ${BIN_DIR}/mewrite, ${BIN_DIR}/mewritecode)"
 log_step "modify PATH   : $([ "$NO_MODIFY_PATH" = 1 ] && echo no || echo yes)"
 log_step "checksum tool : ${SHA_TOOL:-(none — verification will be skipped)}"
 
@@ -210,7 +210,7 @@ fi
 # Idempotency: short-circuit if VER_DIR already has the binary
 # ---------------------------------------------------------------------------
 
-if [ -x "${VER_DIR}/cave" ] && [ -L "${BIN_DIR}/cave" ] && [ -L "${BIN_DIR}/caveman" ]; then
+if [ -x "${VER_DIR}/cave" ] && [ -L "${BIN_DIR}/cave" ] && [ -L "${BIN_DIR}/caveman" ] && [ -L "${BIN_DIR}/mewrite" ] && [ -L "${BIN_DIR}/mewritecode" ]; then
     EXISTING="$("${VER_DIR}/cave" --version 2>/dev/null || true)"
     if [ -n "$EXISTING" ]; then
         info "cave ${CAVE_VERSION} already installed at ${VER_DIR}"
@@ -266,6 +266,8 @@ chmod +x "${VER_DIR}/cave"
 
 ln -sfn "${VER_DIR}/cave" "${BIN_DIR}/cave"
 ln -sfn "${VER_DIR}/cave" "${BIN_DIR}/caveman"
+ln -sfn "${VER_DIR}/cave" "${BIN_DIR}/mewrite"
+ln -sfn "${VER_DIR}/cave" "${BIN_DIR}/mewritecode"
 
 # Prune older versions, keep most recent KEEP_VERSIONS (the one we just wrote
 # stays via mtime).

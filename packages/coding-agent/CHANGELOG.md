@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Retuned the built-in themes and two-tone startup wordmark around the Campfire Syntax palette.
+- Refreshed the built-in dark and light themes and startup wordmark with a more playful Me Write Code visual treatment, and added `mewrite`/`mewritecode` CLI aliases ([#1](https://github.com/Zhachory1/mewritecode/issues/1)).
+
 ### Fixed
 
 - Subagent extension's `discoverAgents` now scans `<cwd>/.cave/agents/` for project-scope agents (matches cave's canonical config dir). The pre-cave-rename `.pi/agents/` is honored as a fallback so projects mid-migration still resolve. When both exist, `.cave/` wins ([#62](https://github.com/JuliusBrussee/caveman-code/issues/62)).

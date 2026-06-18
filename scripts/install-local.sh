@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # install-local.sh — build caveman-code from source and link it as global
-# `caveman` / `caveman-code` commands.
+# `caveman` / `caveman-code` / `mewrite` / `mewritecode` commands.
 #
 # Usage (from a checkout of this repo):
 #   ./scripts/install-local.sh
@@ -23,19 +23,19 @@ npm install
 echo "==> npm run build"
 npm run build
 
-echo "==> npm link (registers 'caveman' and 'caveman-code' globally)"
+echo "==> npm link (registers 'caveman', 'caveman-code', 'mewrite', and 'mewritecode' globally)"
 cd packages/coding-agent
 npm link
 
 echo
-bin="$(command -v caveman || true)"
+bin="$(command -v mewrite || command -v caveman || true)"
 if [ -n "$bin" ]; then
-	echo "Done. caveman -> $bin"
-	caveman --version
+	echo "Done. mewrite/caveman -> $bin"
+	mewrite --version
 	echo "Linked to this checkout: $repo_root"
-	echo "If 'caveman' is not found in new shells, ensure the npm global bin dir is on your PATH:"
+	echo "If 'mewrite' is not found in new shells, ensure the npm global bin dir is on your PATH:"
 	echo "  export PATH=\"\$(npm bin -g):\$PATH\""
 else
-	echo "Linked, but 'caveman' is not on PATH. Add the npm global bin dir to PATH:"
+	echo "Linked, but 'mewrite' is not on PATH. Add the npm global bin dir to PATH:"
 	echo "  export PATH=\"\$(npm bin -g):\$PATH\""
 fi
