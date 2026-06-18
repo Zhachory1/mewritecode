@@ -7,9 +7,9 @@
  * 3. Loads the result into the editor for user to fill in answers
  */
 
-import { complete, type UserMessage } from "@juliusbrussee/caveman-ai";
-import type { ExtensionAPI } from "@juliusbrussee/caveman-code";
-import { BorderedLoader } from "@juliusbrussee/caveman-code";
+import { complete, type UserMessage } from "@zhachory1/mewrite-ai";
+import type { ExtensionAPI } from "@zhachory1/mewrite-code";
+import { BorderedLoader } from "@zhachory1/mewrite-code";
 
 const SYSTEM_PROMPT = `You are a question extractor. Given text from a conversation, extract any questions that need answering and format them for the user to fill in.
 

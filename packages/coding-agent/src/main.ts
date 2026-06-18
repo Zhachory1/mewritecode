@@ -7,14 +7,8 @@
 
 import { resolve } from "node:path";
 import { createInterface } from "node:readline";
-import { type ImageContent, modelsAreEqual, supportsXhigh } from "@juliusbrussee/caveman-ai";
-import {
-	detectTerminalIdentity,
-	ProcessTerminal,
-	probeTerminal,
-	setKeybindings,
-	TUI,
-} from "@juliusbrussee/caveman-tui";
+import { type ImageContent, modelsAreEqual, supportsXhigh } from "@zhachory1/mewrite-ai";
+import { detectTerminalIdentity, ProcessTerminal, probeTerminal, setKeybindings, TUI } from "@zhachory1/mewrite-tui";
 import chalk from "chalk";
 import { type Args, type Mode, parseArgs, printHelp } from "./cli/args.js";
 import { handleAttachCommand } from "./cli/attach.js";
@@ -532,17 +526,17 @@ export async function main(args: string[]) {
 		return;
 	}
 
-	// WS2: `caveman mcp <subcmd>` and `caveman mcp-server`
+	// WS2: `mewrite mcp <subcmd>` and `mewrite mcp-server`
 	if (await handleMcpCommand(args)) {
 		return;
 	}
 
 	// WS9: daemon + multi-client attach.
-	//   caveman serve [--port N]      — boot the daemon
-	//   caveman sessions (alias `ps`) — list daemon sessions (`cave list` is
+	//   mewrite serve [--port N]      — boot the daemon
+	//   mewrite sessions (alias `ps`) — list daemon sessions (`cave list` is
 	//                                already used by the extensions package
 	//                                manager; `sessions` is the WS9 canonical)
-	//   caveman attach <id>           — attach to a session over WS
+	//   mewrite attach <id>           — attach to a session over WS
 	//   cave worker {register,...} — manage remote-worker registry for &-prefix handoff
 	if (await handleServeCommand(args)) {
 		return;
@@ -567,7 +561,7 @@ export async function main(args: string[]) {
 		return;
 	}
 
-	// `caveman goal …` — autonomous Ralph-style goal loop driver.
+	// `mewrite goal …` — autonomous Ralph-style goal loop driver.
 	if (await handleGoalCommand(args)) {
 		return;
 	}
@@ -577,7 +571,7 @@ export async function main(args: string[]) {
 		return;
 	}
 
-	// WS14: caveman run-recipe — Goose-style YAML recipe runner.
+	// WS14: mewrite run-recipe — Goose-style YAML recipe runner.
 	if (await handleRunRecipeCommand(args)) {
 		return;
 	}
@@ -587,7 +581,7 @@ export async function main(args: string[]) {
 		return;
 	}
 
-	// WS15: caveman models — provider/model registry (update, list, inspect).
+	// WS15: mewrite models — provider/model registry (update, list, inspect).
 	const modelsExitCode = await handleModelsCommand(args);
 	if (modelsExitCode !== -1) {
 		process.exit(modelsExitCode);
@@ -878,7 +872,7 @@ export async function main(args: string[]) {
 		console.error("  ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, etc.");
 		console.error(chalk.yellow(`\nOr create ${getModelsPath()}`));
 		console.error(chalk.yellow("\nOr log in with OAuth (no API key needed):"));
-		console.error("  caveman login            (or `caveman login --device-auth` over SSH)");
+		console.error("  mewrite login            (or `mewrite login --device-auth` over SSH)");
 		process.exit(1);
 	}
 
@@ -891,7 +885,7 @@ export async function main(args: string[]) {
 		console.error("  ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, etc.");
 		console.error(chalk.yellow("\nOr log in with OAuth (no API key needed):"));
 		console.error(
-			`  caveman login --provider ${session.model.provider}   (or \`caveman login --device-auth\` over SSH)`,
+			`  mewrite login --provider ${session.model.provider}   (or \`mewrite login --device-auth\` over SSH)`,
 		);
 		process.exit(1);
 	}

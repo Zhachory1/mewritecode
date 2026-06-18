@@ -1,6 +1,6 @@
 # Packages
 
-TypeScript monorepo under the `@juliusbrussee/caveman-*` scope on npm.
+TypeScript monorepo under the `@zhachory1/mewrite-*` scope on npm.
 
 ## Package Map
 
@@ -8,18 +8,18 @@ TypeScript monorepo under the `@juliusbrussee/caveman-*` scope on npm.
 
 | Dir | Package | Binary | Role |
 |-----|---------|--------|------|
-| `coding-agent/` | `@juliusbrussee/caveman-code` | `caveman` / `caveman-code` | Main coding agent CLI |
-| `ai/` | `@juliusbrussee/caveman-ai` | `pi-ai` | Multi-provider LLM unified API |
-| `agent/` | `@juliusbrussee/caveman-agent` | — | Agent runtime: tool calling, state |
-| `tui/` | `@juliusbrussee/caveman-tui` | — | Terminal UI: differential rendering |
+| `coding-agent/` | `@zhachory1/mewrite-code` | `mewrite` / `mewritecode` | Main coding agent CLI |
+| `ai/` | `@zhachory1/mewrite-ai` | `pi-ai` | Multi-provider LLM unified API |
+| `agent/` | `@zhachory1/mewrite-agent` | — | Agent runtime: tool calling, state |
+| `tui/` | `@zhachory1/mewrite-tui` | — | Terminal UI: differential rendering |
 
 **Out of scope for v2 (separate product surfaces):**
 
 | Dir | Package | Binary | Role |
 |-----|---------|--------|------|
-| `web-ui/` | `@juliusbrussee/caveman-web-ui` | — | Web components for AI chat |
-| `mom/` | `@juliusbrussee/caveman-mom` | `mom` | Slack bot → coding agent delegate |
-| `pods/` | `@juliusbrussee/caveman-pods` | `cave-pods` | vLLM deployment on GPU pods |
+| `web-ui/` | `@zhachory1/mewrite-web-ui` | — | Web components for AI chat |
+| `mom/` | `@zhachory1/mewrite-mom` | `mom` | Slack bot → coding agent delegate |
+| `pods/` | `@zhachory1/mewrite-pods` | `mewrite-pods` | vLLM deployment on GPU pods |
 
 ## Conventions
 

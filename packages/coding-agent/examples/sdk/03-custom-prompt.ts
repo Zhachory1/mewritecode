@@ -4,7 +4,7 @@
  * Shows how to replace or modify the default system prompt.
  */
 
-import { createAgentSession, DefaultResourceLoader, SessionManager } from "@juliusbrussee/caveman-code";
+import { createAgentSession, DefaultResourceLoader, SessionManager } from "@zhachory1/mewrite-code";
 
 // Option 1: Replace prompt entirely
 const loader1 = new DefaultResourceLoader({

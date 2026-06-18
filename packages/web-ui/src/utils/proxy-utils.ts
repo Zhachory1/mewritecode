@@ -1,5 +1,5 @@
-import type { Api, Context, Model, SimpleStreamOptions } from "@juliusbrussee/caveman-ai";
-import { streamSimple } from "@juliusbrussee/caveman-ai";
+import type { Api, Context, Model, SimpleStreamOptions } from "@zhachory1/mewrite-ai";
+import { streamSimple } from "@zhachory1/mewrite-ai";
 
 /**
  * Centralized proxy decision logic.

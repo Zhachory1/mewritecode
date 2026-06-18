@@ -1,7 +1,7 @@
 import { createInterface } from "node:readline";
-import type { AgentTool } from "@juliusbrussee/caveman-agent";
-import { Text } from "@juliusbrussee/caveman-tui";
 import { type Static, Type } from "@sinclair/typebox";
+import type { AgentTool } from "@zhachory1/mewrite-agent";
+import { Text } from "@zhachory1/mewrite-tui";
 import { spawn } from "child_process";
 import { readFileSync, statSync } from "fs";
 import path from "path";

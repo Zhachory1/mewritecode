@@ -1,7 +1,7 @@
 /**
  * WS17: Shadow-Git Checkpoint Manager — public API barrel.
  *
- * Consumers import from "@juliusbrussee/caveman-agent/checkpoints" or via the barrel here.
+ * Consumers import from "@zhachory1/mewrite-agent/checkpoints" or via the barrel here.
  * Internal modules (manager, snapshotter, rollback) are re-exported selectively
  * to keep the surface small.
  */

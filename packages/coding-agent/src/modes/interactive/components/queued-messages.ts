@@ -6,7 +6,7 @@ import {
 	Text,
 	type TUI,
 	truncateToWidth,
-} from "@juliusbrussee/caveman-tui";
+} from "@zhachory1/mewrite-tui";
 import { theme } from "../theme/theme.js";
 
 export type QueuedMode = "steer" | "followUp";

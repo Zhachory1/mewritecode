@@ -1,6 +1,6 @@
-import type { AgentMessage } from "@juliusbrussee/caveman-agent";
-import type { AssistantMessage, Usage } from "@juliusbrussee/caveman-ai";
-import { getModel } from "@juliusbrussee/caveman-ai";
+import type { AgentMessage } from "@zhachory1/mewrite-agent";
+import type { AssistantMessage, Usage } from "@zhachory1/mewrite-ai";
+import { getModel } from "@zhachory1/mewrite-ai";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { beforeEach, describe, expect, it } from "vitest";

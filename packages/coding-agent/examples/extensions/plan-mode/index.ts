@@ -12,10 +12,10 @@
  * - Progress tracking widget during execution
  */
 
-import type { AgentMessage } from "@juliusbrussee/caveman-agent";
-import type { AssistantMessage, TextContent } from "@juliusbrussee/caveman-ai";
-import type { ExtensionAPI, ExtensionContext } from "@juliusbrussee/caveman-code";
-import { Key } from "@juliusbrussee/caveman-tui";
+import type { AgentMessage } from "@zhachory1/mewrite-agent";
+import type { AssistantMessage, TextContent } from "@zhachory1/mewrite-ai";
+import type { ExtensionAPI, ExtensionContext } from "@zhachory1/mewrite-code";
+import { Key } from "@zhachory1/mewrite-tui";
 import { extractTodoItems, isSafeCommand, markCompletedSteps, type TodoItem } from "./utils.js";
 
 // Tools

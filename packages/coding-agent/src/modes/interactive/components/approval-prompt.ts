@@ -10,7 +10,7 @@
  * command can still do damage. Real isolation is the enforced sandbox (#46).
  */
 
-import { Container, getKeybindings, type OverlayHandle, Spacer, Text, type TUI } from "@juliusbrussee/caveman-tui";
+import { Container, getKeybindings, type OverlayHandle, Spacer, Text, type TUI } from "@zhachory1/mewrite-tui";
 import type { ApprovalDecision } from "../../../core/agent-session.js";
 import type { RiskTier } from "../../../core/approval-policy.js";
 import { theme } from "../theme/theme.js";

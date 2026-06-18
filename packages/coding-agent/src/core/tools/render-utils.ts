@@ -1,6 +1,6 @@
 import * as os from "node:os";
-import type { ImageContent, TextContent } from "@juliusbrussee/caveman-ai";
-import { getCapabilities, getImageDimensions, imageFallback } from "@juliusbrussee/caveman-tui";
+import type { ImageContent, TextContent } from "@zhachory1/mewrite-ai";
+import { getCapabilities, getImageDimensions, imageFallback } from "@zhachory1/mewrite-tui";
 import stripAnsi from "strip-ansi";
 import { sanitizeBinaryOutput } from "../../utils/shell.js";
 

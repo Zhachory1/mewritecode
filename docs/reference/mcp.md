@@ -5,20 +5,20 @@ description: Model Context Protocol — clients, transports, and cave-as-MCP-ser
 
 # MCP
 
-Caveman Code is a first-class MCP client and can also serve as an MCP server. Three transports: **stdio** (subprocess + JSON-RPC), **Streamable HTTP** (SSE deprecating mid-2026), and **in-process** (zero-spawn for caveman-code's own tools).
+Me Write Code is a first-class MCP client and can also serve as an MCP server. Three transports: **stdio** (subprocess + JSON-RPC), **Streamable HTTP** (SSE deprecating mid-2026), and **in-process** (zero-spawn for mewrite-code's own tools).
 
 <CopyForLlms />
 
 ## Quick start
 
 ```bash
-caveman mcp add cavemem
-caveman mcp add gh --command "github-mcp" --transport stdio
-caveman mcp list
-caveman mcp doctor
+mewrite mcp add cavemem
+mewrite mcp add gh --command "github-mcp" --transport stdio
+mewrite mcp list
+mewrite mcp doctor
 ```
 
-`caveman mcp add` reads from a registry and writes to `~/.cave/mcp.json` or `.mcp.json` (project-scope).
+`mewrite mcp add` reads from a registry and writes to `~/.cave/mcp.json` or `.mcp.json` (project-scope).
 
 ## Configuration
 
@@ -40,13 +40,13 @@ caveman mcp doctor
         },
         "filesystem": {
             "transport": "inproc",
-            "module": "@juliusbrussee/caveman-mcp-filesystem"
+            "module": "@zhachory1/mewrite-mcp-filesystem"
         }
     }
 }
 ```
 
-User config is merged on top of project config. The `transport` determines how Caveman Code connects.
+User config is merged on top of project config. The `transport` determines how Me Write Code connects.
 
 ## Transports
 
@@ -54,7 +54,7 @@ User config is merged on top of project config. The `transport` determines how C
 |---|---|
 | `stdio` | Local subprocess. Standard for community MCP servers. |
 | `http` | Remote MCP servers. Streamable HTTP (SSE deprecating). |
-| `inproc` | Bundled with Caveman Code; zero spawn, lowest latency. |
+| `inproc` | Bundled with Me Write Code; zero spawn, lowest latency. |
 
 ## OAuth 2.1
 
@@ -72,23 +72,23 @@ MCP tools are namespaced as `mcp__<server>__<tool>` to avoid collisions. The mod
 
 ## Schema deferral (ToolSearch)
 
-By default Caveman Code only lists MCP tool **names** in the always-on context. Schemas are fetched on demand via `ToolSearch`. This matches Anthropic's pattern and cuts ~85% of context bloat.
+By default Me Write Code only lists MCP tool **names** in the always-on context. Schemas are fetched on demand via `ToolSearch`. This matches Anthropic's pattern and cuts ~85% of context bloat.
 
 ## Warm pool
 
 Idle stdio MCP servers are SIGSTOP'd to reclaim memory. They're SIGCONT'd on the next call. Eviction policy: LRU, max idle 10 minutes.
 
-## Caveman Code as MCP server
+## Me Write Code as MCP server
 
 ```bash
-caveman mcp-server
+mewrite mcp-server
 ```
 
-Exposes Caveman Code's coding-agent tools to other MCP clients (Claude Desktop, Codex, opencode). Useful for multi-agent setups where Caveman Code is the "executor" and another agent is the planner.
+Exposes Me Write Code's coding-agent tools to other MCP clients (Claude Desktop, Codex, opencode). Useful for multi-agent setups where Me Write Code is the "executor" and another agent is the planner.
 
 ## Importing Claude Code / Codex MCP config
 
-Caveman Code reads `.mcp.json` at the project root (Claude Code / Codex format). No conversion needed.
+Me Write Code reads `.mcp.json` at the project root (Claude Code / Codex format). No conversion needed.
 
 ```bash
 cp .claude.json .mcp.json   # if you had a Claude-only config in the same shape
@@ -96,6 +96,6 @@ cp .claude.json .mcp.json   # if you had a Claude-only config in the same shape
 
 ## Troubleshooting
 
-- **`caveman mcp doctor`** — pings every configured server, reports timeouts and auth failures.
-- **`caveman mcp logs <server>`** — tails the stderr of a stdio server.
-- **Server crashes loop** — Caveman Code backs off to 1 / 5 / 30 minute retry intervals; you'll see a doctor warning.
+- **`mewrite mcp doctor`** — pings every configured server, reports timeouts and auth failures.
+- **`mewrite mcp logs <server>`** — tails the stderr of a stdio server.
+- **Server crashes loop** — Me Write Code backs off to 1 / 5 / 30 minute retry intervals; you'll see a doctor warning.

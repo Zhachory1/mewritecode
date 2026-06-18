@@ -1,4 +1,4 @@
-import type { AgentMessage } from "@juliusbrussee/caveman-agent";
+import type { AgentMessage } from "@zhachory1/mewrite-agent";
 import {
 	ARTIFACTS_RUNTIME_PROVIDER_DESCRIPTION_RO,
 	ARTIFACTS_RUNTIME_PROVIDER_DESCRIPTION_RW,

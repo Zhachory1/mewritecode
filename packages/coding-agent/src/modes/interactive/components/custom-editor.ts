@@ -1,4 +1,4 @@
-import { Editor, type EditorOptions, type EditorTheme, type TUI } from "@juliusbrussee/caveman-tui";
+import { Editor, type EditorOptions, type EditorTheme, type TUI } from "@zhachory1/mewrite-tui";
 import type { AppKeybinding, KeybindingsManager } from "../../../core/keybindings.js";
 
 /**

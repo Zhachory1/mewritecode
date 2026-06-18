@@ -25,7 +25,7 @@ cave                 # then /plan in TUI
 Plan mode is provided by the `plan-mode` extension. Install it first:
 
 ```bash
-caveman install git:github.com/JuliusBrussee/caveman-code#examples/extensions/plan-mode
+mewrite install git:github.com/Zhachory1/mewritecode#examples/extensions/plan-mode
 ```
 
 Or use the built-in `/plan` slash command in the TUI.
@@ -49,13 +49,13 @@ In plan mode:
 3. Edit `path/to/other.ts` — <reason>.
 
 **Risks:**
-- The migration touches the public API of `@juliusbrussee/caveman-agent`. Bump major.
+- The migration touches the public API of `@zhachory1/mewrite-agent`. Bump major.
 - ...
 
 **Estimate:** ~6 file edits, 1 test run, ~5 min.
 ```
 
-The model is prompted to emit this exact shape so caveman-code can parse the steps for `/act`.
+The model is prompted to emit this exact shape so mewrite-code can parse the steps for `/act`.
 
 ## Accept and execute
 
@@ -89,4 +89,4 @@ This is the cheapest way to use a frontier model for hard reasoning while keepin
 
 ## Importing from Claude Code
 
-Claude Code's plan mode uses an analogous `## Plan` shape. Copy the markdown directly. Caveman Code's parser is forgiving about heading depth and bullet style.
+Claude Code's plan mode uses an analogous `## Plan` shape. Copy the markdown directly. Me Write Code's parser is forgiving about heading depth and bullet style.

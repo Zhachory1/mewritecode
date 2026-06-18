@@ -11,8 +11,8 @@ import {
 	type OAuthCredentials,
 	type OAuthLoginCallbacks,
 	type OAuthProviderId,
-} from "@juliusbrussee/caveman-ai";
-import { getOAuthApiKey, getOAuthProvider, getOAuthProviders } from "@juliusbrussee/caveman-ai/oauth";
+} from "@zhachory1/mewrite-ai";
+import { getOAuthApiKey, getOAuthProvider, getOAuthProviders } from "@zhachory1/mewrite-ai/oauth";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 import lockfile from "proper-lockfile";

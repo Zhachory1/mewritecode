@@ -1,5 +1,5 @@
 {
-	"$schema": "https://raw.githubusercontent.com/JuliusBrussee/caveman-code/main/packages/coding-agent/src/modes/interactive/theme/theme-schema.json",
+	"$schema": "https://raw.githubusercontent.com/Zhachory1/mewritecode/main/packages/coding-agent/src/modes/interactive/theme/theme-schema.json",
 	"name": "light",
 	"vars": {
 		"sunBleachedHide": "#F7F0E2",

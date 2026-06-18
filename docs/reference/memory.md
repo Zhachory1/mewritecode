@@ -5,7 +5,7 @@ description: Native cavemem integration. Episodic, semantic, and procedural memo
 
 # Memory (cavemem)
 
-Caveman Code delegates persistent memory to **cavemem** — the user's existing MIT-licensed memory system at [github.com/JuliusBrussee/cavemem](https://github.com/JuliusBrussee/cavemem). Caveman Code's value-add is **policy**: when to write, what to inject, and the episodic→semantic consolidation pass.
+Me Write Code delegates persistent memory to **cavemem** — the user's existing MIT-licensed memory system at [github.com/JuliusBrussee/cavemem](https://github.com/JuliusBrussee/cavemem). Me Write Code's value-add is **policy**: when to write, what to inject, and the episodic→semantic consolidation pass.
 
 <CopyForLlms />
 
@@ -17,10 +17,10 @@ Caveman Code delegates persistent memory to **cavemem** — the user's existing 
 - Hook CLI: `cavemem hook run <event>` reads stdin and writes observations.
 - Privacy: `<private>...</private>` blocks are redacted before storage.
 
-## How caveman-code uses it
+## How mewrite-code uses it
 
 ```
-caveman session
+mewrite session
   ├── on session_start  → cavemem hook run session-start  (write)
   ├── on user_prompt    → cavemem hook run user-prompt-submit  (write)
   ├── on post_tool_use  → cavemem hook run post-tool-use  (write, async)
@@ -28,15 +28,15 @@ caveman session
   └── reads via cavemem MCP (search, timeline, observations, sessions)
 ```
 
-On session start, caveman-code runs `cavemem search "<task summary>"` and injects compact snippets into context. The injection is capped at 2k tokens by default (`memory.maxInjectTokens`).
+On session start, mewrite-code runs `cavemem search "<task summary>"` and injects compact snippets into context. The injection is capped at 2k tokens by default (`memory.maxInjectTokens`).
 
 ## Setup
 
-If `cavemem` is on your `$PATH`, cave wires it during `caveman init`. If not:
+If `cavemem` is on your `$PATH`, cave wires it during `mewrite init`. If not:
 
 ```bash
 npm install -g cavemem
-caveman init    # detects cavemem, writes hook stubs to ~/.cave/settings.json
+mewrite init    # detects cavemem, writes hook stubs to ~/.cave/settings.json
 ```
 
 To disable: `/memory off` (session-only) or remove the hooks from `settings.json` (permanent).
@@ -50,16 +50,16 @@ To disable: `/memory off` (session-only) or remove the hooks from `settings.json
 | `/memory show <id>` | Expand a snippet to full body |
 | `/memory forget <id>` | Soft-delete an observation |
 | `/memory export [--format md\|json]` | Dump memory |
-| `/memory consolidate` | **Caveman Code-specific**: cluster recent observations, ask Haiku for semantic facts, write back as `kind:semantic` |
+| `/memory consolidate` | **Me Write Code-specific**: cluster recent observations, ask Haiku for semantic facts, write back as `kind:semantic` |
 | `/memory off` `/memory on` | Pause/resume injection for the current session |
 | `/memory config` | Edit memory settings |
 | `/memory sync --from claude` | One-shot import of `~/.claude/projects/<slug>/memory/MEMORY.md` |
 
-## Caveman Code's value-add
+## Me Write Code's value-add
 
 ### Episodic→semantic consolidation
 
-Run nightly (via cron) or on-demand with `/memory consolidate`. Caveman Code clusters observations by topic, asks Haiku to extract semantic facts, writes them back as `kind: semantic` with provenance ids pointing at the source episodic observations. This closes a loop most agents skip — what makes Letta and Zep feel "smart" — but local, deterministic, and cheap.
+Run nightly (via cron) or on-demand with `/memory consolidate`. Me Write Code clusters observations by topic, asks Haiku to extract semantic facts, writes them back as `kind: semantic` with provenance ids pointing at the source episodic observations. This closes a loop most agents skip — what makes Letta and Zep feel "smart" — but local, deterministic, and cheap.
 
 ```bash
 # nightly cron
@@ -68,7 +68,7 @@ Run nightly (via cron) or on-demand with `/memory consolidate`. Caveman Code clu
 
 ### Auto-trigger learning
 
-When a tool call fails twice and then succeeds, caveman-code writes a "lesson" observation:
+When a tool call fails twice and then succeeds, mewrite-code writes a "lesson" observation:
 
 ```
 kind: lesson
@@ -82,10 +82,10 @@ Mirrors Claude Code's Auto-Memory.
 
 ### MEMORY.md bridge
 
-On session start, caveman-code reads `~/.claude/projects/<slug>/memory/MEMORY.md` (first 200 lines) so it behaves consistently when invoked in a project where Claude Code is also active.
+On session start, mewrite-code reads `~/.claude/projects/<slug>/memory/MEMORY.md` (first 200 lines) so it behaves consistently when invoked in a project where Claude Code is also active.
 
 ```bash
-caveman memory sync --from claude
+mewrite memory sync --from claude
 ```
 
 Imports the per-fact `.md` files as cavemem observations.
@@ -93,12 +93,12 @@ Imports the per-fact `.md` files as cavemem observations.
 ## Privacy
 
 - Anything between `<private>` and `</private>` is dropped before write. Use it for credentials, names, etc.
-- Caveman Code never sends memory content to a model unless explicitly injected (search results, `get_observations`).
+- Me Write Code never sends memory content to a model unless explicitly injected (search results, `get_observations`).
 - Storage is local: `~/.cavemem/`. No telemetry, no cloud.
 
 ## Falling back to files
 
-If you don't want cavemem, set `memory.provider: files` in `~/.cave/settings.json`. Caveman Code then uses plain `.cave/memory/*.md` files and `CLAUDE.md` for project context.
+If you don't want cavemem, set `memory.provider: files` in `~/.cave/settings.json`. Me Write Code then uses plain `.cave/memory/*.md` files and `CLAUDE.md` for project context.
 
 ```json
 {

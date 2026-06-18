@@ -13,7 +13,7 @@
  */
 
 import { basename, resolve } from "node:path";
-import type { AgentMessage } from "@juliusbrussee/caveman-agent";
+import type { AgentMessage } from "@zhachory1/mewrite-agent";
 
 export class RepomapInjector {
 	private readonly _cwd: string;
@@ -108,7 +108,7 @@ export class RepomapInjector {
 	private async _build(hash: string): Promise<string | undefined> {
 		try {
 			const { collectSourceFiles } = await import("./slash-commands/repomap.js");
-			const { repomap: repomapNs } = await import("@juliusbrussee/caveman-agent");
+			const { repomap: repomapNs } = await import("@zhachory1/mewrite-agent");
 			const { buildRepomap, dynamicMapTokens } = repomapNs;
 
 			const files = collectSourceFiles(this._cwd);

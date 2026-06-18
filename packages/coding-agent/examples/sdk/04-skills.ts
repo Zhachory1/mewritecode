@@ -11,7 +11,7 @@ import {
 	DefaultResourceLoader,
 	SessionManager,
 	type Skill,
-} from "@juliusbrussee/caveman-code";
+} from "@zhachory1/mewrite-code";
 
 // Or define custom skills inline
 const customSkill: Skill = {

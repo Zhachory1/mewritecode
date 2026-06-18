@@ -1,4 +1,4 @@
-import { CancellableLoader, Container, Loader, Spacer, Text, type TUI } from "@juliusbrussee/caveman-tui";
+import { CancellableLoader, Container, Loader, Spacer, Text, type TUI } from "@zhachory1/mewrite-tui";
 import type { Theme } from "../theme/theme.js";
 import { DynamicBorder } from "./dynamic-border.js";
 import { keyHint } from "./keybinding-hints.js";

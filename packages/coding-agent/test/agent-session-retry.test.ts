@@ -1,9 +1,9 @@
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Agent, type AgentEvent, type AgentTool } from "@juliusbrussee/caveman-agent";
-import { type AssistantMessage, type AssistantMessageEvent, EventStream, getModel } from "@juliusbrussee/caveman-ai";
 import { Type } from "@sinclair/typebox";
+import { Agent, type AgentEvent, type AgentTool } from "@zhachory1/mewrite-agent";
+import { type AssistantMessage, type AssistantMessageEvent, EventStream, getModel } from "@zhachory1/mewrite-ai";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AgentSession } from "../src/core/agent-session.js";
 import { AuthStorage } from "../src/core/auth-storage.js";

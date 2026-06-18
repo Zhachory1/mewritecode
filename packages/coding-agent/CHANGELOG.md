@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added release-built `mewrite-code` Debian and RPM packages, a `mewrite` Homebrew formula, and tracked Snap packaging metadata for package-manager installs ([#3](https://github.com/Zhachory1/mewritecode/issues/3)).
+
 ### Changed
 
 - Retuned the built-in themes and two-tone startup wordmark around the Campfire Syntax palette.

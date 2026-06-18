@@ -7,7 +7,7 @@ import {
 	Text,
 	type TUI,
 	truncateToWidth,
-} from "@juliusbrussee/caveman-tui";
+} from "@zhachory1/mewrite-tui";
 import { KEYBINDINGS } from "../../../core/keybindings.js";
 import { theme } from "../theme/theme.js";
 

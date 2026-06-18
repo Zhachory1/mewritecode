@@ -20,8 +20,8 @@ import {
 	type SimpleStreamOptions,
 	streamSimpleAnthropic,
 	streamSimpleOpenAIResponses,
-} from "@juliusbrussee/caveman-ai";
-import type { ExtensionAPI } from "@juliusbrussee/caveman-code";
+} from "@zhachory1/mewrite-ai";
+import type { ExtensionAPI } from "@zhachory1/mewrite-code";
 
 // =============================================================================
 // Constants

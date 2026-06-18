@@ -13,9 +13,9 @@
  *   pi --extension examples/extensions/custom-compaction.ts
  */
 
-import { complete } from "@juliusbrussee/caveman-ai";
-import type { ExtensionAPI } from "@juliusbrussee/caveman-code";
-import { convertToLlm, serializeConversation } from "@juliusbrussee/caveman-code";
+import { complete } from "@zhachory1/mewrite-ai";
+import type { ExtensionAPI } from "@zhachory1/mewrite-code";
+import { convertToLlm, serializeConversation } from "@zhachory1/mewrite-code";
 
 export default function (pi: ExtensionAPI) {
 	pi.on("session_before_compact", async (event, ctx) => {

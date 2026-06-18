@@ -5,10 +5,10 @@
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { AgentMessage, AgentTool } from "@juliusbrussee/caveman-agent";
-import { Agent } from "@juliusbrussee/caveman-agent";
-import type { FauxModelDefinition, FauxProviderRegistration, FauxResponseStep, Model } from "@juliusbrussee/caveman-ai";
-import { registerFauxProvider } from "@juliusbrussee/caveman-ai";
+import type { AgentMessage, AgentTool } from "@zhachory1/mewrite-agent";
+import { Agent } from "@zhachory1/mewrite-agent";
+import type { FauxModelDefinition, FauxProviderRegistration, FauxResponseStep, Model } from "@zhachory1/mewrite-ai";
+import { registerFauxProvider } from "@zhachory1/mewrite-ai";
 import { AgentSession, type AgentSessionEvent } from "../../src/core/agent-session.js";
 import { AuthStorage } from "../../src/core/auth-storage.js";
 import type { ExtensionRunner } from "../../src/core/extensions/index.js";

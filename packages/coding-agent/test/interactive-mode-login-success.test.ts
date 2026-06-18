@@ -1,4 +1,4 @@
-import type { Model } from "@juliusbrussee/caveman-ai";
+import type { Model } from "@zhachory1/mewrite-ai";
 import { describe, expect, test, vi } from "vitest";
 import { InteractiveMode } from "../src/modes/interactive/interactive-mode.js";
 

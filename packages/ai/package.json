@@ -1,5 +1,5 @@
 {
-	"name": "@juliusbrussee/caveman-ai",
+	"name": "@zhachory1/mewrite-ai",
 	"version": "0.65.3",
 	"description": "Unified LLM API with automatic model discovery and provider configuration",
 	"type": "module",
@@ -64,7 +64,7 @@
 		}
 	},
 	"bin": {
-		"cave-ai": "dist/cli.js"
+		"mewrite-ai": "dist/cli.js"
 	},
 	"files": [
 		"dist",
@@ -108,7 +108,7 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/JuliusBrussee/caveman-code.git",
+		"url": "git+https://github.com/Zhachory1/mewritecode.git",
 		"directory": "packages/ai"
 	},
 	"engines": {
@@ -119,9 +119,9 @@
 		"canvas": "^3.2.0",
 		"vitest": "^3.2.4"
 	},
-	"homepage": "https://github.com/JuliusBrussee/caveman-code#readme",
+	"homepage": "https://github.com/Zhachory1/mewritecode#readme",
 	"bugs": {
-		"url": "https://github.com/JuliusBrussee/caveman-code/issues"
+		"url": "https://github.com/Zhachory1/mewritecode/issues"
 	},
 	"publishConfig": {
 		"access": "public"

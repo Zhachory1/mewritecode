@@ -1,5 +1,5 @@
-import type { AgentMessage } from "@juliusbrussee/caveman-agent";
-import type { ImageContent, Message, TextContent } from "@juliusbrussee/caveman-ai";
+import type { AgentMessage } from "@zhachory1/mewrite-agent";
+import type { ImageContent, Message, TextContent } from "@zhachory1/mewrite-ai";
 import { randomUUID } from "crypto";
 import {
 	appendFileSync,

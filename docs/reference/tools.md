@@ -1,11 +1,11 @@
 ---
 title: Tools
-description: Caveman Code's built-in tools, Caveman Mode compression, and cost transparency.
+description: Me Write Code's built-in tools, Caveman Mode compression, and cost transparency.
 ---
 
 # Tools
 
-Caveman Code ships seven built-in tools, plus dynamic tools loaded from MCP servers and skills. All tool output is run through **Caveman Mode** compression before re-entering the model's context.
+Me Write Code ships seven built-in tools, plus dynamic tools loaded from MCP servers and skills. All tool output is run through **Caveman Mode** compression before re-entering the model's context.
 
 <CopyForLlms />
 
@@ -81,11 +81,11 @@ By default, MCP tools are listed by name only. The model fetches the schema via 
 
 ## Registry
 
-Provider, model, and tool defaults live in a versioned registry at `github.com/cave-cli/registry`. Pull updates without releasing Caveman Code:
+Provider, model, and tool defaults live in a versioned registry at `github.com/cave-cli/registry`. Pull updates without releasing Me Write Code:
 
 ```bash
-caveman models update
-caveman tools update
+mewrite models update
+mewrite tools update
 ```
 
 Override locally in `~/.cave/registry.json`.

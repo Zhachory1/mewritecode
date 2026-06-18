@@ -1,5 +1,5 @@
 {
-	"name": "caveman-code-extension-custom-provider-gitlab-duo",
+	"name": "mewrite-code-extension-custom-provider-gitlab-duo",
 	"private": true,
 	"version": "1.16.2",
 	"type": "module",

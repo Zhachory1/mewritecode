@@ -7,9 +7,9 @@
  * mode so behaviour stays identical.
  */
 
-import type { SubagentResult } from "@juliusbrussee/caveman-agent";
-import { Text } from "@juliusbrussee/caveman-tui";
 import { type Static, Type } from "@sinclair/typebox";
+import type { SubagentResult } from "@zhachory1/mewrite-agent";
+import { Text } from "@zhachory1/mewrite-tui";
 import { type LoadAgentDefsResult, loadAgentDefs } from "../agent-defs/loader.js";
 import type { ToolDefinition } from "../extensions/types.js";
 import { createTaskToolDefinition, type TaskToolOptions } from "./task.js";

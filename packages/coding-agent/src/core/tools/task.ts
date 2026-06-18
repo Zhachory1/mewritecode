@@ -16,6 +16,7 @@ import { spawn } from "node:child_process";
 import { createWriteStream, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
+import { type Static, Type } from "@sinclair/typebox";
 import {
 	autoCleanupWorktree,
 	type CreateWorktreeResult,
@@ -27,9 +28,8 @@ import {
 	type SubagentResult,
 	sanitizeId,
 	validateSubagentOutput,
-} from "@juliusbrussee/caveman-agent";
-import { Text } from "@juliusbrussee/caveman-tui";
-import { type Static, Type } from "@sinclair/typebox";
+} from "@zhachory1/mewrite-agent";
+import { Text } from "@zhachory1/mewrite-tui";
 import {
 	filterAgentsByMcpAvailability,
 	findAgentDef,

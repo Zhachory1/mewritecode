@@ -1,4 +1,4 @@
-import type { Model } from "@juliusbrussee/caveman-ai";
+import type { Model } from "@zhachory1/mewrite-ai";
 import { Store } from "../store.js";
 import type { StoreConfig } from "../types.js";
 

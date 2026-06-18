@@ -2,8 +2,8 @@
  * Shared utilities for compaction and branch summarization.
  */
 
-import type { AgentMessage } from "@juliusbrussee/caveman-agent";
-import type { Message } from "@juliusbrussee/caveman-ai";
+import type { AgentMessage } from "@zhachory1/mewrite-agent";
+import type { Message } from "@zhachory1/mewrite-ai";
 
 // ============================================================================
 // File Operation Tracking

@@ -2,6 +2,7 @@
  * Model registry - manages built-in and custom models, provides API key resolution.
  */
 
+import { type Static, Type } from "@sinclair/typebox";
 import {
 	type Api,
 	type AssistantMessageEventStream,
@@ -18,9 +19,8 @@ import {
 	registerApiProvider,
 	resetApiProviders,
 	type SimpleStreamOptions,
-} from "@juliusbrussee/caveman-ai";
-import { registerOAuthProvider, resetOAuthProviders } from "@juliusbrussee/caveman-ai/oauth";
-import { type Static, Type } from "@sinclair/typebox";
+} from "@zhachory1/mewrite-ai";
+import { registerOAuthProvider, resetOAuthProviders } from "@zhachory1/mewrite-ai/oauth";
 import AjvModule from "ajv";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
@@ -266,7 +266,7 @@ export class ModelRegistry {
 		private modelsJsonPath: string | undefined,
 	) {
 		this.loadModels();
-		// Re-snapshot the model list whenever the underlying caveman-ai
+		// Re-snapshot the model list whenever the underlying mewrite-ai
 		// registry publishes a new id (currently used by the Anthropic
 		// capability-discovery layer to surface model variants like
 		// claude-opus-4.6-1m that aren't in the generated registry).
@@ -529,7 +529,7 @@ export class ModelRegistry {
 	 * Kick off per-provider capability discovery for every Anthropic-API
 	 * model the user has auth for. Fire-and-forget; new model ids appear
 	 * via the onModelRegistryChange listener wired in the constructor.
-	 * Idempotent and memoized inside caveman-ai per (provider, baseUrl).
+	 * Idempotent and memoized inside mewrite-ai per (provider, baseUrl).
 	 */
 	async discoverAnthropicCapabilities(): Promise<void> {
 		const seen = new Set<string>();

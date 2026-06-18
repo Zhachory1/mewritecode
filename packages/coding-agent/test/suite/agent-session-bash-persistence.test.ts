@@ -1,7 +1,7 @@
 import { Buffer } from "node:buffer";
-import type { AgentTool } from "@juliusbrussee/caveman-agent";
-import { fauxAssistantMessage, fauxToolCall } from "@juliusbrussee/caveman-ai";
 import { Type } from "@sinclair/typebox";
+import type { AgentTool } from "@zhachory1/mewrite-agent";
+import { fauxAssistantMessage, fauxToolCall } from "@zhachory1/mewrite-ai";
 import { afterEach, describe, expect, it } from "vitest";
 import type { BashOperations } from "../../src/core/tools/bash.js";
 import { createHarness, type Harness } from "./harness.js";

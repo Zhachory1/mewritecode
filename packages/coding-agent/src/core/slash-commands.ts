@@ -96,7 +96,7 @@ export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 	},
 	{
 		name: "mcp",
-		description: "Manage MCP servers (list, doctor, login, reload). See: caveman mcp --help.",
+		description: "Manage MCP servers (list, doctor, login, reload). See: mewrite mcp --help.",
 		wired: true,
 	},
 	{

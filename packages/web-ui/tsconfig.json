@@ -1,7 +1,13 @@
 {
 	"extends": "../../tsconfig.base.json",
 	"compilerOptions": {
-		"noEmit": true
+		"noEmit": true,
+		"lib": ["ES2022", "DOM", "DOM.Iterable"],
+		"paths": {
+			"@zhachory1/mewrite-agent": ["../agent/src/index.ts"],
+			"@zhachory1/mewrite-ai": ["../ai/src/index.ts"],
+			"@zhachory1/mewrite-tui": ["../tui/src/index.ts"]
+		}
 	},
 	"include": ["src/**/*"]
 }

@@ -122,7 +122,7 @@ export {
 	writeToolDefinition,
 } from "./write.js";
 
-import type { AgentTool } from "@juliusbrussee/caveman-agent";
+import type { AgentTool } from "@zhachory1/mewrite-agent";
 import type { ToolDefinition } from "../extensions/types.js";
 import { createAgentToolDefinition } from "./agent.js";
 import {

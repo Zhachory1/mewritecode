@@ -5,7 +5,7 @@ description: Worktree-isolated parallel agents dispatched via the Task tool.
 
 # Subagents
 
-A subagent is a child Caveman Code process with its own context window, tool allowlist, and (optionally) git worktree. The parent dispatches via the `Task` or `Agent` built-in tool, and the subagent returns a structured ≤500-token summary.
+A subagent is a child Me Write Code process with its own context window, tool allowlist, and (optionally) git worktree. The parent dispatches via the `Task` or `Agent` built-in tool, and the subagent returns a structured ≤500-token summary.
 
 <CopyForLlms />
 

@@ -1,5 +1,5 @@
-import { Agent, type ThinkingLevel } from "@juliusbrussee/caveman-agent";
-import { getModel } from "@juliusbrussee/caveman-ai";
+import { Agent, type ThinkingLevel } from "@zhachory1/mewrite-agent";
+import { getModel } from "@zhachory1/mewrite-ai";
 import { describe, expect, it } from "vitest";
 import { AgentSession } from "../src/core/agent-session.js";
 import { AuthStorage } from "../src/core/auth-storage.js";

@@ -1,4 +1,4 @@
-import type { TUI } from "@juliusbrussee/caveman-tui";
+import type { TUI } from "@zhachory1/mewrite-tui";
 import { promptSecret, type SecretPromptOptions } from "./secret-prompt.js";
 
 export interface SudoPromptOptions extends Omit<SecretPromptOptions, "auditLabel"> {

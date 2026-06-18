@@ -8,7 +8,7 @@ import {
 	Spacer,
 	Text,
 	type TUI,
-} from "@juliusbrussee/caveman-tui";
+} from "@zhachory1/mewrite-tui";
 import { theme } from "../theme/theme.js";
 
 export type SkillSourceTag = "bundled" | "user" | "project" | "marketplace";

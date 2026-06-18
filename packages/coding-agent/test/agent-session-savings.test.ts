@@ -7,8 +7,8 @@
  * list (idempotent, per-message model pricing, separate from the caveman total).
  */
 
-import { Agent } from "@juliusbrussee/caveman-agent";
-import { type AssistantMessage, getModel, type Usage } from "@juliusbrussee/caveman-ai";
+import { Agent } from "@zhachory1/mewrite-agent";
+import { type AssistantMessage, getModel, type Usage } from "@zhachory1/mewrite-ai";
 import { describe, expect, it } from "vitest";
 import { AgentSession } from "../src/core/agent-session.js";
 import { AuthStorage } from "../src/core/auth-storage.js";

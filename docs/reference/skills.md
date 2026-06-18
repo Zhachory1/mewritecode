@@ -57,25 +57,25 @@ Same superset as [slash commands](/reference/slash-commands#frontmatter). Skills
 
 ## Hot reload
 
-Save the file, it's live next turn. Validate with `caveman skills lint`.
+Save the file, it's live next turn. Validate with `mewrite skills lint`.
 
 ## Browsing and selection
 
 ```bash
-caveman skills list              # all skills, scope, status
-caveman skills show secure-review
-caveman skills disable secure-review   # session-wide disable
+mewrite skills list              # all skills, scope, status
+mewrite skills show secure-review
+mewrite skills disable secure-review   # session-wide disable
 ```
 
 `/skills` opens the same view inside the TUI.
 
 ## Plugin marketplace
 
-Caveman Code's plugin marketplace bundles skills + commands + agents + hooks + MCP into shareable archives.
+Me Write Code's plugin marketplace bundles skills + commands + agents + hooks + MCP into shareable archives.
 
 ```bash
-caveman plugin search security
-caveman plugin install ghost-sec/sec-pack
+mewrite plugin search security
+mewrite plugin install ghost-sec/sec-pack
 ```
 
 See [Plugin Marketplace](/cookbook#plugin-marketplace).

@@ -1,10 +1,10 @@
 {
-	"name": "@juliusbrussee/caveman-pods",
+	"name": "@zhachory1/mewrite-pods",
 	"version": "0.65.2",
 	"description": "CLI tool for managing vLLM deployments on GPU pods",
 	"type": "module",
 	"bin": {
-		"cave-pods": "dist/cli.js"
+		"mewrite-pods": "dist/cli.js"
 	},
 	"scripts": {
 		"clean": "shx rm -rf dist",
@@ -26,20 +26,20 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/JuliusBrussee/caveman-cli.git",
+		"url": "git+https://github.com/Zhachory1/mewritecode.git",
 		"directory": "packages/pods"
 	},
 	"engines": {
 		"node": ">=20.0.0"
 	},
 	"dependencies": {
-		"@juliusbrussee/caveman-agent": "^0.65.2",
+		"@zhachory1/mewrite-agent": "^0.65.2",
 		"chalk": "^5.5.0"
 	},
 	"devDependencies": {},
-	"homepage": "https://github.com/JuliusBrussee/caveman-cli#readme",
+	"homepage": "https://github.com/Zhachory1/mewritecode#readme",
 	"bugs": {
-		"url": "https://github.com/JuliusBrussee/caveman-cli/issues"
+		"url": "https://github.com/Zhachory1/mewritecode/issues"
 	},
 	"publishConfig": {
 		"access": "public"

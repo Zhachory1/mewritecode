@@ -1,5 +1,5 @@
-import type { Model } from "@juliusbrussee/caveman-ai";
 import { LMStudioClient } from "@lmstudio/sdk";
+import type { Model } from "@zhachory1/mewrite-ai";
 import { Ollama } from "ollama/browser";
 
 /**

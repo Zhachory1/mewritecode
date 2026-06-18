@@ -1,11 +1,11 @@
 ---
 title: Models
-description: Select and configure the LLM behind Caveman Code.
+description: Select and configure the LLM behind Me Write Code.
 ---
 
 # Models
 
-Caveman Code runs against any model your provider exposes. The defaults are chosen per provider and re-evaluated on each release based on the [proof-bench eval harness](https://github.com/JuliusBrussee/caveman-cli/tree/main/research/evals).
+Me Write Code runs against any model your provider exposes. The defaults are chosen per provider and re-evaluated on each release based on the [proof-bench eval harness](https://github.com/Zhachory1/mewritecode/tree/main/research/evals).
 
 <CopyForLlms />
 
@@ -23,9 +23,9 @@ Caveman Code runs against any model your provider exposes. The defaults are chos
 Override per session:
 
 ```bash
-caveman --model claude-opus-4-7
-caveman --model openai/gpt-5
-caveman --model claude-sonnet-4:high   # thinking level high
+mewrite --model claude-opus-4-7
+mewrite --model openai/gpt-5
+mewrite --model claude-sonnet-4:high   # thinking level high
 ```
 
 Inside the TUI, `/model` opens the picker.
@@ -81,14 +81,14 @@ Subagent results are summarized to ≤500 tokens before re-entering the parent's
 
 ## Model registry
 
-Provider/model definitions live in a versioned registry at `github.com/cave-cli/registry`. Update locally without releasing Caveman Code:
+Provider/model definitions live in a versioned registry at `github.com/cave-cli/registry`. Update locally without releasing Me Write Code:
 
 ```bash
-caveman models update
+mewrite models update
 ```
 
 Override per-machine in `~/.cave/registry.json`. See [Provider Registry](/reference/tools#registry) for schema.
 
 ## Cost-aware defaults
 
-Caveman Code's first-run wizard suggests Haiku/Flash for the default model on free OAuth accounts to avoid surprise bills. Upgrade with `/model` once you've validated the workflow.
+Me Write Code's first-run wizard suggests Haiku/Flash for the default model on free OAuth accounts to avoid surprise bills. Upgrade with `/model` once you've validated the workflow.

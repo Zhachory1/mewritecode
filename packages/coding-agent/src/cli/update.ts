@@ -29,7 +29,7 @@ import chalk from "chalk";
 import { detectInstallMethod, getAgentDir, getUpdateInstruction, VERSION } from "../config.js";
 import { SettingsManager } from "../core/settings-manager.js";
 
-const REPO = "JuliusBrussee/caveman-code";
+const REPO = "Zhachory1/mewritecode";
 const PACKAGE_NAME = "cave";
 
 export interface RemoteRelease {
@@ -162,9 +162,7 @@ export function runInstaller(
 ): { code: number; stdout: string; stderr: string } {
 	const script = opts.script ?? locateInstallerScript();
 	if (!script) {
-		throw new Error(
-			"install.sh not found locally; run `npm install -g @juliusbrussee/caveman-code@latest` to refresh",
-		);
+		throw new Error("install.sh not found locally; run `npm install -g @zhachory1/mewrite-code@latest` to refresh");
 	}
 	const args = ["--version", version];
 	if (opts.channel) args.push("--channel", opts.channel);

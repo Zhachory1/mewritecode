@@ -3,9 +3,9 @@
  *
  * For P0 we ship a tokenizing echo runner: it stores the user message,
  * streams a deterministic acknowledgement back word-by-word, persists the
- * assistant message, then signals `done`. This lets `caveman serve` boot
+ * assistant message, then signals `done`. This lets `mewrite serve` boot
  * immediately and exercises the full streaming path without dragging the
- * full agent runtime through `caveman serve`'s startup.
+ * full agent runtime through `mewrite serve`'s startup.
  *
  * TODO(ws9-real-runner): swap in a factory that delegates to
  * `createAgentSession()` from sdk.ts, wiring the agent's event bus to the
@@ -76,7 +76,7 @@ export function createDefaultRunnerFactory(opts: DefaultRunnerOptions = {}): Run
 				void streamReply(text).catch((err) => {
 					emit({ type: "state", sessionId: session.id, state: "error" });
 					emit({ type: "done", sessionId: session.id });
-					console.error("[caveman serve] runner failure:", err);
+					console.error("[mewrite serve] runner failure:", err);
 				});
 				return userMsg;
 			},

@@ -1,13 +1,13 @@
-// mcp-cli.ts — `caveman mcp <subcommand>` handler.
+// mcp-cli.ts — `mewrite mcp <subcommand>` handler.
 //
 // Subcommands:
-//   caveman mcp list                                     → show configured servers
-//   caveman mcp doctor                                   → health probe + tool counts
-//   caveman mcp add <name> --command "<cmd>" [--arg ...] → add a stdio server
-//   caveman mcp add <name> --url <url> [--auth oauth]    → add an HTTP server
-//   caveman mcp remove <name>                            → remove a server
-//   caveman mcp login <name>                             → OAuth login (stub)
-//   caveman mcp-server                                   → run cave AS an MCP server
+//   mewrite mcp list                                     → show configured servers
+//   mewrite mcp doctor                                   → health probe + tool counts
+//   mewrite mcp add <name> --command "<cmd>" [--arg ...] → add a stdio server
+//   mewrite mcp add <name> --url <url> [--auth oauth]    → add an HTTP server
+//   mewrite mcp remove <name>                            → remove a server
+//   mewrite mcp login <name>                             → OAuth login (stub)
+//   mewrite mcp-server                                   → run cave AS an MCP server
 //
 // Servers persist to project `.mcp.json` (default) or user `~/.cave/mcp.json`
 // (`--user`). Schema is byte-compat with Claude Code / Codex `.mcp.json`.
@@ -15,7 +15,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname } from "node:path";
-import { mcp as agentMcp } from "@juliusbrussee/caveman-agent";
+import { mcp as agentMcp } from "@zhachory1/mewrite-agent";
 import chalk from "chalk";
 import { runMcpSlashCommand } from "../core/slash-commands/mcp.js";
 
@@ -52,7 +52,7 @@ function configPath(scope: "user" | "project", cwd: string): string {
 }
 
 function parseAdd(args: string[]): AddOptions {
-	if (args.length === 0) throw new Error("usage: caveman mcp add <name> [--command <cmd>] [--url <url>] [--user]");
+	if (args.length === 0) throw new Error("usage: mewrite mcp add <name> [--command <cmd>] [--url <url>] [--user]");
 	const name = args[0];
 	const opts: AddOptions = { name, user: false, args: [] };
 	for (let i = 1; i < args.length; i++) {
@@ -137,7 +137,7 @@ function doAdd(args: string[], cwd: string): number {
 
 function doRemove(args: string[], cwd: string): number {
 	if (args.length === 0) {
-		console.error("usage: caveman mcp remove <name> [--user]");
+		console.error("usage: mewrite mcp remove <name> [--user]");
 		return 1;
 	}
 	const name = args[0];
@@ -165,7 +165,7 @@ async function doLogin(args: string[], cwd: string): Promise<number> {
 }
 
 function printHelp(): void {
-	console.log(`Usage: caveman mcp <subcommand> [args...]
+	console.log(`Usage: mewrite mcp <subcommand> [args...]
 
 Subcommands:
   list                              List configured MCP servers (project + user).
@@ -185,7 +185,7 @@ Format compat:
 
 export async function handleMcpCommand(args: string[]): Promise<boolean> {
 	if (args.length === 0 || args[0] !== "mcp") {
-		// also handle `caveman mcp-server` mode
+		// also handle `mewrite mcp-server` mode
 		if (args[0] === "mcp-server") {
 			await runCaveAsMcpServer();
 			return true;
@@ -237,15 +237,15 @@ export async function handleMcpCommand(args: string[]): Promise<boolean> {
 }
 
 /**
- * `caveman mcp-server` mode — cave acts AS an MCP server over stdio.
+ * `mewrite mcp-server` mode — cave acts AS an MCP server over stdio.
  *
  * This is the Codex pattern (cave-as-MCP-server) so other agents can call cave.
  * Today it serves the cave-side tools list. The full implementation lands with
- * a follow-up that wires the actual @juliusbrussee/caveman-coding-agent tool surface in.
+ * a follow-up that wires the actual @zhachory1/mewrite-code tool surface in.
  */
 async function runCaveAsMcpServer(): Promise<void> {
 	const server = new agentMcp.McpServer();
-	// Future: pull tools from @juliusbrussee/caveman-coding-agent allTools and register here.
+	// Future: pull tools from @zhachory1/mewrite-code allTools and register here.
 	server.register({
 		name: "cave_health",
 		description: "Returns 'ok' if cave is responding.",

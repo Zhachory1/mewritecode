@@ -4,7 +4,7 @@
     Cave installer for Windows.
 .DESCRIPTION
     Downloads cave-windows-x64.zip, extracts to %LOCALAPPDATA%\cave\<version>\, writes
-    cave.cmd, caveman.cmd, mewrite.cmd, and mewritecode.cmd shims into
+    mewrite.cmd, mewrite-code.cmd, and mewritecode.cmd shims into
     %LOCALAPPDATA%\cave\bin\, and prepends that to user PATH.
 
     Env knobs:
@@ -15,7 +15,7 @@
 
 $ErrorActionPreference = 'Stop'
 
-$Repo = 'JuliusBrussee/caveman-cli'
+$Repo = 'Zhachory1/mewritecode'
 $KeepVersions = 2
 
 $arch = $env:PROCESSOR_ARCHITECTURE
@@ -71,9 +71,8 @@ $shim = @"
 @echo off
 "%~dp0..\lib\$Version\cave.exe" %*
 "@
-Set-Content -Path (Join-Path $BinDir 'cave.cmd') -Value $shim -Encoding ASCII
-Set-Content -Path (Join-Path $BinDir 'caveman.cmd') -Value $shim -Encoding ASCII
 Set-Content -Path (Join-Path $BinDir 'mewrite.cmd') -Value $shim -Encoding ASCII
+Set-Content -Path (Join-Path $BinDir 'mewrite-code.cmd') -Value $shim -Encoding ASCII
 Set-Content -Path (Join-Path $BinDir 'mewritecode.cmd') -Value $shim -Encoding ASCII
 
 # Prune older versions
@@ -97,4 +96,4 @@ if (-not ($parts -contains $BinDir)) {
 
 Write-Host ''
 Write-Host "Installed: $VerDir"
-& (Join-Path $BinDir 'cave.cmd') --version
+& (Join-Path $BinDir 'mewrite.cmd') --version

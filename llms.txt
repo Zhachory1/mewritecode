@@ -1,33 +1,33 @@
-# Caveman Code — terminal coding agent
+# Me Write Code — terminal coding agent
 
-> Caveman Code is a terminal coding agent that uses 2× fewer tokens than
+> Me Write Code is a terminal coding agent that uses 2× fewer tokens than
 > Codex CLI on identical tasks, supports 20+ providers with 6 OAuth flows,
 > and ships under the MIT license. Four-layer Caveman Mode compression
 > gives ~85% reduction on tool output. Plan mode, autonomous goal loop,
 > worktree-isolated subagents, native MCP, cavemem-backed memory.
 
-This file is the LLM-friendly entry point to Caveman Code's documentation.
+This file is the LLM-friendly entry point to Me Write Code's documentation.
 Each linked page is plain markdown.
 
 ## Install
 
 ```
-npm install -g @juliusbrussee/caveman-code
+npm install -g @zhachory1/mewrite-code
 ```
 
-Requires Node.js 20+. Binaries `caveman` (primary) and `caveman-code` (alias)
+Requires Node.js 20+. Binaries `caveman` (primary) and `mewrite-code` (alias)
 are both registered on PATH.
 
 ## npm package
 
-- Main CLI: `@juliusbrussee/caveman-code`
+- Main CLI: `@zhachory1/mewrite-code`
 - Sub-packages (auto-installed):
-  - `@juliusbrussee/caveman-agent`
-  - `@juliusbrussee/caveman-ai`
-  - `@juliusbrussee/caveman-tui`
-  - `@juliusbrussee/caveman-sdk`
-  - `@juliusbrussee/caveman-markdown-preview`
-- Optional surfaces: `@juliusbrussee/caveman-mom`, `@juliusbrussee/caveman-pods`, `@juliusbrussee/caveman-web-ui`
+  - `@zhachory1/mewrite-agent`
+  - `@zhachory1/mewrite-ai`
+  - `@zhachory1/mewrite-tui`
+  - `@zhachory1/mewrite-sdk`
+  - `@zhachory1/mewrite-markdown-preview`
+- Optional surfaces: `@zhachory1/mewrite-mom`, `@zhachory1/mewrite-pods`, `@zhachory1/mewrite-web-ui`
 
 ## Top-level docs
 
@@ -52,7 +52,7 @@ are both registered on PATH.
 ## Cookbook & API
 
 - [Cookbook](docs/cookbook.md): GitHub Actions, multi-agent review, daemon pair programming
-- [Comparison](docs/comparison.md): Caveman Code vs Claude Code / Codex / Aider / Crush / opencode
+- [Comparison](docs/comparison.md): Me Write Code vs Claude Code / Codex / Aider / Crush / opencode
 - [Troubleshooting](docs/troubleshooting.md): install, auth, sessions, tools, hooks, MCP
 - [API](docs/api.md): SDK, JSON-RPC, OpenAPI, extension API
 
@@ -63,7 +63,7 @@ are both registered on PATH.
 3. Session branching (`/tree`, `/fork`)
 4. Plan mode + autonomous goal loop
 5. Worktree-isolated subagents via Task tool
-6. Native MCP client; caveman-code can serve as MCP server
+6. Native MCP client; mewrite-code can serve as MCP server
 7. Aider-grade repo map (PageRank) + edit-format-per-model
 8. Daemon (`caveman serve`) survives SSH drops; multi-client attach
 9. Shadow-git checkpoints + `/rollback N`
@@ -73,7 +73,7 @@ are both registered on PATH.
 
 ## Repo
 
-- Source: https://github.com/JuliusBrussee/caveman-cli
-- Issues: https://github.com/JuliusBrussee/caveman-cli/issues
-- Releases: https://github.com/JuliusBrussee/caveman-cli/releases
-- npm: https://www.npmjs.com/package/@juliusbrussee/caveman-code
+- Source: https://github.com/Zhachory1/mewritecode
+- Issues: https://github.com/Zhachory1/mewritecode/issues
+- Releases: https://github.com/Zhachory1/mewritecode/releases
+- npm: https://www.npmjs.com/package/@zhachory1/mewrite-code

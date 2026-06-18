@@ -1,5 +1,5 @@
 {
-	"name": "@juliusbrussee/caveman-web-ui",
+	"name": "@zhachory1/mewrite-web-ui",
 	"version": "0.65.2",
 	"description": "Reusable web UI components for AI chat interfaces",
 	"type": "module",
@@ -22,8 +22,8 @@
 	},
 	"dependencies": {
 		"@lmstudio/sdk": "^1.5.0",
-		"@juliusbrussee/caveman-ai": "^0.65.2",
-		"@juliusbrussee/caveman-tui": "^0.65.2",
+		"@zhachory1/mewrite-ai": "^0.65.2",
+		"@zhachory1/mewrite-tui": "^0.65.2",
 		"docx-preview": "^0.3.7",
 		"jszip": "^3.10.1",
 		"lucide": "^0.544.0",
@@ -54,12 +54,12 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/JuliusBrussee/caveman-cli.git",
+		"url": "git+https://github.com/Zhachory1/mewritecode.git",
 		"directory": "packages/web-ui"
 	},
-	"homepage": "https://github.com/JuliusBrussee/caveman-cli#readme",
+	"homepage": "https://github.com/Zhachory1/mewritecode#readme",
 	"bugs": {
-		"url": "https://github.com/JuliusBrussee/caveman-cli/issues"
+		"url": "https://github.com/Zhachory1/mewritecode/issues"
 	},
 	"publishConfig": {
 		"access": "public"

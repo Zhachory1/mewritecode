@@ -5,8 +5,8 @@
  * and converting the ANSI output to HTML.
  */
 
-import type { ImageContent, TextContent } from "@juliusbrussee/caveman-ai";
-import type { Component } from "@juliusbrussee/caveman-tui";
+import type { ImageContent, TextContent } from "@zhachory1/mewrite-ai";
+import type { Component } from "@zhachory1/mewrite-tui";
 import type { Theme } from "../../modes/interactive/theme/theme.js";
 import type { ToolDefinition, ToolRenderContext } from "../extensions/types.js";
 import { ansiLinesToHtml } from "./ansi-to-html.js";

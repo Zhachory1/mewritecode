@@ -3,9 +3,9 @@
  * Validates that the faux provider and session factory work correctly.
  */
 
-import type { AgentTool } from "@juliusbrussee/caveman-agent";
-import type { AssistantMessage } from "@juliusbrussee/caveman-ai";
 import { Type } from "@sinclair/typebox";
+import type { AgentTool } from "@zhachory1/mewrite-agent";
+import type { AssistantMessage } from "@zhachory1/mewrite-ai";
 import { afterEach, describe, expect, it } from "vitest";
 import { createHarness, createHarnessWithExtensions, type Harness } from "./test-harness.js";
 

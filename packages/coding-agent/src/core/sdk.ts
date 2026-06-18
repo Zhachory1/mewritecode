@@ -1,6 +1,6 @@
 import { join } from "node:path";
-import { Agent, type AgentMessage, type ThinkingLevel } from "@juliusbrussee/caveman-agent";
-import { type Message, type Model, streamSimple } from "@juliusbrussee/caveman-ai";
+import { Agent, type AgentMessage, type ThinkingLevel } from "@zhachory1/mewrite-agent";
+import { type Message, type Model, streamSimple } from "@zhachory1/mewrite-ai";
 import { getAgentDir, getDocsPath } from "../config.js";
 import { AgentSession } from "./agent-session.js";
 import { AuthStorage } from "./auth-storage.js";
@@ -190,7 +190,7 @@ function parseStreamTotalTimeoutEnv(raw: string | undefined): number | undefined
  * const { session } = await createAgentSession();
  *
  * // With explicit model
- * import { getModel } from '@juliusbrussee/caveman-ai';
+ * import { getModel } from '@zhachory1/mewrite-ai';
  * const { session } = await createAgentSession({
  *   model: getModel('anthropic', 'claude-opus-4-5'),
  *   thinkingLevel: 'high',

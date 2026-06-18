@@ -6,10 +6,10 @@
 		"moduleResolution": "bundler",
 		"paths": {
 			"*": ["./*"],
-			"@juliusbrussee/caveman-agent": ["../../agent/dist/index.d.ts"],
-			"@juliusbrussee/caveman-ai": ["../../ai/dist/index.d.ts"],
-			"@juliusbrussee/caveman-tui": ["../../tui/dist/index.d.ts"],
-			"@juliusbrussee/caveman-web-ui": ["../dist/index.d.ts"]
+			"@zhachory1/mewrite-agent": ["../../agent/dist/index.d.ts"],
+			"@zhachory1/mewrite-ai": ["../../ai/dist/index.d.ts"],
+			"@zhachory1/mewrite-tui": ["../../tui/dist/index.d.ts"],
+			"@zhachory1/mewrite-web-ui": ["../dist/index.d.ts"]
 		},
 		"strict": true,
 		"skipLibCheck": true,

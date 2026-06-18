@@ -1,5 +1,5 @@
 {
-	"name": "@juliusbrussee/caveman-tui",
+	"name": "@zhachory1/mewrite-tui",
 	"version": "0.65.3",
 	"description": "Terminal User Interface library with differential rendering for efficient text-based applications",
 	"type": "module",
@@ -28,7 +28,7 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/JuliusBrussee/caveman-code.git",
+		"url": "git+https://github.com/Zhachory1/mewritecode.git",
 		"directory": "packages/tui"
 	},
 	"engines": {
@@ -49,9 +49,9 @@
 		"@xterm/headless": "^5.5.0",
 		"@xterm/xterm": "^5.5.0"
 	},
-	"homepage": "https://github.com/JuliusBrussee/caveman-code#readme",
+	"homepage": "https://github.com/Zhachory1/mewritecode#readme",
 	"bugs": {
-		"url": "https://github.com/JuliusBrussee/caveman-code/issues"
+		"url": "https://github.com/Zhachory1/mewritecode/issues"
 	},
 	"publishConfig": {
 		"access": "public"

@@ -1,5 +1,5 @@
-import { Text, type TUI } from "@juliusbrussee/caveman-tui";
 import { Type } from "@sinclair/typebox";
+import { Text, type TUI } from "@zhachory1/mewrite-tui";
 import stripAnsi from "strip-ansi";
 import { beforeAll, describe, expect, test } from "vitest";
 import type { ToolDefinition } from "../src/core/extensions/types.js";

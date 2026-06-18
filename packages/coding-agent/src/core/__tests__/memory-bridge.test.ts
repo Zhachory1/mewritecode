@@ -3,7 +3,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { memory } from "@juliusbrussee/caveman-agent";
+import { memory } from "@zhachory1/mewrite-agent";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 const { FilesProvider } = memory;

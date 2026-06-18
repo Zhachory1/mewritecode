@@ -10,7 +10,7 @@
  * 3. Use /commands extensions to filter by source
  */
 
-import type { ExtensionAPI, SlashCommandInfo } from "@juliusbrussee/caveman-code";
+import type { ExtensionAPI, SlashCommandInfo } from "@zhachory1/mewrite-code";
 
 export default function commandsExtension(pi: ExtensionAPI) {
 	pi.registerCommand("commands", {

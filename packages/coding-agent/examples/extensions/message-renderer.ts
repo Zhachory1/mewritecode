@@ -7,8 +7,8 @@
  * Usage: /status [message] - sends a status message with custom rendering
  */
 
-import type { ExtensionAPI } from "@juliusbrussee/caveman-code";
-import { Box, Text } from "@juliusbrussee/caveman-tui";
+import type { ExtensionAPI } from "@zhachory1/mewrite-code";
+import { Box, Text } from "@zhachory1/mewrite-tui";
 
 export default function (pi: ExtensionAPI) {
 	// Register custom renderer for "status-update" messages

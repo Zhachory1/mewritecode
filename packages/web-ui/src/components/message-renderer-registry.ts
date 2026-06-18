@@ -1,4 +1,4 @@
-import type { AgentMessage } from "@juliusbrussee/caveman-agent";
+import type { AgentMessage } from "@zhachory1/mewrite-agent";
 import type { TemplateResult } from "lit";
 
 // Extract role type from AppMessage union

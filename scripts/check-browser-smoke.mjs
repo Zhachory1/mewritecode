@@ -14,7 +14,7 @@ try {
 		format: "esm",
 		logLevel: "silent",
 		outfile: outputPath,
-		// The @juliusbrussee/caveman-ai top-level index re-exports node-targeted modules
+		// The @zhachory1/mewrite-ai top-level index re-exports node-targeted modules
 		// (cache, registry, oauth) by design. Treat node builtins as runtime-
 		// provided so this smoke check still catches missing browser-only deps
 		// without forcing a structural split of the AI entry point.

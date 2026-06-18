@@ -2,7 +2,7 @@
  * WS9 Daemon — public surface.
  *
  * Re-exports the server, client, and protocol shapes. The CLI subcommands
- * (`caveman serve`, `caveman attach`, `cave list`, `cave worker`) consume from
+ * (`mewrite serve`, `mewrite attach`, `cave list`, `cave worker`) consume from
  * here.
  */
 

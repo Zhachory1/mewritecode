@@ -1,4 +1,4 @@
-import { type Component, Markdown, type MarkdownTheme, Text } from "@juliusbrussee/caveman-tui";
+import { type Component, Markdown, type MarkdownTheme, Text } from "@zhachory1/mewrite-tui";
 import type { ParsedSkillBlock } from "../../../core/agent-session.js";
 import { getMarkdownTheme, theme } from "../theme/theme.js";
 import { keyText } from "./keybinding-hints.js";

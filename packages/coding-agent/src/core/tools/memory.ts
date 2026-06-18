@@ -7,9 +7,9 @@
  * write a fact mid-turn without taking the user-driven `/memory` slash route.
  */
 
-import type { AgentTool, memory as memoryNs } from "@juliusbrussee/caveman-agent";
-import { Text } from "@juliusbrussee/caveman-tui";
 import { type Static, Type } from "@sinclair/typebox";
+import type { AgentTool, memory as memoryNs } from "@zhachory1/mewrite-agent";
+import { Text } from "@zhachory1/mewrite-tui";
 import type { ToolDefinition } from "../extensions/types.js";
 import { wrapToolDefinition } from "./tool-definition-wrapper.js";
 
@@ -61,7 +61,7 @@ export function createMemorySearchToolDefinition(
 		name: "memory_search",
 		label: "memory_search",
 		description:
-			"Search persistent memory (prior caveman sessions + saved facts). Prefer this over re-running `grep`/`read` for topics you may have explored before. The auto-injected `<memory-recall>` block already shows top hits each turn — use this tool to expand a hit, query a different topic, or paginate.",
+			"Search persistent memory (prior mewrite sessions + saved facts). Prefer this over re-running `grep`/`read` for topics you may have explored before. The auto-injected `<memory-recall>` block already shows top hits each turn — use this tool to expand a hit, query a different topic, or paginate.",
 		promptSnippet: "Search persistent memory (prior sessions + saved facts)",
 		promptGuidelines: [
 			"Before grepping or reading files for context the user may have already discussed in a prior session, run `memory_search` with the topic — it is far cheaper than tool I/O.",

@@ -1,4 +1,4 @@
-import type { memory as memoryNs } from "@juliusbrussee/caveman-agent";
+import type { memory as memoryNs } from "@zhachory1/mewrite-agent";
 import { describe, expect, test } from "vitest";
 import { MemoryInjector } from "../src/core/session-memory-injector.js";
 

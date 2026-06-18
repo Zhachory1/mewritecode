@@ -1,9 +1,9 @@
 /**
- * WS9 — `caveman serve` subcommand.
+ * WS9 — `mewrite serve` subcommand.
  *
  * Boots the daemon (HTTP + WS) on the requested port. Persists sessions to
  * SQLite at `~/.cave/daemon/sessions.db`. Multi-client safe: any number of
- * `caveman attach` clients (or `@juliusbrussee/caveman-sdk`-using applications) can connect to
+ * `mewrite attach` clients (or `@zhachory1/mewrite-sdk`-using applications) can connect to
  * the same session over WS.
  */
 
@@ -61,7 +61,7 @@ function parseServeArgs(args: string[]): ServeArgs {
 }
 
 function printHelp(): void {
-	console.log(`Usage: caveman serve [options]
+	console.log(`Usage: mewrite serve [options]
 
 Run the cave daemon (HTTP + WebSocket). Sessions persist to SQLite and
 survive process restarts; multiple clients can attach to the same session.
@@ -106,7 +106,7 @@ export async function runServe(args: string[]): Promise<number> {
 	if (existsSync(parsed.pidFile)) {
 		const existing = Number.parseInt(readFileSync(parsed.pidFile, "utf8").trim(), 10);
 		if (!Number.isNaN(existing) && processAlive(existing)) {
-			console.error(chalk.yellow(`caveman serve: already running (pid ${existing}, pidfile ${parsed.pidFile}).`));
+			console.error(chalk.yellow(`mewrite serve: already running (pid ${existing}, pidfile ${parsed.pidFile}).`));
 			console.error(chalk.dim(`Stop it first or remove ${parsed.pidFile}.`));
 			return 1;
 		}
@@ -135,7 +135,7 @@ export async function runServe(args: string[]): Promise<number> {
 	mkdirSync(dirname(parsed.pidFile), { recursive: true });
 	writeFileSync(parsed.pidFile, String(process.pid), "utf8");
 
-	console.log(chalk.green(`caveman serve listening on http://${handle.host}:${handle.port}`));
+	console.log(chalk.green(`mewrite serve listening on http://${handle.host}:${handle.port}`));
 	console.log(chalk.dim(`  pid:  ${process.pid}`));
 	console.log(chalk.dim(`  db:   ${parsed.dbPath}`));
 	if (parsed.token) {
@@ -143,8 +143,8 @@ export async function runServe(args: string[]): Promise<number> {
 	} else {
 		console.log(chalk.dim(`  auth: none (loopback only — pass --token to require Bearer auth)`));
 	}
-	console.log(chalk.dim(`  attach: caveman attach <session-id>`));
-	console.log(chalk.dim(`  list:   caveman sessions`));
+	console.log(chalk.dim(`  attach: mewrite attach <session-id>`));
+	console.log(chalk.dim(`  list:   mewrite sessions`));
 
 	const shutdown = async (signal: string): Promise<void> => {
 		console.error(chalk.dim(`\ncave serve: received ${signal}, shutting down...`));

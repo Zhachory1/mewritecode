@@ -1,11 +1,11 @@
 ---
 title: Troubleshooting
-description: Fixes for the most common issues with Caveman Code.
+description: Fixes for the most common issues with Me Write Code.
 ---
 
 # Troubleshooting
 
-When something breaks, start here. If your issue isn't covered, [open a GitHub issue](https://github.com/JuliusBrussee/caveman-cli/issues/new) with `caveman doctor` output.
+When something breaks, start here. If your issue isn't covered, [open a GitHub issue](https://github.com/Zhachory1/mewritecode/issues/new) with `mewrite doctor` output.
 
 <CopyForLlms />
 
@@ -36,7 +36,7 @@ chown -R "$USER" ~/.cave
 You downloaded an x86_64 binary on an ARM Mac. Re-install via npm — the package is platform-agnostic:
 
 ```bash
-npm install -g @juliusbrussee/caveman-code
+npm install -g @zhachory1/mewrite-code
 ```
 
 ## Auth
@@ -44,7 +44,7 @@ npm install -g @juliusbrussee/caveman-code
 ### OAuth opens browser but never completes
 
 1. Check that the loopback port (random in 1024-65535) isn't firewalled.
-2. Try device-code auth: `caveman login --device-auth`.
+2. Try device-code auth: `mewrite login --device-auth`.
 3. Disable VPN that intercepts loopback.
 
 ### `401 Unauthorized` on a stored token
@@ -52,8 +52,8 @@ npm install -g @juliusbrussee/caveman-code
 Token expired and refresh failed. Re-login:
 
 ```bash
-caveman logout <provider>
-caveman login <provider>
+mewrite logout <provider>
+mewrite login <provider>
 ```
 
 ### Linux libsecret not found
@@ -72,12 +72,12 @@ If your distro lacks libsecret, set `CAVE_INSECURE_KEYRING=1` to fall back to a 
 
 ## Sessions
 
-### Caveman Code hangs on launch
+### Me Write Code hangs on launch
 
 Stuck on context load. Kill and:
 
 ```bash
-caveman -r --no-context     # browse without loading any session
+mewrite -r --no-context     # browse without loading any session
 ```
 
 Then identify and remove the bad session in `~/.cave/sessions/<cwd-hash>/`.
@@ -121,19 +121,19 @@ The model's view of the file is stale. After a hook writes to the file, ask cave
 Lower compression intensity:
 
 ```bash
-/caveman lite                 # default is "full" (in TUI)
-/caveman off                  # turn off entirely
+/mewrite lite                 # default is "full" (in TUI)
+/mewrite off                  # turn off entirely
 ```
 
 ## Permissions
 
 ### Every action prompts even though I clicked "Allow always"
 
-The allow-key is more specific than the new action. E.g. `Read packages/foo/**` won't match `Read packages/bar/baz.ts`. Add a broader allow-key with `caveman permissions add "Read **"`.
+The allow-key is more specific than the new action. E.g. `Read packages/foo/**` won't match `Read packages/bar/baz.ts`. Add a broader allow-key with `mewrite permissions add "Read **"`.
 
 ### Sandbox blocks something I need
 
-`caveman debug sandbox` shows the active policy. Caveman Code executes all tool requests directly - there is no sandbox flag or permission prompts. The OS enforces filesystem permissions. To constrain a session, use `--tools` to limit available tools (e.g. `--tools read,grep,find,ls` for read-only).
+`mewrite debug sandbox` shows the active policy. Me Write Code executes all tool requests directly - there is no sandbox flag or permission prompts. The OS enforces filesystem permissions. To constrain a session, use `--tools` to limit available tools (e.g. `--tools read,grep,find,ls` for read-only).
 
 For permanent allowlist, add to `permissions.json`:
 
@@ -147,17 +147,17 @@ For permanent allowlist, add to `permissions.json`:
 
 ## MCP
 
-### `caveman mcp doctor` shows server unreachable
+### `mewrite mcp doctor` shows server unreachable
 
 ```bash
-caveman mcp logs <server>     # tails stderr of stdio server
+mewrite mcp logs <server>     # tails stderr of stdio server
 ```
 
 Common causes: command not on PATH, env var missing, server's auth flow incomplete.
 
 ### MCP tools don't show up in the model's context
 
-By default Caveman Code defers MCP schemas — only names are listed until the model calls `ToolSearch`. This reduces context bloat by ~85%.
+By default Me Write Code defers MCP schemas — only names are listed until the model calls `ToolSearch`. This reduces context bloat by ~85%.
 
 ## Hooks
 
@@ -166,7 +166,7 @@ By default Caveman Code defers MCP schemas — only names are listed until the m
 Check the matcher:
 
 ```bash
-caveman hooks test PreToolUse --tool Edit --path src/foo.ts
+mewrite hooks test PreToolUse --tool Edit --path src/foo.ts
 ```
 
 Reports whether each hook would fire for that input. Common mistake: `paths` glob doesn't include the actual file path.
@@ -183,10 +183,10 @@ cavemem isn't running. Check:
 
 ```bash
 cavemem --version
-caveman mcp doctor   # should show cavemem reachable
+mewrite mcp doctor   # should show cavemem reachable
 ```
 
-If missing: `npm install -g cavemem` then `caveman init`.
+If missing: `npm install -g cavemem` then `mewrite init`.
 
 ### Memory injection too noisy
 
@@ -204,7 +204,7 @@ Or disable for the session: `/memory off`.
 
 ### TUI feels laggy
 
-Caveman Code automatically detects and uses synchronized output (DEC mode 2026) on supported terminals. If you see rendering issues, ensure your terminal supports ANSI escape sequences and check `caveman doctor` output for terminal detection status.
+Me Write Code automatically detects and uses synchronized output (DEC mode 2026) on supported terminals. If you see rendering issues, ensure your terminal supports ANSI escape sequences and check `mewrite doctor` output for terminal detection status.
 
 ### Long sessions get slow
 
@@ -219,8 +219,8 @@ Run `/compact` to manually compact. Or enable auto-compact at a lower threshold:
 ## Reporting issues
 
 ```bash
-caveman doctor > /tmp/cave-doctor.txt
-caveman version > /tmp/cave-version.txt
+mewrite doctor > /tmp/cave-doctor.txt
+mewrite version > /tmp/cave-version.txt
 ```
 
-Attach both to a [GitHub issue](https://github.com/JuliusBrussee/caveman-cli/issues/new). Include the prompt that triggered the bug if reproducible.
+Attach both to a [GitHub issue](https://github.com/Zhachory1/mewritecode/issues/new). Include the prompt that triggered the bug if reproducible.

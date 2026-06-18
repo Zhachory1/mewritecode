@@ -1,15 +1,15 @@
-# @juliusbrussee/caveman-markdown-preview
+# @zhachory1/mewrite-markdown-preview
 
-Rendered markdown + LaTeX preview for [Caveman Code](https://github.com/JuliusBrussee/caveman-cli) — terminal, browser, and PDF output.
+Rendered markdown + LaTeX preview for [Me Write Code](https://github.com/Zhachory1/mewritecode) — terminal, browser, and PDF output.
 
-Loaded as a `@juliusbrussee/caveman-code` extension; not intended as a standalone library.
+Loaded as a `@zhachory1/mewrite-code` extension; not intended as a standalone library.
 
 ## Install
 
-Bundled with `@juliusbrussee/caveman-code` by default. To load explicitly:
+Bundled with `@zhachory1/mewrite-code` by default. To load explicitly:
 
 ```bash
-caveman --extension @juliusbrussee/caveman-markdown-preview "render this README"
+caveman --extension @zhachory1/mewrite-markdown-preview "render this README"
 ```
 
 ## What it does

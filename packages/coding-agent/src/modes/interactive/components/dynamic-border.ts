@@ -1,4 +1,4 @@
-import type { Component } from "@juliusbrussee/caveman-tui";
+import type { Component } from "@zhachory1/mewrite-tui";
 import { theme } from "../theme/theme.js";
 
 /**

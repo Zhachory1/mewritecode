@@ -42,7 +42,7 @@ export default defineConfig({
             {
                 text: "Links",
                 items: [
-                    { text: "GitHub", link: "https://github.com/JuliusBrussee/caveman-cli" },
+                    { text: "GitHub", link: "https://github.com/Zhachory1/mewritecode" },
                     { text: "Discord", link: "https://discord.gg/cave-cli" },
                     { text: "llms.txt", link: "/llms.txt" },
                 ],
@@ -98,7 +98,7 @@ export default defineConfig({
         ],
 
         socialLinks: [
-            { icon: "github", link: "https://github.com/JuliusBrussee/caveman-cli" },
+            { icon: "github", link: "https://github.com/Zhachory1/mewritecode" },
             { icon: "discord", link: "https://discord.gg/cave-cli" },
         ],
 
@@ -109,7 +109,7 @@ export default defineConfig({
 
         editLink: {
             pattern:
-                "https://github.com/JuliusBrussee/caveman-cli/edit/main/docs/:path",
+                "https://github.com/Zhachory1/mewritecode/edit/main/docs/:path",
             text: "Edit this page on GitHub",
         },
 

@@ -5,8 +5,8 @@
  */
 
 import { type ChildProcess, spawn } from "node:child_process";
-import type { AgentEvent, AgentMessage, ThinkingLevel } from "@juliusbrussee/caveman-agent";
-import type { ImageContent } from "@juliusbrussee/caveman-ai";
+import type { AgentEvent, AgentMessage, ThinkingLevel } from "@zhachory1/mewrite-agent";
+import type { ImageContent } from "@zhachory1/mewrite-ai";
 import type { SessionStats } from "../../core/agent-session.js";
 import type { BashResult } from "../../core/bash-executor.js";
 import type { CompactionResult } from "../../core/compaction/index.js";

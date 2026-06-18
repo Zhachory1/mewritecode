@@ -1,7 +1,7 @@
 {
-	"name": "@juliusbrussee/caveman-mom",
+	"name": "@zhachory1/mewrite-mom",
 	"version": "0.65.3",
-	"description": "Slack bot that delegates messages to the caveman-code coding agent",
+	"description": "Slack bot that delegates messages to the Me Write Code coding agent",
 	"type": "module",
 	"bin": {
 		"mom": "dist/main.js"
@@ -20,9 +20,9 @@
 	},
 	"dependencies": {
 		"@anthropic-ai/sandbox-runtime": "^0.0.16",
-		"@juliusbrussee/caveman-agent": "^0.65.2",
-		"@juliusbrussee/caveman-ai": "^0.65.2",
-		"@juliusbrussee/caveman-code": "^0.65.2",
+		"@zhachory1/mewrite-agent": "^0.65.2",
+		"@zhachory1/mewrite-ai": "^0.65.2",
+		"@zhachory1/mewrite-code": "^0.65.2",
 		"@sinclair/typebox": "^0.34.0",
 		"@slack/socket-mode": "^2.0.0",
 		"@slack/web-api": "^7.0.0",
@@ -45,15 +45,15 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/JuliusBrussee/caveman-cli.git",
+		"url": "git+https://github.com/Zhachory1/mewritecode.git",
 		"directory": "packages/mom"
 	},
 	"engines": {
 		"node": ">=20.0.0"
 	},
-	"homepage": "https://github.com/JuliusBrussee/caveman-cli#readme",
+	"homepage": "https://github.com/Zhachory1/mewritecode#readme",
 	"bugs": {
-		"url": "https://github.com/JuliusBrussee/caveman-cli/issues"
+		"url": "https://github.com/Zhachory1/mewritecode/issues"
 	},
 	"publishConfig": {
 		"access": "public"

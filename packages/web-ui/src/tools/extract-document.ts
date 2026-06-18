@@ -1,6 +1,6 @@
-import type { AgentTool } from "@juliusbrussee/caveman-agent";
-import type { ToolResultMessage } from "@juliusbrussee/caveman-ai";
 import { type Static, Type } from "@sinclair/typebox";
+import type { AgentTool } from "@zhachory1/mewrite-agent";
+import type { ToolResultMessage } from "@zhachory1/mewrite-ai";
 import { html } from "lit";
 import { createRef, ref } from "lit/directives/ref.js";
 import { FileText } from "lucide";
