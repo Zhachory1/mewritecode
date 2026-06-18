@@ -7,7 +7,7 @@
 
 import type { ExtensionAPI } from "cave";
 import { DynamicBorder } from "cave";
-import { Container, Key, matchesKey, type SelectItem, SelectList, Text } from "@juliusbrussee/caveman-tui";
+import { Container, Key, matchesKey, type SelectItem, SelectList, Text } from "@zhachory1/mewrite-tui";
 
 interface FileEntry {
 	path: string;

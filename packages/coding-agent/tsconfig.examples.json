@@ -5,8 +5,8 @@
 		"paths": {
 			"cave": ["./src/index.ts"],
 			"cave/hooks": ["./src/core/hooks/index.ts"],
-			"@juliusbrussee/caveman-tui": ["../tui/src/index.ts"],
-			"@juliusbrussee/caveman-ai": ["../ai/src/index.ts"],
+			"@zhachory1/mewrite-tui": ["../tui/src/index.ts"],
+			"@zhachory1/mewrite-ai": ["../ai/src/index.ts"],
 			"@sinclair/typebox": ["../../node_modules/@sinclair/typebox"]
 		},
 		"skipLibCheck": true

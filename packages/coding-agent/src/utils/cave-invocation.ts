@@ -11,7 +11,7 @@ export interface CaveInvocation {
  *
  * - source / dist script run → `node <script>`
  * - compiled binary run      → `<binary>`
- * - generic runtime fallback → `caveman-code` on PATH
+ * - generic runtime fallback → `mewrite` on PATH
  */
 export function resolveCurrentCaveInvocation(): CaveInvocation {
 	const currentScript = process.argv[1];
@@ -25,5 +25,5 @@ export function resolveCurrentCaveInvocation(): CaveInvocation {
 		return { command: process.execPath, argsPrefix: [] };
 	}
 
-	return { command: "caveman-code", argsPrefix: [] };
+	return { command: "mewrite", argsPrefix: [] };
 }

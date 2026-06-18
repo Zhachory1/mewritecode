@@ -1,4 +1,4 @@
-import { Container, Text, truncateToWidth } from "@juliusbrussee/caveman-tui";
+import { Container, Text, truncateToWidth } from "@zhachory1/mewrite-tui";
 import { theme } from "../theme/theme.js";
 
 // Retained for backwards-compatible call sites; the value is ignored.

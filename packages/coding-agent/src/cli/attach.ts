@@ -1,13 +1,13 @@
 /**
- * WS9 — `caveman attach <session-id>` subcommand.
+ * WS9 — `mewrite attach <session-id>` subcommand.
  *
  * Connects to a running daemon's WS endpoint for the given session,
  * streams tokens to stdout in real time, and forwards stdin lines as user
- * messages. Multiple `caveman attach` clients can be connected to the same
+ * messages. Multiple `mewrite attach` clients can be connected to the same
  * session simultaneously (multi-client attach is the WS9 headline feature).
  *
  * Sessions survive SSH drops because the daemon keeps running; the user
- * just runs `caveman attach <id>` again to resume.
+ * just runs `mewrite attach <id>` again to resume.
  */
 
 import { createInterface } from "node:readline";
@@ -58,7 +58,7 @@ function parseAttachArgs(args: string[]): AttachArgs {
 }
 
 function printHelp(): void {
-	console.log(`Usage: caveman attach <session-id> [options]
+	console.log(`Usage: mewrite attach <session-id> [options]
 
 Attach to a running daemon session. Streams assistant tokens to stdout and
 sends typed lines back to the session as user messages. Multi-client safe.
@@ -97,7 +97,7 @@ export async function runAttach(args: string[]): Promise<number> {
 		const msg = err instanceof Error ? err.message : String(err);
 		if (msg.includes("ECONNREFUSED")) {
 			console.error(chalk.yellow(`No daemon listening on ${parsed.host}:${parsed.port}.`));
-			console.error(chalk.dim(`Start one with: caveman serve`));
+			console.error(chalk.dim(`Start one with: mewrite serve`));
 			return 2;
 		}
 		console.error(chalk.red(`Error: ${msg}`));

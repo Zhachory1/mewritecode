@@ -1,4 +1,4 @@
-import type { AgentTool } from "@juliusbrussee/caveman-agent";
+import type { AgentTool } from "@zhachory1/mewrite-agent";
 import type { Executor } from "../sandbox.js";
 import { attachTool } from "./attach.js";
 import { createBashTool } from "./bash.js";

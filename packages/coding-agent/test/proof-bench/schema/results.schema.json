@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://caveman-cli.dev/proof-bench/results.schema.json",
+  "$id": "https://mewritecode.dev/proof-bench/results.schema.json",
   "title": "CAVE Compression Proof — results",
   "type": "object",
   "required": [

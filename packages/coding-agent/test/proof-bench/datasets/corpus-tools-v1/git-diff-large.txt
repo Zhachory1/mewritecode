@@ -401,7 +401,7 @@
 [31m-  <a href="https://exe.dev"><img src="docs/images/exy.png" alt="Exy mascot" width="48" /><br />exe.dev</a>[m
 [32m+[m[32m  <a href="https://discord.com/invite/nKXTsAcmbT"><img alt="Discord" src="https://img.shields.io/badge/discord-community-5865F2?style=flat-square&logo=discord&logoColor=white" /></a>[m
 [32m+[m[32m  <a href="https://www.npmjs.com/package/@cavepi/pi-coding-agent"><img alt="npm" src="https://img.shields.io/npm/v/@cavepi/pi-coding-agent?style=flat-square" /></a>[m
-[32m+[m[32m  <a href="https://github.com/JuliusBrussee/caveman-cli/actions/workflows/ci.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/JuliusBrussee/caveman-cli/ci.yml?style=flat-square&branch=main" /></a>[m
+[32m+[m[32m  <a href="https://github.com/Zhachory1/mewritecode/actions/workflows/ci.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/Zhachory1/mewritecode/ci.yml?style=flat-square&branch=main" /></a>[m
  </p>[m
  [m
  Cave is a minimal terminal coding harness, forked from [pi-mono](https://github.com/badlogic/pi-mono) by Mario Zechner (badlogic). Adapt Cave to your workflows, not the other way around, without having to fork and modify internals. Extend it with TypeScript [Extensions](#extensions), [Skills](#skills), [Prompt Templates](#prompt-templates), and [Themes](#themes). Put your extensions, skills, prompt templates, and themes in [Cave Packages](#cave-packages) and share them with others via npm or git.[m

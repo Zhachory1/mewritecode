@@ -46,7 +46,7 @@ jobs:
         with:
           node-version: "20"
       - run: npm ci
-      - run: npm run build # @juliusbrussee/caveman-* dist must exist (see #28)
+      - run: npm run build # @zhachory1/mewrite-* dist must exist (see #28)
 
       - uses: actions/setup-python@v5
         with:

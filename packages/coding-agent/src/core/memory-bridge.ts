@@ -25,7 +25,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
-import type { memory as memoryNs } from "@juliusbrussee/caveman-agent";
+import type { memory as memoryNs } from "@zhachory1/mewrite-agent";
 
 type MemoryProvider = memoryNs.MemoryProvider;
 
@@ -81,7 +81,7 @@ export function locateClaudeMemory(cwd: string, home = homedir()): ClaudeMemoryL
 
 function candidateSlugs(cwd: string): string[] {
 	const abs = resolve(cwd);
-	// Claude Code (observed): "-Users-julb-Desktop-GitHub-caveman-cli"
+	// Claude Code (observed): "-Users-julb-Desktop-GitHub-mewritecode"
 	const dashed = abs.replace(/[/:]+/g, "-");
 	// Some builds prefix a duplicate dash before the volume.
 	return Array.from(new Set([dashed, dashed.replace(/^-/, "--"), dashed.replace(/^-/, "")]));

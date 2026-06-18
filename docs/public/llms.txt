@@ -67,7 +67,7 @@ curl -fsSL https://cave.sh/install | bash
 
 ## Repo
 
-- Source: https://github.com/JuliusBrussee/caveman-cli
-- Issues: https://github.com/JuliusBrussee/caveman-cli/issues
+- Source: https://github.com/Zhachory1/mewritecode
+- Issues: https://github.com/Zhachory1/mewritecode/issues
 - Discord: https://discord.gg/cave-cli
-- Releases: https://github.com/JuliusBrussee/caveman-cli/releases
+- Releases: https://github.com/Zhachory1/mewritecode/releases

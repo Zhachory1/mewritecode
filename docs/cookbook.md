@@ -9,18 +9,18 @@ Concrete, copy-pasteable patterns. Every snippet was tested before publication.
 
 <CopyForLlms />
 
-## `caveman exec` in GitHub Actions
+## `mewrite exec` in GitHub Actions
 
 ```yaml
 # .github/workflows/cave-review.yml
-name: Caveman Code PR review
+name: Me Write Code PR review
 on: [pull_request]
 jobs:
     review:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
-            - run: npm install -g @juliusbrussee/caveman-code
+            - run: npm install -g @zhachory1/mewrite-code
             - run: cave exec "review the diff vs main and post a 200-word PR comment with findings" \
                   --output-schema .github/cave-review-schema.json \
                   --skip-git-repo-check
@@ -28,7 +28,7 @@ jobs:
                   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
 
-Caveman Code's stable JSON event stream on stdout is parsed by the action runner; the structured output lands in the PR comment.
+Me Write Code's stable JSON event stream on stdout is parsed by the action runner; the structured output lands in the PR comment.
 
 ## Multi-agent code review
 
@@ -49,19 +49,19 @@ steps:
   - "Post the review as a PR comment via gh CLI"
 ```
 
-Run: `caveman run-recipe parallel-review`. Three subagents run in parallel worktrees; results stream back as 500-token summaries; the parent assembles the final review.
+Run: `mewrite run-recipe parallel-review`. Three subagents run in parallel worktrees; results stream back as 500-token summaries; the parent assembles the final review.
 
 ## Pair programming over the daemon
 
 ```bash
 # laptop
-caveman serve --port 39245 --token $TOKEN
+mewrite serve --port 39245 --token $TOKEN
 
 # expose via cloudflared
 cloudflared tunnel run caveman-tunnel
 
 # colleague's machine
-caveman attach --host https://cave.example.com:39245 --token $TOKEN
+mewrite attach --host https://cave.example.com:39245 --token $TOKEN
 ```
 
 Both clients see the same session. Tokens stream in real-time to both.
@@ -109,12 +109,12 @@ Both clients see the same session. Tokens stream in real-time to both.
 }
 ```
 
-Caveman Code passes the file content via `$CAVE_HOOK_FILE`. Non-zero exit denies the write and tells the model why.
+Me Write Code passes the file content via `$CAVE_HOOK_FILE`. Non-zero exit denies the write and tells the model why.
 
 ## Use cave as an MCP server from Claude Desktop
 
 ```bash
-caveman mcp-server --port 39250
+mewrite mcp-server --port 39250
 ```
 
 Then in Claude Desktop's `claude_desktop_config.json`:
@@ -130,25 +130,25 @@ Then in Claude Desktop's `claude_desktop_config.json`:
 }
 ```
 
-Claude Desktop now sees Caveman Code's coding tools (Read, Glob, Grep, Bash, Edit, Write).
+Claude Desktop now sees Me Write Code's coding tools (Read, Glob, Grep, Bash, Edit, Write).
 
 ## Plugin marketplace
 
 Search and install:
 
 ```bash
-caveman plugin search security
-caveman plugin install ghost-sec/sec-pack
-caveman plugin marketplace add https://plugins.example.com/marketplace.json
-caveman plugin upgrade
+mewrite plugin search security
+mewrite plugin install ghost-sec/sec-pack
+mewrite plugin marketplace add https://plugins.example.com/marketplace.json
+mewrite plugin upgrade
 ```
 
 Author your own:
 
 ```bash
-caveman plugin scaffold my-pack
+mewrite plugin scaffold my-pack
 $EDITOR my-pack/.cave-plugin/plugin.json
-caveman plugin publish my-pack    # publishes to the configured marketplace
+mewrite plugin publish my-pack    # publishes to the configured marketplace
 ```
 
 ## Architect / editor split for a tight budget
@@ -163,7 +163,7 @@ Opus plans (one expensive model call). Haiku executes each step (cheap). Drops c
 ## Watch mode for IDE-style edits
 
 ```bash
-caveman --watch
+mewrite --watch
 ```
 
 Then in your editor:
@@ -175,13 +175,13 @@ function processLines(input: string): string[] {
 }
 ```
 
-Caveman Code detects the trailing `!`, runs an edit-class turn with the surrounding lines as context, applies the diff, removes the comment.
+Me Write Code detects the trailing `!`, runs an edit-class turn with the surrounding lines as context, applies the diff, removes the comment.
 
 ## Replay a session
 
 ```bash
-caveman -r                                         # browse and pick
-caveman --session ~/.cave/sessions/.../abc.jsonl   # load directly
+mewrite -r                                         # browse and pick
+mewrite --session ~/.cave/sessions/.../abc.jsonl   # load directly
 ```
 
 To share a reproducible session: export to HTML (`/export session.html`) or copy the session file. Replay functionality is planned for future releases.

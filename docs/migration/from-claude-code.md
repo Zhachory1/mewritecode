@@ -1,11 +1,11 @@
 ---
 title: Migrating from Claude Code
-description: Zero-migration. Paste your existing config and Caveman Code Just Works.
+description: Zero-migration. Paste your existing config and Me Write Code Just Works.
 ---
 
 # Migrating from Claude Code
 
-The promise: **paste your existing Claude Code config into `~/.cave/` and Caveman Code behaves the same — only cheaper**. Caveman Code's authoring formats are a superset of Claude Code's.
+The promise: **paste your existing Claude Code config into `~/.cave/` and Me Write Code behaves the same — only cheaper**. Me Write Code's authoring formats are a superset of Claude Code's.
 
 <CopyForLlms />
 
@@ -13,7 +13,7 @@ The promise: **paste your existing Claude Code config into `~/.cave/` and Cavema
 
 ```bash
 # 1. Install
-npm install -g @juliusbrussee/caveman-code
+npm install -g @zhachory1/mewrite-code
 
 # 2. Copy config
 cp -r ~/.claude/commands ~/.cave/
@@ -24,47 +24,47 @@ cp ~/.claude/settings.json ~/.cave/settings.json    # hooks + statusLine
 # 3. Project-scope
 ln -s .claude .cave   # or: cp -r .claude .cave (if you want them independent)
 
-# 4. CLAUDE.md → CAVE.md (or keep CLAUDE.md; caveman-code reads both)
+# 4. CLAUDE.md → CAVE.md (or keep CLAUDE.md; mewrite-code reads both)
 ln -s CLAUDE.md CAVE.md
 
 # 5. MCP — already standard
 #    .mcp.json works as-is.
 
 # 6. Run
-caveman
+mewrite
 ```
 
 ## What maps directly
 
-| Claude Code | Caveman Code | Notes |
+| Claude Code | Me Write Code | Notes |
 |---|---|---|
-| `~/.claude/settings.json` | `~/.cave/settings.json` | Hooks + statusLine identical schema (caveman-code runs hooks as observers) |
+| `~/.claude/settings.json` | `~/.cave/settings.json` | Hooks + statusLine identical schema (mewrite-code runs hooks as observers) |
 | `~/.claude/commands/*.md` | `~/.cave/commands/*.md` | Frontmatter is a superset |
 | `~/.claude/skills/<name>/SKILL.md` | `~/.cave/skills/<name>/SKILL.md` | Identical |
 | `~/.claude/agents/<name>.md` | `~/.cave/agents/<name>.md` | Frontmatter is a superset |
 | `.mcp.json` | `.mcp.json` | Same path; no change |
-| `CLAUDE.md` | `CLAUDE.md` (read) or `CAVE.md` (preferred) | Caveman Code reads both, layered |
+| `CLAUDE.md` | `CLAUDE.md` (read) or `CAVE.md` (preferred) | Me Write Code reads both, layered |
 | Auto-Memory | cavemem | Different backend; same UX |
 
 ## Differences worth knowing
 
 ### Memory
 
-Claude Code uses Auto-Memory with `~/.claude/projects/<slug>/memory/MEMORY.md`. Caveman Code uses [cavemem](/reference/memory). To bridge:
+Claude Code uses Auto-Memory with `~/.claude/projects/<slug>/memory/MEMORY.md`. Me Write Code uses [cavemem](/reference/memory). To bridge:
 
 ```bash
-caveman memory sync --from claude
+mewrite memory sync --from claude
 ```
 
-This imports `MEMORY.md` and per-fact files as cavemem observations. Going forward, if you keep both Claude Code and Caveman Code running in the same project, caveman-code reads the first 200 lines of `MEMORY.md` on every session start.
+This imports `MEMORY.md` and per-fact files as cavemem observations. Going forward, if you keep both Claude Code and Me Write Code running in the same project, mewrite-code reads the first 200 lines of `MEMORY.md` on every session start.
 
 ### Models
 
-Claude Code is Anthropic-only. Caveman Code is provider-agnostic. After migrating, you can:
+Claude Code is Anthropic-only. Me Write Code is provider-agnostic. After migrating, you can:
 
 ```bash
-caveman --model openai/gpt-5-codex
-caveman --model claude-sonnet-4   # default behavior matches Claude Code
+mewrite --model openai/gpt-5-codex
+mewrite --model claude-sonnet-4   # default behavior matches Claude Code
 ```
 
 ### Cost
@@ -72,12 +72,12 @@ caveman --model claude-sonnet-4   # default behavior matches Claude Code
 By default Caveman Mode compression is **on**, which Claude Code doesn't have. Expect tool-output token consumption to drop ~85%. If something looks off, bisect with:
 
 ```bash
-/caveman off
+/mewrite off
 ```
 
 ### Permissions
 
-Caveman Code runs in autopilot — there is no permission prompt, no `--permission-mode` flag, and no Shift+Tab mode cycle. Tools always execute. If you need a tool firewall, write a `PreToolUse` hook (it can rewrite tool input but cannot block).
+Me Write Code runs in autopilot — there is no permission prompt, no `--permission-mode` flag, and no Shift+Tab mode cycle. Tools always execute. If you need a tool firewall, write a `PreToolUse` hook (it can rewrite tool input but cannot block).
 
 ### Hooks
 
@@ -86,14 +86,14 @@ Caveman Code runs in autopilot — there is no permission prompt, no `--permissi
 ## Confirming the migration worked
 
 ```bash
-caveman doctor                    # general health
-caveman hooks list                # all hooks loaded
-caveman skills list               # all skills loaded
-caveman agents list               # all subagents loaded
-caveman mcp doctor                # MCP servers reachable
+mewrite doctor                    # general health
+mewrite hooks list                # all hooks loaded
+mewrite skills list               # all skills loaded
+mewrite agents list               # all subagents loaded
+mewrite mcp doctor                # MCP servers reachable
 ```
 
-If any of these report mismatches, [open an issue](https://github.com/JuliusBrussee/caveman-cli/issues/new?labels=migration) — we treat Claude Code parity as a CI gate.
+If any of these report mismatches, [open an issue](https://github.com/Zhachory1/mewritecode/issues/new?labels=migration) — we treat Claude Code parity as a CI gate.
 
 ## Why not just use Claude Code?
 

@@ -1,6 +1,6 @@
 # Settings
 
-Caveman Code uses JSON settings files with project settings overriding global settings.
+Me Write Code uses JSON settings files with project settings overriding global settings.
 
 | Location | Scope |
 |----------|-------|
@@ -67,7 +67,7 @@ Edit directly or use `/settings` for common options.
 
 ### Caveman Mode
 
-Caveman Code mode is a 3-layer token compression system that reduces token usage while preserving technical accuracy.
+Caveman Mode is a 3-layer token compression system that reduces token usage while preserving technical accuracy.
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|

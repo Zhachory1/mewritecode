@@ -1,4 +1,4 @@
-import { type Component, Markdown, type MarkdownTheme } from "@juliusbrussee/caveman-tui";
+import { type Component, Markdown, type MarkdownTheme } from "@zhachory1/mewrite-tui";
 import { getMarkdownTheme, theme } from "../theme/theme.js";
 
 const OSC133_ZONE_START = "\x1b]133;A\x07";

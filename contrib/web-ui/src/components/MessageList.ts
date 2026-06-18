@@ -1,8 +1,8 @@
-import type { AgentMessage, AgentTool } from "@juliusbrussee/caveman-agent";
+import type { AgentMessage, AgentTool } from "@zhachory1/mewrite-agent";
 import type {
 	AssistantMessage as AssistantMessageType,
 	ToolResultMessage as ToolResultMessageType,
-} from "@juliusbrussee/caveman-ai";
+} from "@zhachory1/mewrite-ai";
 import { html, LitElement, type TemplateResult } from "lit";
 import { property } from "lit/decorators.js";
 import { repeat } from "lit/directives/repeat.js";

@@ -1,5 +1,5 @@
 {
-	"name": "@juliusbrussee/caveman-monorepo",
+	"name": "@zhachory1/mewritecode-monorepo",
 	"private": true,
 	"type": "module",
 	"workspaces": [
@@ -60,7 +60,7 @@
 	"version": "0.0.3",
 	"dependencies": {
 		"@mariozechner/jiti": "^2.6.5",
-		"@juliusbrussee/caveman-code": "^0.65.2",
+		"@zhachory1/mewrite-code": "^0.65.2",
 		"get-east-asian-width": "^1.4.0"
 	},
 	"overrides": {
@@ -70,5 +70,5 @@
 			"rimraf": "6.1.2"
 		}
 	},
-	"description": "Caveman Code CLI monorepo"
+	"description": "Me Write Code CLI monorepo"
 }

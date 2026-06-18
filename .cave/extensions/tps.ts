@@ -1,4 +1,4 @@
-import type { AssistantMessage } from "@juliusbrussee/caveman-ai";
+import type { AssistantMessage } from "@zhachory1/mewrite-ai";
 import type { ExtensionAPI } from "cave";
 
 function isAssistantMessage(message: unknown): message is AssistantMessage {

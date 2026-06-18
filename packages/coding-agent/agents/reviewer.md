@@ -42,7 +42,7 @@ Fix: serialize with a Promise<T>-keyed in-flight map.
 
 ### [Minor] baz.ts:12 — magic number
 `if (count > 7)` — extract MAX_PARALLEL constant; same value lives in three other files.
-Fix: import MAX_PARALLEL_SUBAGENTS from @juliusbrussee/caveman-agent.
+Fix: import MAX_PARALLEL_SUBAGENTS from @zhachory1/mewrite-agent.
 
 ### [Nit] foo.test.ts:88 — typo
 "recieve" → "receive".

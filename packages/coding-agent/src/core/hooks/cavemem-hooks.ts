@@ -3,7 +3,7 @@
  *
  * Returns a HooksConfig block that wires the 5 cavemem lifecycle hooks into
  * cave's WS4 hook system. Users can install these by either:
- *   1. Letting `caveman init` auto-register them when `cavemem` is on $PATH, or
+ *   1. Letting `mewrite init` auto-register them when `cavemem` is on $PATH, or
  *   2. Pasting the JSON block (printed by `cave hooks install-recipe cavemem`)
  *      into ~/.cave/settings.json themselves.
  *

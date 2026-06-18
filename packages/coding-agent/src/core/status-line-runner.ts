@@ -2,7 +2,7 @@
  * Status line runner — invokes the user-configured `statusLine.command`
  * (Claude Code v2.1.119 schema) and returns the resolved text.
  *
- * Schema source: see `parseStatusLineSettings` in `@juliusbrussee/caveman-tui`. The command
+ * Schema source: see `parseStatusLineSettings` in `@zhachory1/mewrite-tui`. The command
  * receives a JSON `StatusLineContext` payload on stdin and writes a single
  * line to stdout. Stderr surfaces in `/doctor`. Timeouts cap at 1.5s so a
  * misbehaving script never blocks the TUI redraw loop.
@@ -13,13 +13,13 @@ import type {
 	StatusLineRenderer,
 	StatusLineResult,
 	StatusLineSettings,
-} from "@juliusbrussee/caveman-tui";
+} from "@zhachory1/mewrite-tui";
 import {
 	parseStatusLineSettings,
 	renderStatusLineDefault,
 	renderStatusLineDetailed,
 	sanitizeOneLine,
-} from "@juliusbrussee/caveman-tui";
+} from "@zhachory1/mewrite-tui";
 
 export const STATUS_LINE_TIMEOUT_MS = 1500;
 

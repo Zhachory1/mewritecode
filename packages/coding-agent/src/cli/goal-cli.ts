@@ -1,6 +1,6 @@
 /**
- * `caveman goal …` subcommand handler. Drives the autonomous goal loop with
- * fresh-process-per-iteration spawning of `caveman -p`.
+ * `mewrite goal …` subcommand handler. Drives the autonomous goal loop with
+ * fresh-process-per-iteration spawning of `mewrite -p`.
  *
  * Subcommands:
  *   start "<text>"  [--max-iterations N] [--max-wall-clock-h H] [--max-usd D]
@@ -45,14 +45,14 @@ interface StartFlags {
 }
 
 const printHelp = (): void => {
-	console.log(`${chalk.bold("caveman goal")} — autonomous goal loop (Ralph-style)
+	console.log(`${chalk.bold("mewrite goal")} — autonomous goal loop (Ralph-style)
 
 ${chalk.bold("Usage:")}
-  caveman goal start "<goal text>" [flags]
-  caveman goal resume [<id>] [--force]
-  caveman goal status [<id>]
-  caveman goal cancel [<id>]
-  caveman goal list
+  mewrite goal start "<goal text>" [flags]
+  mewrite goal resume [<id>] [--force]
+  mewrite goal status [<id>]
+  mewrite goal cancel [<id>]
+  mewrite goal list
 
 ${chalk.bold("start flags:")}
   --max-iterations N        default ${DEFAULT_MAX_ITERATIONS}
@@ -60,7 +60,7 @@ ${chalk.bold("start flags:")}
   --max-usd D               default ${DEFAULT_MAX_USD}
   --max-no-progress N       default ${DEFAULT_MAX_NO_PROGRESS}
   --sentinel S              default "${DEFAULT_COMPLETION_SENTINEL}"
-  --model PATTERN           override model passed to each iter's \`caveman -p\`
+  --model PATTERN           override model passed to each iter's \`mewrite -p\`
   --quiet                   suppress per-iter child stdout
 
 ${chalk.bold("State:")}
@@ -124,7 +124,7 @@ const handleStart = async (rest: string[]): Promise<number> => {
 	const flags = parseStartFlags(rest);
 	if (!flags.text) {
 		console.error(
-			chalk.red('Error: goal text is required.\nExample: caveman goal start "add unit tests for foo.ts"'),
+			chalk.red('Error: goal text is required.\nExample: mewrite goal start "add unit tests for foo.ts"'),
 		);
 		return 2;
 	}
@@ -172,7 +172,7 @@ const handleResume = async (rest: string[]): Promise<number> => {
 	}
 	const id = parseGoalIdArg(cwd, positional[0]);
 	if (!id) {
-		console.error(chalk.red("No goal found to resume. Run `caveman goal list`."));
+		console.error(chalk.red("No goal found to resume. Run `mewrite goal list`."));
 		return 2;
 	}
 	const paths = goalPaths(cwd, id);
@@ -346,7 +346,7 @@ export const handleGoalCommand = async (args: string[]): Promise<boolean> => {
 			process.exit(handleList());
 			break;
 		default:
-			console.error(chalk.red(`Unknown subcommand: caveman goal ${sub}`));
+			console.error(chalk.red(`Unknown subcommand: mewrite goal ${sub}`));
 			printHelp();
 			process.exit(2);
 	}

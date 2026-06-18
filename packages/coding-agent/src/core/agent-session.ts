@@ -24,15 +24,15 @@ import type {
 	AgentTool,
 	ThinkingLevel,
 	ToolExecutionMode,
-} from "@juliusbrussee/caveman-agent";
-import { checkpoints, type memory as memoryNs } from "@juliusbrussee/caveman-agent";
+} from "@zhachory1/mewrite-agent";
+import { checkpoints, type memory as memoryNs } from "@zhachory1/mewrite-agent";
 import { CompressionPipeline, sumTextLen } from "./compression-pipeline.js";
 
 const { CheckpointManager } = checkpoints;
 type CheckpointManagerInstance = InstanceType<typeof CheckpointManager>;
 type MemoryProviderInstance = memoryNs.MemoryProvider;
 
-import type { AssistantMessage, ImageContent, Message, Model, TextContent } from "@juliusbrussee/caveman-ai";
+import type { AssistantMessage, ImageContent, Message, Model, TextContent } from "@zhachory1/mewrite-ai";
 import {
 	completeSimple,
 	ENV_VAR_BY_PROVIDER,
@@ -40,7 +40,7 @@ import {
 	modelsAreEqual,
 	resetApiProviders,
 	supportsXhigh,
-} from "@juliusbrussee/caveman-ai";
+} from "@zhachory1/mewrite-ai";
 import { getDocsPath } from "../config.js";
 import { theme } from "../modes/interactive/theme/theme.js";
 import { stripFrontmatter } from "../utils/frontmatter.js";

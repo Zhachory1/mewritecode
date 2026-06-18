@@ -1,5 +1,5 @@
-import type { AgentTool } from "@juliusbrussee/caveman-agent";
 import { Type } from "@sinclair/typebox";
+import type { AgentTool } from "@zhachory1/mewrite-agent";
 import type { Executor } from "../sandbox.js";
 
 const writeSchema = Type.Object({

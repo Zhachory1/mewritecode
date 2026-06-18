@@ -1,5 +1,5 @@
-import { Text } from "@juliusbrussee/caveman-tui";
 import { type Static, Type } from "@sinclair/typebox";
+import { Text } from "@zhachory1/mewrite-tui";
 import { ClarifyPromptComponent } from "../../modes/interactive/components/clarify-prompt.js";
 import type { ToolDefinition } from "../extensions/types.js";
 

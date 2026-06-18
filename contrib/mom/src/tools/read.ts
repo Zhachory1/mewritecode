@@ -1,6 +1,6 @@
-import type { AgentTool } from "@juliusbrussee/caveman-agent";
-import type { ImageContent, TextContent } from "@juliusbrussee/caveman-ai";
 import { Type } from "@sinclair/typebox";
+import type { AgentTool } from "@zhachory1/mewrite-agent";
+import type { ImageContent, TextContent } from "@zhachory1/mewrite-ai";
 import { extname } from "path";
 import type { Executor } from "../sandbox.js";
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, formatSize, type TruncationResult, truncateHead } from "./truncate.js";

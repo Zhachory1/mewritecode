@@ -5,7 +5,7 @@
  */
 
 import type { ExtensionAPI } from "cave";
-import { Text } from "@juliusbrussee/caveman-tui";
+import { Text } from "@zhachory1/mewrite-tui";
 
 export default function (pi: ExtensionAPI) {
 	pi.registerCommand("tui", {

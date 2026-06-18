@@ -1,11 +1,11 @@
 ---
 title: Migrating from Aider
-description: Aider's repo map and edit formats — both first-class in Caveman Code.
+description: Aider's repo map and edit formats — both first-class in Me Write Code.
 ---
 
 # Migrating from Aider
 
-Aider pioneered the **repo map** (PageRank over a tree-sitter symbol graph) and **edit-format-per-model** (whole / diff / udiff / editor formats). Caveman Code ships both, with the same defaults and ablation tables.
+Aider pioneered the **repo map** (PageRank over a tree-sitter symbol graph) and **edit-format-per-model** (whole / diff / udiff / editor formats). Me Write Code ships both, with the same defaults and ablation tables.
 
 <CopyForLlms />
 
@@ -13,22 +13,22 @@ Aider pioneered the **repo map** (PageRank over a tree-sitter symbol graph) and 
 
 ```bash
 # 1. Install
-npm install -g @juliusbrussee/caveman-code
+npm install -g @zhachory1/mewrite-code
 
 # 2. Use your existing API keys
 export ANTHROPIC_API_KEY=...
 export OPENAI_API_KEY=...
 
-# 3. Tell Caveman Code what files you'd manually /add in Aider
-caveman @src/main.py @src/utils.py "Help me with this"
+# 3. Tell Me Write Code what files you'd manually /add in Aider
+mewrite @src/main.py @src/utils.py "Help me with this"
 
 # 4. Use it
-caveman
+mewrite
 ```
 
 ## What maps
 
-| Aider | Caveman Code | Notes |
+| Aider | Me Write Code | Notes |
 |---|---|---|
 | `/add <file>` | `@file` in TUI | Adds to chat context |
 | `/drop <file>` | `/drop` | Removes from chat context |
@@ -42,7 +42,7 @@ caveman
 
 ## Repo map
 
-Aider's repo map is best-in-class. Caveman Code matches it:
+Aider's repo map is best-in-class. Me Write Code matches it:
 
 - Tree-sitter parsers for TS/JS/Python/Go/Rust/Java/C++/Ruby/PHP.
 - Symbol graph: files = nodes, references = edges.
@@ -67,7 +67,7 @@ Auto-selected per model based on `proof-bench` ablation results. Override with `
 | `editor-diff` | Editor model emits diff after architect | architect/editor split |
 | `editor-whole` | Editor model emits whole files | architect/editor split |
 
-Caveman Code's defaults are pinned to Aider's published ablation winners and updated when new models ship. See [Models](/getting-started/models).
+Me Write Code's defaults are pinned to Aider's published ablation winners and updated when new models ship. See [Models](/getting-started/models).
 
 ## Architect / editor split
 
@@ -83,29 +83,29 @@ Architect plans, editor executes. Drops cost ~3-5× on long sessions. See [Plan 
 
 ### Caveman Mode compression
 
-Aider compresses by selecting smaller context (repo map). Caveman Code additionally compresses **tool output** post-hoc (~85% reduction on bash, grep, file reads). The two are complementary; both are on by default.
+Aider compresses by selecting smaller context (repo map). Me Write Code additionally compresses **tool output** post-hoc (~85% reduction on bash, grep, file reads). The two are complementary; both are on by default.
 
 ### Watch mode
 
-Aider's `// ai!` and `// ai?` magic comments — Caveman Code has the same with `// cave!` and `// cave?`:
+Aider's `// ai!` and `// ai?` magic comments — Me Write Code has the same with `// cave!` and `// cave?`:
 
 ```bash
-caveman --watch
+mewrite --watch
 ```
 
 Trailing `!` triggers code edits with cwd + comment + surrounding lines as context.
 
 ### Session model
 
-Aider sessions are tied to a chat history file. Caveman Code sessions are JSONL files in `~/.cave/sessions/<cwd-hash>/<id>.jsonl`. Branchable via `/tree` and `/fork`.
+Aider sessions are tied to a chat history file. Me Write Code sessions are JSONL files in `~/.cave/sessions/<cwd-hash>/<id>.jsonl`. Branchable via `/tree` and `/fork`.
 
 ## Conventions file
 
-Aider reads `<repo>/.aider/conventions.md`. Caveman Code reads `CAVE.md`, `AGENTS.md`, and `CLAUDE.md` in priority order, layered. Move your conventions file to one of those names and you're done.
+Aider reads `<repo>/.aider/conventions.md`. Me Write Code reads `CAVE.md`, `AGENTS.md`, and `CLAUDE.md` in priority order, layered. Move your conventions file to one of those names and you're done.
 
 ## Cost tracking
 
-Aider was first to surface per-message cost inline. Caveman Code does the same:
+Aider was first to surface per-message cost inline. Me Write Code does the same:
 
 ```
 [$0.0042 (cached: $0.0001)] Sonnet 4 · 12,431 in / 412 out

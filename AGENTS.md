@@ -124,8 +124,8 @@ Use these sections under `## [Unreleased]`:
 - Each version section is immutable once released
 
 ### Attribution
-- **Internal changes (from issues)**: `Fixed foo bar ([#123](https://github.com/JuliusBrussee/caveman-cli/issues/123))`
-- **External contributions**: `Added feature X ([#456](https://github.com/JuliusBrussee/caveman-cli/pull/456) by [@username](https://github.com/username))`
+- **Internal changes (from issues)**: `Fixed foo bar ([#123](https://github.com/Zhachory1/mewritecode/issues/123))`
+- **External contributions**: `Added feature X ([#456](https://github.com/Zhachory1/mewritecode/pull/456) by [@username](https://github.com/username))`
 
 ## Adding a New LLM Provider (packages/ai)
 

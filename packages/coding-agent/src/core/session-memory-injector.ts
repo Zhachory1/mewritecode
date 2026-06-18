@@ -19,8 +19,8 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
-import type { AgentMessage } from "@juliusbrussee/caveman-agent";
-import { memory as memoryNs } from "@juliusbrussee/caveman-agent";
+import type { AgentMessage } from "@zhachory1/mewrite-agent";
+import { memory as memoryNs } from "@zhachory1/mewrite-agent";
 import { composeStartupPrelude } from "./memory-bridge.js";
 import { resolveMemoryProvider } from "./memory-factory.js";
 
@@ -258,7 +258,7 @@ export class MemoryInjector {
 			blocks.push({
 				role: "custom",
 				customType: "memory-recall",
-				content: `<memory-recall>\nTop hits from prior caveman sessions and saved facts. Search seeded by current chat-state (no extra LLM call).\n\n${rendered}\n</memory-recall>`,
+				content: `<memory-recall>\nTop hits from prior mewrite sessions and saved facts. Search seeded by current chat-state (no extra LLM call).\n\n${rendered}\n</memory-recall>`,
 				display: false,
 				timestamp: Date.now(),
 			});

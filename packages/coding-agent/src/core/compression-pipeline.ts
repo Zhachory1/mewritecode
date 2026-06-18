@@ -20,8 +20,8 @@
  * extension runner.
  */
 
-import type { AgentMessage } from "@juliusbrussee/caveman-agent";
-import { LLMLinguaMiddleware } from "@juliusbrussee/caveman-agent";
+import type { AgentMessage } from "@zhachory1/mewrite-agent";
+import { LLMLinguaMiddleware } from "@zhachory1/mewrite-agent";
 import { applyStructuredCompressionToContentBlocks } from "./cave-structured-compression.js";
 import {
 	applyToolBudgetToContentBlocks,

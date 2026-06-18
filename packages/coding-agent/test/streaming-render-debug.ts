@@ -4,8 +4,8 @@
  * Run with: npx tsx test/streaming-render-debug.ts
  */
 
-import type { AssistantMessage } from "@juliusbrussee/caveman-ai";
-import { ProcessTerminal, TUI } from "@juliusbrussee/caveman-tui";
+import type { AssistantMessage } from "@zhachory1/mewrite-ai";
+import { ProcessTerminal, TUI } from "@zhachory1/mewrite-tui";
 import { readFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";

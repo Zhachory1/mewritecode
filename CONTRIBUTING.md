@@ -1,6 +1,6 @@
 # Contributing to Caveman Code
 
-Contributing here means contributing to Caveman Code maintained in [JuliusBrussee/caveman-cli](https://github.com/JuliusBrussee/caveman-cli).
+Contributing here means contributing to Caveman Code maintained in [Zhachory1/mewritecode](https://github.com/Zhachory1/mewritecode).
 
 ## The One Rule
 
@@ -39,7 +39,7 @@ Cave's core is minimal. If your feature doesn't belong in the core, it should be
 
 ## Good First Issues
 
-Look for issues labeled [`good first issue`](https://github.com/JuliusBrussee/caveman-cli/labels/good%20first%20issue). These are scoped, well-described tasks suitable for new contributors.
+Look for issues labeled [`good first issue`](https://github.com/Zhachory1/mewritecode/labels/good%20first%20issue). These are scoped, well-described tasks suitable for new contributors.
 
 Some areas where contributions are especially welcome:
 

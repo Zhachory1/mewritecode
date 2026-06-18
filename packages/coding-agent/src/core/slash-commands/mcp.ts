@@ -5,7 +5,7 @@
 // Today's hand-off contract: the interactive layer dispatches on the literal
 // command string and calls `runMcpSlashCommand()` with the rest of the line.
 //
-// Subcommands (mirror the `caveman mcp` CLI surface):
+// Subcommands (mirror the `mewrite mcp` CLI surface):
 //   /mcp                  → list (default)
 //   /mcp list             → show configured servers
 //   /mcp add <name> ...   → add a server (delegates to mcp-cli helper)
@@ -14,7 +14,7 @@
 //   /mcp login <name>     → kick off OAuth (currently stubbed with hint text)
 //   /mcp reload           → reconnect everything
 
-import { mcp as agentMcp } from "@juliusbrussee/caveman-agent";
+import { mcp as agentMcp } from "@zhachory1/mewrite-agent";
 
 export interface SlashContext {
 	cwd: string;
@@ -125,7 +125,7 @@ export async function runMcpSlashCommand(line: string, ctx: SlashContext): Promi
 		case "remove":
 		case "rm":
 			return ok(
-				`Use the CLI form for now: caveman mcp ${verb} ${args.join(" ")}`,
+				`Use the CLI form for now: mewrite mcp ${verb} ${args.join(" ")}`,
 				"Slash-side mutations land with WS5 (commands registry refactor).",
 			);
 		case "reload":
@@ -147,5 +147,5 @@ export async function runMcpSlashCommand(line: string, ctx: SlashContext): Promi
  */
 export const MCP_SLASH_COMMAND = {
 	name: "mcp",
-	description: "Manage MCP servers (list, doctor, login, reload). See: caveman mcp --help.",
+	description: "Manage MCP servers (list, doctor, login, reload). See: mewrite mcp --help.",
 } as const;

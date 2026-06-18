@@ -1,6 +1,6 @@
 # Packages
 
-TypeScript monorepo under the `@juliusbrussee/caveman-*` scope on npm.
+TypeScript monorepo under the `@zhachory1/mewrite-*` scope on npm.
 
 ## Package Map
 
@@ -8,12 +8,12 @@ TypeScript monorepo under the `@juliusbrussee/caveman-*` scope on npm.
 
 | Dir | Package | Binary | Role |
 |-----|---------|--------|------|
-| `coding-agent/` | `@juliusbrussee/caveman-code` | `caveman` / `caveman-code` | Main coding agent CLI |
-| `ai/` | `@juliusbrussee/caveman-ai` | `pi-ai` | Multi-provider LLM unified API |
-| `agent/` | `@juliusbrussee/caveman-agent` | — | Agent runtime: tool calling, state |
-| `tui/` | `@juliusbrussee/caveman-tui` | — | Terminal UI: differential rendering |
-| `sdk/` | `@juliusbrussee/caveman-sdk` | — | TS client for the caveman-code daemon HTTP+WS API |
-| `markdown-preview/` | `@juliusbrussee/caveman-markdown-preview` | — | Markdown + LaTeX preview extension |
+| `coding-agent/` | `@zhachory1/mewrite-code` | `caveman` / `caveman-code` | Main coding agent CLI |
+| `ai/` | `@zhachory1/mewrite-ai` | `pi-ai` | Multi-provider LLM unified API |
+| `agent/` | `@zhachory1/mewrite-agent` | — | Agent runtime: tool calling, state |
+| `tui/` | `@zhachory1/mewrite-tui` | — | Terminal UI: differential rendering |
+| `sdk/` | `@zhachory1/mewrite-sdk` | — | TS client for the caveman-code daemon HTTP+WS API |
+| `markdown-preview/` | `@zhachory1/mewrite-markdown-preview` | — | Markdown + LaTeX preview extension |
 
 Core build chain: `tui → ai → agent → coding-agent → sdk`.
 
@@ -26,9 +26,9 @@ core-adoption upside. The published `caveman-code` package is unaffected.
 
 | Dir | Package | Binary | Role |
 |-----|---------|--------|------|
-| `contrib/web-ui/` | `@juliusbrussee/caveman-web-ui` | — | Web components for AI chat |
-| `contrib/mom/` | `@juliusbrussee/caveman-mom` | `mom` | Slack bot → coding agent delegate |
-| `contrib/pods/` | `@juliusbrussee/caveman-pods` | `cave-pods` | vLLM deployment on GPU pods |
+| `contrib/web-ui/` | `@zhachory1/mewrite-web-ui` | — | Web components for AI chat |
+| `contrib/mom/` | `@zhachory1/mewrite-mom` | `mom` | Slack bot → coding agent delegate |
+| `contrib/pods/` | `@zhachory1/mewrite-pods` | `cave-pods` | vLLM deployment on GPU pods |
 
 ## Conventions
 

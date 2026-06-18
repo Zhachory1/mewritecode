@@ -1,5 +1,5 @@
-import type { AgentTool } from "@juliusbrussee/caveman-agent";
 import { Type } from "@sinclair/typebox";
+import type { AgentTool } from "@zhachory1/mewrite-agent";
 import { basename, resolve as resolvePath } from "path";
 
 // This will be set by the agent before running

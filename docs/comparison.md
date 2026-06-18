@@ -1,19 +1,19 @@
 ---
-title: Caveman Code vs the field
-description: Feature-by-feature comparison of Caveman Code with Claude Code, Codex, Aider, Crush, and opencode.
+title: Me Write Code vs the field
+description: Feature-by-feature comparison of Me Write Code with Claude Code, Codex, Aider, Crush, and opencode.
 ---
 
-# Caveman Code vs Claude Code, Codex, Aider, Crush, opencode
+# Me Write Code vs Claude Code, Codex, Aider, Crush, opencode
 
 This is the comparison table from the v2 master plan, kept current as features land. The pitch is short:
 
-> **Caveman Code is the only terminal coding agent that beats Claude Code on cost, Aider on context selection, Codex on provider flexibility, and opencode on session UX — in a single MIT-licensed binary.**
+> **Me Write Code is the only terminal coding agent that beats Claude Code on cost, Aider on context selection, Codex on provider flexibility, and opencode on session UX — in a single MIT-licensed binary.**
 
 <CopyForLlms />
 
 ## Capabilities
 
-| Axis | Caveman Code v2 | Claude Code | Codex | Aider | Crush | opencode |
+| Axis | Me Write Code v2 | Claude Code | Codex | Aider | Crush | opencode |
 |---|---|---|---|---|---|---|
 | Token compression (3-layer Caveman Mode) | yes (unique) | no | no | repo map only | no | no |
 | 20+ provider OAuth (Claude Pro / ChatGPT / Copilot / Gemini) | yes (unique) | Anthropic only | ChatGPT only | env keys only | subset | env keys |
@@ -41,15 +41,15 @@ This is the comparison table from the v2 master plan, kept current as features l
 
 ## Tokens — under revalidation
 
-**Token efficiency under revalidation — see [#8](https://github.com/JuliusBrussee/caveman-code/issues/8).**
+**Token efficiency under revalidation — see [#8](https://github.com/Zhachory1/mewritecode/issues/8).**
 
 The prior caveman-vs-Codex token comparison was never independently measured: it ran against a different model tier, Codex emits no structured token accounting, and the comparison was never actually executed end to end. We have pulled the number rather than restate an unverified claim.
 
-We are rebuilding an honest, controlled measurement — caveman-mode ON vs OFF at a **fixed model**, with a **shared external scorer** setting pass/fail for every run, a single dated price table, and bootstrap confidence intervals. The accounting math is unit-tested; the published table awaits the controlled run. Track progress in [#8](https://github.com/JuliusBrussee/caveman-code/issues/8).
+We are rebuilding an honest, controlled measurement — caveman-mode ON vs OFF at a **fixed model**, with a **shared external scorer** setting pass/fail for every run, a single dated price table, and bootstrap confidence intervals. The accounting math is unit-tested; the published table awaits the controlled run. Track progress in [#8](https://github.com/Zhachory1/mewritecode/issues/8).
 
 ## Format compatibility
 
-Caveman Code is a **superset** of Claude Code's authoring formats. Concretely, you can paste these directly into `~/.cave/`:
+Me Write Code is a **superset** of Claude Code's authoring formats. Concretely, you can paste these directly into `~/.cave/`:
 
 - `~/.claude/settings.json` → `~/.cave/settings.json` (hooks, permissions, statusLine identical schema)
 - `~/.claude/commands/*.md` → `~/.cave/commands/*.md`
@@ -61,4 +61,4 @@ See [migration from Claude Code](/migration/from-claude-code) for the step-by-st
 
 ## Caveat — these comparisons evolve
 
-Claude Code, Codex, Crush, and opencode all iterate weekly. We pin our compatibility target to **Claude Code v2.1.119 schemas** with a CI delta check; tracking the others is best-effort. If you spot drift, [open an issue](https://github.com/JuliusBrussee/caveman-cli/issues/new?labels=docs).
+Claude Code, Codex, Crush, and opencode all iterate weekly. We pin our compatibility target to **Claude Code v2.1.119 schemas** with a CI delta check; tracking the others is best-effort. If you spot drift, [open an issue](https://github.com/Zhachory1/mewritecode/issues/new?labels=docs).

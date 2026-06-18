@@ -1,7 +1,7 @@
 {
-	"name": "@juliusbrussee/caveman-markdown-preview",
+	"name": "@zhachory1/mewrite-markdown-preview",
 	"version": "0.9.6",
-	"description": "Rendered markdown + LaTeX preview for caveman-code, with terminal, browser, and PDF output",
+	"description": "Rendered markdown + LaTeX preview for mewrite-code, with terminal, browser, and PDF output",
 	"type": "module",
 	"pi": {
 		"extensions": [
@@ -11,7 +11,7 @@
 	"license": "MIT",
 	"keywords": [
 		"pi-package",
-		"caveman-code",
+		"mewrite-code",
 		"markdown",
 		"preview"
 	],
@@ -27,26 +27,26 @@
 		"build": "echo \"no build step — ships .ts source as extension\""
 	},
 	"peerDependencies": {
-		"@juliusbrussee/caveman-code": "*",
-		"@juliusbrussee/caveman-tui": "*"
+		"@zhachory1/mewrite-code": "*",
+		"@zhachory1/mewrite-tui": "*"
 	},
 	"dependencies": {
 		"puppeteer-core": "^24.22.3"
 	},
 	"devDependencies": {
-		"@juliusbrussee/caveman-code": "*",
-		"@juliusbrussee/caveman-tui": "*",
+		"@zhachory1/mewrite-code": "*",
+		"@zhachory1/mewrite-tui": "*",
 		"@types/node": "^24.3.0",
 		"typescript": "^5.7.3"
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/JuliusBrussee/caveman-cli.git",
+		"url": "git+https://github.com/Zhachory1/mewritecode.git",
 		"directory": "packages/markdown-preview"
 	},
-	"homepage": "https://github.com/JuliusBrussee/caveman-cli#readme",
+	"homepage": "https://github.com/Zhachory1/mewritecode#readme",
 	"bugs": {
-		"url": "https://github.com/JuliusBrussee/caveman-cli/issues"
+		"url": "https://github.com/Zhachory1/mewritecode/issues"
 	},
 	"author": "Julius Brussee",
 	"publishConfig": {

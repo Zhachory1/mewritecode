@@ -1,6 +1,6 @@
-import type { AgentTool } from "@juliusbrussee/caveman-agent";
-import { fauxAssistantMessage, fauxToolCall } from "@juliusbrussee/caveman-ai";
 import { Type } from "@sinclair/typebox";
+import type { AgentTool } from "@zhachory1/mewrite-agent";
+import { fauxAssistantMessage, fauxToolCall } from "@zhachory1/mewrite-ai";
 import { afterEach, describe, expect, it } from "vitest";
 import type { ExtensionAPI, ExtensionFactory } from "../../src/index.js";
 import type { CreateTestExtensionsResultInput } from "../utilities.js";

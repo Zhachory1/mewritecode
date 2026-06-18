@@ -1,6 +1,6 @@
-import type { AgentTool, ThinkingLevel } from "@juliusbrussee/caveman-agent";
-import { fauxAssistantMessage, fauxToolCall, type Model } from "@juliusbrussee/caveman-ai";
 import { Type } from "@sinclair/typebox";
+import type { AgentTool, ThinkingLevel } from "@zhachory1/mewrite-agent";
+import { fauxAssistantMessage, fauxToolCall, type Model } from "@zhachory1/mewrite-ai";
 import { afterEach, describe, expect, it } from "vitest";
 import type { ExtensionAPI } from "../../src/index.js";
 import { createHarness, getAssistantTexts, type Harness } from "./harness.js";

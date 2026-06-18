@@ -1,4 +1,4 @@
-import { truncateToWidth, visibleWidth } from "@juliusbrussee/caveman-tui";
+import { truncateToWidth, visibleWidth } from "@zhachory1/mewrite-tui";
 import { describe, expect, it } from "vitest";
 
 /**

@@ -9,11 +9,11 @@ import { createRequire } from "node:module";
 import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import * as _bundledPiAgentCore from "@juliusbrussee/caveman-agent";
-import * as _bundledPiAi from "@juliusbrussee/caveman-ai";
-import * as _bundledPiAiOauth from "@juliusbrussee/caveman-ai/oauth";
-import type { KeyId } from "@juliusbrussee/caveman-tui";
-import * as _bundledPiTui from "@juliusbrussee/caveman-tui";
+import * as _bundledPiAgentCore from "@zhachory1/mewrite-agent";
+import * as _bundledPiAi from "@zhachory1/mewrite-ai";
+import * as _bundledPiAiOauth from "@zhachory1/mewrite-ai/oauth";
+import type { KeyId } from "@zhachory1/mewrite-tui";
+import * as _bundledPiTui from "@zhachory1/mewrite-tui";
 import { createJiti } from "@mariozechner/jiti";
 // Static imports of packages that extensions may use.
 // These MUST be static so Bun bundles them into the compiled binary.
@@ -42,14 +42,14 @@ import type {
 /** Modules available to extensions via virtualModules (for compiled Bun binary) */
 const VIRTUAL_MODULES: Record<string, unknown> = {
 	"@sinclair/typebox": _bundledTypebox,
-	"@juliusbrussee/caveman-agent": _bundledPiAgentCore,
-	"@juliusbrussee/caveman-tui": _bundledPiTui,
-	"@juliusbrussee/caveman-ai": _bundledPiAi,
-	"@juliusbrussee/caveman-ai/oauth": _bundledPiAiOauth,
+	"@zhachory1/mewrite-agent": _bundledPiAgentCore,
+	"@zhachory1/mewrite-tui": _bundledPiTui,
+	"@zhachory1/mewrite-ai": _bundledPiAi,
+	"@zhachory1/mewrite-ai/oauth": _bundledPiAiOauth,
 	cave: _bundledPiCodingAgent,
 	// Extensions import from the published package name; alias it to the same
 	// coding-agent index that `cave` resolves to.
-	"@juliusbrussee/caveman-code": _bundledPiCodingAgent,
+	"@zhachory1/mewrite-code": _bundledPiCodingAgent,
 };
 
 const require = createRequire(import.meta.url);
@@ -79,18 +79,18 @@ function getAliases(): Record<string, string> {
 
 	_aliases = {
 		cave: packageIndex,
-		"@juliusbrussee/caveman-agent": resolveWorkspaceOrImport("agent/dist/index.js", "@juliusbrussee/caveman-agent"),
-		"@juliusbrussee/caveman-tui": resolveWorkspaceOrImport("tui/dist/index.js", "@juliusbrussee/caveman-tui"),
-		"@juliusbrussee/caveman-ai": resolveWorkspaceOrImport("ai/dist/index.js", "@juliusbrussee/caveman-ai"),
-		"@juliusbrussee/caveman-ai/oauth": resolveWorkspaceOrImport(
+		"@zhachory1/mewrite-agent": resolveWorkspaceOrImport("agent/dist/index.js", "@zhachory1/mewrite-agent"),
+		"@zhachory1/mewrite-tui": resolveWorkspaceOrImport("tui/dist/index.js", "@zhachory1/mewrite-tui"),
+		"@zhachory1/mewrite-ai": resolveWorkspaceOrImport("ai/dist/index.js", "@zhachory1/mewrite-ai"),
+		"@zhachory1/mewrite-ai/oauth": resolveWorkspaceOrImport(
 			"ai/dist/oauth.js",
-			"@juliusbrussee/caveman-ai/oauth",
+			"@zhachory1/mewrite-ai/oauth",
 		),
 		"@sinclair/typebox": typeboxRoot,
 	};
 	// Extensions import the published package name; resolve it to the same
 	// coding-agent index that `cave` points at.
-	_aliases["@juliusbrussee/caveman-code"] = packageIndex;
+	_aliases["@zhachory1/mewrite-code"] = packageIndex;
 
 	return _aliases;
 }
@@ -523,7 +523,7 @@ function discoverExtensionsInDir(dir: string): string[] {
 
 /**
  * Default-on extensions bundled with cave. Resolved from the package install
- * dir at runtime so they ship with `npm i -g @juliusbrussee/caveman-code`
+ * dir at runtime so they ship with `npm i -g @zhachory1/mewrite-code`
  * without any user install step. Project-, user-, and CLI-configured paths
  * still take precedence by registering the same tool name (last write wins
  * inside ExtensionAPI.registerTool).

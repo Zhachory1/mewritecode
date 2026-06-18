@@ -1,4 +1,4 @@
-import { visibleWidth } from "@juliusbrussee/caveman-tui";
+import { visibleWidth } from "@zhachory1/mewrite-tui";
 import { beforeAll, describe, expect, it } from "vitest";
 import type { AgentSession } from "../src/core/agent-session.js";
 import type { ReadonlyFooterDataProvider } from "../src/core/footer-data-provider.js";
@@ -107,7 +107,7 @@ describe("FooterComponent width handling", () => {
 			},
 		});
 		(session.sessionManager as unknown as { getCwd(): string }).getCwd = () =>
-			"/Users/julb/Desktop/GitHub/caveman-cli";
+			"/Users/julb/Desktop/GitHub/mewritecode";
 		const footer = new FooterComponent(session, createFooterData(1));
 
 		const lines = footer.render(width);

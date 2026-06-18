@@ -1,7 +1,7 @@
 /**
  * WS18 — `/watch` slash command.
  *
- * Toggle watch mode on/off from an interactive caveman session.
+ * Toggle watch mode on/off from an interactive mewrite session.
  *
  * Subcommands:
  *   /watch           — toggle watch mode (start if stopped, stop if running)

@@ -46,6 +46,6 @@
 ## Chunk D: verification
 - [ ] **D1.** `git checkout -- packages/ai/src/models.generated.ts package-lock.json`
 - [ ] **D2.** Root `npx tsgo --noEmit` → clean (incl. tests).
-- [ ] **D3.** `npm test -w @juliusbrussee/caveman-code` → green (loader + helper tests).
+- [ ] **D3.** `npm test -w @zhachory1/mewrite-code` → green (loader + helper tests).
 - [ ] **D4.** `npx biome check --error-on-warnings` on touched files → clean.
 - [ ] **D5.** Confirm models.generated.ts / package-lock.json not staged.

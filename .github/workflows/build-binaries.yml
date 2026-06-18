@@ -40,19 +40,21 @@ jobs:
       - name: Build binaries
         run: ./scripts/build-binaries.sh
 
+      - name: Install RPM tooling
+        run: sudo apt-get update && sudo apt-get install -y rpm
+
+      - name: Build Linux packages
+        run: ./scripts/build-linux-packages.sh "${RELEASE_TAG}" packages/coding-agent/binaries
+
       - name: Generate SHA256SUMS for release artifacts
         # WS11: installers/install.sh verifies tarball checksums against this
         # file. Generated from inside the binaries dir so paths are flat.
         run: |
           cd packages/coding-agent/binaries
           if command -v sha256sum >/dev/null 2>&1; then
-            sha256sum cave-darwin-arm64.tar.gz cave-darwin-x64.tar.gz \
-                     cave-linux-x64.tar.gz cave-linux-arm64.tar.gz \
-                     cave-windows-x64.zip > SHA256SUMS
+            sha256sum cave-*.tar.gz cave-*.zip mewrite-code_*.deb mewrite-code-*.rpm > SHA256SUMS
           else
-            shasum -a 256 cave-darwin-arm64.tar.gz cave-darwin-x64.tar.gz \
-                          cave-linux-x64.tar.gz cave-linux-arm64.tar.gz \
-                          cave-windows-x64.zip > SHA256SUMS
+            shasum -a 256 cave-*.tar.gz cave-*.zip mewrite-code_*.deb mewrite-code-*.rpm > SHA256SUMS
           fi
           cat SHA256SUMS
 
@@ -79,6 +81,8 @@ jobs:
             cave-linux-x64.tar.gz \
             cave-linux-arm64.tar.gz \
             cave-windows-x64.zip \
+            mewrite-code_*.deb \
+            mewrite-code-*.rpm \
             SHA256SUMS \
             2>/dev/null || \
           gh release upload "${RELEASE_TAG}" \
@@ -87,6 +91,8 @@ jobs:
             cave-linux-x64.tar.gz \
             cave-linux-arm64.tar.gz \
             cave-windows-x64.zip \
+            mewrite-code_*.deb \
+            mewrite-code-*.rpm \
             SHA256SUMS \
             --clobber
 
@@ -100,6 +106,8 @@ jobs:
             packages/coding-agent/binaries/cave-linux-x64.tar.gz
             packages/coding-agent/binaries/cave-linux-arm64.tar.gz
             packages/coding-agent/binaries/cave-windows-x64.zip
+            packages/coding-agent/binaries/mewrite-code_*.deb
+            packages/coding-agent/binaries/mewrite-code-*.rpm
           retention-days: 7
 
   publish-npm:
@@ -168,18 +176,18 @@ jobs:
         with:
           name: cave-archives
           path: archives
-      - name: Rewrite Formula/cave.rb
+      - name: Rewrite Homebrew formulas
         run: ./scripts/update-homebrew.sh "${RELEASE_TAG}" archives
       - name: Commit and push
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          if git diff --quiet Formula/cave.rb; then
-            echo "Formula unchanged — nothing to commit"
+          if git diff --quiet Formula/mewrite.rb Formula/cave.rb; then
+            echo "Formulas unchanged — nothing to commit"
             exit 0
           fi
-          git add Formula/cave.rb
-          git commit -m "chore(homebrew): bump formula to ${RELEASE_TAG}"
+          git add Formula/mewrite.rb Formula/cave.rb
+          git commit -m "chore(homebrew): bump formulas to ${RELEASE_TAG}"
           git push origin HEAD:main
 
   smoke-install:

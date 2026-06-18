@@ -4,18 +4,18 @@
 		"noEmit": true,
 		"paths": {
 			"*": ["./*"],
-			"@juliusbrussee/caveman-ai": ["./packages/ai/src/index.ts"],
-			"@juliusbrussee/caveman-ai/oauth": ["./packages/ai/src/oauth.ts"],
-			"@juliusbrussee/caveman-ai/*": ["./packages/ai/src/*.ts", "./packages/ai/src/providers/*.ts"],
-			"@juliusbrussee/caveman-ai/dist/*": ["./packages/ai/src/*"],
-			"@juliusbrussee/caveman-agent": ["./packages/agent/src/index.ts"],
-			"@juliusbrussee/caveman-agent/*": ["./packages/agent/src/*"],
+			"@zhachory1/mewrite-ai": ["./packages/ai/src/index.ts"],
+			"@zhachory1/mewrite-ai/oauth": ["./packages/ai/src/oauth.ts"],
+			"@zhachory1/mewrite-ai/*": ["./packages/ai/src/*.ts", "./packages/ai/src/providers/*.ts"],
+			"@zhachory1/mewrite-ai/dist/*": ["./packages/ai/src/*"],
+			"@zhachory1/mewrite-agent": ["./packages/agent/src/index.ts"],
+			"@zhachory1/mewrite-agent/*": ["./packages/agent/src/*"],
 			"cave": ["./packages/coding-agent/src/index.ts"],
 			"cave/hooks": ["./packages/coding-agent/src/core/hooks/index.ts"],
 			"cave/*": ["./packages/coding-agent/src/*"],
 			"@sinclair/typebox": ["./node_modules/@sinclair/typebox"],
-			"@juliusbrussee/caveman-tui": ["./packages/tui/src/index.ts"],
-			"@juliusbrussee/caveman-tui/*": ["./packages/tui/src/*"]
+			"@zhachory1/mewrite-tui": ["./packages/tui/src/index.ts"],
+			"@zhachory1/mewrite-tui/*": ["./packages/tui/src/*"]
 		}
 	},
 	"include": ["packages/*/src/**/*", "packages/*/test/**/*", "packages/coding-agent/examples/**/*"],

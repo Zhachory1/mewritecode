@@ -1,4 +1,4 @@
-import type { ImageContent } from "@juliusbrussee/caveman-ai";
+import type { ImageContent } from "@zhachory1/mewrite-ai";
 import type { Args } from "./args.js";
 
 export interface InitialMessageInput {

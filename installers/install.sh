@@ -3,7 +3,7 @@
 # Cave installer — used by the Homebrew formula and CI
 # smoke tests. End users should install via npm:
 #
-#   npm install -g @juliusbrussee/caveman-code
+#   npm install -g @zhachory1/mewrite-code
 #
 # Extracts the full release tarball (binary + theme/, export-html/,
 # photon_rs_bg.wasm, docs/, examples/) into a versioned dir and symlinks
@@ -29,7 +29,7 @@
 
 set -euo pipefail
 
-REPO="JuliusBrussee/caveman-cli"
+REPO="Zhachory1/mewritecode"
 KEEP_VERSIONS=2
 CAVE_CHANNEL_DEFAULT="stable"
 
@@ -196,7 +196,7 @@ log_step "prefix        : ${CAVE_PREFIX}"
 log_step "tarball       : ${URL}"
 log_step "checksum file : ${SUMS_URL}"
 log_step "install dir   : ${VER_DIR}"
-log_step "shim          : ${BIN_DIR}/cave (aliases: ${BIN_DIR}/caveman, ${BIN_DIR}/mewrite, ${BIN_DIR}/mewritecode)"
+log_step "shim          : ${BIN_DIR}/mewrite (aliases: ${BIN_DIR}/mewrite-code, ${BIN_DIR}/mewritecode)"
 log_step "modify PATH   : $([ "$NO_MODIFY_PATH" = 1 ] && echo no || echo yes)"
 log_step "checksum tool : ${SHA_TOOL:-(none — verification will be skipped)}"
 
@@ -210,11 +210,11 @@ fi
 # Idempotency: short-circuit if VER_DIR already has the binary
 # ---------------------------------------------------------------------------
 
-if [ -x "${VER_DIR}/cave" ] && [ -L "${BIN_DIR}/cave" ] && [ -L "${BIN_DIR}/caveman" ] && [ -L "${BIN_DIR}/mewrite" ] && [ -L "${BIN_DIR}/mewritecode" ]; then
+if [ -x "${VER_DIR}/cave" ] && [ -L "${BIN_DIR}/mewrite" ] && [ -L "${BIN_DIR}/mewrite-code" ] && [ -L "${BIN_DIR}/mewritecode" ]; then
     EXISTING="$("${VER_DIR}/cave" --version 2>/dev/null || true)"
     if [ -n "$EXISTING" ]; then
-        info "cave ${CAVE_VERSION} already installed at ${VER_DIR}"
-        info "run: cave update    to fetch newer releases"
+        info "mewrite ${CAVE_VERSION} already installed at ${VER_DIR}"
+        info "run: mewrite update    to fetch newer releases"
         exit 0
     fi
 fi
@@ -238,7 +238,7 @@ curl -fsSL "$URL" -o "${TMP}/${TARBALL}" || err "download failed: ${URL}"
 if [ -n "$SHA_TOOL" ]; then
     if curl -fsSL "$SUMS_URL" -o "${TMP}/SHA256SUMS" 2>/dev/null; then
         log_step "verifying checksum"
-        EXPECTED="$(grep " \+${TARBALL}\$" "${TMP}/SHA256SUMS" | awk '{print $1}' | head -1)"
+        EXPECTED="$(awk -v file="$TARBALL" '$2 == file { print $1; exit }' "${TMP}/SHA256SUMS")"
         if [ -z "$EXPECTED" ]; then
             log_step "warning: ${TARBALL} not listed in SHA256SUMS — skipping verification"
         else
@@ -264,9 +264,8 @@ rm -rf "$VER_DIR"
 mv "${TMP}/cave" "$VER_DIR"
 chmod +x "${VER_DIR}/cave"
 
-ln -sfn "${VER_DIR}/cave" "${BIN_DIR}/cave"
-ln -sfn "${VER_DIR}/cave" "${BIN_DIR}/caveman"
 ln -sfn "${VER_DIR}/cave" "${BIN_DIR}/mewrite"
+ln -sfn "${VER_DIR}/cave" "${BIN_DIR}/mewrite-code"
 ln -sfn "${VER_DIR}/cave" "${BIN_DIR}/mewritecode"
 
 # Prune older versions, keep most recent KEEP_VERSIONS (the one we just wrote
@@ -308,4 +307,4 @@ fi
 
 info ""
 info "Installed: ${VER_DIR}"
-"${BIN_DIR}/cave" --version
+"${BIN_DIR}/mewrite" --version

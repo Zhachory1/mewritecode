@@ -10,10 +10,10 @@
  * correct for that point in history.
  */
 
-import { StringEnum } from "@juliusbrussee/caveman-ai";
-import type { ExtensionAPI, ExtensionContext, Theme } from "@juliusbrussee/caveman-code";
-import { matchesKey, Text, truncateToWidth } from "@juliusbrussee/caveman-tui";
 import { Type } from "@sinclair/typebox";
+import { StringEnum } from "@zhachory1/mewrite-ai";
+import type { ExtensionAPI, ExtensionContext, Theme } from "@zhachory1/mewrite-code";
+import { matchesKey, Text, truncateToWidth } from "@zhachory1/mewrite-tui";
 
 interface Todo {
 	id: number;

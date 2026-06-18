@@ -1,7 +1,7 @@
-import { complete, getModel } from "@juliusbrussee/caveman-ai";
-import type { ExtensionAPI, ExtensionCommandContext } from "@juliusbrussee/caveman-code";
-import { DynamicBorder, getMarkdownTheme } from "@juliusbrussee/caveman-code";
-import { Container, Markdown, matchesKey, Text } from "@juliusbrussee/caveman-tui";
+import { complete, getModel } from "@zhachory1/mewrite-ai";
+import type { ExtensionAPI, ExtensionCommandContext } from "@zhachory1/mewrite-code";
+import { DynamicBorder, getMarkdownTheme } from "@zhachory1/mewrite-code";
+import { Container, Markdown, matchesKey, Text } from "@zhachory1/mewrite-tui";
 
 type ContentBlock = {
 	type?: string;

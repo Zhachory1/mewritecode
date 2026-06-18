@@ -1,7 +1,7 @@
 {
-	"name": "@juliusbrussee/caveman-sdk",
+	"name": "@zhachory1/mewrite-sdk",
 	"version": "0.65.2",
-	"description": "TypeScript SDK for the caveman-code daemon HTTP + WebSocket API. Generated from openapi.yaml.",
+	"description": "TypeScript SDK for the mewrite-code daemon HTTP + WebSocket API. Generated from openapi.yaml.",
 	"type": "module",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
@@ -17,7 +17,7 @@
 		"README.md"
 	],
 	"keywords": [
-		"caveman-code",
+		"mewrite-code",
 		"sdk",
 		"daemon",
 		"openapi",
@@ -27,7 +27,7 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/JuliusBrussee/caveman-code.git",
+		"url": "git+https://github.com/Zhachory1/mewritecode.git",
 		"directory": "packages/sdk"
 	},
 	"engines": {
@@ -43,9 +43,9 @@
 		"typescript": "^5.7.3",
 		"vitest": "^3.2.4"
 	},
-	"homepage": "https://github.com/JuliusBrussee/caveman-code#readme",
+	"homepage": "https://github.com/Zhachory1/mewritecode#readme",
 	"bugs": {
-		"url": "https://github.com/JuliusBrussee/caveman-code/issues"
+		"url": "https://github.com/Zhachory1/mewritecode/issues"
 	},
 	"publishConfig": {
 		"access": "public"

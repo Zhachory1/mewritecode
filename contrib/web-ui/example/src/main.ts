@@ -1,6 +1,6 @@
 import "@mariozechner/mini-lit/dist/ThemeToggle.js";
-import { Agent, type AgentMessage } from "@juliusbrussee/caveman-agent";
-import { getModel } from "@juliusbrussee/caveman-ai";
+import { Agent, type AgentMessage } from "@zhachory1/mewrite-agent";
+import { getModel } from "@zhachory1/mewrite-ai";
 import {
 	type AgentState,
 	ApiKeyPromptDialog,
@@ -18,7 +18,7 @@ import {
 	SettingsDialog,
 	SettingsStore,
 	setAppStorage,
-} from "@juliusbrussee/caveman-web-ui";
+} from "@zhachory1/mewrite-web-ui";
 import { html, render } from "lit";
 import { Bell, History, Plus, Settings } from "lucide";
 import "./app.css";

@@ -1,7 +1,7 @@
-import type { Message } from "@juliusbrussee/caveman-ai";
-import type { AgentMessage, MessageRenderer } from "@juliusbrussee/caveman-web-ui";
-import { defaultConvertToLlm, registerMessageRenderer } from "@juliusbrussee/caveman-web-ui";
 import { Alert } from "@mariozechner/mini-lit/dist/Alert.js";
+import type { Message } from "@zhachory1/mewrite-ai";
+import type { AgentMessage, MessageRenderer } from "@zhachory1/mewrite-web-ui";
+import { defaultConvertToLlm, registerMessageRenderer } from "@zhachory1/mewrite-web-ui";
 import { html } from "lit";
 
 // ============================================================================
@@ -18,7 +18,7 @@ export interface SystemNotificationMessage {
 
 // Extend CustomAgentMessages interface via declaration merging
 // This must target pi-agent-core where CustomAgentMessages is defined
-declare module "@juliusbrussee/caveman-agent" {
+declare module "@zhachory1/mewrite-agent" {
 	interface CustomAgentMessages {
 		"system-notification": SystemNotificationMessage;
 	}

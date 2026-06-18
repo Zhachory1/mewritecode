@@ -11,7 +11,7 @@ import {
 	type ToolResultMessage,
 	type Usage,
 	validateToolArguments,
-} from "@juliusbrussee/caveman-ai";
+} from "@zhachory1/mewrite-ai";
 import type {
 	AgentContext,
 	AgentEvent,

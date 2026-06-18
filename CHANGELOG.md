@@ -27,7 +27,7 @@ Release notes from `v0.30.0` onwards are auto-generated from
   opencode, sourced from the v2 master plan §3.
 - **Migration guides** — zero-migration playbooks for Claude Code, Codex,
   and Aider users.
-- **README rewrite** — single canonical install (`npm install -g @juliusbrussee/caveman-code`),
+- **README rewrite** — single canonical install (`npm install -g @zhachory1/mewrite-code`),
   "I want to..." router, link to comparison, link to Discord, monorepo table
   at the bottom.
 
@@ -66,10 +66,10 @@ Release notes from `v0.30.0` onwards are auto-generated from
 
 - Release pipeline, installers (`install.sh`, `install.ps1`), Homebrew
   formula, GitHub Actions release workflow.
-- Initial monorepo layout: `caveman`, `@juliusbrussee/caveman-ai`, `@juliusbrussee/caveman-agent`, `@juliusbrussee/caveman-tui`,
-  `@juliusbrussee/caveman-web-ui`, `@juliusbrussee/caveman-mom`, `@juliusbrussee/caveman-pods`.
+- Initial monorepo layout: `caveman`, `@zhachory1/mewrite-ai`, `@zhachory1/mewrite-agent`, `@zhachory1/mewrite-tui`,
+  `@zhachory1/mewrite-web-ui`, `@zhachory1/mewrite-mom`, `@zhachory1/mewrite-pods`.
 
-[Unreleased]: https://github.com/JuliusBrussee/caveman-cli/compare/v0.30.2...HEAD
-[0.30.2]: https://github.com/JuliusBrussee/caveman-cli/compare/v0.30.1...v0.30.2
-[0.30.1]: https://github.com/JuliusBrussee/caveman-cli/compare/v0.30.0...v0.30.1
-[0.30.0]: https://github.com/JuliusBrussee/caveman-cli/releases/tag/v0.30.0
+[Unreleased]: https://github.com/Zhachory1/mewritecode/compare/v0.30.2...HEAD
+[0.30.2]: https://github.com/Zhachory1/mewritecode/compare/v0.30.1...v0.30.2
+[0.30.1]: https://github.com/Zhachory1/mewritecode/compare/v0.30.0...v0.30.1
+[0.30.0]: https://github.com/Zhachory1/mewritecode/releases/tag/v0.30.0

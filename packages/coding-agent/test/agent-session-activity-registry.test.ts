@@ -1,5 +1,5 @@
-import { Agent } from "@juliusbrussee/caveman-agent";
-import { getModel } from "@juliusbrussee/caveman-ai";
+import { Agent } from "@zhachory1/mewrite-agent";
+import { getModel } from "@zhachory1/mewrite-ai";
 import { describe, expect, it } from "vitest";
 import { ActivityRegistry } from "../src/core/activity/activity-registry.js";
 import { AgentSession } from "../src/core/agent-session.js";

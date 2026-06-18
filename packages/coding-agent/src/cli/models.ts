@@ -1,10 +1,10 @@
 /**
- * WS15: `caveman models` subcommand handler.
+ * WS15: `mewrite models` subcommand handler.
  *
  * Subcommands:
- *   caveman models update [--channel stable|beta]  — fetch registry and write cache
- *   caveman models list [--provider <id>]           — list providers/models
- *   caveman models inspect <id>                     — show model details
+ *   mewrite models update [--channel stable|beta]  — fetch registry and write cache
+ *   mewrite models list [--provider <id>]           — list providers/models
+ *   mewrite models inspect <id>                     — show model details
  */
 
 import { homedir } from "node:os";
@@ -15,7 +15,7 @@ import {
 	getCachePath,
 	loadRegistry,
 	type Registry,
-} from "@juliusbrussee/caveman-ai/registry";
+} from "@zhachory1/mewrite-ai/registry";
 import chalk from "chalk";
 
 // ---------------------------------------------------------------------------
@@ -148,7 +148,7 @@ function runModelsList(argv: string[]): number {
 
 	if (!result.ok) {
 		console.error(chalk.red(`No registry available: ${result.error}`));
-		console.error(chalk.dim(`Run \`caveman models update\` to fetch the latest registry.`));
+		console.error(chalk.dim(`Run \`mewrite models update\` to fetch the latest registry.`));
 		return 1;
 	}
 
@@ -160,7 +160,7 @@ function runModelsList(argv: string[]): number {
 function runModelsInspect(argv: string[]): number {
 	const modelId = argv[0];
 	if (!modelId) {
-		console.error(chalk.red("Usage: caveman models inspect <model-id>"));
+		console.error(chalk.red("Usage: mewrite models inspect <model-id>"));
 		return 1;
 	}
 
@@ -202,24 +202,24 @@ function runModelsInspect(argv: string[]): number {
 	}
 
 	console.error(chalk.red(`Model "${modelId}" not found in registry.`));
-	console.error(chalk.dim(`Run \`caveman models list\` to see available models.`));
+	console.error(chalk.dim(`Run \`mewrite models list\` to see available models.`));
 	return 1;
 }
 
 function printModelsHelp(): void {
-	console.log(`${chalk.bold("caveman models")} — manage the provider/model registry
+	console.log(`${chalk.bold("mewrite models")} — manage the provider/model registry
 
 ${chalk.bold("Usage:")}
-  caveman models update [--channel stable|beta]    Fetch latest registry
-  caveman models list [--provider <id>]            List registry providers/models
-  caveman models inspect <model-id>               Show model details
+  mewrite models update [--channel stable|beta]    Fetch latest registry
+  mewrite models list [--provider <id>]            List registry providers/models
+  mewrite models inspect <model-id>               Show model details
 
 ${chalk.bold("Examples:")}
-  caveman models update                    Fetch stable registry
-  caveman models update --channel beta     Fetch beta/canary registry
-  caveman models list                      List all providers and models
-  caveman models list --provider anthropic List only Anthropic models
-  caveman models inspect claude-sonnet-4-5 Show Claude Sonnet details
+  mewrite models update                    Fetch stable registry
+  mewrite models update --channel beta     Fetch beta/canary registry
+  mewrite models list                      List all providers and models
+  mewrite models list --provider anthropic List only Anthropic models
+  mewrite models inspect claude-sonnet-4-5 Show Claude Sonnet details
 `);
 }
 
@@ -228,7 +228,7 @@ ${chalk.bold("Examples:")}
 // ---------------------------------------------------------------------------
 
 /**
- * Handle `caveman models <subcmd> [...args]`.
+ * Handle `mewrite models <subcmd> [...args]`.
  * Returns the process exit code, or -1 if this is not a models command.
  */
 export async function handleModelsCommand(argv: string[]): Promise<number | -1> {

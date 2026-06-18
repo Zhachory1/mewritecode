@@ -1,6 +1,6 @@
 // #19 — CAVE_TRACE opt-in JSONL trace sink: pure serialization + thin fs sink.
 
-import type { AgentMessage } from "@juliusbrussee/caveman-agent";
+import type { AgentMessage } from "@zhachory1/mewrite-agent";
 import { describe, expect, it, vi } from "vitest";
 import type { AgentSessionEvent } from "../agent-session.js";
 import { createTraceSink, createTraceState, formatTraceLine, resolveTracePath, type TraceFs } from "../trace.js";

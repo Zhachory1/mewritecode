@@ -15,7 +15,7 @@
 
 import { appendFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { Text } from "@juliusbrussee/caveman-tui";
+import { Text } from "@zhachory1/mewrite-tui";
 import { type Static, Type } from "@sinclair/typebox";
 import { getBackground, listBackground, postMessage } from "../background-task-registry.js";
 import type { ToolDefinition } from "../extensions/types.js";

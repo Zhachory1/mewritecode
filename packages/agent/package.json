@@ -1,5 +1,5 @@
 {
-	"name": "@juliusbrussee/caveman-agent",
+	"name": "@zhachory1/mewrite-agent",
 	"version": "0.65.3",
 	"description": "General-purpose agent with transport abstraction, state management, and attachment support",
 	"type": "module",
@@ -17,7 +17,7 @@
 		"prepublishOnly": "npm run clean && npm run build"
 	},
 	"dependencies": {
-		"@juliusbrussee/caveman-ai": "^0.65.2"
+		"@zhachory1/mewrite-ai": "^0.65.2"
 	},
 	"optionalDependencies": {
 		"onnxruntime-node": "^1.20.0",
@@ -34,7 +34,7 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/JuliusBrussee/caveman-code.git",
+		"url": "git+https://github.com/Zhachory1/mewritecode.git",
 		"directory": "packages/agent"
 	},
 	"engines": {
@@ -45,9 +45,9 @@
 		"typescript": "^5.7.3",
 		"vitest": "^3.2.4"
 	},
-	"homepage": "https://github.com/JuliusBrussee/caveman-code#readme",
+	"homepage": "https://github.com/Zhachory1/mewritecode#readme",
 	"bugs": {
-		"url": "https://github.com/JuliusBrussee/caveman-code/issues"
+		"url": "https://github.com/Zhachory1/mewritecode/issues"
 	},
 	"publishConfig": {
 		"access": "public"

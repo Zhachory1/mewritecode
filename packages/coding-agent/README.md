@@ -1,26 +1,65 @@
-<h1 align="center">Caveman Code</h1>
-<p align="center">Terminal coding harness with token-saving caveman mode</p>
+<h1 align="center">Me Write Code</h1>
+<p align="center">Terminal coding harness with token-saving Caveman Mode</p>
 <p align="center">
   <a href="https://discord.com/invite/nKXTsAcmbT"><img alt="Discord" src="https://img.shields.io/badge/discord-community-5865F2?style=flat-square&logo=discord&logoColor=white" /></a>
-  <a href="https://www.npmjs.com/package/@juliusbrussee/caveman-code"><img alt="npm" src="https://img.shields.io/npm/v/%40juliusbrussee%2Fcaveman-code?style=flat-square" /></a>
-  <a href="https://github.com/JuliusBrussee/caveman-code/actions/workflows/ci.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/JuliusBrussee/caveman-code/ci.yml?style=flat-square&branch=main" /></a>
+  <a href="https://www.npmjs.com/package/@zhachory1/mewrite-code"><img alt="npm" src="https://img.shields.io/npm/v/%40zhachory1%2Fmewrite-code?style=flat-square" /></a>
+  <a href="https://github.com/Zhachory1/mewritecode/actions/workflows/ci.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/Zhachory1/mewritecode/ci.yml?style=flat-square&branch=main" /></a>
 </p>
 
-Caveman Code is the `caveman` CLI package in [JuliusBrussee/caveman-code](https://github.com/JuliusBrussee/caveman-code).
+Me Write Code is the `mewrite` CLI package in [Zhachory1/mewritecode](https://github.com/Zhachory1/mewritecode).
 
-Caveman Code is a minimal terminal coding harness that stays provider-agnostic, terminal-native, and deeply extensible. Use it interactively, run it in print or JSON mode, embed it through the SDK, or extend it with TypeScript modules, skills, prompt templates, themes, and CaveKit workflows.
+Me Write Code is a minimal terminal coding harness that stays provider-agnostic, terminal-native, and deeply extensible. Use it interactively, run it in print or JSON mode, embed it through the SDK, or extend it with TypeScript modules, skills, prompt templates, themes, and CaveKit workflows.
 
 ---
 
 ## Install
 
+### npm (current package)
+
 ```bash
-npm install -g @juliusbrussee/caveman-code
-caveman
+npm install -g @zhachory1/mewrite-code
+mewrite
+```
+
+### Homebrew (macOS, Linux)
+
+```bash
+brew tap Zhachory1/mewritecode https://github.com/Zhachory1/mewritecode
+brew install mewrite
+mewrite
+```
+
+### Debian / Ubuntu
+
+```bash
+curl -LO https://github.com/Zhachory1/mewritecode/releases/latest/download/mewrite-code_<version>_amd64.deb
+sudo apt install ./mewrite-code_<version>_amd64.deb
+mewrite
+```
+
+Also available: `mewrite-code_<version>_arm64.deb` for ARM64 systems. The primary command is `mewrite`; the package also installs `mewrite-code` and `mewritecode` aliases.
+
+### Fedora / RHEL / CentOS
+
+```bash
+curl -LO https://github.com/Zhachory1/mewritecode/releases/latest/download/mewrite-code-<version>-1.x86_64.rpm
+sudo dnf install ./mewrite-code-<version>-1.x86_64.rpm  # or yum
+mewrite
+```
+
+Also available: `mewrite-code-<version>-1.aarch64.rpm` for ARM64 systems. The primary command is `mewrite`; the package also installs `mewrite-code` and `mewritecode` aliases.
+
+### Snap (tracked, not yet published)
+
+Snap packaging metadata is tracked in `snap/snapcraft.yaml`. Once published:
+
+```bash
+sudo snap install mewrite-code --classic
+mewrite-code
 ```
 
 Requirements:
-- Node.js 20+
+- Node.js 20+ (npm install path only)
 - API key or active subscription for at least one supported provider
 
 ---
@@ -32,23 +71,23 @@ Requirements:
 ```bash
 # API key
 export ANTHROPIC_API_KEY=sk-ant-...
-caveman
+mewrite
 
 # Or sign in with an existing subscription
-caveman
+mewrite
 /login
 ```
 
 ### Use
 
 ```bash
-caveman                              # interactive mode
-caveman "explain this codebase"      # start with prompt
-caveman -p "summarize this file"     # print mode
-cat README.md | caveman -p "review"  # pipe stdin
-caveman -c                           # continue last session
-caveman -r                           # browse sessions
-caveman goal start "<text>"          # autonomous goal loop
+mewrite                              # interactive mode
+mewrite "explain this codebase"      # start with prompt
+mewrite -p "summarize this file"     # print mode
+cat README.md | mewrite -p "review"  # pipe stdin
+mewrite -c                           # continue last session
+mewrite -r                           # browse sessions
+mewrite goal start "<text>"          # autonomous goal loop
 ```
 
 Success looks like this:
@@ -60,14 +99,14 @@ Platform notes: [Windows](docs/windows.md) · [Termux](docs/termux.md) · [tmux]
 
 ---
 
-## What Caveman Code Adds
+## What Me Write Code Adds
 
-Caveman Code keeps upstream extensibility goals, then adds fork-specific workflows and compression features on top.
+Me Write Code keeps upstream extensibility goals, then adds fork-specific workflows and compression features on top.
 
-| Area | Caveman Code |
+| Area | Me Write Code |
 |------|------|
 | Multi-provider coding agent | Built in |
-| Caveman Code mode | 3-layer token compression |
+| Caveman Mode | 3-layer token compression |
 | RTK integration | Optional bash command rewriting + output reduction |
 | CaveKit | Draft → Architect → Build → Inspect workflow |
 | Package ecosystem | Install prompts, skills, themes, and extensions via npm or git |
@@ -94,11 +133,11 @@ Provider setup details: [docs/providers.md](docs/providers.md)
 
 | Mode | Command | Use case |
 |------|---------|----------|
-| Interactive | `caveman` | Full TUI with history, editor, tool calls, and status UI |
-| Print | `caveman -p "..."` | One-shot scripting |
-| JSON | `caveman --mode json "..."` | Structured automation |
-| RPC | `caveman --mode rpc` | Stdin/stdout process integration |
-| SDK | `createAgentSession()` | Embed Caveman Code in Node.js apps |
+| Interactive | `mewrite` | Full TUI with history, editor, tool calls, and status UI |
+| Print | `mewrite -p "..."` | One-shot scripting |
+| JSON | `mewrite --mode json "..."` | Structured automation |
+| RPC | `mewrite --mode rpc` | Stdin/stdout process integration |
+| SDK | `createAgentSession()` | Embed Me Write Code in Node.js apps |
 
 ---
 
@@ -154,11 +193,11 @@ Keyboard shortcut details: [docs/keybindings.md](docs/keybindings.md)
 Sessions auto-save to `~/.cave/agent/sessions/` and keep full tree history in JSONL format.
 
 ```bash
-caveman -c                    # continue most recent session
-caveman -r                    # browse sessions
-caveman --session <path|id>   # open specific session
-caveman --fork <path|id>      # fork into new session
-caveman --no-session          # ephemeral mode
+mewrite -c                    # continue most recent session
+mewrite -r                    # browse sessions
+mewrite --session <path|id>   # open specific session
+mewrite --fork <path|id>      # fork into new session
+mewrite --no-session          # ephemeral mode
 ```
 
 ### Branching
@@ -178,7 +217,7 @@ Session format details: [docs/session.md](docs/session.md) · Compaction details
 
 ## Caveman Mode
 
-Caveman Code mode is enabled by default and reduces token waste without changing workflow.
+Caveman Mode is enabled by default and reduces token waste without changing workflow.
 
 ### Layer 1: prompt compression
 - `lite` — brief responses
@@ -196,7 +235,7 @@ Caveman Code mode is enabled by default and reduces token waste without changing
 - returns stub when unchanged file is re-read
 - reduces repeated context injection during refactors
 
-Change level with `/caveman [lite|full|ultra|off]`.
+Change level with `/mewrite [lite|full|ultra|off]`.
 
 Settings reference: [docs/settings.md](docs/settings.md)
 
@@ -251,7 +290,7 @@ Run `npm run bench:offline` to reproduce. Results on 10 real-world tool output f
 | full | +175 tokens | 1 tool call | **+567K tokens saved** |
 | ultra | +195 tokens | 1 tool call | **+566K tokens saved** |
 
-Caveman Code mode pays for itself on the **first tool call** of every session.
+Caveman Mode pays for itself on the **first tool call** of every session.
 
 #### Cost Impact (Sonnet pricing, $3/M input)
 
@@ -286,7 +325,7 @@ npm run bench           # All tiers
 
 ## RTK Integration
 
-RTK (Rust Token Killer) is an optional external binary. When installed, Caveman Code can rewrite bash commands through `rtk rewrite` before execution, then still apply Caveman Code-mode compression afterward.
+RTK (Rust Token Killer) is an optional external binary. When installed, Me Write Code can rewrite bash commands through `rtk rewrite` before execution, then still apply Caveman Mode compression afterward.
 
 ### Install check
 
@@ -345,16 +384,16 @@ Built-in: `dark`, `light`. Custom themes live in:
 
 Docs: [docs/themes.md](docs/themes.md)
 
-### Caveman Code Packages
+### Me Write Code Packages
 Bundle and share extensions, skills, prompts, and themes via npm or git.
 
 ```bash
-caveman install npm:@foo/cave-tools
-caveman install git:github.com/user/repo
-caveman remove npm:@foo/cave-tools
-caveman list
-caveman update
-caveman config
+mewrite install npm:@foo/cave-tools
+mewrite install git:github.com/user/repo
+mewrite remove npm:@foo/cave-tools
+mewrite list
+mewrite update
+mewrite config
 ```
 
 Package docs: [docs/packages.md](docs/packages.md)
@@ -366,7 +405,7 @@ Package docs: [docs/packages.md](docs/packages.md)
 ### SDK
 
 ```typescript
-import { AuthStorage, createAgentSession, ModelRegistry, SessionManager } from "@juliusbrussee/caveman-code";
+import { AuthStorage, createAgentSession, ModelRegistry, SessionManager } from "@zhachory1/mewrite-code";
 
 const authStorage = AuthStorage.create();
 const modelRegistry = ModelRegistry.create(authStorage);
@@ -384,7 +423,7 @@ Advanced API docs: [docs/sdk.md](docs/sdk.md) · Examples: [examples/sdk/](examp
 ### RPC Mode
 
 ```bash
-caveman --mode rpc
+mewrite --mode rpc
 ```
 
 Protocol details: [docs/rpc.md](docs/rpc.md)
@@ -394,36 +433,36 @@ Protocol details: [docs/rpc.md](docs/rpc.md)
 ## CLI Reference
 
 ```bash
-caveman [options] [@files...] [messages...]
+mewrite [options] [@files...] [messages...]
 ```
 
 ### Subcommands
 
 | Command | Description |
 |---------|-------------|
-| `caveman goal start "<text>" [flags]` | Autonomous goal loop (Ralph-style) |
-| `caveman goal resume [id] [--force]` | Resume a paused/completed goal |
-| `caveman goal status [id]` | Show goal state, ledger, transcript |
-| `caveman goal cancel [id]` | Mark goal as cancelled |
-| `caveman goal list` | List all goals in project |
+| `mewrite goal start "<text>" [flags]` | Autonomous goal loop (Ralph-style) |
+| `mewrite goal resume [id] [--force]` | Resume a paused/completed goal |
+| `mewrite goal status [id]` | Show goal state, ledger, transcript |
+| `mewrite goal cancel [id]` | Mark goal as cancelled |
+| `mewrite goal list` | List all goals in project |
 
 ### Subcommands
 
 | Command | Description |
 |---------|-------------|
-| `caveman goal start "<text>" [flags]` | Autonomous Ralph-style goal loop |
-| `caveman goal resume [id] [--force]` | Resume a paused goal |
-| `caveman goal status [id]` | Show goal state and ledger |
-| `caveman goal cancel [id]` | Cancel a running goal |
-| `caveman goal list` | List all goals |
-| `caveman mcp <subcmd>` | Manage MCP servers |
-| `caveman watch [paths]` | File watcher for `// cave!` triggers |
-| `caveman exec [flags] "<prompt>"` | Non-interactive CI mode |
-| `caveman plugin <subcmd>` | Plugin marketplace |
-| `caveman run-recipe <name>` | Run YAML workflows |
-| `caveman rollback N` | Revert to checkpoint N |
-| `caveman models <subcmd>` | Manage model registry |
-| `caveman serve` / `attach` | Daemon mode |
+| `mewrite goal start "<text>" [flags]` | Autonomous Ralph-style goal loop |
+| `mewrite goal resume [id] [--force]` | Resume a paused goal |
+| `mewrite goal status [id]` | Show goal state and ledger |
+| `mewrite goal cancel [id]` | Cancel a running goal |
+| `mewrite goal list` | List all goals |
+| `mewrite mcp <subcmd>` | Manage MCP servers |
+| `mewrite watch [paths]` | File watcher for `// cave!` triggers |
+| `mewrite exec [flags] "<prompt>"` | Non-interactive CI mode |
+| `mewrite plugin <subcmd>` | Plugin marketplace |
+| `mewrite run-recipe <name>` | Run YAML workflows |
+| `mewrite rollback N` | Revert to checkpoint N |
+| `mewrite models <subcmd>` | Manage model registry |
+| `mewrite serve` / `attach` | Daemon mode |
 
 ### Core options
 
@@ -450,7 +489,7 @@ caveman [options] [@files...] [messages...]
 |---------|-------------|
 | `/plan` | Toggle plan mode (read-only exploration) |
 | `/act` | Execute a saved plan |
-| `/caveman [level]` | Adjust token compression |
+| `/mewrite [level]` | Adjust token compression |
 | `/login`, `/logout` | OAuth authentication |
 | `/model` | Switch models |
 | `/settings` | Configure settings |
@@ -487,15 +526,15 @@ Development docs:
 
 ## Plugin Marketplace
 
-Caveman Code supports a plugin ecosystem. Plugins bundle commands, skills, agents, themes, hooks, and MCP server configs.
+Me Write Code supports a plugin ecosystem. Plugins bundle commands, skills, agents, themes, hooks, and MCP server configs.
 
 ```bash
-caveman plugin search [query]           # Search all configured marketplaces
-caveman plugin install <owner/name>     # Install a plugin from GitHub or a URL
-caveman plugin list                     # Show installed plugins
-caveman plugin upgrade                  # Upgrade all installed plugins
-caveman plugin marketplace add <url>    # Register a remote marketplace
-caveman plugin marketplace list         # Show configured marketplace sources
+mewrite plugin search [query]           # Search all configured marketplaces
+mewrite plugin install <owner/name>     # Install a plugin from GitHub or a URL
+mewrite plugin list                     # Show installed plugins
+mewrite plugin upgrade                  # Upgrade all installed plugins
+mewrite plugin marketplace add <url>    # Register a remote marketplace
+mewrite plugin marketplace list         # Show configured marketplace sources
 ```
 
 Marketplaces are resolved in order: repo (`.cave/plugins/marketplace.json`), personal (`~/.cave/plugins/marketplace.json`), and remote URLs. Plugins install into `~/.cave/plugins/<owner>/<name>/`. To scaffold a new plugin, use `/plugin create` in interactive mode (invokes the `plugin-creator` skill).

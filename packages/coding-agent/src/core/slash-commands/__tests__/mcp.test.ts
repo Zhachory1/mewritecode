@@ -98,6 +98,6 @@ describe("runMcpSlashCommand", () => {
 	it("/mcp add hints to use CLI", async () => {
 		const result = await runMcpSlashCommand("/mcp add fs npx -y server", { cwd });
 		expect(result.errors).toBe(0);
-		expect(result.lines.join("\n")).toMatch(/caveman mcp add/);
+		expect(result.lines.join("\n")).toMatch(/mewrite mcp add/);
 	});
 });

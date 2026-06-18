@@ -1,6 +1,6 @@
-import { getProviders } from "@juliusbrussee/caveman-ai";
 import { i18n } from "@mariozechner/mini-lit";
 import { Select } from "@mariozechner/mini-lit/dist/Select.js";
+import { getProviders } from "@zhachory1/mewrite-ai";
 import { html, type TemplateResult } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import "../components/CustomProviderCard.js";

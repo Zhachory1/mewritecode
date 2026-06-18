@@ -1,4 +1,4 @@
-import { getProviderAuthStatus, type Model, modelsAreEqual, type ProviderAuthStatus } from "@juliusbrussee/caveman-ai";
+import { getProviderAuthStatus, type Model, modelsAreEqual, type ProviderAuthStatus } from "@zhachory1/mewrite-ai";
 import {
 	Container,
 	type Focusable,
@@ -11,7 +11,7 @@ import {
 	Spacer,
 	Text,
 	type TUI,
-} from "@juliusbrussee/caveman-tui";
+} from "@zhachory1/mewrite-tui";
 import type { ModelRegistry } from "../../../core/model-registry.js";
 import { applyModelPredicates, parseModelQuery } from "../../../core/model-search-tokens.js";
 import type { ModelRef, SettingsManager } from "../../../core/settings-manager.js";

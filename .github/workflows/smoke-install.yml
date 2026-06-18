@@ -11,7 +11,9 @@ on:
       - install.ps1
       - installers/**
       - Formula/cave.rb
+      - Formula/mewrite.rb
       - scripts/build-binaries.sh
+      - scripts/build-linux-packages.sh
       - scripts/update-homebrew.sh
       - Dockerfile
       - .github/workflows/build-binaries.yml
@@ -49,6 +51,27 @@ jobs:
       - name: Build host tarball
         shell: bash
         run: ./scripts/build-binaries.sh --platform ${{ matrix.triple }}
+
+      - name: Install RPM tooling
+        if: matrix.triple == 'linux-x64'
+        shell: bash
+        run: sudo apt-get update && sudo apt-get install -y rpm
+
+      - name: Build Linux packages
+        if: matrix.triple == 'linux-x64'
+        shell: bash
+        run: ./scripts/build-linux-packages.sh smoke packages/coding-agent/binaries
+
+      - name: Validate Linux packages
+        if: matrix.triple == 'linux-x64'
+        shell: bash
+        run: |
+          dpkg-deb --info packages/coding-agent/binaries/mewrite-code_smoke_amd64.deb
+          if ls packages/coding-agent/binaries/mewrite-code-*.rpm 1>/dev/null 2>&1; then
+            rpm -qip packages/coding-agent/binaries/mewrite-code-*.rpm
+          else
+            echo "Warning: No RPM found for validation"
+          fi
 
       - name: Serve archives locally
         shell: bash

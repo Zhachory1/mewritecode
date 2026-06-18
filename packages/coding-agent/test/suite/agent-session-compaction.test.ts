@@ -1,4 +1,4 @@
-import { type AssistantMessage, fauxAssistantMessage, type Model } from "@juliusbrussee/caveman-ai";
+import { type AssistantMessage, fauxAssistantMessage, type Model } from "@zhachory1/mewrite-ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createHarness, type Harness } from "./harness.js";
 

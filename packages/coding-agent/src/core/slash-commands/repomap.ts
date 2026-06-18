@@ -17,7 +17,7 @@
 
 import { type Dirent, existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
-import { repomap as repomapNs } from "@juliusbrussee/caveman-agent";
+import { repomap as repomapNs } from "@zhachory1/mewrite-agent";
 
 const { buildRepomap, dynamicMapTokens } = repomapNs;
 

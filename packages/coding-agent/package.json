@@ -1,17 +1,16 @@
 {
-	"name": "@juliusbrussee/caveman-code",
+	"name": "@zhachory1/mewrite-code",
 	"version": "0.65.2",
-	"description": "Caveman Code — a terminal coding agent",
+	"description": "Me Write Code — a terminal coding agent",
 	"type": "module",
 	"caveConfig": {
-		"name": "caveman-code",
+		"name": "mewrite-code",
 		"configDir": ".cave"
 	},
 	"bin": {
-		"caveman-code": "dist/cli.js",
-		"caveman": "dist/cli.js",
 		"mewrite": "dist/cli.js",
-		"mewritecode": "dist/cli.js"
+		"mewritecode": "dist/cli.js",
+		"mewrite-code": "dist/cli.js"
 	},
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -53,9 +52,9 @@
 		"prepublishOnly": "npm run clean && npm run build"
 	},
 	"dependencies": {
-		"@juliusbrussee/caveman-agent": "^0.65.2",
-		"@juliusbrussee/caveman-ai": "^0.65.2",
-		"@juliusbrussee/caveman-tui": "^0.65.2",
+		"@zhachory1/mewrite-agent": "^0.65.2",
+		"@zhachory1/mewrite-ai": "^0.65.2",
+		"@zhachory1/mewrite-tui": "^0.65.2",
 		"@mariozechner/jiti": "^2.6.2",
 		"@sinclair/typebox": "^0.34.49",
 		"@silvia-odwyer/photon-node": "^0.3.4",
@@ -110,15 +109,15 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/JuliusBrussee/caveman-code.git",
+		"url": "git+https://github.com/Zhachory1/mewritecode.git",
 		"directory": "packages/coding-agent"
 	},
 	"engines": {
 		"node": ">=20.6.0"
 	},
-	"homepage": "https://github.com/JuliusBrussee/caveman-code#readme",
+	"homepage": "https://github.com/Zhachory1/mewritecode#readme",
 	"bugs": {
-		"url": "https://github.com/JuliusBrussee/caveman-code/issues"
+		"url": "https://github.com/Zhachory1/mewritecode/issues"
 	},
 	"publishConfig": {
 		"access": "public"

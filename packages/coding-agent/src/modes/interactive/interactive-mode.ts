@@ -7,8 +7,8 @@ import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import type { AgentMessage } from "@juliusbrussee/caveman-agent";
-import type { AssistantMessage, ImageContent, Message, Model, OAuthProviderId } from "@juliusbrussee/caveman-ai";
+import type { AgentMessage } from "@zhachory1/mewrite-agent";
+import type { AssistantMessage, ImageContent, Message, Model, OAuthProviderId } from "@zhachory1/mewrite-ai";
 import type {
 	AutocompleteItem,
 	EditorComponent,
@@ -23,7 +23,7 @@ import type {
 	StatusLineContext,
 	StatusLineRenderer,
 	StatusLineResult,
-} from "@juliusbrussee/caveman-tui";
+} from "@zhachory1/mewrite-tui";
 import {
 	ActivityOverlay,
 	type ActivitySnapshot,
@@ -44,7 +44,7 @@ import {
 	TruncatedText,
 	TUI,
 	visibleWidth,
-} from "@juliusbrussee/caveman-tui";
+} from "@zhachory1/mewrite-tui";
 import { spawn, spawnSync } from "child_process";
 import { maybeNotifyUpdateAvailable } from "../../cli/update.js";
 import {
@@ -3856,7 +3856,7 @@ export class InteractiveMode {
 		const updateInstruction = theme.fg("muted", `New version ${newVersion} is available. `) + action;
 		const changelogUrl = theme.fg(
 			"accent",
-			"https://github.com/JuliusBrussee/caveman-code/blob/main/packages/coding-agent/CHANGELOG.md",
+			"https://github.com/Zhachory1/mewritecode/blob/main/packages/coding-agent/CHANGELOG.md",
 		);
 		const changelogLine = theme.fg("muted", "Changelog: ") + changelogUrl;
 

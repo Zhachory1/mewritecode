@@ -21,7 +21,7 @@
 import { appendFileSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import type { AgentEvent, AgentMessage } from "@juliusbrussee/caveman-agent";
+import type { AgentEvent, AgentMessage } from "@zhachory1/mewrite-agent";
 import type { AgentSessionEvent } from "./agent-session.js";
 
 /**

@@ -5,8 +5,8 @@
  * Requires: npm install in this directory
  */
 
-import type { ExtensionAPI } from "@juliusbrussee/caveman-code";
 import { Type } from "@sinclair/typebox";
+import type { ExtensionAPI } from "@zhachory1/mewrite-code";
 import ms from "ms";
 
 export default function (pi: ExtensionAPI) {

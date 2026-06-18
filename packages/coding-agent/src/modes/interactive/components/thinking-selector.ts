@@ -1,5 +1,5 @@
-import type { ThinkingLevel } from "@juliusbrussee/caveman-agent";
-import { Container, type SelectItem, SelectList, type SelectListLayoutOptions } from "@juliusbrussee/caveman-tui";
+import type { ThinkingLevel } from "@zhachory1/mewrite-agent";
+import { Container, type SelectItem, SelectList, type SelectListLayoutOptions } from "@zhachory1/mewrite-tui";
 import { getSelectListTheme } from "../theme/theme.js";
 import { DynamicBorder } from "./dynamic-border.js";
 

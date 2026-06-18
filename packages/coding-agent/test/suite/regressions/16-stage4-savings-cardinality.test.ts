@@ -13,8 +13,8 @@
  * at most one savings event (`dedup` OR `compression`, never both).
  */
 
-import type { AgentTool } from "@juliusbrussee/caveman-agent";
-import { fauxAssistantMessage, fauxToolCall } from "@juliusbrussee/caveman-ai";
+import type { AgentTool } from "@zhachory1/mewrite-agent";
+import { fauxAssistantMessage, fauxToolCall } from "@zhachory1/mewrite-ai";
 import { Type } from "@sinclair/typebox";
 import { afterEach, describe, expect, it } from "vitest";
 import { createHarness, type Harness } from "../harness.js";

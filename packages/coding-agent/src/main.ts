@@ -7,14 +7,14 @@
 
 import { resolve } from "node:path";
 import { createInterface } from "node:readline";
-import { type ImageContent, modelsAreEqual, supportsXhigh } from "@juliusbrussee/caveman-ai";
+import { type ImageContent, modelsAreEqual, supportsXhigh } from "@zhachory1/mewrite-ai";
 import {
 	detectTerminalIdentity,
 	ProcessTerminal,
 	probeTerminal,
 	setKeybindings,
 	TUI,
-} from "@juliusbrussee/caveman-tui";
+} from "@zhachory1/mewrite-tui";
 import chalk from "chalk";
 import { type Args, type Mode, parseArgs, printHelp } from "./cli/args.js";
 import { handleAttachCommand } from "./cli/attach.js";

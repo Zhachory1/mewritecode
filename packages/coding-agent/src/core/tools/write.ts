@@ -1,6 +1,6 @@
-import type { AgentTool } from "@juliusbrussee/caveman-agent";
-import { Container, Text } from "@juliusbrussee/caveman-tui";
 import { type Static, Type } from "@sinclair/typebox";
+import type { AgentTool } from "@zhachory1/mewrite-agent";
+import { Container, Text } from "@zhachory1/mewrite-tui";
 import { mkdir as fsMkdir, writeFile as fsWriteFile } from "fs/promises";
 import { dirname } from "path";
 import { keyHint } from "../../modes/interactive/components/keybinding-hints.js";

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Rewrite Formula/cave.rb with version + sha256s for the four unix tarballs.
+# Rewrite Homebrew formulas with version + sha256s for the four unix tarballs.
 #
 # Usage:
 #   ./scripts/update-homebrew.sh <version> <dir-with-tarballs>
@@ -15,7 +15,7 @@ TAR_DIR="${2:?tarball dir required}"
 VERSION="${VERSION#v}"
 
 cd "$(dirname "$0")/.."
-FORMULA="Formula/cave.rb"
+FORMULAS=(Formula/mewrite.rb Formula/cave.rb)
 
 sha256_of() {
     if command -v sha256sum >/dev/null 2>&1; then
@@ -39,11 +39,12 @@ sed_inplace() {
     fi
 }
 
-sed_inplace -E "s/^(  version )\".*\"/\\1\"${VERSION}\"/" "$FORMULA"
+for formula in "${FORMULAS[@]}"; do
+    sed_inplace -E "s/^(  version )\".*\"/\\1\"${VERSION}\"/" "$formula"
 
-# Each on_arm/on_intel block has exactly one sha256 line — replace by matching the
-# preceding url line's triple.
-python3 - "$FORMULA" "$DARWIN_ARM64_SHA" "$DARWIN_X64_SHA" "$LINUX_ARM64_SHA" "$LINUX_X64_SHA" <<'PY'
+    # Each on_arm/on_intel block has exactly one sha256 line — replace by matching the
+    # preceding url line's triple.
+    python3 - "$formula" "$DARWIN_ARM64_SHA" "$DARWIN_X64_SHA" "$LINUX_ARM64_SHA" "$LINUX_X64_SHA" <<'PY'
 import re, sys
 path, da, dx, la, lx = sys.argv[1:]
 src = open(path).read()
@@ -63,5 +64,6 @@ if new == src:
 open(path, "w").write(new)
 PY
 
-echo "Updated ${FORMULA} to version ${VERSION}"
-grep -E '^(  version|      sha256)' "$FORMULA"
+    echo "Updated ${formula} to version ${VERSION}"
+    grep -E '^(  version|      sha256)' "$formula"
+done

@@ -5,7 +5,7 @@
  * end-to-end suite.
  */
 
-import type { AgentMessage } from "@juliusbrussee/caveman-agent";
+import type { AgentMessage } from "@zhachory1/mewrite-agent";
 import { describe, expect, it } from "vitest";
 import { CompressionPipeline, sumTextLen } from "../src/core/compression-pipeline.js";
 import { SavingsTracker } from "../src/core/savings-tracker.js";

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# Caveman Code tarball installer (repo-root shim).
+# Me Write Code tarball installer (repo-root shim).
 #
-# End users: install via npm — `npm install -g @juliusbrussee/caveman-code`.
+# End users: install via npm — `npm install -g @zhachory1/mewrite-code`.
 #
 # This shell installer is used by the Homebrew formula and CI smoke tests
 # to verify the release tarball. The canonical script lives at

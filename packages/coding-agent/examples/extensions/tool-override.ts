@@ -20,9 +20,9 @@
  *   pi -e ./tool-override.ts
  */
 
-import type { TextContent } from "@juliusbrussee/caveman-ai";
-import { type ExtensionAPI, getAgentDir, withFileMutationQueue } from "@juliusbrussee/caveman-code";
 import { Type } from "@sinclair/typebox";
+import type { TextContent } from "@zhachory1/mewrite-ai";
+import { type ExtensionAPI, getAgentDir, withFileMutationQueue } from "@zhachory1/mewrite-code";
 import { constants, readFileSync } from "fs";
 import { access, appendFile, readFile } from "fs/promises";
 import { join, resolve } from "path";

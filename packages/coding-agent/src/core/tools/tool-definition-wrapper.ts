@@ -1,4 +1,4 @@
-import type { AgentTool } from "@juliusbrussee/caveman-agent";
+import type { AgentTool } from "@zhachory1/mewrite-agent";
 import type { ExtensionContext, ToolDefinition } from "../extensions/types.js";
 
 /** Wrap a ToolDefinition into an AgentTool for the core runtime. */

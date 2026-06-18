@@ -11,8 +11,8 @@
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Agent, type ThinkingLevel } from "@juliusbrussee/caveman-agent";
-import { getModel, type Model } from "@juliusbrussee/caveman-ai";
+import { Agent, type ThinkingLevel } from "@zhachory1/mewrite-agent";
+import { getModel, type Model } from "@zhachory1/mewrite-ai";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { AgentSession } from "../src/core/agent-session.js";
 import { ModelRegistry } from "../src/core/model-registry.js";

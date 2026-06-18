@@ -199,5 +199,5 @@ export function formatSavingsShare(totals: SavingsTotals): string {
 	const pct = Math.round(totals.percentCompressed * 100);
 	return `🪨 Caveman compressed ${pct}% of my tool context this session (${formatBytes(
 		totals.bytesSaved,
-	)} eliminated). caveman-code`;
+	)} eliminated). mewrite-code`;
 }

@@ -95,8 +95,8 @@ Every live row has its prompt payload recounted via Anthropic's `count_tokens` e
 ## Reproduction
 
 ```bash
-git clone https://github.com/JuliusBrussee/caveman-cli
-cd caveman-cli
+git clone https://github.com/Zhachory1/mewritecode
+cd mewritecode
 git checkout <manifest.code_sha>
 cd packages/coding-agent
 npm install && npm run build

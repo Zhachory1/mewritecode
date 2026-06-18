@@ -2,12 +2,12 @@
 layout: home
 
 hero:
-  name: "Caveman Code"
+  name: "Me Write Code"
   text: "Same model. Same task. Token efficiency under revalidation — see #8."
   tagline: "Terminal coding agent that compresses at every layer. 20+ provider OAuth. Plan mode, subagents, MCP, sandbox, hooks. MIT."
   image:
     src: /logo.svg
-    alt: Caveman Code
+    alt: Me Write Code
   actions:
     - theme: brand
       text: Quickstart
@@ -17,7 +17,7 @@ hero:
       link: /getting-started/installation
     - theme: alt
       text: View on GitHub
-      link: https://github.com/JuliusBrussee/caveman-cli
+      link: https://github.com/Zhachory1/mewritecode
 
 features:
   - icon: 📦
@@ -47,7 +47,7 @@ features:
     linkText: Permission profiles
   - icon: 🔌
     title: MCP everywhere
-    details: stdio + Streamable HTTP + in-process. ToolSearch defers schemas. caveman-code can also serve as an MCP server.
+    details: stdio + Streamable HTTP + in-process. ToolSearch defers schemas. mewrite-code can also serve as an MCP server.
     link: /reference/mcp
     linkText: MCP servers
   - icon: 🪝
@@ -72,10 +72,11 @@ features:
 ## Install
 
 ```bash
-npm install -g @juliusbrussee/caveman-code
+brew tap Zhachory1/mewritecode https://github.com/Zhachory1/mewritecode
+brew install mewrite
 ```
 
-Other options: [Homebrew, Docker, manual](/getting-started/installation).
+Other options: [npm, Linux packages (Debian/RPM/Snap), Docker, manual](/getting-started/installation).
 
 </div>
 
