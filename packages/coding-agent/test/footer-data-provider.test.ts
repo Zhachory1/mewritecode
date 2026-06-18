@@ -87,6 +87,21 @@ async function waitFor(condition: () => boolean, timeoutMs = 3000): Promise<void
 	}
 }
 
+// Waits for a numeric reading to reach `expected`, then asserts it *stays* there
+// for at least `holdMs` (longer than the debounce window). Polls instead of
+// sleeping a fixed duration: a genuine extra refresh trips the stability check
+// immediately, while CI scheduling jitter is tolerated up to the hold window.
+async function waitForStable(read: () => number, expected: number, holdMs: number, timeoutMs = 3000): Promise<void> {
+	await waitFor(() => read() === expected, timeoutMs);
+	const heldUntil = Date.now() + holdMs;
+	while (Date.now() < heldUntil) {
+		if (read() !== expected) {
+			throw new Error(`Expected value to stay ${expected} but observed ${read()}`);
+		}
+		await new Promise((resolve) => setTimeout(resolve, 10));
+	}
+}
+
 describe("FooterDataProvider reftable branch detection", () => {
 	let originalCwd: string;
 	let tempDir: string;
@@ -202,8 +217,10 @@ describe("FooterDataProvider reftable branch detection", () => {
 			writeFileSync(join(reftableDir, "tables.list"), "1\n");
 			writeFileSync(join(reftableDir, "tables.list"), "2\n");
 			writeFileSync(join(reftableDir, "tables.list"), "3\n");
-			await waitFor(() => vi.mocked(execFile).mock.calls.length === 1);
-			await new Promise((resolve) => setTimeout(resolve, 650));
+			// The three rapid writes must collapse into a single debounced refresh:
+			// wait for exactly one execFile call, then assert it stays at one across a
+			// window wider than the 500ms debounce (a second refresh would break this).
+			await waitForStable(() => vi.mocked(execFile).mock.calls.length, 1, 600);
 
 			expect(vi.mocked(execFile)).toHaveBeenCalledTimes(1);
 		} finally {

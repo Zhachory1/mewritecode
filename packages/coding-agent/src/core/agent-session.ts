@@ -25,7 +25,8 @@ import type {
 	ThinkingLevel,
 	ToolExecutionMode,
 } from "@juliusbrussee/caveman-agent";
-import { checkpoints, LLMLinguaMiddleware, type memory as memoryNs } from "@juliusbrussee/caveman-agent";
+import { checkpoints, type memory as memoryNs } from "@juliusbrussee/caveman-agent";
+import { CompressionPipeline, sumTextLen } from "./compression-pipeline.js";
 
 const { CheckpointManager } = checkpoints;
 type CheckpointManagerInstance = InstanceType<typeof CheckpointManager>;
@@ -33,6 +34,7 @@ type MemoryProviderInstance = memoryNs.MemoryProvider;
 
 import type { AssistantMessage, ImageContent, Message, Model, TextContent } from "@juliusbrussee/caveman-ai";
 import {
+	completeSimple,
 	ENV_VAR_BY_PROVIDER,
 	isContextOverflow,
 	modelsAreEqual,
@@ -46,12 +48,7 @@ import { sleep } from "../utils/sleep.js";
 import { ActivityRegistry } from "./activity/activity-registry.js";
 import { classifyToolCall, needsApproval, type RiskTier } from "./approval-policy.js";
 import { type BashResult, executeBashWithOperations } from "./bash-executor.js";
-import { applyStructuredCompressionToContentBlocks } from "./cave-structured-compression.js";
-import {
-	applyToolBudgetToContentBlocks,
-	compressCaveToolContentBlocks,
-	ReadDeduplicationCache,
-} from "./cave-tool-compression.js";
+
 import { type ChatMode, filterToolsForPlanMode, planSystemPrompt } from "./chat-modes/plan.js";
 import {
 	type CompactionResult,
@@ -96,6 +93,7 @@ import type { HooksConfig } from "./hooks/events.js";
 import { createHooksExtension, HooksManager } from "./hooks/index.js";
 import { resolveMemoryProvider } from "./memory-factory.js";
 import type { BashExecutionMessage, CustomMessage } from "./messages.js";
+import { convertToLlm } from "./messages.js";
 import type { ModelRegistry } from "./model-registry.js";
 import { expandInlineCommands, expandPromptTemplate, type PromptTemplate } from "./prompt-templates.js";
 import type { ResourceExtensionPaths, ResourceLoader } from "./resource-loader.js";
@@ -113,6 +111,7 @@ import { type BashOperations, createLocalBashOperations } from "./tools/bash.js"
 import { createAllToolDefinitions } from "./tools/index.js";
 import { createMemorySaveToolDefinition, createMemorySearchToolDefinition } from "./tools/memory.js";
 import { createToolDefinitionFromAgentTool, wrapToolDefinition } from "./tools/tool-definition-wrapper.js";
+import { createTraceSink } from "./trace.js";
 
 // ============================================================================
 // Skill Block Parsing
@@ -346,6 +345,8 @@ export class AgentSession {
 
 	// Event subscription state
 	private _unsubscribeAgent?: () => void;
+	/** #19: unsubscribe handle for the opt-in CAVE_TRACE sink (undefined when off). */
+	private _unsubscribeTrace?: () => void;
 	private _eventListeners: AgentSessionEventListener[] = [];
 	private _agentEventQueue: Promise<void> = Promise.resolve();
 
@@ -377,7 +378,10 @@ export class AgentSession {
 	// Extension system
 	private _extensionRunner: ExtensionRunner | undefined = undefined;
 	private _turnIndex = 0;
-	private _llmlingua: LLMLinguaMiddleware | null = null;
+	// Cave compression pipeline (#16 stage 4): owns the LLMLingua instance,
+	// read-dedup cache, soft-compaction memo, and thresholds. Constructed in
+	// the body of the constructor once `savings` is in scope.
+	private _compression!: CompressionPipeline;
 	// Hooks subsystem (WS4). Rebuilt in `_buildRuntime` from current settings.
 	private _hooksManager: HooksManager | undefined;
 
@@ -439,9 +443,6 @@ export class AgentSession {
 	// them vary independently. null = use settingsManager.getCaveModeToolCompression().
 	private _sessionToolCompressionOverride: boolean | null = null;
 
-	// Read deduplication cache (Cave Painting Diff)
-	private _readDeduplicationCache = new ReadDeduplicationCache();
-
 	// Gap 4: shadow-git checkpoint manager. Lazy-instantiated against _cwd.
 	private _checkpointMgr: CheckpointManagerInstance | undefined;
 	private _checkpointAutoSnapshotEnabled = true;
@@ -478,15 +479,6 @@ export class AgentSession {
 	// hardcoding "parallel" — which would clobber an intentionally-sequential host.
 	private _priorToolExecution?: ToolExecutionMode;
 
-	// Gap 7: soft compaction state. Threshold = fraction of context window above
-	// which we proactively LLMLingua-compress oldest tool-result blocks. Hard
-	// compaction (whole-history summary) still runs as a safety net.
-	private _softCompressionThreshold = 0.7;
-	private _softCompressedTimestamps = new Set<number>();
-	// Don't compress messages from the last N turns — recency matters for
-	// continuity and for the assistant to reference its own recent work.
-	private _softCompressionRecencyWindow = 5;
-
 	constructor(config: AgentSessionConfig) {
 		this.agent = config.agent;
 		this.sessionManager = config.sessionManager;
@@ -507,6 +499,13 @@ export class AgentSession {
 		this._initialActiveToolNames = config.initialActiveToolNames;
 		this._baseToolsOverride = config.baseToolsOverride;
 		this._sessionStartEvent = config.sessionStartEvent ?? { type: "session_start", reason: "startup" };
+		this._compression = new CompressionPipeline(
+			{
+				getCaveModeMLCompression: () => this.settingsManager.getCaveModeMLCompression(),
+				getCaveModeEnabled: () => this.settingsManager.getCaveModeEnabled(),
+			},
+			this._savings,
+		);
 
 		// Always subscribe to agent events for internal handling
 		// (session persistence, extensions, auto-compaction, retry logic)
@@ -524,6 +523,18 @@ export class AgentSession {
 		// Don't let an unhandled rejection crash the process before prompt()
 		// awaits it; the rejection still surfaces to whoever awaits whenReady.
 		this._initialRuntimeReady.catch(() => undefined);
+
+		// #19: opt-in CAVE_TRACE JSONL sink. Passive — just another subscriber on
+		// the public event stream, gated on the env var. Default OFF means no
+		// subscription and zero overhead. Never mutates events or throws into the
+		// loop (see createTraceSink). Captures the real stream regardless of entry
+		// point (interactive / print / rpc) because every prompt() flows through
+		// this same session instance.
+		this._unsubscribeTrace = createTraceSink({
+			envValue: process.env.CAVE_TRACE,
+			sessionId: this.sessionId,
+			subscribe: (listener) => this.subscribe(listener),
+		});
 	}
 
 	/**
@@ -576,21 +587,6 @@ export class AgentSession {
 	 * can't be resolved or that lack cache reads. Uses `model.cost` rates ($/Mtok)
 	 * — NOT `usage.cost.cacheRead` (that is the billed cost, not the saving).
 	 */
-	/**
-	 * Σ of text-block `.text.length` over a tool-result content array (DD §10.1).
-	 * Excludes non-text / image blocks.
-	 */
-	private _sumTextLen(content: unknown): number {
-		if (!Array.isArray(content)) return 0;
-		let total = 0;
-		for (const block of content as Array<{ type?: string; text?: unknown }>) {
-			if (block && block.type === "text" && typeof block.text === "string") {
-				total += Buffer.byteLength(block.text, "utf8"); // true UTF-8 bytes (honest on CJK/emoji)
-			}
-		}
-		return total;
-	}
-
 	private _deriveCacheReuseDollars(): number {
 		let dollars = 0;
 		const models = this._modelRegistry.getAll();
@@ -697,26 +693,19 @@ export class AgentSession {
 			// (Decoupling lives in resolveToolCompression / _effectiveToolCompression.)
 			const caveEnabled = this._effectiveToolCompression();
 
-			// Cave Painting Diff: read dedup and write/edit invalidation
+			// Cave Painting Diff: read dedup and write/edit invalidation. Pipeline
+			// owns the cache + savings booking for the dedup short-circuit.
 			if (!isError && caveEnabled) {
 				if (toolCall.name === "read") {
 					const filePath = (args as { path?: string }).path;
 					if (filePath) {
-						const contentBlocks = result.content as Array<{ type: string; text?: string }>;
-						const fullText = contentBlocks
-							.filter((b) => b.type === "text" && typeof b.text === "string")
-							.map((b) => b.text as string)
-							.join("");
-						const stub = this._readDeduplicationCache.checkRead(filePath, fullText);
-						if (stub) {
-							// Savings Meter (DD §10.2): dedup short-circuits the cave pipeline
-							// (disjoint from compression). Book this result's full bytes into the
-							// denominator and the re-read-avoided delta as a "dedup" saving.
-							const fullBytes = Buffer.byteLength(fullText, "utf8");
-							this._savings.recordToolOutput(fullBytes);
-							this._savings.recordSaving("dedup", fullBytes - Buffer.byteLength(stub, "utf8"));
-							// Replace full content with dedup stub — skip further compression
-							const stubContent = [{ type: "text" as const, text: stub }] as typeof result.content;
+						// Cast: agent's content union (TextContent | ImageContent) is structurally
+						// narrower than the pipeline's ContentBlock (literal `"text"` vs string,
+						// no index signature). The pipeline contract guarantees no new block
+						// kinds are ever invented — see ContentBlock docstring in compression-pipeline.ts.
+						const dedup = this._compression.tryReadDedup(filePath, result.content);
+						if (dedup.stubContent) {
+							const stubContent = dedup.stubContent as typeof result.content;
 							const runner = this._extensionRunner;
 							if (!runner?.hasHandlers("tool_result")) {
 								return { content: stubContent, details: result.details };
@@ -737,71 +726,35 @@ export class AgentSession {
 				} else if (toolCall.name === "write" || toolCall.name === "edit") {
 					const filePath = (args as { path?: string }).path;
 					if (filePath) {
-						this._readDeduplicationCache.invalidate(filePath);
+						this._compression.invalidateDedup(filePath);
 					}
 				}
 			}
 
-			// Cave mode tool result compression (runs before extension hooks, never on errors)
+			// Cave mode tool result compression (runs before extension hooks, never on errors).
 			let processedContent = result.content;
 			// Savings Meter (DD §10.1/§10.4): measure ONE net delta per tool result.
 			// `before` is captured BEFORE the cave pipeline; it feeds the honest
 			// denominator (every non-error result, compressed or not). The dedup path
 			// above short-circuits and books its own bytes, so it never reaches here.
-			const beforeBytes = !isError ? this._sumTextLen(result.content) : 0;
+			const beforeBytes = !isError ? sumTextLen(result.content) : 0;
 			if (!isError) {
 				this._savings.recordToolOutput(beforeBytes);
 			}
 			if (!isError && caveEnabled) {
-				if (this.settingsManager.getCaveModeMLCompression()) {
-					// ML compression (LLMLingua-2 ONNX) — runs INSTEAD of rule-based stages
-					// to avoid compounding and to let BERT see original text structure
-					try {
-						if (!this._llmlingua) {
-							this._llmlingua = new LLMLinguaMiddleware(true);
-						}
-						const mlResults = await Promise.all(
-							(processedContent as Array<{ type: string; text?: string; [key: string]: unknown }>).map(
-								async (block) => {
-									if (block.type !== "text" || typeof block.text !== "string") return block;
-									const r = await this._llmlingua!.compressAsync(block.text, {
-										targetRatio: 0.5,
-										activationThreshold: 4000,
-									});
-									return r.compressed ? { ...block, text: r.bytes } : block;
-								},
-							),
-						);
-						processedContent = mlResults as typeof result.content;
-					} catch {
-						// ML failed — fall through to rule-based pipeline
-						processedContent = result.content;
-					}
-				}
-				// Rule-based compression (always runs: as primary when ML disabled, as safety net when ML enabled)
-				try {
-					processedContent = applyToolBudgetToContentBlocks(
-						processedContent as Array<{ type: string; text?: string; [key: string]: unknown }>,
-						toolCall.name,
-					) as typeof result.content;
-					const commandHint = toolCall.name === "bash" ? (args as { command?: string }).command : undefined;
-					processedContent = applyStructuredCompressionToContentBlocks(
-						processedContent as Array<{ type: string; text?: string; [key: string]: unknown }>,
-						toolCall.name,
-						commandHint,
-					) as typeof result.content;
-					processedContent = compressCaveToolContentBlocks(
-						processedContent as Array<{ type: string; text?: string; [key: string]: unknown }>,
-					) as typeof result.content;
-				} catch {
-					processedContent = result.content;
-				}
+				// See ContentBlock docstring in compression-pipeline.ts for why the
+				// cast across the agent→pipeline boundary is structurally sound.
+				processedContent = (await this._compression.compressToolResult(
+					toolCall.name,
+					args,
+					processedContent as Array<{ type: string; text?: string; [key: string]: unknown }>,
+				)) as typeof result.content;
 			}
 
 			// Savings Meter (DD §10.1): the net pipeline delta booked ONCE per result
 			// (covers ML + the rule-based stages — they aren't cleanly separable).
 			if (!isError) {
-				const afterBytes = this._sumTextLen(processedContent);
+				const afterBytes = sumTextLen(processedContent);
 				if (beforeBytes > afterBytes) {
 					this._savings.recordSaving("compression", beforeBytes - afterBytes);
 				}
@@ -857,7 +810,12 @@ export class AgentSession {
 				this._repomapInjector.buildTransform(base),
 			]);
 			const merged = this._mergeRetrievalInjections(base, afterMemory, afterRepomap);
-			return this._softCompactTransform(merged);
+			// Soft long-context compaction (Gap 7): proactive LLMLingua compression of
+			// OLDEST tool-result blocks once context usage crosses the soft threshold.
+			// Runs INSIDE transformContext so the LLM sees a smaller payload but the
+			// session keeps the original messages on disk. Implementation in
+			// CompressionPipeline.softCompactTransform (#16 stage 4).
+			return this._compression.softCompactTransform(merged, this.model?.contextWindow ?? 0);
 		};
 
 		// Gap 2 + Gap 8: chat-mode tool gating + plan-mode system-prompt banner.
@@ -1135,84 +1093,6 @@ export class AgentSession {
 
 	setChatMode(mode: ChatMode): void {
 		this._chatMode = mode;
-	}
-
-	// =========================================================================
-	// Soft long-context compaction (Gap 7)
-	// =========================================================================
-
-	/**
-	 * Proactive LLMLingua compression of OLDEST tool-result blocks once context
-	 * usage crosses `_softCompressionThreshold`. Runs INSIDE transformContext
-	 * so the LLM sees a smaller payload but the session keeps the original
-	 * messages on disk. Hard compaction (`_runAutoCompaction`) still triggers
-	 * if growth continues — this is a soft, reversible pass.
-	 */
-	private async _softCompactTransform(messages: AgentMessage[]): Promise<AgentMessage[]> {
-		// Same toggle as the existing in-line tool-result compression. If the
-		// user has cave-mode ML compression off, leave the messages alone.
-		if (!this.settingsManager.getCaveModeEnabled()) return messages;
-		if (!this.settingsManager.getCaveModeMLCompression()) return messages;
-
-		const contextWindow = this.model?.contextWindow ?? 0;
-		if (contextWindow <= 0) return messages;
-		const estimate = estimateContextTokens(messages);
-		if (estimate.tokens / contextWindow < this._softCompressionThreshold) return messages;
-
-		// Identify protected suffix: messages within the last N turns. A "turn"
-		// here = one assistant message + its tool results. We protect by counting
-		// from the end and stopping after we've seen N assistant messages.
-		let assistantSeen = 0;
-		let firstProtectedIndex = messages.length;
-		for (let i = messages.length - 1; i >= 0; i--) {
-			if (messages[i].role === "assistant") {
-				assistantSeen += 1;
-				if (assistantSeen >= this._softCompressionRecencyWindow) {
-					firstProtectedIndex = i;
-					break;
-				}
-			}
-		}
-
-		if (!this._llmlingua) {
-			this._llmlingua = new LLMLinguaMiddleware(true);
-		}
-
-		const transformed = await Promise.all(
-			messages.map(async (m, idx) => {
-				if (idx >= firstProtectedIndex) return m;
-				if (m.role !== "toolResult") return m;
-				if (this._softCompressedTimestamps.has(m.timestamp)) return m;
-
-				try {
-					const compressedContent = await Promise.all(
-						(m.content as Array<{ type: string; text?: string; [key: string]: unknown }>).map(async (block) => {
-							if (block.type !== "text" || typeof block.text !== "string") return block;
-							const inLen = Buffer.byteLength(block.text, "utf8");
-							const r = await this._llmlingua!.compressAsync(block.text, {
-								targetRatio: 0.5,
-								activationThreshold: 4000,
-							});
-							if (r.compressed) {
-								// Savings Meter (DD §10.2): soft-compaction is disjoint from inline
-								// compression (operates on stored post-inline text) and idempotent
-								// via `_softCompressedTimestamps` — book once per compressed message.
-								// UTF-8 bytes (consistent with dedup/compression).
-								this._savings.recordSaving("compaction", inLen - Buffer.byteLength(r.bytes, "utf8"));
-								return { ...block, text: r.bytes };
-							}
-							return block;
-						}),
-					);
-					this._softCompressedTimestamps.add(m.timestamp);
-					return { ...m, content: compressedContent } as AgentMessage;
-				} catch {
-					// Compression is advisory; skip on error.
-					return m;
-				}
-			}),
-		);
-		return transformed;
 	}
 
 	// =========================================================================
@@ -1536,6 +1416,8 @@ export class AgentSession {
 	 */
 	dispose(): void {
 		this._disconnectFromAgent();
+		this._unsubscribeTrace?.();
+		this._unsubscribeTrace = undefined;
 		this._eventListeners = [];
 		// The /clear (and /new, /fork) path is dispose + recreate: AgentSessionRuntime
 		// .newSession() calls teardownCurrent() -> session.dispose() then builds a fresh
@@ -1924,6 +1806,67 @@ export class AgentSession {
 		await this.agent.prompt(messages);
 		promptTimingMark("session.prompt:agent.prompt:end");
 		await this.waitForRetry();
+	}
+
+	/**
+	 * Ask a quick side question against the current conversation context (#61).
+	 *
+	 * Fires a SEPARATE one-shot LLM completion (no tools, no transformContext
+	 * chain) that does NOT mutate `agent.state.messages`. The caller renders the
+	 * answer however they like (interactive mode dims it inline). Safe to call
+	 * while a regular `prompt()` turn is mid-flight — the running turn is
+	 * unaffected.
+	 *
+	 * Returns the assistant's text answer, or throws if no model is selected,
+	 * no API key is available, or the completion errors.
+	 *
+	 * V1 limitations (see issue #61):
+	 *   - No model override (always uses the session's current model).
+	 *   - The answer is NOT automatically excluded from the agent's working
+	 *     memory — the caller decides what to do with it.
+	 *   - No cancellation polish beyond the optional AbortSignal parameter.
+	 */
+	async askSidecar(question: string, signal?: AbortSignal): Promise<string> {
+		const question_ = question.trim();
+		if (!question_) {
+			throw new Error("askSidecar: empty question");
+		}
+		const model = this.model;
+		if (!model) {
+			throw new Error("askSidecar: no model selected for this session");
+		}
+		const auth = await this._getRequiredRequestAuth(model);
+
+		// Build context: current conversation prefix + the new user question.
+		// We DO NOT mutate agent.state.messages; this is a side query.
+		const priorMessages: Message[] = convertToLlm(this.agent.state.messages);
+		const sidecarMessages: Message[] = [
+			...priorMessages,
+			{
+				role: "user",
+				content: [{ type: "text", text: question_ }],
+				timestamp: Date.now(),
+			} as Message,
+		];
+
+		const result = await completeSimple(
+			model,
+			{ messages: sidecarMessages },
+			{
+				apiKey: auth.apiKey,
+				headers: auth.headers,
+				signal,
+			},
+		);
+
+		// Extract the assistant's text. Image / tool-call blocks shouldn't appear
+		// in a simple completion, but be defensive: filter to text-only.
+		const text = (result.content ?? [])
+			.filter((block): block is TextContent => block.type === "text")
+			.map((block) => block.text)
+			.join("\n\n")
+			.trim();
+		return text;
 	}
 
 	/**

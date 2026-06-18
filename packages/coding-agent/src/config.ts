@@ -178,6 +178,11 @@ export function getBundledInteractiveAssetPath(name: string): string {
 	return join(getInteractiveAssetsDir(), name);
 }
 
+/** Resolve the bundled prompt-templates dir shipped with cave (matches bundled-agents pattern). */
+export function getBundledPromptsDir(): string {
+	return join(getPackageDir(), "prompts");
+}
+
 // =============================================================================
 // App Config (from package.json caveConfig)
 // =============================================================================

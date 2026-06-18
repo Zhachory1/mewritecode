@@ -30,6 +30,7 @@
 		"commands",
 		"skills",
 		"agents",
+		"prompts",
 		"recipes",
 		"openapi.yaml",
 		"CHANGELOG.md",

@@ -64,6 +64,7 @@ import {
 } from "../../core/agent-session.js";
 import type { AgentSessionRuntime } from "../../core/agent-session-runtime.js";
 import { type ArchitectModeState, defaultArchitectState } from "../../core/chat-modes/architect.js";
+import { splitOnThen } from "../../core/command-queue.js";
 import { formatSavingsLine, formatSessionEndSummary } from "../../core/cost-formatter.js";
 import {
 	getAllTimeSavingsBytes,
@@ -157,6 +158,12 @@ import { ToolGroupShellComponent } from "./components/tool-shelf.js";
 import { TreeSelectorComponent } from "./components/tree-selector.js";
 import { UserMessageComponent } from "./components/user-message.js";
 import { UserMessageSelectorComponent } from "./components/user-message-selector.js";
+import {
+	emptyFireStarterState,
+	emptyTribalSignalState,
+	evaluateFireStarter,
+	evaluateTribalSignal,
+} from "./context-drift-widgets.js";
 import {
 	getAvailableThemes,
 	getAvailableThemesWithPaths,
@@ -278,6 +285,17 @@ export class InteractiveMode {
 	 */
 	private pendingInputQueue: string[] = [];
 	/**
+	 * Sequential command orchestration (issue #5). A user can chain commands
+	 * across turns with `/then`:
+	 *
+	 *   /writing-plans /then /goal implement until tests are green
+	 *
+	 * The head fragment runs in the current turn; tail fragments live here and
+	 * are dispatched after the previous turn settles (agent_end), or immediately
+	 * after a synchronous slash command (which has no turn to wait on).
+	 */
+	private commandQueue: string[] = [];
+	/**
 	 * A prompt the user typed while keyless. Stashed by the {@link ensureUsableModel}
 	 * gate when it opens the login selector, and replayed by {@link onLoginSuccess}
 	 * once a usable model is selected.
@@ -383,20 +401,14 @@ export class InteractiveMode {
 	private widgetContainerAbove!: Container;
 	private widgetContainerBelow!: Container;
 
-	// Tribal Signal: context drift warning state
-	private tribalSignalAmberFired = false;
-	private tribalSignalRecentTurnTokens: number[] = [];
+	// Tribal Signal + Fire Starter state (heuristic evaluators live in
+	// ./context-drift-widgets.ts; this class only carries snapshot state).
+	private tribalSignalState = emptyTribalSignalState();
+	private fireStarterState = emptyFireStarterState();
 
 	// Mammoth Freeze: manual compaction checkpoints
 	private freezeCheckpoints: Array<{ label?: string; tokensBefore: number; tokensAfter: number; savedAt: string }> =
 		[];
-
-	// Fire Starter: preemptive compaction state
-	private fireStarterTurnDeltas: number[] = [];
-	private fireStarterLastCompactionTime = 0;
-	private static readonly FIRE_STARTER_MIN_GAP_MS = 60_000; // 1 minute minimum between compactions
-	private static readonly FIRE_STARTER_TURNS_AHEAD = 3;
-	private static readonly FIRE_STARTER_MIN_FILL_PCT = 55;
 
 	// Custom footer from extension (undefined = use built-in footer)
 	private customFooter: (Component & { dispose?(): void }) | undefined = undefined;
@@ -2366,6 +2378,17 @@ export class InteractiveMode {
 			text = text.trim();
 			if (!text) return;
 
+			// Sequential command orchestration (issue #5): if the message chains
+			// commands with `/then`, run the head now and queue the tail for the
+			// next turn(s). splitOnThen returns [text] when no separator is present,
+			// so this is a no-op for plain messages.
+			const parts = splitOnThen(text);
+			if (parts.length > 1) {
+				this.commandQueue.push(...parts.slice(1));
+				text = parts[0];
+				this.updatePendingMessagesDisplay();
+			}
+
 			// Handle commands
 			if (text === "/settings") {
 				this.showSettingsSelector();
@@ -2598,6 +2621,22 @@ export class InteractiveMode {
 				this.handleApprovalSlashCommand(args);
 				return;
 			}
+			if (text === "/queue" || text.startsWith("/queue ")) {
+				const args = text.startsWith("/queue ") ? text.slice(7).trim() : "";
+				this.editor.setText("");
+				this.handleQueueSlashCommand(args);
+				return;
+			}
+			// /btw <question> — side-question (#61). Dispatched BEFORE the
+			// isStreaming guard so it works mid-turn without disturbing the running
+			// agent. The handler fires its own completion against the current
+			// conversation and renders the answer dimmed in the chat scroll.
+			if (text === "/btw" || text.startsWith("/btw ")) {
+				const question = text.startsWith("/btw ") ? text.slice(5).trim() : "";
+				this.editor.setText("");
+				void this.handleBtwSlashCommand(question);
+				return;
+			}
 
 			// Unknown built-in slash → show error rather than leaking to chat.
 			// Markdown commands, prompt templates, and extension commands are
@@ -2673,6 +2712,40 @@ export class InteractiveMode {
 			}
 			this.editor.addToHistory?.(text);
 		};
+
+		// Wrap onSubmit so that after every sync slash dispatch (which returns
+		// without starting a model turn) we get a chance to drain the next
+		// /then-queued entry. Model-turn dispatches drain on agent_end instead;
+		// the tryDrainCommandQueue guard skips when streaming is in flight.
+		//
+		// The drain is deferred via setImmediate so that for prompt-style heads
+		// (which signal the main loop via onInputCallback and return), the loop
+		// runs session.prompt() — flipping isStreaming on — BEFORE our drain
+		// check fires. Otherwise we'd race the main loop and dispatch the tail
+		// command before the head ever started its turn.
+		const rawSubmit = this.defaultEditor.onSubmit;
+		this.defaultEditor.onSubmit = async (text: string) => {
+			await rawSubmit?.(text);
+			setImmediate(() => this.tryDrainCommandQueue());
+		};
+	}
+
+	/**
+	 * If a /then chain has tail entries and we are between turns, dispatch the
+	 * next entry through the regular submit handler. Called from agent_end and
+	 * from synchronous-slash branches that finished without starting a turn.
+	 */
+	private tryDrainCommandQueue(): void {
+		if (this.commandQueue.length === 0) return;
+		if (this.session.isStreaming || this.session.isCompacting) return;
+		if (this.shutdownRequested) return;
+		const next = this.commandQueue.shift();
+		this.updatePendingMessagesDisplay();
+		if (next === undefined) return;
+		const submit = this.defaultEditor.onSubmit;
+		if (submit) {
+			void submit(next);
+		}
 	}
 
 	private subscribeToAgent(): void {
@@ -2955,6 +3028,10 @@ export class InteractiveMode {
 				this.updateSmokeSignal();
 				this.updateTribalSignal();
 				await this.checkPreemptiveCompaction();
+				// Sequential command orchestration (#5): dispatch the next /then-queued
+				// command, if any. The drain re-enters the submit handler, so the
+				// dispatched fragment runs through the regular dispatcher.
+				this.tryDrainCommandQueue();
 				this.ui.requestRender();
 				break;
 
@@ -2991,12 +3068,10 @@ export class InteractiveMode {
 					this.autoCompactionLoader = undefined;
 					this.statusContainer.clear();
 				}
-				// Reset tribal signal state — context shrinks after compaction
-				this.tribalSignalAmberFired = false;
-				this.tribalSignalRecentTurnTokens = [];
-				// Reset fire starter state — compaction just happened
-				this.fireStarterTurnDeltas = [];
-				this.fireStarterLastCompactionTime = Date.now();
+				// Reset drift heuristics: tribal signal because context shrinks
+				// after compaction; fire starter because we just compacted.
+				this.tribalSignalState = emptyTribalSignalState();
+				this.fireStarterState = { turnDeltas: [], lastCompactionTime: Date.now() };
 				if (event.aborted) {
 					if (event.reason === "manual") {
 						this.showError("Compaction cancelled");
@@ -3855,7 +3930,8 @@ export class InteractiveMode {
 	private updatePendingMessagesDisplay(): void {
 		this.pendingMessagesContainer.clear();
 		const { steering: steeringMessages, followUp: followUpMessages } = this.getAllQueuedMessages();
-		if (steeringMessages.length > 0 || followUpMessages.length > 0) {
+		const chainMessages = this.commandQueue;
+		if (steeringMessages.length > 0 || followUpMessages.length > 0 || chainMessages.length > 0) {
 			this.pendingMessagesContainer.addChild(new Spacer(1));
 			for (const message of steeringMessages) {
 				const text = theme.fg("dim", `Steering: ${message}`);
@@ -3863,6 +3939,10 @@ export class InteractiveMode {
 			}
 			for (const message of followUpMessages) {
 				const text = theme.fg("dim", `Follow-up: ${message}`);
+				this.pendingMessagesContainer.addChild(new TruncatedText(text, 1, 0));
+			}
+			for (const message of chainMessages) {
+				const text = theme.fg("dim", `Then: ${message}`);
 				this.pendingMessagesContainer.addChild(new TruncatedText(text, 1, 0));
 			}
 			const dequeueHint = this.getAppKeyDisplay("app.message.dequeue");
@@ -3873,7 +3953,11 @@ export class InteractiveMode {
 
 	private restoreQueuedMessagesToEditor(options?: { abort?: boolean; currentText?: string }): number {
 		const { steering, followUp } = this.clearAllQueues();
-		const allQueued = [...steering, ...followUp];
+		// Issue #5: also pull pending /then-queued commands back into the editor
+		// so the user can edit/reorder/resubmit them rather than losing them.
+		const chainQueued = this.commandQueue;
+		this.commandQueue = [];
+		const allQueued = [...steering, ...followUp, ...chainQueued];
 		if (allQueued.length === 0) {
 			this.updatePendingMessagesDisplay();
 			if (options?.abort) {
@@ -4984,6 +5068,63 @@ export class InteractiveMode {
 		this._refreshApprovalFooter();
 	}
 
+	/** Issue #5: show or clear the /then-chained command queue. */
+	private handleQueueSlashCommand(args: string): void {
+		const sub = args.trim();
+		if (sub === "clear") {
+			const count = this.commandQueue.length;
+			this.commandQueue = [];
+			this.updatePendingMessagesDisplay();
+			this.appendSlashOutput(
+				count === 0 ? "Queue already empty." : `Cleared ${count} queued command${count === 1 ? "" : "s"}.`,
+				false,
+			);
+			return;
+		}
+		if (sub === "" || sub === "list") {
+			if (this.commandQueue.length === 0) {
+				this.appendSlashOutput("Queue is empty. Chain commands with: /a /then /b.", false);
+				return;
+			}
+			const lines = this.commandQueue.map((cmd, idx) => `  ${idx + 1}. ${cmd}`);
+			this.appendSlashOutput(`${this.commandQueue.length} queued:\n${lines.join("\n")}`, false);
+			return;
+		}
+		this.appendSlashOutput(`Unknown /queue subcommand: ${sub}. Try /queue or /queue clear.`, true);
+	}
+
+	/**
+	 * /btw <question> — fire a one-shot side completion against the session's
+	 * current context (#61). Does not interrupt the running turn; the answer is
+	 * rendered dimmed inline. V1: no model override, no cancellation polish, no
+	 * automatic context-isolation for the next turn.
+	 */
+	private async handleBtwSlashCommand(question: string): Promise<void> {
+		const q = question.trim();
+		if (!q) {
+			this.showError("/btw needs a question. Usage: /btw <question>.");
+			return;
+		}
+
+		// Render the question immediately as a dimmed inline marker so the user
+		// sees their input land in the scroll while the side completion is
+		// in-flight. The answer appears below it when ready.
+		this.chatContainer.addChild(new Spacer(1));
+		this.chatContainer.addChild(new Text(theme.fg("dim", `↪ btw: ${q}`), 1, 0));
+		const pending = new Text(theme.fg("dim", "↪ btw: (thinking…)"), 1, 0);
+		this.chatContainer.addChild(pending);
+		this.ui.requestRender();
+
+		try {
+			const answer = await this.session.askSidecar(q);
+			pending.setText(theme.fg("dim", `↪ btw: ${answer || "(empty response)"}`));
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : String(err);
+			pending.setText(theme.fg("warning", `↪ btw: error — ${msg}`));
+		}
+		this.ui.requestRender();
+	}
+
 	/** #14: surface approval mode as a footer extension status. */
 	private _refreshApprovalFooter(): void {
 		this.footerDataProvider.setExtensionStatus(
@@ -5590,6 +5731,12 @@ export class InteractiveMode {
 			this.loadingAnimation = undefined;
 		}
 		this.statusContainer.clear();
+		// Issue #5: a /clear is a reset; drop any /then-chained tail that
+		// was queued in the prior session so it doesn't carry over.
+		if (this.commandQueue.length > 0) {
+			this.commandQueue = [];
+			this.updatePendingMessagesDisplay();
+		}
 		try {
 			const result = await this.runtimeHost.newSession();
 			if (result.cancelled) {
@@ -6008,119 +6155,61 @@ export class InteractiveMode {
 	}
 
 	private updateTribalSignal(): void {
-		const contextUsage = this.session.getContextUsage();
-
-		// Auto-clear when context drops below 60% (after compaction)
-		if (!contextUsage || contextUsage.percent === null || contextUsage.percent < 60) {
-			this.tribalSignalAmberFired = false;
-			this.setExtensionWidget("tribal-signal", undefined, { placement: "aboveEditor" });
-			this.setExtensionStatus("drift", undefined);
-			return;
-		}
-
-		const pct = contextUsage.percent;
-
-		// Track recent turn tokens for rate detection
-		if (contextUsage.tokens !== null) {
-			this.tribalSignalRecentTurnTokens.push(contextUsage.tokens);
-			if (this.tribalSignalRecentTurnTokens.length > 5) {
-				this.tribalSignalRecentTurnTokens.shift();
-			}
-		}
-
-		// Rate warning: 3 consecutive turns each >= 1.5x previous
-		if (this.tribalSignalRecentTurnTokens.length >= 3) {
-			const recent = this.tribalSignalRecentTurnTokens.slice(-3);
-			const accelerating = recent[1]! >= recent[0]! * 1.5 && recent[2]! >= recent[1]! * 1.5;
-			if (accelerating) {
-				this.setExtensionWidget(
-					"tribal-signal",
-					[theme.fg("warning", "Context burning fast. Rate accelerating. Consider /compact")],
-					{ placement: "aboveEditor" },
-				);
+		const { nextState, effect } = evaluateTribalSignal(this.session.getContextUsage(), this.tribalSignalState);
+		this.tribalSignalState = nextState;
+		switch (effect.kind) {
+			case "clear":
+				this.setExtensionWidget("tribal-signal", undefined, { placement: "aboveEditor" });
+				this.setExtensionStatus("drift", undefined);
 				return;
-			}
-		}
-
-		// Red widget at 85%+
-		if (pct >= 85) {
-			this.tribalSignalAmberFired = true;
-			this.setExtensionStatus("drift", undefined);
-			this.setExtensionWidget(
-				"tribal-signal",
-				[theme.fg("error", `Context ${Math.round(pct)}% full. Consider /compact or /freeze`)],
-				{ placement: "aboveEditor" },
-			);
-			return;
-		}
-
-		// Clear red widget if below 85
-		this.setExtensionWidget("tribal-signal", undefined, { placement: "aboveEditor" });
-
-		// Amber status at 70%+, fire once
-		if (pct >= 70 && !this.tribalSignalAmberFired) {
-			this.tribalSignalAmberFired = true;
-			this.setExtensionStatus("drift", `ctx:${Math.round(pct)}%`);
-		} else if (pct < 70) {
-			this.tribalSignalAmberFired = false;
-			this.setExtensionStatus("drift", undefined);
+			case "rateWarning":
+				this.setExtensionWidget("tribal-signal", [theme.fg("warning", effect.message)], {
+					placement: "aboveEditor",
+				});
+				return;
+			case "red":
+				this.setExtensionStatus("drift", undefined);
+				this.setExtensionWidget("tribal-signal", [theme.fg("error", effect.message)], {
+					placement: "aboveEditor",
+				});
+				return;
+			case "amber":
+				this.setExtensionWidget("tribal-signal", undefined, { placement: "aboveEditor" });
+				this.setExtensionStatus("drift", `ctx:${Math.round(effect.pct)}%`);
+				return;
+			case "amberClear":
+				this.setExtensionWidget("tribal-signal", undefined, { placement: "aboveEditor" });
+				// Clear footer status only if we transitioned out of amber; otherwise leave
+				// whatever was set (the evaluator returns amberClear both for "never amber"
+				// and "just stepped back below 70", but it sets amberFired=false in the
+				// latter case — the footer is idempotent either way).
+				this.setExtensionStatus("drift", undefined);
+				return;
 		}
 	}
 
 	/**
 	 * Fire Starter — preemptive compaction based on token burn rate projection.
-	 * Triggers early compaction when projected context fill < TURNS_AHEAD turns
-	 * AND current fill > MIN_FILL_PCT.
+	 * The heuristic lives in `./context-drift-widgets.ts`; this method holds
+	 * the rolling state and applies the compaction side-effect.
 	 */
 	private async checkPreemptiveCompaction(): Promise<void> {
 		const caveState = this.session.getCaveModeSessionState();
 		if (!caveState.enabled) return;
 
-		const contextUsage = this.session.getContextUsage();
-		if (!contextUsage || contextUsage.percent === null || contextUsage.tokens === null) return;
+		const { nextState, shouldCompact } = evaluateFireStarter(
+			this.session.getContextUsage(),
+			this.fireStarterState,
+			Date.now(),
+			this.session.isCompacting,
+		);
+		this.fireStarterState = nextState;
+		if (!shouldCompact) return;
 
-		const pct = contextUsage.percent;
-
-		// Track turn deltas
-		this.fireStarterTurnDeltas.push(contextUsage.tokens);
-		if (this.fireStarterTurnDeltas.length > 6) {
-			this.fireStarterTurnDeltas.shift();
-		}
-
-		// Need at least 3 data points to compute rate
-		if (this.fireStarterTurnDeltas.length < 3) return;
-
-		// Below minimum fill — no need
-		if (pct < InteractiveMode.FIRE_STARTER_MIN_FILL_PCT) return;
-
-		// Minimum gap between compactions
-		if (Date.now() - this.fireStarterLastCompactionTime < InteractiveMode.FIRE_STARTER_MIN_GAP_MS) return;
-
-		// Don't trigger if already compacting
-		if (this.session.isCompacting) return;
-
-		// Compute average delta per turn from the rolling window
-		const deltas = this.fireStarterTurnDeltas;
-		let totalDelta = 0;
-		for (let i = 1; i < deltas.length; i++) {
-			totalDelta += deltas[i]! - deltas[i - 1]!;
-		}
-		const avgDeltaPerTurn = totalDelta / (deltas.length - 1);
-
-		// Only trigger on positive burn rate (context growing)
-		if (avgDeltaPerTurn <= 0) return;
-
-		// Project turns until full
-		const remainingTokens = contextUsage.contextWindow - contextUsage.tokens;
-		const projectedTurnsToFull = remainingTokens / avgDeltaPerTurn;
-
-		if (projectedTurnsToFull < InteractiveMode.FIRE_STARTER_TURNS_AHEAD) {
-			this.fireStarterLastCompactionTime = Date.now();
-			try {
-				await this.session.compact("Preemptive compaction (high burn rate). Preserve active task context.");
-			} catch {
-				// Compaction may fail if session is too small — ignore
-			}
+		try {
+			await this.session.compact("Preemptive compaction (high burn rate). Preserve active task context.");
+		} catch {
+			// Compaction may fail if session is too small — ignore.
 		}
 	}
 

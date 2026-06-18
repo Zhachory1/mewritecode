@@ -39,4 +39,6 @@ jobs:
         run: npm run check
 
       - name: Test
-        run: npm test
+        # Use test.sh (not `npm test` directly) so API keys are unset before the
+        # suite runs. A mis-gated skipIf must never make real network calls in CI.
+        run: bash test.sh

@@ -55,7 +55,7 @@
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/JuliusBrussee/caveman-cli.git",
-		"directory": "packages/web-ui"
+		"directory": "contrib/web-ui"
 	},
 	"homepage": "https://github.com/JuliusBrussee/caveman-cli#readme",
 	"bugs": {

@@ -94,7 +94,7 @@ describe("ExtensionRunner", () => {
 
 			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+			const result = await discoverAndLoadExtensions([], tempDir, tempDir, undefined, { skipBundled: true });
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
 			const shortcuts = runner.getShortcuts(defaultKeybindings);
 
@@ -117,7 +117,7 @@ describe("ExtensionRunner", () => {
 
 			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+			const result = await discoverAndLoadExtensions([], tempDir, tempDir, undefined, { skipBundled: true });
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
 			const keybindings = { ...defaultKeybindings, "app.model.cycleForward": "ctrl+n" as KeyId };
 			const shortcuts = runner.getShortcuts(keybindings);
@@ -144,7 +144,7 @@ describe("ExtensionRunner", () => {
 
 			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+			const result = await discoverAndLoadExtensions([], tempDir, tempDir, undefined, { skipBundled: true });
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
 			const shortcuts = runner.getShortcuts(defaultKeybindings);
 
@@ -169,7 +169,7 @@ describe("ExtensionRunner", () => {
 
 			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+			const result = await discoverAndLoadExtensions([], tempDir, tempDir, undefined, { skipBundled: true });
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
 			const keybindings = { ...defaultKeybindings, "app.interrupt": "ctrl+x" as KeyId };
 			const shortcuts = runner.getShortcuts(keybindings);
@@ -193,7 +193,7 @@ describe("ExtensionRunner", () => {
 
 			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+			const result = await discoverAndLoadExtensions([], tempDir, tempDir, undefined, { skipBundled: true });
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
 			const keybindings = { ...defaultKeybindings, "app.clear": ["ctrl+x", "ctrl+y"] as KeyId[] };
 			const shortcuts = runner.getShortcuts(keybindings);
@@ -217,7 +217,7 @@ describe("ExtensionRunner", () => {
 
 			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+			const result = await discoverAndLoadExtensions([], tempDir, tempDir, undefined, { skipBundled: true });
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
 			const keybindings = { ...defaultKeybindings, "app.clipboard.pasteImage": ["ctrl+x", "ctrl+y"] as KeyId[] };
 			const shortcuts = runner.getShortcuts(keybindings);
@@ -253,7 +253,7 @@ describe("ExtensionRunner", () => {
 
 			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+			const result = await discoverAndLoadExtensions([], tempDir, tempDir, undefined, { skipBundled: true });
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
 			const shortcuts = runner.getShortcuts(defaultKeybindings);
 
@@ -282,7 +282,7 @@ describe("ExtensionRunner", () => {
 			fs.writeFileSync(path.join(extensionsDir, "tool-a.ts"), toolCode("tool_a"));
 			fs.writeFileSync(path.join(extensionsDir, "tool-b.ts"), toolCode("tool_b"));
 
-			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+			const result = await discoverAndLoadExtensions([], tempDir, tempDir, undefined, { skipBundled: true });
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
 			const tools = runner.getAllRegisteredTools();
 
@@ -318,7 +318,7 @@ describe("ExtensionRunner", () => {
 			fs.writeFileSync(path.join(extensionsDir, "a-first.ts"), first);
 			fs.writeFileSync(path.join(extensionsDir, "b-second.ts"), second);
 
-			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+			const result = await discoverAndLoadExtensions([], tempDir, tempDir, undefined, { skipBundled: true });
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
 			const tools = runner.getAllRegisteredTools();
 
@@ -340,7 +340,7 @@ describe("ExtensionRunner", () => {
 			fs.writeFileSync(path.join(extensionsDir, "cmd-a.ts"), cmdCode("cmd-a"));
 			fs.writeFileSync(path.join(extensionsDir, "cmd-b.ts"), cmdCode("cmd-b"));
 
-			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+			const result = await discoverAndLoadExtensions([], tempDir, tempDir, undefined, { skipBundled: true });
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
 			const commands = runner.getRegisteredCommands();
 
@@ -360,7 +360,7 @@ describe("ExtensionRunner", () => {
 			`;
 			fs.writeFileSync(path.join(extensionsDir, "cmd.ts"), cmdCode);
 
-			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+			const result = await discoverAndLoadExtensions([], tempDir, tempDir, undefined, { skipBundled: true });
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
 
 			const cmd = runner.getCommand("my-cmd");
@@ -385,7 +385,7 @@ describe("ExtensionRunner", () => {
 			fs.writeFileSync(path.join(extensionsDir, "cmd-a.ts"), cmdCode("First command"));
 			fs.writeFileSync(path.join(extensionsDir, "cmd-b.ts"), cmdCode("Second command"));
 
-			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+			const result = await discoverAndLoadExtensions([], tempDir, tempDir, undefined, { skipBundled: true });
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
 			const commands = runner.getRegisteredCommands();
 			const diagnostics = runner.getCommandDiagnostics();
@@ -402,7 +402,7 @@ describe("ExtensionRunner", () => {
 
 	describe("context creation", () => {
 		it("exposes the current abort signal on ExtensionContext", async () => {
-			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+			const result = await discoverAndLoadExtensions([], tempDir, tempDir, undefined, { skipBundled: true });
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
 			const controller = new AbortController();
 
@@ -431,7 +431,7 @@ describe("ExtensionRunner", () => {
 			`;
 			fs.writeFileSync(path.join(extensionsDir, "throws.ts"), extCode);
 
-			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+			const result = await discoverAndLoadExtensions([], tempDir, tempDir, undefined, { skipBundled: true });
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
 
 			const errors: Array<{ extensionPath: string; event: string; error: string }> = [];
@@ -457,7 +457,7 @@ describe("ExtensionRunner", () => {
 			`;
 			fs.writeFileSync(path.join(extensionsDir, "renderer.ts"), extCode);
 
-			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+			const result = await discoverAndLoadExtensions([], tempDir, tempDir, undefined, { skipBundled: true });
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
 
 			const renderer = runner.getMessageRenderer("my-type");
@@ -480,7 +480,7 @@ describe("ExtensionRunner", () => {
 			`;
 			fs.writeFileSync(path.join(extensionsDir, "with-flag.ts"), extCode);
 
-			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+			const result = await discoverAndLoadExtensions([], tempDir, tempDir, undefined, { skipBundled: true });
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
 			const flags = runner.getFlags();
 
@@ -509,7 +509,7 @@ describe("ExtensionRunner", () => {
 			fs.writeFileSync(path.join(extensionsDir, "a-first.ts"), first);
 			fs.writeFileSync(path.join(extensionsDir, "b-second.ts"), second);
 
-			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+			const result = await discoverAndLoadExtensions([], tempDir, tempDir, undefined, { skipBundled: true });
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
 			const flags = runner.getFlags();
 
@@ -528,7 +528,7 @@ describe("ExtensionRunner", () => {
 			`;
 			fs.writeFileSync(path.join(extensionsDir, "flag.ts"), extCode);
 
-			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+			const result = await discoverAndLoadExtensions([], tempDir, tempDir, undefined, { skipBundled: true });
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
 
 			// Setting a flag value should not throw
@@ -562,7 +562,7 @@ describe("ExtensionRunner", () => {
 			fs.writeFileSync(path.join(extensionsDir, "tool-result-1.ts"), extCode1);
 			fs.writeFileSync(path.join(extensionsDir, "tool-result-2.ts"), extCode2);
 
-			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+			const result = await discoverAndLoadExtensions([], tempDir, tempDir, undefined, { skipBundled: true });
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
 
 			const chained = await runner.emitToolResult({
@@ -610,7 +610,7 @@ describe("ExtensionRunner", () => {
 			fs.writeFileSync(path.join(extensionsDir, "tool-result-partial-1.ts"), extCode1);
 			fs.writeFileSync(path.join(extensionsDir, "tool-result-partial-2.ts"), extCode2);
 
-			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+			const result = await discoverAndLoadExtensions([], tempDir, tempDir, undefined, { skipBundled: true });
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
 
 			const chained = await runner.emitToolResult({
@@ -704,7 +704,7 @@ describe("ExtensionRunner", () => {
 			`;
 			fs.writeFileSync(path.join(extensionsDir, "handler.ts"), extCode);
 
-			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+			const result = await discoverAndLoadExtensions([], tempDir, tempDir, undefined, { skipBundled: true });
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
 
 			expect(runner.hasHandlers("tool_call")).toBe(true);

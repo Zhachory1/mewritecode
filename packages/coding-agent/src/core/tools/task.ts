@@ -37,13 +37,13 @@ import {
 	type LoadAgentDefsResult,
 	loadAgentDefs,
 } from "../agent-defs/loader.js";
-import type { ToolDefinition } from "../extensions/types.js";
 import {
 	type BackgroundSubagent,
 	getTaskOutputPath,
 	registerBackground,
 	updateBackground,
-} from "../subagent-registry.js";
+} from "../background-task-registry.js";
+import type { ToolDefinition } from "../extensions/types.js";
 
 const MAX_CONCURRENCY = 4;
 

@@ -7,9 +7,10 @@ read README.md, then ask which module(s) to work on. Based on the answer, read t
 - packages/tui/README.md
 - packages/agent/README.md
 - packages/coding-agent/README.md
-- packages/mom/README.md
-- packages/pods/README.md
-- packages/web-ui/README.md
+- packages/sdk/README.md
+- packages/markdown-preview/README.md
+
+Off-core (in `contrib/`, unsupported): contrib/mom/README.md, contrib/pods/README.md, contrib/web-ui/README.md
 
 ## Code Quality
 - No `any` types unless absolutely necessary
