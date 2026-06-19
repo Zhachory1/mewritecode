@@ -85,6 +85,10 @@ async function runCommand(command: string, ctx: StatusLineContext): Promise<Stat
 		child.stderr.on("data", (chunk: Buffer) => {
 			stderr += chunk.toString("utf8");
 		});
+		child.stdin.on("error", () => {
+			// The command may exit before it reads stdin. Treat that as command outcome,
+			// not a process-level unhandled error.
+		});
 		child.on("error", (err) => {
 			if (settled) return;
 			settled = true;
