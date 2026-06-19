@@ -1,5 +1,16 @@
 # Me Write Code
 
+<p align="center">
+  <img src="docs/public/logo.svg" alt="Me Write Code logo" width="96" height="96">
+</p>
+
+<p align="center"><strong>me write less, me do more</strong></p>
+
+<p align="center">
+  <a href="https://github.com/Zhachory1/mewritecode/actions/workflows/ci.yml"><img src="https://github.com/Zhachory1/mewritecode/actions/workflows/ci.yml/badge.svg" alt="CI / tests"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT license"></a>
+</p>
+
 **A low-token Claude Code alternative for terminal-based coding agents.**
 
 Me Write Code is the `mewrite` CLI: a terminal coding agent that keeps the Claude Code-style workflow (interactive TUI, file editing, tool calls, sessions, slash commands, skills, hooks, MCP-style integrations) while aggressively reducing token waste through compact prompts, compressed tool output, read deduplication, and prompt-cache-friendly session structure.
