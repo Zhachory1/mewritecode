@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed the release workflow to publish GHCR Docker images with lowercase repository names and skip CI npm publishing when no npm token is configured.
+
 ## [0.65.9] - 2026-06-19
 
 ### Fixed
