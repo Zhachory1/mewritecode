@@ -110,6 +110,22 @@ describe("SettingsManager", () => {
 		});
 	});
 
+	describe("startup display settings", () => {
+		it("defaults resource listings to quiet", () => {
+			const manager = SettingsManager.create(projectDir, agentDir);
+			expect(manager.getQuietResourceListing()).toBe(true);
+		});
+
+		it("respects explicit resource listing opt-in", () => {
+			const settingsPath = join(agentDir, "settings.json");
+			writeFileSync(settingsPath, JSON.stringify({ quietResourceListing: false }));
+
+			const manager = SettingsManager.create(projectDir, agentDir);
+
+			expect(manager.getQuietResourceListing()).toBe(false);
+		});
+	});
+
 	describe("packages migration", () => {
 		it("should keep local-only extensions in extensions array", () => {
 			const settingsPath = join(agentDir, "settings.json");

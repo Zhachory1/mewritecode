@@ -11,14 +11,18 @@ export interface BannerOptions {
 	effort?: string;
 	cwd?: string;
 	sprite?: BannerSprite;
+	showSecondaryWordmark?: boolean;
 }
 
-const WORDMARK: readonly string[] = [
+const PRIMARY_WORDMARK: readonly string[] = [
 	"██   ██ ███████     ██     ██ ██████  ██ ████████ ███████",
 	"███ ███ ██          ██     ██ ██   ██ ██    ██    ██",
 	"███████ █████       ██  █  ██ ██████  ██    ██    █████",
 	"██ █ ██ ██           ██ █ ██  ██   ██ ██    ██    ██",
 	"██   ██ ███████       █████   ██   ██ ██    ██    ███████",
+];
+
+const SECONDARY_WORDMARK: readonly string[] = [
 	"",
 	"           ▄████▄   ▒█████  ▓█████▄ ▓█████",
 	"          ▒██▀ ▀█  ▒██▒  ██▒▒██▀ ██▌▓█   ▀",
@@ -32,12 +36,13 @@ const WORDMARK: readonly string[] = [
 	"          ░                 ░",
 ];
 
-const WORDMARK_PRIMARY_ROWS = 5;
+const WORDMARK_PRIMARY_ROWS = PRIMARY_WORDMARK.length;
 
 export class BannerComponent extends Container {
 	constructor(options: BannerOptions) {
 		super();
-		for (const [index, row] of WORDMARK.entries()) {
+		const rows = options.showSecondaryWordmark ? [...PRIMARY_WORDMARK, ...SECONDARY_WORDMARK] : PRIMARY_WORDMARK;
+		for (const [index, row] of rows.entries()) {
 			const color = index < WORDMARK_PRIMARY_ROWS ? "accent" : "mdHeading";
 			this.addChild(new Text(row ? theme.fg(color, row) : row, 1, 0));
 		}

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed startup rendering so the Me Write Code banner stays visible in normal-height terminals by using a compact wordmark and hiding verbose resource listings by default.
+
 ## [0.65.4] - 2026-06-19
 
 ### Added

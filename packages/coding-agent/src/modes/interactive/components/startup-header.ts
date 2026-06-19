@@ -18,6 +18,12 @@ export interface StartupHeaderOptions {
 	auth?: string;
 }
 
+const MIN_ROWS_FOR_FULL_WORDMARK = 32;
+
+function shouldShowSecondaryWordmark(): boolean {
+	return (process.stdout.rows ?? 24) >= MIN_ROWS_FOR_FULL_WORDMARK;
+}
+
 export class StartupHeaderComponent extends Container {
 	constructor({
 		version,
@@ -43,6 +49,7 @@ export class StartupHeaderComponent extends Container {
 				effort,
 				cwd,
 				sprite,
+				showSecondaryWordmark: shouldShowSecondaryWordmark(),
 			}),
 		);
 

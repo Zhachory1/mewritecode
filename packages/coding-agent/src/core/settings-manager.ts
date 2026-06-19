@@ -138,7 +138,7 @@ export interface Settings {
 	hideThinkingBlock?: boolean;
 	shellPath?: string; // Custom shell path (e.g., for Cygwin users on Windows)
 	quietStartup?: boolean;
-	quietResourceListing?: boolean; // Hide Skills/Extensions/Themes/Conflicts listing at startup (keeps ASCII header)
+	quietResourceListing?: boolean; // default: true - hide Skills/Extensions/Themes/Conflicts listing at startup (keeps ASCII header)
 	shellCommandPrefix?: string; // Prefix prepended to every bash command (e.g., "shopt -s expand_aliases" for alias support)
 	npmCommand?: string[]; // Command used for npm package lookup/install operations, argv-style (e.g., ["mise", "exec", "node@20", "--", "npm"])
 	collapseChangelog?: boolean; // Show condensed changelog after update (use /changelog for full)
@@ -853,7 +853,7 @@ export class SettingsManager {
 	}
 
 	getQuietResourceListing(): boolean {
-		return this.settings.quietResourceListing ?? false;
+		return this.settings.quietResourceListing ?? true;
 	}
 
 	setQuietResourceListing(quiet: boolean): void {
