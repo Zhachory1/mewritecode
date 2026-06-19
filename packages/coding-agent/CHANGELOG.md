@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed cross-architecture RPM package generation by disabling host binary stripping during rpmbuild.
+
 ## [0.65.8] - 2026-06-19
 
 ### Fixed

@@ -170,6 +170,7 @@ EOF
 
     local rpm_log="$build_root/rpmbuild.log"
     rpmbuild --define "_topdir $rpm_root" \
+        --define "__strip /bin/true" \
         --target "$rpm_arch" \
         -bb "$rpm_root/SPECS/${PKG_NAME}.spec" >"$rpm_log" 2>&1 || {
         echo "Error: rpmbuild failed for ${arch_name} (${rpm_arch})" >&2
