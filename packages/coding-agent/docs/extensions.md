@@ -4,7 +4,7 @@
 
 Extensions are TypeScript modules that extend pi's behavior. They can subscribe to lifecycle events, register custom tools callable by the LLM, add commands, and more.
 
-> **Placement for /reload:** Put extensions in `~/.pi/agent/extensions/` (global) or `.pi/extensions/` (project-local) for auto-discovery. Use `pi -e ./path.ts` only for quick tests. Extensions in auto-discovered locations can be hot-reloaded with `/reload`.
+> **Placement for /reload:** Put extensions in `~/.mewrite/agent/extensions/` (global) or `.mewrite/extensions/` (project-local) for auto-discovery. Use `mewrite -e ./path.ts` only for quick tests. Extensions in auto-discovered locations can be hot-reloaded with `/reload`.
 
 **Key capabilities:**
 - **Custom tools** - Register tools the LLM can call via `pi.registerTool()`
@@ -53,7 +53,7 @@ See [examples/extensions/](../examples/extensions/) for working implementations.
 
 ## Quick Start
 
-Create `~/.pi/agent/extensions/my-extension.ts`:
+Create `~/.mewrite/agent/extensions/my-extension.ts`:
 
 ```typescript
 import type { ExtensionAPI } from "@zhachory1/mewrite-code";
@@ -101,7 +101,7 @@ export default function (pi: ExtensionAPI) {
 Test with `--extension` (or `-e`) flag:
 
 ```bash
-pi -e ./my-extension.ts
+mewrite -e ./my-extension.ts
 ```
 
 ## Extension Locations
@@ -112,10 +112,10 @@ Extensions are auto-discovered from:
 
 | Location | Scope |
 |----------|-------|
-| `~/.pi/agent/extensions/*.ts` | Global (all projects) |
-| `~/.pi/agent/extensions/*/index.ts` | Global (subdirectory) |
-| `.pi/extensions/*.ts` | Project-local |
-| `.pi/extensions/*/index.ts` | Project-local (subdirectory) |
+| `~/.mewrite/agent/extensions/*.ts` | Global (all projects) |
+| `~/.mewrite/agent/extensions/*/index.ts` | Global (subdirectory) |
+| `.mewrite/extensions/*.ts` | Project-local |
+| `.mewrite/extensions/*/index.ts` | Project-local (subdirectory) |
 
 Additional paths via `settings.json`:
 
@@ -179,14 +179,14 @@ Extensions are loaded via [jiti](https://github.com/unjs/jiti), so TypeScript wo
 **Single file** - simplest, for small extensions:
 
 ```
-~/.pi/agent/extensions/
+~/.mewrite/agent/extensions/
 └── my-extension.ts
 ```
 
 **Directory with index.ts** - for multi-file extensions:
 
 ```
-~/.pi/agent/extensions/
+~/.mewrite/agent/extensions/
 └── my-extension/
     ├── index.ts        # Entry point (exports default function)
     ├── tools.ts        # Helper module
@@ -196,7 +196,7 @@ Extensions are loaded via [jiti](https://github.com/unjs/jiti), so TypeScript wo
 **Package with dependencies** - for extensions that need npm packages:
 
 ```
-~/.pi/agent/extensions/
+~/.mewrite/agent/extensions/
 └── my-extension/
     ├── package.json    # Declares dependencies and entry points
     ├── package-lock.json

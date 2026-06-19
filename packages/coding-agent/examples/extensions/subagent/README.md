@@ -2,7 +2,7 @@
 
 Delegate tasks to specialized subagents with isolated context windows.
 
-> **Default-installed since cave [next-version]**. No install step required — `caveman` loads this extension automatically on startup, and the sample agents (`scout`, `planner`, `worker`) are available via cave's bundled agents (`packages/coding-agent/agents/`). To override or extend, drop your own version under `~/.cave/extensions/subagent/` or your project's `.cave/extensions/subagent/`.
+> **Default-installed since cave [next-version]**. No install step required — `caveman` loads this extension automatically on startup, and the sample agents (`scout`, `planner`, `worker`) are available via cave's bundled agents (`packages/coding-agent/agents/`). To override or extend, drop your own version under `~/.mewrite/agent/extensions/subagent/` or your project's `.mewrite/extensions/subagent/`.
 
 ## Features
 
@@ -32,15 +32,15 @@ subagent/
 If you want to override the bundled version with a local modification:
 
 ```bash
-mkdir -p ~/.cave/extensions/subagent
-# Copy or symlink your modified index.ts / agents.ts into ~/.cave/extensions/subagent/
+mkdir -p ~/.mewrite/agent/extensions/subagent
+# Copy or symlink your modified index.ts / agents.ts into ~/.mewrite/agent/extensions/subagent/
 # User-scope extensions register at the same tool name, overriding the bundled one.
 ```
 
 Project-local override:
 
 ```bash
-mkdir -p .cave/extensions/subagent
+mkdir -p .mewrite/extensions/subagent
 # Same shape — project-scope takes precedence over user-scope.
 ```
 

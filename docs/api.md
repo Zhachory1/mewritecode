@@ -132,7 +132,7 @@ Or browse the spec on GitHub: [packages/coding-agent/openapi.yaml](https://githu
 If you'd rather load TypeScript modules at session start:
 
 ```typescript
-// .cave/extensions/my-ext.ts
+// .mewrite/extensions/my-ext.ts
 import type { ExtensionAPI } from "@zhachory1/mewrite-code";
 
 export default function (api: ExtensionAPI) {
