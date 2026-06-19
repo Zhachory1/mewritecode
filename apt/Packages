@@ -1,0 +1,15 @@
+Package: mewrite-code
+Version: 0.65.9
+Architecture: amd64
+Maintainer: Zhachory Volker
+Filename: ./mewrite-code_0.65.9_amd64.deb
+Size: 34411416
+MD5sum: f10afd3a57865b09d80e3e288176096c
+SHA1: e72bbf684fa8d89829df104b44708e9f6731b271
+SHA256: add5aaf133557cbba256583f08747d1696e886192032c0c1a61f4ce86914c866
+Section: devel
+Priority: optional
+Homepage: https://github.com/Zhachory1/mewritecode
+Description: Me Write Code terminal coding agent
+ Me Write Code is a terminal coding agent.
+

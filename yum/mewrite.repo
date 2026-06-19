@@ -1,0 +1,5 @@
+[mewrite]
+name=Me Write Code
+baseurl=https://raw.githubusercontent.com/Zhachory1/mewritecode/gh-pages/yum
+enabled=1
+gpgcheck=0
