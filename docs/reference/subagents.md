@@ -119,18 +119,43 @@ Up to 7 subagents can run in parallel. The parent's TUI shows a live overlay (F2
 
 ## Result schema
 
-Subagents return a structured payload:
+Subagents return a structured envelope. The human-readable `output` remains the
+short summary the model sees, while `observability` is durable metadata an
+orchestrator can roll up without re-reading every worktree.
 
 ```json
 {
-    "agent": "Explore",
-    "summary": "string ≤500 tokens",
-    "artifacts": [{ "type": "file", "path": "..." }],
-    "metrics": { "turns": 5, "tokens_in": 12000, "tokens_out": 480, "cost": 0.012 }
+  "agent": "Explore",
+  "source": "builtin",
+  "task": "Map packages/agent",
+  "output": "string ≤500 tokens",
+  "exitCode": 0,
+  "observability": {
+    "taskId": "repo-audit-17",
+    "repoPath": "/work/repo",
+    "phase": "test",
+    "baseBranch": "main",
+    "branchName": "fix/example",
+    "filesChanged": ["src/example.ts"],
+    "commands": [
+      { "command": "npm test", "exitCode": 0, "durationMs": 1242 }
+    ],
+    "issues": ["https://github.com/org/repo/issues/123"],
+    "prUrl": "https://github.com/org/repo/pull/456",
+    "workingTreeClean": true,
+    "artifactPath": "/tmp/subagent-progress.json",
+    "blockers": []
+  },
+  "usage": { "turns": 5, "input": 12000, "output": 480, "cost": 0.012 }
 }
 ```
 
-The parent receives the `summary` only — full transcripts persist to `~/.cave/sessions/<id>.trace.jsonl`.
+Recommended `observability.phase` values are `plan`, `implement`, `test`,
+`review`, `push`, `pr`, `done`, and `blocked`.
+
+The parent receives `output` for model context and can separately render or
+persist `observability` as a dashboard. Full transcripts persist to
+`~/.cave/sessions/<id>.trace.jsonl`.
 
 ## Importing Claude Code agents
 
