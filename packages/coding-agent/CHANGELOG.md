@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed RPM package generation in CI by passing rpmbuild an absolute top-level build directory.
+
 ## [0.65.7] - 2026-06-19
 
 ### Fixed

@@ -120,7 +120,9 @@ build_rpm() {
 
     require_tool rpmbuild "Install with: sudo apt-get install -y rpm or sudo yum install rpm-build"
 
-    local build_root="$ARCHIVES_DIR/rpm-build-${rpm_arch}"
+    local archives_abs
+    archives_abs="$(cd "$ARCHIVES_DIR" && pwd)"
+    local build_root="$archives_abs/rpm-build-${rpm_arch}"
     local rpm_root="$build_root/rpmbuild"
 
     echo "Building .rpm for ${arch_name} (${rpm_arch})..."
