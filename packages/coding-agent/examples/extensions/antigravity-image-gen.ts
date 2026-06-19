@@ -11,8 +11,8 @@
  *
  * Save modes (tool param, env var, or config file):
  *   save=none     - Don't save to disk (default)
- *   save=project  - Save to <repo>/.pi/generated-images/
- *   save=global   - Save to ~/.pi/agent/generated-images/
+ *   save=project  - Save to <repo>/.mewrite/generated-images/
+ *   save=global   - Save to ~/.mewrite/agent/generated-images/
  *   save=custom   - Save to saveDir param or PI_IMAGE_SAVE_DIR
  *
  * Environment variables:
@@ -20,8 +20,8 @@
  *   PI_IMAGE_SAVE_DIR   - Directory for custom save mode
  *
  * Config files (project overrides global):
- *   ~/.pi/agent/extensions/antigravity-image-gen.json
- *   <repo>/.pi/extensions/antigravity-image-gen.json
+ *   ~/.mewrite/agent/extensions/antigravity-image-gen.json
+ *   <repo>/.mewrite/extensions/antigravity-image-gen.json
  *   Example: { "save": "global" }
  */
 
@@ -185,7 +185,7 @@ function readConfigFile(path: string): ExtensionConfig {
 function loadConfig(cwd: string): ExtensionConfig {
 	const globalPath = join(getAgentDir(), "extensions", "antigravity-image-gen.json");
 	const globalConfig = readConfigFile(globalPath);
-	const projectConfig = readConfigFile(join(cwd, ".pi", "extensions", "antigravity-image-gen.json"));
+	const projectConfig = readConfigFile(join(cwd, ".mewrite", "extensions", "antigravity-image-gen.json"));
 	return { ...globalConfig, ...projectConfig };
 }
 
@@ -200,7 +200,7 @@ function resolveSaveConfig(params: ToolParams, cwd: string): SaveConfig {
 	}
 
 	if (mode === "project") {
-		return { mode, outputDir: join(cwd, ".pi", "generated-images") };
+		return { mode, outputDir: join(cwd, ".mewrite", "generated-images") };
 	}
 
 	if (mode === "global") {
