@@ -85,11 +85,24 @@ export function getPackageDir(): string {
 		// Bun binary: process.execPath points to the compiled executable
 		return dirname(process.execPath);
 	}
-	// Node.js: walk up from __dirname until we find package.json
+	// Node.js: walk up from __dirname until we find this package's package.json,
+	// not an ancestor workspace package.json.
 	let dir = __dirname;
 	while (dir !== dirname(dir)) {
-		if (existsSync(join(dir, "package.json"))) {
-			return dir;
+		const packageJsonPath = join(dir, "package.json");
+		if (existsSync(packageJsonPath)) {
+			try {
+				const pkg = JSON.parse(readFileSync(packageJsonPath, "utf-8")) as {
+					name?: string;
+					mewriteConfig?: unknown;
+					piConfig?: unknown;
+				};
+				if (pkg.name === "@zhachory1/mewrite-code" || pkg.mewriteConfig || pkg.piConfig) {
+					return dir;
+				}
+			} catch {
+				// Keep walking; a malformed ancestor package.json should not hide package assets.
+			}
 		}
 		dir = dirname(dir);
 	}
