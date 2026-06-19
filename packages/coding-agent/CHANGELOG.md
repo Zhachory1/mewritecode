@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed RPM package generation by relying on rpmbuild target architecture instead of invalid `BuildArch` values for architecture-specific builds.
+
 ## [0.65.6] - 2026-06-19
 
 ### Fixed

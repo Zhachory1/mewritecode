@@ -138,7 +138,6 @@ Summary:        $DESCRIPTION
 License:        MIT
 URL:            $HOMEPAGE
 Source0:        $PKG_NAME-%{version}.tar.gz
-BuildArch:      $rpm_arch
 
 %description
 Me Write Code is a terminal coding agent.
@@ -167,10 +166,12 @@ ${LIB_DIR}/*
 - Release $RPM_VERSION
 EOF
 
+    local rpm_log="$build_root/rpmbuild.log"
     rpmbuild --define "_topdir $rpm_root" \
         --target "$rpm_arch" \
-        -bb "$rpm_root/SPECS/${PKG_NAME}.spec" >/dev/null 2>&1 || {
+        -bb "$rpm_root/SPECS/${PKG_NAME}.spec" >"$rpm_log" 2>&1 || {
         echo "Error: rpmbuild failed for ${arch_name} (${rpm_arch})" >&2
+        cat "$rpm_log" >&2
         exit 1
     }
 
