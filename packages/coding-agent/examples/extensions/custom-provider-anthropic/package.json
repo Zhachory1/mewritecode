@@ -1,7 +1,7 @@
 {
 	"name": "mewrite-code-extension-custom-provider-anthropic",
 	"private": true,
-	"version": "0.65.7",
+	"version": "0.65.8",
 	"type": "module",
 	"scripts": {
 		"clean": "echo 'nothing to clean'",
