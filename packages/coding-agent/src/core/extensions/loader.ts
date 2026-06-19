@@ -9,16 +9,16 @@ import { createRequire } from "node:module";
 import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import * as _bundledPiAgentCore from "@zhachory1/mewrite-agent";
-import * as _bundledPiAi from "@zhachory1/mewrite-ai";
-import * as _bundledPiAiOauth from "@zhachory1/mewrite-ai/oauth";
-import type { KeyId } from "@zhachory1/mewrite-tui";
-import * as _bundledPiTui from "@zhachory1/mewrite-tui";
 import { createJiti } from "@mariozechner/jiti";
 // Static imports of packages that extensions may use.
 // These MUST be static so Bun bundles them into the compiled binary.
 // The virtualModules option then makes them available to extensions.
 import * as _bundledTypebox from "@sinclair/typebox";
+import * as _bundledPiAgentCore from "@zhachory1/mewrite-agent";
+import * as _bundledPiAi from "@zhachory1/mewrite-ai";
+import * as _bundledPiAiOauth from "@zhachory1/mewrite-ai/oauth";
+import type { KeyId } from "@zhachory1/mewrite-tui";
+import * as _bundledPiTui from "@zhachory1/mewrite-tui";
 import { CONFIG_DIR_NAME, getAgentDir, getPackageDir, isBunBinary } from "../../config.js";
 // NOTE: This import works because loader.ts exports are NOT re-exported from index.ts,
 // avoiding a circular dependency. Extensions can import from cave.
@@ -82,10 +82,7 @@ function getAliases(): Record<string, string> {
 		"@zhachory1/mewrite-agent": resolveWorkspaceOrImport("agent/dist/index.js", "@zhachory1/mewrite-agent"),
 		"@zhachory1/mewrite-tui": resolveWorkspaceOrImport("tui/dist/index.js", "@zhachory1/mewrite-tui"),
 		"@zhachory1/mewrite-ai": resolveWorkspaceOrImport("ai/dist/index.js", "@zhachory1/mewrite-ai"),
-		"@zhachory1/mewrite-ai/oauth": resolveWorkspaceOrImport(
-			"ai/dist/oauth.js",
-			"@zhachory1/mewrite-ai/oauth",
-		),
+		"@zhachory1/mewrite-ai/oauth": resolveWorkspaceOrImport("ai/dist/oauth.js", "@zhachory1/mewrite-ai/oauth"),
 		"@sinclair/typebox": typeboxRoot,
 	};
 	// Extensions import the published package name; resolve it to the same

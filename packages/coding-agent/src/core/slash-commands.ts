@@ -34,7 +34,7 @@
 import { type Dirent, existsSync, type FSWatcher, readdirSync, readFileSync, statSync, watch } from "fs";
 import { homedir } from "os";
 import { basename, isAbsolute, join, resolve } from "path";
-import { CONFIG_DIR_NAME, getAgentDir } from "../config.js";
+import { APP_NAME, CONFIG_DIR_NAME, getAgentDir } from "../config.js";
 import { parseFrontmatter } from "../utils/frontmatter.js";
 import type { ResourceDiagnostic } from "./diagnostics.js";
 import { applyInlineShellPreprocessing, type SkillExpandContext, substituteSkillVariables } from "./skills.js";
@@ -177,7 +177,7 @@ export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 			"Ask a quick side question without interrupting the running turn. Usage: /btw <question>. Fires a separate completion; answer is shown dimmed inline and does not modify the agent's working memory.",
 		wired: true,
 	},
-	{ name: "quit", description: "Quit pi", wired: true },
+	{ name: "quit", description: `Quit ${APP_NAME.replaceAll("-", "")}`, wired: true },
 ];
 
 /**

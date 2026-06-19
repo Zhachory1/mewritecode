@@ -13,6 +13,7 @@
 
 ### Fixed
 
+- Fixed the `/quit` confirmation and help text to use the configured app name, so Me Write Code prompts with `Quit mewritecode?` instead of inherited Pi/Cave branding.
 - Subagent extension's `discoverAgents` now scans `<cwd>/.cave/agents/` for project-scope agents (matches cave's canonical config dir). The pre-cave-rename `.pi/agents/` is honored as a fallback so projects mid-migration still resolve. When both exist, `.cave/` wins ([#62](https://github.com/Zhachory1/mewritecode/issues/62)).
 
 ### Added

@@ -3498,7 +3498,7 @@ export class InteractiveMode {
 					? "Quitting now will abort the current response."
 					: `${queuedCount} queued message${queuedCount === 1 ? "" : "s"} will be discarded.`;
 				const answer = await showConfirmPrompt(this.ui, {
-					question: "Quit cave?",
+					question: `Quit ${APP_NAME.replaceAll("-", "")}?`,
 					detail,
 					defaultAnswer: "no",
 				});

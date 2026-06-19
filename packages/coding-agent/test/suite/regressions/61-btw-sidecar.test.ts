@@ -10,9 +10,9 @@
  *      completion.
  */
 
+import { Type } from "@sinclair/typebox";
 import type { AgentTool } from "@zhachory1/mewrite-agent";
 import { fauxAssistantMessage, fauxToolCall } from "@zhachory1/mewrite-ai";
-import { Type } from "@sinclair/typebox";
 import { afterEach, describe, expect, it } from "vitest";
 import { createHarness, type Harness } from "../harness.js";
 

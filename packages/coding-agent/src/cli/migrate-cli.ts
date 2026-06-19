@@ -42,22 +42,19 @@ export function parseMigrateArgs(rest: string[]): MigrateArgs {
 }
 
 function printHelp(): void {
-	process.stdout.write(
-		[
-			"caveman migrate --from claude [--dry-run]",
-			"",
-			"Reuse an existing Claude Code setup in caveman, in one step:",
-			"  • skills, agents, slash commands, settings.json, global CLAUDE.md → imported into the cave config dir",
-			"  • MCP servers + per-project memory → reused automatically at runtime (no copy)",
-			"",
-			"Idempotent: existing cave config is never clobbered (import skips, settings merge with cave keys winning).",
-			"",
-			"Flags:",
-			"  --from <source>   migration source (supported: claude)",
-			"  --dry-run         show what WOULD be imported; write nothing",
-			"  --help            this help",
-		].join("\n") + "\n",
-	);
+	process.stdout.write(`caveman migrate --from claude [--dry-run]
+
+Reuse an existing Claude Code setup in caveman, in one step:
+  • skills, agents, slash commands, settings.json, global CLAUDE.md → imported into the cave config dir
+  • MCP servers + per-project memory → reused automatically at runtime (no copy)
+
+Idempotent: existing cave config is never clobbered (import skips, settings merge with cave keys winning).
+
+Flags:
+  --from <source>   migration source (supported: claude)
+  --dry-run         show what WOULD be imported; write nothing
+  --help            this help
+`);
 }
 
 function printResult(result: ExecuteResult): void {

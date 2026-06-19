@@ -5,6 +5,7 @@
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Type } from "@sinclair/typebox";
 import { Agent } from "@zhachory1/mewrite-agent";
 import {
 	type AssistantMessage,
@@ -14,7 +15,6 @@ import {
 	type ImageContent,
 	type TextContent,
 } from "@zhachory1/mewrite-ai";
-import { Type } from "@sinclair/typebox";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AgentSession } from "../src/core/agent-session.js";
 import { AuthStorage } from "../src/core/auth-storage.js";
