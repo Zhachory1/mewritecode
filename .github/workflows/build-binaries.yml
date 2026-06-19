@@ -40,11 +40,14 @@ jobs:
       - name: Build binaries
         run: ./scripts/build-binaries.sh
 
-      - name: Install RPM tooling
-        run: sudo apt-get update && sudo apt-get install -y rpm
+      - name: Install Linux package repo tooling
+        run: sudo apt-get update && sudo apt-get install -y rpm dpkg-dev createrepo-c
 
       - name: Build Linux packages
         run: ./scripts/build-linux-packages.sh "${RELEASE_TAG}" packages/coding-agent/binaries
+
+      - name: Build APT and Yum repositories
+        run: ./scripts/build-linux-repos.sh packages/coding-agent/binaries packages/coding-agent/binaries/package-repos
 
       - name: Generate SHA256SUMS for release artifacts
         # WS11: installers/install.sh verifies tarball checksums against this
@@ -110,6 +113,13 @@ jobs:
             packages/coding-agent/binaries/mewrite-code-*.rpm
           retention-days: 7
 
+      - name: Upload Linux package repositories
+        uses: actions/upload-artifact@v4
+        with:
+          name: mewrite-package-repos
+          path: packages/coding-agent/binaries/package-repos
+          retention-days: 7
+
   publish-npm:
     runs-on: ubuntu-latest
     needs: build
@@ -158,6 +168,45 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:${{ env.RELEASE_TAG }}
             ghcr.io/${{ github.repository }}:latest
+
+  publish-linux-repos:
+    runs-on: ubuntu-latest
+    needs: build
+    env:
+      RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.HOMEBREW_BUMP_TOKEN || secrets.GITHUB_TOKEN }}
+      - name: Prepare gh-pages branch
+        run: |
+          git fetch origin gh-pages || true
+          if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
+            git checkout gh-pages
+          else
+            git checkout --orphan gh-pages
+            git rm -rf .
+          fi
+      - name: Download package repositories
+        uses: actions/download-artifact@v4
+        with:
+          name: mewrite-package-repos
+          path: package-repos
+      - name: Publish APT and Yum repositories
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          rm -rf apt yum
+          cp -R package-repos/apt package-repos/yum .
+          touch .nojekyll
+          git add apt yum .nojekyll
+          if git diff --cached --quiet; then
+            echo "Linux package repos unchanged — nothing to commit"
+            exit 0
+          fi
+          git commit -m "chore(packages): publish ${RELEASE_TAG}"
+          git push origin HEAD:gh-pages
 
   update-homebrew:
     runs-on: ubuntu-latest

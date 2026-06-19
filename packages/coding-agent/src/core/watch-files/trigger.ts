@@ -2,21 +2,21 @@
  * WS18 — Watch-Files trigger dispatcher.
  *
  * When a file change is detected:
- *  1. Parse cave comments (fire/qa/context).
+ *  1. Parse mewrite comments (fire/qa/context).
  *  2. Accumulate "context" comments into a running buffer.
- *  3. On "fire" (cave!) — build a prompt from accumulated context + surrounding
+ *  3. On "fire" (mewrite!) — build a prompt from accumulated context + surrounding
  *     lines, dispatch to the provided agentRun callback, remove the trigger
  *     comment from disk on success.
- *  4. On "qa" (cave?) — same but read-only (no file modification).
+ *  4. On "qa" (mewrite?) — same but read-only (no file modification).
  *  5. Cycle protection — ignore files the agent itself just modified.
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { extname } from "node:path";
-import { type CaveComment, parseCaveComments, removeLine, surroundingLines } from "./comment-parser.js";
+import { type MewriteComment, parseMewriteComments, removeLine, surroundingLines } from "./comment-parser.js";
 
 export interface TriggerContext {
-	/** Accumulated "cave" context comments (cleared after each fire/qa). */
+	/** Accumulated "mewrite" context comments (cleared after each fire/qa). */
 	accumulatedContext: string[];
 }
 
@@ -37,7 +37,7 @@ export interface TriggerOptions {
 
 /**
  * Process a single changed file:
- *  - Parse cave comments.
+ *  - Parse mewrite comments.
  *  - Accumulate context markers.
  *  - Dispatch fire/qa triggers to agentRun.
  *  - Remove fire comment from disk on success.
@@ -61,7 +61,7 @@ export async function processTriggers(
 	}
 
 	const ext = extname(filePath).replace(/^\./, "").toLowerCase();
-	const comments = parseCaveComments(content, ext);
+	const comments = parseMewriteComments(content, ext);
 
 	if (comments.length === 0) return false;
 
@@ -91,7 +91,7 @@ export async function processTriggers(
 			response = await agentRun(context, filePath, isReadOnly);
 		} catch (err) {
 			process.stderr.write(
-				`[cave watch] agent error for ${filePath}:${adjustedLine}: ${err instanceof Error ? err.message : String(err)}\n`,
+				`[mewrite watch] agent error for ${filePath}:${adjustedLine}: ${err instanceof Error ? err.message : String(err)}\n`,
 			);
 			continue;
 		}
@@ -106,12 +106,12 @@ export async function processTriggers(
 				lineOffset -= 1; // one line was removed
 			} catch (err) {
 				process.stderr.write(
-					`[cave watch] failed to remove trigger comment from ${filePath}: ${err instanceof Error ? err.message : String(err)}\n`,
+					`[mewrite watch] failed to remove trigger comment from ${filePath}: ${err instanceof Error ? err.message : String(err)}\n`,
 				);
 			}
 		} else {
 			// Q&A: print response to stderr
-			process.stderr.write(`[cave watch] ${filePath}:${adjustedLine} Q&A response:\n${response}\n`);
+			process.stderr.write(`[mewrite watch] ${filePath}:${adjustedLine} Q&A response:\n${response}\n`);
 		}
 
 		// Consumed — clear accumulated context
@@ -126,7 +126,7 @@ function buildPrompt(
 	filePath: string,
 	lineNumber: number,
 	content: string,
-	comment: CaveComment,
+	comment: MewriteComment,
 	triggerCtx: TriggerContext,
 	radius: number,
 ): string {

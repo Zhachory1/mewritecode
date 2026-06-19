@@ -13,6 +13,7 @@ on:
       - Formula/mewrite.rb
       - scripts/build-binaries.sh
       - scripts/build-linux-packages.sh
+      - scripts/build-linux-repos.sh
       - scripts/update-homebrew.sh
       - Dockerfile
       - .github/workflows/build-binaries.yml
@@ -51,17 +52,17 @@ jobs:
         shell: bash
         run: ./scripts/build-binaries.sh --platform ${{ matrix.triple }}
 
-      - name: Install RPM tooling
+      - name: Install Linux package repo tooling
         if: matrix.triple == 'linux-x64'
         shell: bash
-        run: sudo apt-get update && sudo apt-get install -y rpm
+        run: sudo apt-get update && sudo apt-get install -y rpm dpkg-dev createrepo-c
 
       - name: Build Linux packages
         if: matrix.triple == 'linux-x64'
         shell: bash
         run: ./scripts/build-linux-packages.sh smoke packages/coding-agent/binaries
 
-      - name: Validate Linux packages
+      - name: Validate Linux packages and repositories
         if: matrix.triple == 'linux-x64'
         shell: bash
         run: |
@@ -71,6 +72,9 @@ jobs:
           else
             echo "Warning: No RPM found for validation"
           fi
+          ./scripts/build-linux-repos.sh packages/coding-agent/binaries packages/coding-agent/binaries/package-repos
+          test -s packages/coding-agent/binaries/package-repos/apt/Packages.gz
+          test -s packages/coding-agent/binaries/package-repos/yum/repodata/repomd.xml
 
       - name: Serve archives locally
         shell: bash

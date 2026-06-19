@@ -137,7 +137,7 @@ afterAll(() => {
 	const totalReduction = ((totalOriginal - totalFinal) / totalOriginal) * 100;
 	const totalTokenSavings = estimateTokens(totalOriginal - totalFinal);
 
-	console.log("\n--- Cave Mode Token Savings Benchmark ---");
+	console.log("\n--- Me Write Code Token Savings Benchmark ---");
 	console.log("| Fixture | Original | Compressed | Reduction | Est. Token Savings |");
 	console.log("|---------|----------|------------|-----------|-------------------|");
 

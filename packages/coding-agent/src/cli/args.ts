@@ -48,7 +48,7 @@ export interface Args {
 	listModels?: string | true;
 	offline?: boolean;
 	verbose?: boolean;
-	/** WS18: watch mode flag (`cave --watch` or `cave watch`) */
+	/** WS18: watch mode flag (`mewrite --watch` or `mewrite watch`) */
 	watch?: boolean;
 	/** Hard cap on assistant turns within a run (subagent.maxTurns parity). */
 	maxTurns?: number;
@@ -246,7 +246,7 @@ ${chalk.bold("Usage:")}
   ${APP_NAME} run-recipe <name>               Run YAML recipes
   ${APP_NAME} goal <subcommand>               Autonomous goal loop (start, resume, status, cancel, list)
   ${APP_NAME} mcp <subcommand>                MCP server management (add, list, doctor, remove)
-  ${APP_NAME} watch [paths]                   File watcher for // cave! triggers
+  ${APP_NAME} watch [paths]                   File watcher for // mewrite! triggers
   ${APP_NAME} exec [flags] "<prompt>"         Non-interactive CI mode
   ${APP_NAME} serve                           Start daemon for remote clients
   ${APP_NAME} attach                          Attach to a running daemon session
@@ -286,7 +286,7 @@ ${chalk.bold("Options:")}
   --list-models [search]         List available models (with optional fuzzy search)
   --verbose                      Force verbose startup (overrides quietStartup setting)
   --offline                      Disable startup network operations (same as PI_OFFLINE=1)
-  --watch                        Start watch mode (alias for \`cave watch\`)
+  --watch                        Start watch mode (alias for \`mewrite watch\`)
   --max-turns <n>                Cap assistant turns within a run (subagent.maxTurns parity)
   --approval                     OPT-IN approval mode: prompt before writes/bash (human-review, NOT a sandbox)
   --help, -h                     Show this help

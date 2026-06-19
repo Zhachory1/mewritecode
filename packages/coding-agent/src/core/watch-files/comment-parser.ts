@@ -1,18 +1,18 @@
 /*
  * WS18 - Watch-Files comment parser.
  *
- * Scans a file's content for cave comment markers across multiple languages:
- *   "// cave!"  - fire trigger (js/ts/go/rust/c/cpp/java)
- *   "# cave!"   - fire trigger (py/rb/sh)
- *   "-- cave!"  - fire trigger (lua/sql)
- *   "cave?"     - Q&A trigger (read-only)
- *   "cave"      - accumulate context (no suffix)
+ * Scans a file's content for mewrite comment markers across multiple languages:
+ *   "// mewrite!"  - fire trigger (js/ts/go/rust/c/cpp/java)
+ *   "# mewrite!"   - fire trigger (py/rb/sh)
+ *   "-- mewrite!"  - fire trigger (lua/sql)
+ *   "mewrite?"     - Q&A trigger (read-only)
+ *   "mewrite"      - accumulate context (no suffix)
  */
 
 export type CommentKind = "fire" | "qa" | "context";
 
-/** A single cave comment found in a file. */
-export interface CaveComment {
+/** A single mewrite comment found in a file. */
+export interface MewriteComment {
 	/** Line number (1-indexed). */
 	line: number;
 	/** Marker kind. */
@@ -70,41 +70,41 @@ export function getPrefixesForExt(ext: string): string[] {
 }
 
 /**
- * Parse the text after a cave marker to determine kind and payload.
- * Returns null if the marker is not a cave comment.
+ * Parse the text after a mewrite marker to determine kind and payload.
+ * Returns null if the marker is not a mewrite comment.
  */
 function parseMarkerText(afterPrefix: string): { kind: CommentKind; text: string } | null {
 	const trimmed = afterPrefix.trim();
 
-	// Check for block-comment close (handles `/* cave! */` style)
+	// Check for block-comment close (handles `/* mewrite! */` style)
 	const withoutBlockClose = trimmed.replace(/\s*\*\/\s*$/, "").trim();
 
 	const toCheck = withoutBlockClose;
 
-	if (toCheck.startsWith("cave!")) {
-		return { kind: "fire", text: toCheck.slice(5).trim() };
+	if (toCheck.startsWith("mewrite!")) {
+		return { kind: "fire", text: toCheck.slice("mewrite!".length).trim() };
 	}
-	if (toCheck.startsWith("cave?")) {
-		return { kind: "qa", text: toCheck.slice(5).trim() };
+	if (toCheck.startsWith("mewrite?")) {
+		return { kind: "qa", text: toCheck.slice("mewrite?".length).trim() };
 	}
-	// Must be exactly "cave" or "cave " followed by context text (not cave! or cave?)
-	if (toCheck === "cave" || toCheck.startsWith("cave ")) {
-		return { kind: "context", text: toCheck.slice(4).trim() };
+	// Must be exactly "mewrite" or "mewrite " followed by context text (not mewrite! or mewrite?)
+	if (toCheck === "mewrite" || toCheck.startsWith("mewrite ")) {
+		return { kind: "context", text: toCheck.slice("mewrite".length).trim() };
 	}
 
 	return null;
 }
 
 /**
- * Parse all cave comments from file content.
+ * Parse all mewrite comments from file content.
  *
  * @param content — full file text
  * @param ext — file extension (without dot), used to determine comment prefixes
  */
-export function parseCaveComments(content: string, ext: string): CaveComment[] {
+export function parseMewriteComments(content: string, ext: string): MewriteComment[] {
 	const prefixes = getPrefixesForExt(ext);
 	const lines = content.split("\n");
-	const results: CaveComment[] = [];
+	const results: MewriteComment[] = [];
 
 	for (let i = 0; i < lines.length; i++) {
 		const rawLine = lines[i];
@@ -150,7 +150,7 @@ export function surroundingLines(
 }
 
 /**
- * Remove a cave comment line from file content by 1-indexed line number.
+ * Remove a mewrite comment line from file content by 1-indexed line number.
  * Returns the modified content string.
  */
 export function removeLine(content: string, lineNumber: number): string {

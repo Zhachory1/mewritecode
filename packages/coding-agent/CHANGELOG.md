@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added static APT and Yum repository publishing for release-built Debian and RPM packages.
 - Added release-built `mewrite-code` Debian and RPM packages, a `mewrite` Homebrew formula, and tracked Snap packaging metadata for package-manager installs ([#3](https://github.com/Zhachory1/mewritecode/issues/3)).
 
 ### Changed

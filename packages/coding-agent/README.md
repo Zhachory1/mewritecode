@@ -32,22 +32,23 @@ mewrite
 ### Debian / Ubuntu
 
 ```bash
-curl -LO https://github.com/Zhachory1/mewritecode/releases/latest/download/mewrite-code_<version>_amd64.deb
-sudo apt install ./mewrite-code_<version>_amd64.deb
+echo "deb [trusted=yes] https://raw.githubusercontent.com/Zhachory1/mewritecode/gh-pages/apt ./" | sudo tee /etc/apt/sources.list.d/mewrite.list
+sudo apt update
+sudo apt install mewrite-code
 mewrite
 ```
 
-Also available: `mewrite-code_<version>_arm64.deb` for ARM64 systems. The primary command is `mewrite`; the package also installs `mewrite-code` and `mewritecode` aliases.
+The package supports amd64 and arm64 systems. It installs `mewrite` plus `mewrite-code` and `mewritecode` aliases.
 
 ### Fedora / RHEL / CentOS
 
 ```bash
-curl -LO https://github.com/Zhachory1/mewritecode/releases/latest/download/mewrite-code-<version>-1.x86_64.rpm
-sudo dnf install ./mewrite-code-<version>-1.x86_64.rpm  # or yum
+sudo curl -fsSL https://raw.githubusercontent.com/Zhachory1/mewritecode/gh-pages/yum/mewrite.repo -o /etc/yum.repos.d/mewrite.repo
+sudo dnf install mewrite-code  # or yum
 mewrite
 ```
 
-Also available: `mewrite-code-<version>-1.aarch64.rpm` for ARM64 systems. The primary command is `mewrite`; the package also installs `mewrite-code` and `mewritecode` aliases.
+The package supports x86_64 and aarch64 systems. It installs `mewrite` plus `mewrite-code` and `mewritecode` aliases.
 
 ### Snap (tracked, not yet published)
 
@@ -123,7 +124,7 @@ Claude Pro/Max · ChatGPT Plus/Pro · GitHub Copilot · Google Gemini · Google 
 Anthropic · OpenAI · Azure OpenAI · Google Gemini · Google Vertex · Amazon Bedrock · Mistral · Groq · Cerebras · xAI · OpenRouter · Vercel AI Gateway · Hugging Face · Kimi · MiniMax · ZAI · OpenCode
 
 ### Custom providers
-Add any OpenAI-, Anthropic-, or Google-compatible endpoint via `~/.cave/agent/models.json`, or build a custom provider with [Extensions](docs/extensions.md) and [Custom Provider docs](docs/custom-provider.md).
+Add any OpenAI-, Anthropic-, or Google-compatible endpoint via `~/.mewrite/agent/models.json`, or build a custom provider with [Extensions](docs/extensions.md) and [Custom Provider docs](docs/custom-provider.md).
 
 Provider setup details: [docs/providers.md](docs/providers.md)
 
@@ -190,7 +191,7 @@ Keyboard shortcut details: [docs/keybindings.md](docs/keybindings.md)
 
 ## Sessions
 
-Sessions auto-save to `~/.cave/agent/sessions/` and keep full tree history in JSONL format.
+Sessions auto-save to `~/.mewrite/agent/sessions/` and keep full tree history in JSONL format.
 
 ```bash
 mewrite -c                    # continue most recent session
@@ -301,7 +302,7 @@ Caveman Mode pays for itself on the **first tool call** of every session.
 
 #### Session Replay (real sessions)
 
-4 sessions analyzed from `~/.cave/agent/sessions/`:
+4 sessions analyzed from `~/.mewrite/agent/sessions/`:
 
 | Metric | Value |
 |--------|-------|
@@ -336,7 +337,7 @@ rtk --version
 ### Disable globally
 
 ```json
-// ~/.cave/agent/settings.json
+// ~/.mewrite/agent/settings.json
 {
   "rtk": { "enabled": false }
 }
@@ -350,16 +351,16 @@ More: [docs/settings.md](docs/settings.md)
 
 ### Prompt Templates
 Reusable Markdown prompts in:
-- `~/.cave/agent/prompts/`
-- `.cave/prompts/`
+- `~/.mewrite/agent/prompts/`
+- `.mewrite/prompts/`
 
 Docs: [docs/prompt-templates.md](docs/prompt-templates.md)
 
 ### Skills
 On-demand capability packs in:
-- `~/.cave/agent/skills/`
+- `~/.mewrite/agent/skills/`
 - `~/.agents/skills/`
-- `.cave/skills/`
+- `.mewrite/skills/`
 - `.agents/skills/`
 
 Docs: [docs/skills.md](docs/skills.md)
@@ -379,8 +380,8 @@ Extension docs: [docs/extensions.md](docs/extensions.md) · Examples: [examples/
 
 ### Themes
 Built-in: `dark`, `light`. Custom themes live in:
-- `~/.cave/agent/themes/`
-- `.cave/themes/`
+- `~/.mewrite/agent/themes/`
+- `.mewrite/themes/`
 
 Docs: [docs/themes.md](docs/themes.md)
 
@@ -388,9 +389,9 @@ Docs: [docs/themes.md](docs/themes.md)
 Bundle and share extensions, skills, prompts, and themes via npm or git.
 
 ```bash
-mewrite install npm:@foo/cave-tools
+mewrite install npm:@foo/mewrite-tools
 mewrite install git:github.com/user/repo
-mewrite remove npm:@foo/cave-tools
+mewrite remove npm:@foo/mewrite-tools
 mewrite list
 mewrite update
 mewrite config
@@ -456,7 +457,7 @@ mewrite [options] [@files...] [messages...]
 | `mewrite goal cancel [id]` | Cancel a running goal |
 | `mewrite goal list` | List all goals |
 | `mewrite mcp <subcmd>` | Manage MCP servers |
-| `mewrite watch [paths]` | File watcher for `// cave!` triggers |
+| `mewrite watch [paths]` | File watcher for `// mewrite!` triggers |
 | `mewrite exec [flags] "<prompt>"` | Non-interactive CI mode |
 | `mewrite plugin <subcmd>` | Plugin marketplace |
 | `mewrite run-recipe <name>` | Run YAML workflows |
@@ -504,10 +505,10 @@ Built-in tools: `read`, `bash`, `edit`, `write`, `grep`, `find`, `ls`
 |----------|-------------|
 | `ANTHROPIC_API_KEY` | Anthropic API key |
 | `OPENAI_API_KEY` | OpenAI API key |
-| `CAVE_CODING_AGENT_DIR` | Override config directory (default: `~/.cave/agent`) |
-| `CAVE_PACKAGE_DIR` | Override package directory |
-| `CAVE_SKIP_VERSION_CHECK` | Skip version check at startup |
-| `CAVE_CACHE_RETENTION` | Set to `long` for extended prompt cache |
+| `MEWRITE_CODING_AGENT_DIR` | Override config directory (default: `~/.mewrite/agent`) |
+| `MEWRITE_PACKAGE_DIR` | Override package directory |
+| `MEWRITE_SKIP_VERSION_CHECK` | Skip version check at startup |
+| `MEWRITE_CACHE_RETENTION` | Set to `long` for extended prompt cache |
 | `VISUAL`, `EDITOR` | External editor for Ctrl+G |
 
 ---
@@ -537,7 +538,7 @@ mewrite plugin marketplace add <url>    # Register a remote marketplace
 mewrite plugin marketplace list         # Show configured marketplace sources
 ```
 
-Marketplaces are resolved in order: repo (`.cave/plugins/marketplace.json`), personal (`~/.cave/plugins/marketplace.json`), and remote URLs. Plugins install into `~/.cave/plugins/<owner>/<name>/`. To scaffold a new plugin, use `/plugin create` in interactive mode (invokes the `plugin-creator` skill).
+Marketplaces are resolved in order: repo (`.mewrite/plugins/marketplace.json`), personal (`~/.mewrite/plugins/marketplace.json`), and remote URLs. Plugins install into `~/.mewrite/plugins/<owner>/<name>/`. To scaffold a new plugin, use `/plugin create` in interactive mode (invokes the `plugin-creator` skill).
 
 ---
 

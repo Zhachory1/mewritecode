@@ -1,17 +1,17 @@
 /**
- * WS18 — `cave watch` subcommand.
+ * WS18 — `mewrite watch` subcommand.
  *
- * Long-lived process that watches the repository for cave comment markers
- * and fires the agent when `// cave!` (or language-equivalent) is detected.
+ * Long-lived process that watches the repository for mewrite comment markers
+ * and fires the agent when `// mewrite!` (or language-equivalent) is detected.
  *
  * Usage:
- *   cave watch [paths...]                  — watch cwd (or specified paths)
- *   cave watch --poll <ms>                 — polling fallback (network mounts)
- *   cave watch --debounce <ms>             — override debounce (default 500ms)
- *   cave watch --ext ts,py,rs             — restrict to extensions
- *   cave watch --no-session               — don't persist session
- *   cave watch --model <pattern>          — model to use for agent runs
- *   cave watch --help                     — show help
+ *   mewrite watch [paths...]                  — watch cwd (or specified paths)
+ *   mewrite watch --poll <ms>                 — polling fallback (network mounts)
+ *   mewrite watch --debounce <ms>             — override debounce (default 500ms)
+ *   mewrite watch --ext ts,py,rs             — restrict to extensions
+ *   mewrite watch --no-session               — don't persist session
+ *   mewrite watch --model <pattern>          — model to use for agent runs
+ *   mewrite watch --help                     — show help
  */
 
 import { resolve } from "node:path";
@@ -74,7 +74,7 @@ function parseWatchArgs(args: string[]): WatchArgs {
 				if (!a.startsWith("-")) {
 					out.paths.push(resolve(a));
 				} else {
-					process.stderr.write(chalk.yellow(`[cave watch] unknown flag: ${a}\n`));
+					process.stderr.write(chalk.yellow(`[mewrite watch] unknown flag: ${a}\n`));
 				}
 		}
 	}
@@ -87,18 +87,18 @@ function parseWatchArgs(args: string[]): WatchArgs {
 }
 
 function printHelp(): void {
-	console.log(`Usage: cave watch [paths...] [options]
+	console.log(`Usage: mewrite watch [paths...] [options]
 
-Watch source files for cave comment markers and dispatch the agent.
+Watch source files for mewrite comment markers and dispatch the agent.
 
 Markers (multi-language):
-  // cave!  <instruction>  — fire: edit the file, remove marker on success
-  // cave?  <question>     — Q&A: read-only, print response to stderr
-  // cave   <context>      — accumulate context for next fire/Q&A
+  // mewrite!  <instruction>  — fire: edit the file, remove marker on success
+  // mewrite?  <question>     — Q&A: read-only, print response to stderr
+  // mewrite   <context>      — accumulate context for next fire/Q&A
 
-Equivalent in Python: # cave! / # cave? / # cave
-Equivalent in Rust:   // cave! / // cave? / // cave
-Block comments:       /* cave! */ works in C-style languages.
+Equivalent in Python: # mewrite! / # mewrite? / # mewrite
+Equivalent in Rust:   // mewrite! / // mewrite? / // mewrite
+Block comments:       /* mewrite! */ works in C-style languages.
 
 Options:
   paths...               Directories or files to watch (default: cwd)
@@ -110,9 +110,9 @@ Options:
   -h, --help             Show this help
 
 Examples:
-  cave watch
-  cave watch src/ --ext ts,py
-  cave watch --poll 1000 /mnt/nfs/project
+  mewrite watch
+  mewrite watch src/ --ext ts,py
+  mewrite watch --poll 1000 /mnt/nfs/project
 `);
 }
 
@@ -135,7 +135,7 @@ function buildAgentRun(args: WatchArgs): AgentRunFn {
 }
 
 /**
- * Handle `cave watch` subcommand.
+ * Handle `mewrite watch` subcommand.
  * Returns true if the args match this subcommand (handled).
  */
 export async function handleWatchCommand(args: string[]): Promise<boolean> {
@@ -143,7 +143,7 @@ export async function handleWatchCommand(args: string[]): Promise<boolean> {
 		return false;
 	}
 
-	// Normalise: `cave watch [rest]` or `cave --watch [rest]`
+	// Normalise: `mewrite watch [rest]` or `mewrite --watch [rest]`
 	const rest = args[0] === "watch" ? args.slice(1) : args.filter((a) => a !== "--watch");
 	const parsed = parseWatchArgs(rest);
 
@@ -154,9 +154,9 @@ export async function handleWatchCommand(args: string[]): Promise<boolean> {
 
 	const pathList = parsed.paths.join(", ");
 	process.stderr.write(
-		chalk.cyan(`[cave watch] starting — watching: ${pathList} (debounce: ${parsed.debounceMs}ms)\n`),
+		chalk.cyan(`[mewrite watch] starting — watching: ${pathList} (debounce: ${parsed.debounceMs}ms)\n`),
 	);
-	process.stderr.write(chalk.dim(`[cave watch] drop // cave! comments to fire the agent — Ctrl+C to stop\n`));
+	process.stderr.write(chalk.dim(`[mewrite watch] drop // mewrite! comments to fire the agent — Ctrl+C to stop\n`));
 
 	const agentRun = buildAgentRun(parsed);
 
@@ -178,7 +178,7 @@ export async function handleWatchCommand(args: string[]): Promise<boolean> {
 	const shutdown = (signal: NodeJS.Signals) => {
 		if (stopping) return;
 		stopping = true;
-		process.stderr.write(chalk.dim(`\n[cave watch] stopping (${signal})...\n`));
+		process.stderr.write(chalk.dim(`\n[mewrite watch] stopping (${signal})...\n`));
 		handle.stop();
 		process.exit(0);
 	};

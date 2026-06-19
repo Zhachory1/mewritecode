@@ -78,9 +78,22 @@ mewrite goal start "ship feature X"      # autonomous Ralph loop
 ```
 
 <details>
-<summary><strong>Other install paths</strong> — pnpm · yarn · bun · Docker · OAuth login</summary>
+<summary><strong>Other install paths</strong> — Homebrew · apt · yum · pnpm · yarn · bun · Docker · OAuth login</summary>
 
 ```bash
+# Homebrew
+brew tap Zhachory1/mewritecode https://github.com/Zhachory1/mewritecode
+brew install mewrite
+
+# Debian / Ubuntu
+echo "deb [trusted=yes] https://raw.githubusercontent.com/Zhachory1/mewritecode/gh-pages/apt ./" | sudo tee /etc/apt/sources.list.d/mewrite.list
+sudo apt update
+sudo apt install mewrite-code
+
+# Fedora / RHEL / CentOS
+sudo curl -fsSL https://raw.githubusercontent.com/Zhachory1/mewritecode/gh-pages/yum/mewrite.repo -o /etc/yum.repos.d/mewrite.repo
+sudo dnf install mewrite-code  # or yum
+
 pnpm add -g @zhachory1/mewrite-code
 yarn global add @zhachory1/mewrite-code
 bun  add -g @zhachory1/mewrite-code
@@ -192,7 +205,7 @@ Full table including Crush: [docs/comparison.md](docs/comparison.md).
 |---|---|---|
 | 🤖 | **Autonomous goal loop** — Ralph-style autopilot. Rolling state, per-iteration $/token ledger, shadow-git checkpoints, ranked termination (sentinel · iteration cap · $-cap · no-progress · SIGINT). Resume any time. | `mewrite goal start` |
 | 🧠 | **Plan mode** — read-only chat. Model sees only `read`/`grep`/`find`/`ls`, produces a written plan, never edits. Subagents inherit the gate. `/act` to execute. | `/plan` |
-| 👥 | **Subagents** — up to 7 parallel, worktree-isolated. Frontmatter agents at `.cave/agents/*.md` (Claude Code superset). Five ship by default. | `Task` tool |
+| 👥 | **Subagents** — up to 7 parallel, worktree-isolated. Frontmatter agents at `.mewrite/agents/*.md` (Claude Code superset). Five ship by default. | `Task` tool |
 | 🪞 | **Architect / editor split** — slow model plans, fast model executes. ~3–5× cheaper than a single-model run. | `--architect` · `--editor` |
 
 Latest release: plan mode · goal loop · native memory tools · subagent registry. Full history → [CHANGELOG.md](CHANGELOG.md).
@@ -201,7 +214,7 @@ Latest release: plan mode · goal loop · native memory tools · subagent regist
 <summary><strong>More</strong> — sessions · providers · MCP · memory · recipes · daemon · CLI flags</summary>
 
 ### 🌳 Sessions, branching, replay
-JSONL sessions in `~/.cave/agent/sessions/`, organized by working directory. Branching never overwrites history.
+JSONL sessions in `~/.mewrite/agent/sessions/`, organized by working directory. Branching never overwrites history.
 
 ```bash
 mewrite -c                    # continue most recent
@@ -213,17 +226,17 @@ mewrite --fork <path|id>      # fork into a new file
 ### 🌐 20+ providers, 6 OAuth flows
 **OAuth** — Claude Pro/Max · ChatGPT Plus/Pro · GitHub Copilot · Google Gemini · Antigravity · Vertex
 **API keys** — Anthropic · OpenAI · Azure · Vertex · Bedrock · Mistral · Groq · Cerebras · xAI · OpenRouter · Vercel AI Gateway · Hugging Face · Kimi · MiniMax · Z.AI · DeepSeek
-**Custom** — any OpenAI-/Anthropic-/Google-compatible endpoint via `~/.cave/agent/models.json`.
+**Custom** — any OpenAI-/Anthropic-/Google-compatible endpoint via `~/.mewrite/agent/models.json`.
 
 ### 🔌 MCP, hooks, skills, commands — Claude Code-compatible
 Authoring formats are a **superset** of Claude Code's — paste your existing config, it works.
 
 | Claude Code | Caveman | Notes |
 |---|---|---|
-| `~/.claude/settings.json` | `~/.cave/settings.json` | Hooks identical (run as observers, never block) |
-| `~/.claude/commands/*.md` | `~/.cave/commands/*.md` | Frontmatter superset |
-| `~/.claude/skills/<name>/SKILL.md` | `~/.cave/skills/<name>/SKILL.md` | Identical |
-| `~/.claude/agents/<name>.md` | `~/.cave/agents/<name>.md` | Frontmatter superset |
+| `~/.claude/settings.json` | `~/.mewrite/settings.json` | Hooks identical (run as observers, never block) |
+| `~/.claude/commands/*.md` | `~/.mewrite/commands/*.md` | Frontmatter superset |
+| `~/.claude/skills/<name>/SKILL.md` | `~/.mewrite/skills/<name>/SKILL.md` | Identical |
+| `~/.claude/agents/<name>.md` | `~/.mewrite/agents/<name>.md` | Frontmatter superset |
 | `.mcp.json` | `.mcp.json` | Same path, no change |
 
 MCP transports: stdio · Streamable HTTP · in-process. OAuth 2.1 + PKCE; tokens in OS keychain.
@@ -242,7 +255,7 @@ Persistent memory delegated to [cavemem](https://github.com/JuliusBrussee/caveme
 ```
 
 ### 🛠️ Recipes
-Declarative multi-step YAML workflows at `~/.cave/recipes/*.yaml`. Ten built in: `accessibility-audit` · `add-feature-flag` · `add-tests` · `bump-deps` · `extract-component` · `migrate-deps` · `migrate-to-biome` · `port-to-typescript` · `release` · `seo-audit`.
+Declarative multi-step YAML workflows at `~/.mewrite/recipes/*.yaml`. Ten built in: `accessibility-audit` · `add-feature-flag` · `add-tests` · `bump-deps` · `extract-component` · `migrate-deps` · `migrate-to-biome` · `port-to-typescript` · `release` · `seo-audit`.
 ```bash
 /recipe run add-tests src/auth.ts
 ```
@@ -290,7 +303,7 @@ Sessions live in SQLite and survive SSH drops. Prepend `&` to any prompt to disp
 | `mewrite goal cancel [id]` | Mark goal as cancelled |
 | `mewrite goal list` | List all goals in project |
 | `mewrite mcp <subcmd>` | Manage MCP servers |
-| `mewrite watch [paths]` | File watcher for `// cave!` triggers |
+| `mewrite watch [paths]` | File watcher for `// mewrite!` triggers |
 | `mewrite exec [flags] "<prompt>"` | Non-interactive CI mode |
 | `mewrite plugin <subcmd>` | Plugin marketplace |
 | `mewrite run-recipe <name>` | Run YAML workflow recipes |
@@ -298,7 +311,7 @@ Sessions live in SQLite and survive SSH drops. Prepend `&` to any prompt to disp
 | `mewrite models <subcmd>` | Manage model registry |
 | `mewrite serve` / `attach` | Daemon mode |
 
-Env: `ANTHROPIC_API_KEY` · `OPENAI_API_KEY` · `CAVE_CODING_AGENT_DIR` (config dir) · `CAVE_CACHE_RETENTION=long` (extended prompt cache).
+Env: `ANTHROPIC_API_KEY` · `OPENAI_API_KEY` · `MEWRITE_CODING_AGENT_DIR` (config dir) · `MEWRITE_CACHE_RETENTION=long` (extended prompt cache).
 
 </details>
 
@@ -333,7 +346,7 @@ TypeScript monorepo, 9 packages — full layout in [CLAUDE.md](CLAUDE.md).
 |---|---|
 | Agent runtime · MCP scaffolding · provider OAuth · repo map · slash-command parser · settings manager · skills loader · edit-format renderers · TUI components | Caveman Mode (4-layer compression) · goal loop · plan mode · cavemem integration · `/tree` session branching · architect/editor split · honest-bench harness |
 
-Also indebted to [Aider](https://aider.chat) (repo map + edit-format-per-model), [Claude Code](https://www.anthropic.com/news/claude-code) (settings/commands/skills/agents/`.mcp.json` formats — adopted verbatim, then extended), [Codex](https://github.com/openai/codex) (cave-as-MCP-server), [RTK](https://github.com/rtk-ai/rtk) (optional bash-output compression layer), and [Biome](https://biomejs.dev) (single-binary lint/format).
+Also indebted to [Aider](https://aider.chat) (repo map + edit-format-per-model), [Claude Code](https://www.anthropic.com/news/claude-code) (settings/commands/skills/agents/`.mcp.json` formats — adopted verbatim, then extended), [Codex](https://github.com/openai/codex) (MCP-server compatibility), [RTK](https://github.com/rtk-ai/rtk) (optional bash-output compression layer), and [Biome](https://biomejs.dev) (single-binary lint/format).
 
 Missing credit? [Open an issue](https://github.com/Zhachory1/mewritecode/issues) — we'll fix it fast.
 

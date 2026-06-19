@@ -19,42 +19,42 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defaultWatchState, runWatchCommand, WATCH_SLASH_COMMAND } from "../../slash-commands/watch.js";
-import { getPrefixesForExt, parseCaveComments, removeLine, surroundingLines } from "../comment-parser.js";
+import { getPrefixesForExt, parseMewriteComments, removeLine, surroundingLines } from "../comment-parser.js";
 import { createTriggerContext, processTriggers } from "../trigger.js";
 import { startWatcher } from "../watcher.js";
 
 // ---------------------------------------------------------------------------
 // Test 1: Multi-language comment parsing
 // ---------------------------------------------------------------------------
-describe("parseCaveComments — language prefix table", () => {
-	it("parses // cave! in TypeScript", () => {
-		const content = `const x = 1;\n// cave! add hello world\nconst y = 2;\n`;
-		const comments = parseCaveComments(content, "ts");
+describe("parseMewriteComments — language prefix table", () => {
+	it("parses // mewrite! in TypeScript", () => {
+		const content = `const x = 1;\n// mewrite! add hello world\nconst y = 2;\n`;
+		const comments = parseMewriteComments(content, "ts");
 		expect(comments).toHaveLength(1);
 		expect(comments[0].kind).toBe("fire");
 		expect(comments[0].line).toBe(2);
 		expect(comments[0].text).toBe("add hello world");
 	});
 
-	it("parses # cave! in Python", () => {
-		const content = `x = 1\n# cave! add hello world\ny = 2\n`;
-		const comments = parseCaveComments(content, "py");
+	it("parses # mewrite! in Python", () => {
+		const content = `x = 1\n# mewrite! add hello world\ny = 2\n`;
+		const comments = parseMewriteComments(content, "py");
 		expect(comments).toHaveLength(1);
 		expect(comments[0].kind).toBe("fire");
 		expect(comments[0].text).toBe("add hello world");
 	});
 
-	it("parses // cave! in Rust", () => {
-		const content = `fn main() {}\n// cave! implement fibonacci\n`;
-		const comments = parseCaveComments(content, "rs");
+	it("parses // mewrite! in Rust", () => {
+		const content = `fn main() {}\n// mewrite! implement fibonacci\n`;
+		const comments = parseMewriteComments(content, "rs");
 		expect(comments).toHaveLength(1);
 		expect(comments[0].kind).toBe("fire");
 		expect(comments[0].text).toBe("implement fibonacci");
 	});
 
-	it("parses /* cave! */ block-comment style", () => {
-		const content = `function foo() {}\n/* cave! refactor this */\n`;
-		const comments = parseCaveComments(content, "js");
+	it("parses /* mewrite! */ block-comment style", () => {
+		const content = `function foo() {}\n/* mewrite! refactor this */\n`;
+		const comments = parseMewriteComments(content, "js");
 		expect(comments).toHaveLength(1);
 		expect(comments[0].kind).toBe("fire");
 		expect(comments[0].text).toBe("refactor this");
@@ -74,16 +74,16 @@ describe("parseCaveComments — language prefix table", () => {
 // ---------------------------------------------------------------------------
 // Test 2: All three marker kinds
 // ---------------------------------------------------------------------------
-describe("parseCaveComments — fire / qa / context markers", () => {
+describe("parseMewriteComments — fire / qa / context markers", () => {
 	it("parses fire, Q&A, and context markers in one file", () => {
 		const content = [
-			"// cave some background info",
+			"// mewrite some background info",
 			"const foo = 1;",
-			"// cave? what does this do",
-			"// cave! add a test",
+			"// mewrite? what does this do",
+			"// mewrite! add a test",
 		].join("\n");
 
-		const comments = parseCaveComments(content, "ts");
+		const comments = parseMewriteComments(content, "ts");
 		expect(comments).toHaveLength(3);
 		expect(comments[0].kind).toBe("context");
 		expect(comments[0].text).toBe("some background info");
@@ -93,9 +93,9 @@ describe("parseCaveComments — fire / qa / context markers", () => {
 		expect(comments[2].text).toBe("add a test");
 	});
 
-	it("parses cave comment with no trailing text", () => {
-		const content = "// cave!\n// cave?\n// cave\n";
-		const comments = parseCaveComments(content, "ts");
+	it("parses mewrite comment with no trailing text", () => {
+		const content = "// mewrite!\n// mewrite?\n// mewrite\n";
+		const comments = parseMewriteComments(content, "ts");
 		expect(comments[0]).toMatchObject({ kind: "fire", text: "" });
 		expect(comments[1]).toMatchObject({ kind: "qa", text: "" });
 		expect(comments[2]).toMatchObject({ kind: "context", text: "" });
@@ -147,7 +147,7 @@ describe("processTriggers — fire trigger", () => {
 	let tmpFile: string;
 
 	beforeEach(() => {
-		tmpDir = mkdtempSync(join(tmpdir(), "cave-watch-test-"));
+		tmpDir = mkdtempSync(join(tmpdir(), "mewrite-watch-test-"));
 		tmpFile = join(tmpDir, "test.ts");
 	});
 
@@ -156,7 +156,7 @@ describe("processTriggers — fire trigger", () => {
 	});
 
 	it("dispatches fire trigger and removes the comment from disk", async () => {
-		writeFileSync(tmpFile, "const x = 1;\n// cave! add hello world\nconst y = 2;\n");
+		writeFileSync(tmpFile, "const x = 1;\n// mewrite! add hello world\nconst y = 2;\n");
 
 		const agentRun = vi.fn().mockResolvedValue("done");
 		const ctx = createTriggerContext();
@@ -165,15 +165,15 @@ describe("processTriggers — fire trigger", () => {
 		expect(fired).toBe(true);
 		expect(agentRun).toHaveBeenCalledOnce();
 
-		// The cave! line should be removed
+		// The mewrite! line should be removed
 		const remaining = readFileSync(tmpFile, "utf8");
-		expect(remaining).not.toContain("cave!");
+		expect(remaining).not.toContain("mewrite!");
 		expect(remaining).toContain("const x = 1");
 		expect(remaining).toContain("const y = 2");
 	});
 
 	it("dispatches Q&A trigger without modifying the file", async () => {
-		const original = "const x = 1;\n// cave? what is this\nconst y = 2;\n";
+		const original = "const x = 1;\n// mewrite? what is this\nconst y = 2;\n";
 		writeFileSync(tmpFile, original);
 
 		const agentRun = vi.fn().mockResolvedValue("It is a declaration");
@@ -196,7 +196,7 @@ describe("processTriggers — context accumulation", () => {
 	let tmpDir: string;
 
 	beforeEach(() => {
-		tmpDir = mkdtempSync(join(tmpdir(), "cave-watch-ctx-"));
+		tmpDir = mkdtempSync(join(tmpdir(), "mewrite-watch-ctx-"));
 	});
 
 	afterEach(() => {
@@ -205,7 +205,7 @@ describe("processTriggers — context accumulation", () => {
 
 	it("accumulates context comments and includes them in the fire prompt", async () => {
 		const file = join(tmpDir, "ctx.ts");
-		writeFileSync(file, "// cave use TypeScript generics\n// cave! add a generic function\n");
+		writeFileSync(file, "// mewrite use TypeScript generics\n// mewrite! add a generic function\n");
 
 		const agentRun = vi.fn().mockResolvedValue("done");
 		const ctx = createTriggerContext();
@@ -223,7 +223,7 @@ describe("processTriggers — context accumulation", () => {
 
 	it("does not fire when only context markers are present", async () => {
 		const file = join(tmpDir, "ctx2.ts");
-		writeFileSync(file, "// cave background info only\n");
+		writeFileSync(file, "// mewrite background info only\n");
 
 		const agentRun = vi.fn().mockResolvedValue("done");
 		const ctx = createTriggerContext();
@@ -243,7 +243,7 @@ describe("watcher — cycle protection", () => {
 	let tmpDir: string;
 
 	beforeEach(() => {
-		tmpDir = mkdtempSync(join(tmpdir(), "cave-watch-cycle-"));
+		tmpDir = mkdtempSync(join(tmpdir(), "mewrite-watch-cycle-"));
 	});
 
 	afterEach(() => {
@@ -270,7 +270,7 @@ describe("watcher — cycle protection", () => {
 		// by confirming the watcher's internal markAgentModified logic.
 		// Since the watcher is a black box, we verify that a file written by
 		// agentRun does NOT re-trigger by checking call counts.
-		// We write a file with a cave! marker, wait for debounce, verify one call.
+		// We write a file with a mewrite! marker, wait for debounce, verify one call.
 		// (Direct file-system event testing is flaky in CI; we test the protection
 		//  logic through the trigger context directly.)
 
@@ -288,7 +288,7 @@ describe("watcher — cycle protection", () => {
 describe("WATCH_SLASH_COMMAND", () => {
 	it("registers the correct name and description", () => {
 		expect(WATCH_SLASH_COMMAND.name).toBe("watch");
-		expect(WATCH_SLASH_COMMAND.description).toContain("cave!");
+		expect(WATCH_SLASH_COMMAND.description).toContain("mewrite!");
 	});
 });
 
@@ -309,7 +309,7 @@ describe("runWatchCommand", () => {
 		const result = await runWatchCommand("help");
 		expect(result.exitCode).toBe(0);
 		expect(result.output).toContain("/watch");
-		expect(result.output).toContain("cave!");
+		expect(result.output).toContain("mewrite!");
 	});
 
 	it("returns error for unknown subcommand", async () => {

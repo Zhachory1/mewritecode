@@ -48,7 +48,7 @@ export interface WatchCommandIO {
 
 export const WATCH_SLASH_COMMAND = {
 	name: "watch",
-	description: "Toggle watch mode: fire agent on // cave! comments in source files",
+	description: "Toggle watch mode: fire agent on // mewrite! comments in source files",
 } as const;
 
 /**
@@ -99,14 +99,14 @@ export async function runWatchCommand(args: string, io: WatchCommandIO = {}): Pr
 
 Subcommands:
   /watch         — toggle watch mode
-  /watch on      — start watching cwd for cave! markers
+  /watch on      — start watching cwd for mewrite! markers
   /watch off     — stop watching
   /watch status  — show current state
   /watch help    — this help
 
-When active, any // cave! comment (or language equivalent) in a source
+When active, any // mewrite! comment (or language equivalent) in a source
 file triggers the agent to process the instruction. The marker is removed
-on success. // cave? triggers a read-only Q&A. // cave accumulates context.`,
+on success. // mewrite? triggers a read-only Q&A. // mewrite accumulates context.`,
 				state: current,
 			};
 		}
@@ -136,7 +136,7 @@ function startWatch(state: WatchCommandState, io: WatchCommandIO): WatchCommandR
 	io.state = next;
 	return {
 		exitCode: 0,
-		output: `Watch mode started. Watching: ${state.cwd}\nDrop // cave! comments to fire the agent.`,
+		output: `Watch mode started. Watching: ${state.cwd}\nDrop // mewrite! comments to fire the agent.`,
 		state: next,
 	};
 }
@@ -151,6 +151,6 @@ function stopWatch(state: WatchCommandState, io: WatchCommandIO): WatchCommandRe
 
 /** Fallback agentRun used when no real agent is wired (prints to stderr). */
 const defaultAgentRun: AgentRunFn = async (_prompt, filePath, isReadOnly) => {
-	process.stderr.write(`[cave /watch] ${isReadOnly ? "Q&A" : "fire"} trigger in ${filePath} — no agent wired\n`);
+	process.stderr.write(`[mewrite /watch] ${isReadOnly ? "Q&A" : "fire"} trigger in ${filePath} — no agent wired\n`);
 	return "";
 };

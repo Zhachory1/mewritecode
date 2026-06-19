@@ -81,7 +81,7 @@ export function startWatcher(options: WatcherOptions, agentRun: AgentRunFn): Wat
 	// Debounce timers: filePath → NodeJS.Timeout
 	const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
-	// Per-file trigger context (accumulates "cave" context comments)
+	// Per-file trigger context (accumulates "mewrite" context comments)
 	const triggerContexts = new Map<string, TriggerContext>();
 
 	function getTriggerCtx(filePath: string): TriggerContext {
@@ -125,7 +125,7 @@ export function startWatcher(options: WatcherOptions, agentRun: AgentRunFn): Wat
 				await processTriggers(resolved, ctx, wrappedAgentRun);
 			} catch (err) {
 				process.stderr.write(
-					`[cave watch] unhandled error processing ${resolved}: ${err instanceof Error ? err.message : String(err)}\n`,
+					`[mewrite watch] unhandled error processing ${resolved}: ${err instanceof Error ? err.message : String(err)}\n`,
 				);
 			}
 		}, debounceMs);
@@ -168,13 +168,13 @@ export function startWatcher(options: WatcherOptions, agentRun: AgentRunFn): Wat
 				});
 
 				watcher.on("error", (err) => {
-					process.stderr.write(`[cave watch] watcher error on ${resolved}: ${err.message}\n`);
+					process.stderr.write(`[mewrite watch] watcher error on ${resolved}: ${err.message}\n`);
 				});
 
 				watchers.push(watcher);
 			} catch (err) {
 				process.stderr.write(
-					`[cave watch] failed to watch ${resolved}: ${err instanceof Error ? err.message : String(err)}\n`,
+					`[mewrite watch] failed to watch ${resolved}: ${err instanceof Error ? err.message : String(err)}\n`,
 				);
 			}
 		}

@@ -189,7 +189,7 @@ export const APP_NAME: string = appConfig.name || "pi";
 export const CONFIG_DIR_NAME: string = appConfig.configDir || ".pi";
 export const VERSION: string = pkg.version;
 
-// e.g., MEWRITE_CODE_CODING_AGENT_DIR
+// e.g., MEWRITE_CODING_AGENT_DIR
 export const ENV_AGENT_DIR = `${APP_NAME.toUpperCase()}_CODING_AGENT_DIR`;
 export const ENV_PACKAGE_DIR = `${APP_NAME.toUpperCase()}_PACKAGE_DIR`;
 export const ENV_SHARE_VIEWER_URL = `${APP_NAME.toUpperCase()}_SHARE_VIEWER_URL`;
