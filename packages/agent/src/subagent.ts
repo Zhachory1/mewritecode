@@ -124,6 +124,8 @@ export interface SubagentResult {
 	exitCode: number;
 	/** Optional structured payload (free-form for now; schema-validated in P1). */
 	data?: unknown;
+	/** Durable, orchestrator-readable progress and audit metadata. */
+	observability?: SubagentObservability;
 	/** Error message if the agent stopped abnormally. */
 	error?: string;
 	/** Token usage, mirrors pi-ai's accounting. */
@@ -134,6 +136,42 @@ export interface SubagentResult {
 	branchName?: string;
 	/** Whether the worktree was auto-cleaned (worktree mode only). */
 	worktreeCleaned?: boolean;
+}
+
+export type SubagentPhase = "plan" | "implement" | "test" | "review" | "push" | "pr" | "done" | "blocked";
+
+export interface SubagentCommandResult {
+	command: string;
+	exitCode: number;
+	durationMs?: number;
+	stdoutTail?: string;
+	stderrTail?: string;
+}
+
+export interface SubagentObservability {
+	/** Stable id assigned by the orchestrator/tool invocation. */
+	taskId?: string;
+	/** Repository or workspace path the subagent operated in. */
+	repoPath?: string;
+	/** Current or final workflow phase. */
+	phase?: SubagentPhase;
+	/** Base branch and working branch, when git-backed. */
+	baseBranch?: string;
+	branchName?: string;
+	/** Files changed or intentionally left dirty by the subagent. */
+	filesChanged?: string[];
+	/** Commands the subagent ran and their pass/fail status. */
+	commands?: SubagentCommandResult[];
+	/** Issue ids/URLs the subagent intended to close. */
+	issues?: string[];
+	/** PR URL created by the subagent, if any. */
+	prUrl?: string;
+	/** Whether the subagent left its working tree clean. */
+	workingTreeClean?: boolean;
+	/** Durable progress artifact path for crash/resume workflows. */
+	artifactPath?: string;
+	/** Blockers or resumable error details. */
+	blockers?: string[];
 }
 
 export interface SubagentUsage {
