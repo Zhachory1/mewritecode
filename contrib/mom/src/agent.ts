@@ -23,8 +23,9 @@ import type { ChannelInfo, SlackContext, UserInfo } from "./slack.js";
 import type { ChannelStore } from "./store.js";
 import { createMomTools, setUploadFunction } from "./tools/index.js";
 
-// Hardcoded model for now - TODO: make configurable (issue #63)
-const model = getModel("anthropic", "claude-sonnet-4-5");
+const MOM_MODEL_PROVIDER = process.env.MOM_MODEL_PROVIDER || "anthropic";
+const MOM_MODEL_ID = process.env.MOM_MODEL_ID || "claude-sonnet-4-5";
+const model = getModel(MOM_MODEL_PROVIDER, MOM_MODEL_ID);
 
 export interface PendingMessage {
 	userName: string;
@@ -42,12 +43,12 @@ export interface AgentRunner {
 	abort(): void;
 }
 
-async function getAnthropicApiKey(authStorage: AuthStorage): Promise<string> {
-	const key = await authStorage.getApiKey("anthropic");
+async function getModelApiKey(authStorage: AuthStorage): Promise<string> {
+	const key = await authStorage.getApiKey(MOM_MODEL_PROVIDER);
 	if (!key) {
 		throw new Error(
-			"No API key found for anthropic.\n\n" +
-				"Set an API key environment variable, or use /login with Anthropic and link to auth.json from " +
+			`No API key found for ${MOM_MODEL_PROVIDER}.\n\n` +
+				`Set ${MOM_MODEL_PROVIDER.toUpperCase()} credentials, or use /login and link auth.json from ` +
 				join(homedir(), ".pi", "mom", "auth.json"),
 		);
 	}
@@ -440,7 +441,7 @@ function createRunner(sandboxConfig: SandboxConfig, channelId: string, channelDi
 			tools,
 		},
 		convertToLlm,
-		getApiKey: async () => getAnthropicApiKey(authStorage),
+		getApiKey: async () => getModelApiKey(authStorage),
 	});
 
 	// Load existing messages

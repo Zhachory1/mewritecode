@@ -96,10 +96,12 @@ Options:
 | `MOM_SLACK_APP_TOKEN` | Slack app-level token (xapp-...) |
 | `MOM_SLACK_BOT_TOKEN` | Slack bot token (xoxb-...) |
 | `ANTHROPIC_API_KEY` | (Optional) Anthropic API key |
+| `MOM_MODEL_PROVIDER` | Optional model provider override. Defaults to `anthropic`. |
+| `MOM_MODEL_ID` | Optional model id override. Defaults to `claude-sonnet-4-5`. |
 
 ## Authentication
 
-Mom needs credentials for Anthropic API. The options to set it are:
+Mom defaults to Anthropic Claude Sonnet. Set `MOM_MODEL_PROVIDER` and `MOM_MODEL_ID` to use another model from the Me Write Code registry. Mom needs credentials for the selected provider. For Anthropic, the options are:
 
 1. **Environment Variable**
 ```bash
