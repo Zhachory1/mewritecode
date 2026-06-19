@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed release binary builds by externalizing optional ONNX Runtime native bindings from Bun-compiled binaries.
+
 ## [0.65.5] - 2026-06-19
 
 ### Fixed

@@ -102,14 +102,15 @@ fi
 
 for platform in "${PLATFORMS[@]}"; do
     echo "Building for $platform..."
-    # Externalize koffi to avoid embedding all 18 platform .node files (~74MB)
-    # into every binary. Koffi is only used on Windows for VT input and the
-    # call site has a try/catch fallback. For Windows builds, we copy the
-    # appropriate .node file alongside the binary below.
+    # Externalize native-only optional modules. Koffi is only used on Windows
+    # for VT input; onnxruntime-node backs opt-in LLMLingua ML compression and
+    # falls back deterministically when unavailable. Keeping both external avoids
+    # embedding every platform's native binaries and avoids darwin-x64 failures
+    # because onnxruntime-node no longer ships that binding.
     if [[ "$platform" == "windows-x64" ]]; then
-        bun build --compile --external koffi --target=bun-$platform ./dist/bun/cli.js --outfile binaries/$platform/mewrite.exe
+        bun build --compile --external koffi --external onnxruntime-node --target=bun-$platform ./dist/bun/cli.js --outfile binaries/$platform/mewrite.exe
     else
-        bun build --compile --external koffi --target=bun-$platform ./dist/bun/cli.js --outfile binaries/$platform/mewrite
+        bun build --compile --external koffi --external onnxruntime-node --target=bun-$platform ./dist/bun/cli.js --outfile binaries/$platform/mewrite
     fi
 done
 
