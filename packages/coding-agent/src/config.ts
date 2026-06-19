@@ -9,7 +9,7 @@ import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const DEFAULT_APP_NAME = "cave";
+const DEFAULT_APP_NAME = "mewrite";
 const DEFAULT_PACKAGE_DIR_ENV = `${DEFAULT_APP_NAME.toUpperCase()}_PACKAGE_DIR`;
 
 /**
@@ -52,17 +52,12 @@ export function detectInstallMethod(): InstallMethod {
 }
 
 /**
- * Suggest how to update cave. The cave coding agent is distributed as a
- * compiled binary via the install script and Homebrew formula — it is NOT on
- * the public npm registry (the `cave` name there is taken by an unrelated CSS
- * tool). So for every install method the canonical action is `cave self-update`,
- * with reinstall via the install script as the fallback. The `packageName`
- * argument is kept for API compatibility but no longer used.
+ * Suggest how to update Me Write Code.
  */
 export function getUpdateInstruction(_packageName: string): string {
 	const method = detectInstallMethod();
 	if (method === "bun-binary") {
-		return "Run: `cave self-update`";
+		return "Run: `mewrite self-update`";
 	}
 	return "Run: `npm install -g @zhachory1/mewrite-code@latest`";
 }
@@ -178,23 +173,23 @@ export function getBundledInteractiveAssetPath(name: string): string {
 	return join(getInteractiveAssetsDir(), name);
 }
 
-/** Resolve the bundled prompt-templates dir shipped with cave (matches bundled-agents pattern). */
+/** Resolve the bundled prompt-templates dir shipped with the package. */
 export function getBundledPromptsDir(): string {
 	return join(getPackageDir(), "prompts");
 }
 
 // =============================================================================
-// App Config (from package.json caveConfig)
+// App Config (from package.json mewriteConfig)
 // =============================================================================
 
 const pkg = JSON.parse(readFileSync(getPackageJsonPath(), "utf-8"));
-const appConfig = pkg.caveConfig ?? pkg.piConfig ?? {};
+const appConfig = pkg.mewriteConfig ?? pkg.piConfig ?? {};
 
 export const APP_NAME: string = appConfig.name || "pi";
 export const CONFIG_DIR_NAME: string = appConfig.configDir || ".pi";
 export const VERSION: string = pkg.version;
 
-// e.g., CAVE_CODING_AGENT_DIR
+// e.g., MEWRITE_CODE_CODING_AGENT_DIR
 export const ENV_AGENT_DIR = `${APP_NAME.toUpperCase()}_CODING_AGENT_DIR`;
 export const ENV_PACKAGE_DIR = `${APP_NAME.toUpperCase()}_PACKAGE_DIR`;
 export const ENV_SHARE_VIEWER_URL = `${APP_NAME.toUpperCase()}_SHARE_VIEWER_URL`;
@@ -208,7 +203,7 @@ export function getShareViewerUrl(gistId: string): string {
 }
 
 // =============================================================================
-// User Config Paths (for example ~/.cave/agent/*)
+// User Config Paths (for example ~/.mewrite/agent/*)
 // =============================================================================
 
 /** Get the agent config directory (e.g., ~/.pi/agent/) */

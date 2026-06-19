@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Build cave binaries for all platforms locally.
+# Build mewrite binaries for all platforms locally.
 # Mirrors .github/workflows/build-binaries.yml
 #
 # Usage:
@@ -12,11 +12,11 @@
 #
 # Output:
 #   packages/coding-agent/binaries/
-#     cave-darwin-arm64.tar.gz
-#     cave-darwin-x64.tar.gz
-#     cave-linux-x64.tar.gz
-#     cave-linux-arm64.tar.gz
-#     cave-windows-x64.zip
+#     mewrite-darwin-arm64.tar.gz
+#     mewrite-darwin-x64.tar.gz
+#     mewrite-linux-x64.tar.gz
+#     mewrite-linux-arm64.tar.gz
+#     mewrite-windows-x64.zip
 
 set -euo pipefail
 
@@ -107,9 +107,9 @@ for platform in "${PLATFORMS[@]}"; do
     # call site has a try/catch fallback. For Windows builds, we copy the
     # appropriate .node file alongside the binary below.
     if [[ "$platform" == "windows-x64" ]]; then
-        bun build --compile --external koffi --target=bun-$platform ./dist/bun/cli.js --outfile binaries/$platform/cave.exe
+        bun build --compile --external koffi --target=bun-$platform ./dist/bun/cli.js --outfile binaries/$platform/mewrite.exe
     else
-        bun build --compile --external koffi --target=bun-$platform ./dist/bun/cli.js --outfile binaries/$platform/cave
+        bun build --compile --external koffi --target=bun-$platform ./dist/bun/cli.js --outfile binaries/$platform/mewrite
     fi
 done
 
@@ -142,23 +142,23 @@ cd binaries
 for platform in "${PLATFORMS[@]}"; do
     if [[ "$platform" == "windows-x64" ]]; then
         # Windows (zip)
-        echo "Creating cave-$platform.zip..."
+        echo "Creating mewrite-$platform.zip..."
         if command -v zip >/dev/null 2>&1; then
-            (cd "$platform" && zip -r "../cave-$platform.zip" .)
+            (cd "$platform" && zip -r "../mewrite-$platform.zip" .)
         elif command -v powershell.exe >/dev/null 2>&1; then
-            (cd "$platform" && powershell.exe -NoProfile -Command "Compress-Archive -Path * -DestinationPath ../cave-$platform.zip -Force")
+            (cd "$platform" && powershell.exe -NoProfile -Command "Compress-Archive -Path * -DestinationPath ../mewrite-$platform.zip -Force")
         elif command -v powershell >/dev/null 2>&1; then
-            (cd "$platform" && powershell -NoProfile -Command "Compress-Archive -Path * -DestinationPath ../cave-$platform.zip -Force")
+            (cd "$platform" && powershell -NoProfile -Command "Compress-Archive -Path * -DestinationPath ../mewrite-$platform.zip -Force")
         elif command -v pwsh >/dev/null 2>&1; then
-            (cd "$platform" && pwsh -NoProfile -Command "Compress-Archive -Path * -DestinationPath ../cave-$platform.zip -Force")
+            (cd "$platform" && pwsh -NoProfile -Command "Compress-Archive -Path * -DestinationPath ../mewrite-$platform.zip -Force")
         else
-            echo "zip or PowerShell is required to create cave-$platform.zip"
+            echo "zip or PowerShell is required to create mewrite-$platform.zip"
             exit 1
         fi
     else
         # Unix platforms (tar.gz) - use wrapper directory for mise compatibility
-        echo "Creating cave-$platform.tar.gz..."
-        mv $platform cave && tar -czf cave-$platform.tar.gz cave && mv cave $platform
+        echo "Creating mewrite-$platform.tar.gz..."
+        mv $platform mewrite && tar -czf mewrite-$platform.tar.gz mewrite && mv mewrite $platform
     fi
 done
 
@@ -169,16 +169,16 @@ for platform in "${PLATFORMS[@]}"; do
     if [[ "$platform" == "windows-x64" ]]; then
         mkdir -p "$platform"
         if command -v powershell.exe >/dev/null 2>&1; then
-            powershell.exe -NoProfile -Command "Expand-Archive -Path cave-$platform.zip -DestinationPath $platform -Force"
+            powershell.exe -NoProfile -Command "Expand-Archive -Path mewrite-$platform.zip -DestinationPath $platform -Force"
         elif command -v powershell >/dev/null 2>&1; then
-            powershell -NoProfile -Command "Expand-Archive -Path cave-$platform.zip -DestinationPath $platform -Force"
+            powershell -NoProfile -Command "Expand-Archive -Path mewrite-$platform.zip -DestinationPath $platform -Force"
         elif command -v pwsh >/dev/null 2>&1; then
-            pwsh -NoProfile -Command "Expand-Archive -Path cave-$platform.zip -DestinationPath $platform -Force"
+            pwsh -NoProfile -Command "Expand-Archive -Path mewrite-$platform.zip -DestinationPath $platform -Force"
         else
-            (cd "$platform" && unzip -q "../cave-$platform.zip")
+            (cd "$platform" && unzip -q "../mewrite-$platform.zip")
         fi
     else
-        tar -xzf cave-$platform.tar.gz && mv cave $platform
+        tar -xzf mewrite-$platform.tar.gz && mv mewrite $platform
     fi
 done
 
@@ -189,5 +189,5 @@ ls -lh *.tar.gz *.zip 2>/dev/null || true
 echo ""
 echo "Extracted directories for testing:"
 for platform in "${PLATFORMS[@]}"; do
-    echo "  binaries/$platform/cave"
+    echo "  binaries/$platform/mewrite"
 done

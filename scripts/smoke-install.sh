@@ -22,19 +22,19 @@ echo "==> Building tarball for ${TRIPLE}"
 ./scripts/build-binaries.sh --platform "$TRIPLE"
 
 ARCHIVES="$PWD/packages/coding-agent/binaries"
-PREFIX="$(mktemp -d)/cave-smoke"
+PREFIX="$(mktemp -d)/mewrite-smoke"
 
 echo "==> Serving archives at http://localhost:8765"
-( cd "$ARCHIVES" && python3 -m http.server 8765 >/tmp/cave-smoke-http.log 2>&1 ) &
+( cd "$ARCHIVES" && python3 -m http.server 8765 >/tmp/mewrite-smoke-http.log 2>&1 ) &
 HTTP_PID=$!
 trap 'kill "$HTTP_PID" 2>/dev/null || true' EXIT
 sleep 1
 
 echo "==> Running installer (PREFIX=${PREFIX})"
-CAVE_VERSION=smoke CAVE_BASE_URL=http://localhost:8765 CAVE_PREFIX="$PREFIX" bash install.sh
+MEWRITE_VERSION=smoke MEWRITE_BASE_URL=http://localhost:8765 MEWRITE_PREFIX="$PREFIX" bash install.sh
 
 echo "==> Smoke check"
-"$PREFIX/bin/cave" --version
+"$PREFIX/bin/mewrite" --version
 
 echo ""
 echo "OK — installed to $PREFIX"

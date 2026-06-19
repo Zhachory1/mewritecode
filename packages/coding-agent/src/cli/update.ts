@@ -1,5 +1,5 @@
 /**
- * `cave self-update` (WS11) — self-updater for the cave binary.
+ * `mewrite self-update` — self-updater for the mewrite binary.
  *
  * Strategy:
  *   1. Determine the active install method (bun-binary, npm, pnpm, yarn, bun).
@@ -7,8 +7,8 @@
  *      releases API.
  *   3. If the binary install is in use:
  *        - Atomic: download tarball to a temp file, verify checksum, write to
- *          a fresh "<prefix>/lib/cave/<version>" dir, atomically swap the
- *          "<prefix>/bin/cave" symlink, prune older versions.
+ *          a fresh "<prefix>/lib/mewrite/<version>" dir, atomically swap the
+ *          "<prefix>/bin/mewrite" symlink, prune older versions.
  *      For package-manager installs we just print the right command (so the
  *      user's package manager keeps owning the install).
  *   4. Persist last-checked timestamp so the once-per-24h auto-check can be
@@ -17,7 +17,7 @@
  * The actual file-IO heavy lifting is delegated to `installers/install.sh`,
  * which is already idempotent and signs/verifies tarballs. We just shell out.
  *
- * Auto-check: `maybeNotifyUpdateAvailable()` is called once per `cave` boot.
+ * Auto-check: `maybeNotifyUpdateAvailable()` is called once per app boot.
  * It does at most one network round-trip per 24h (cached via settings) and
  * never blocks startup — it runs deferred and silently swallows errors.
  */
@@ -30,7 +30,7 @@ import { detectInstallMethod, getAgentDir, getUpdateInstruction, VERSION } from 
 import { SettingsManager } from "../core/settings-manager.js";
 
 const REPO = "Zhachory1/mewritecode";
-const PACKAGE_NAME = "cave";
+const PACKAGE_NAME = "mewrite-code";
 
 export interface RemoteRelease {
 	tag: string;
@@ -104,7 +104,7 @@ export async function maybeNotifyUpdateAvailable(
 	opts: { fetchImpl?: typeof fetch; now?: () => Date; channel?: "stable" | "beta" | "canary" } = {},
 ): Promise<string | undefined> {
 	if (!settings.getUpdateAutoCheck()) return undefined;
-	if (process.env.CAVE_DISABLE_UPDATE_CHECK === "1") return undefined;
+	if (process.env.MEWRITE_DISABLE_UPDATE_CHECK === "1") return undefined;
 	const now = opts.now?.() ?? new Date();
 	const last = settings.getUpdateLastCheckedAt();
 	if (last) {
@@ -141,10 +141,10 @@ function locateInstallerScript(): string | undefined {
 	}
 	const home = process.env.HOME;
 	if (home) {
-		candidates.push(join(home, ".cave", "lib", "cave", "installers", "install.sh"));
+		candidates.push(join(home, ".mewrite", "lib", "mewrite", "installers", "install.sh"));
 	}
-	// Also try the temp clone path used by `cave self-update --bootstrap`
-	candidates.push("/tmp/cave-installers/install.sh");
+	// Also try the temp clone path used by `mewrite self-update --bootstrap`.
+	candidates.push("/tmp/mewrite-installers/install.sh");
 	for (const c of candidates) {
 		if (existsSync(c)) return c;
 	}
@@ -190,7 +190,7 @@ export function reExecAfterUpdate(): void {
 }
 
 /**
- * `cave self-update` entrypoint. Returns exit code.
+ * `mewrite self-update` entrypoint. Returns exit code.
  */
 export async function runSelfUpdate(args: string[]): Promise<number> {
 	const json = args.includes("--json");
@@ -216,7 +216,7 @@ export async function runSelfUpdate(args: string[]): Promise<number> {
 		emit(
 			{
 				ok: true,
-				msg: `cave is up to date (current ${VERSION}, latest ${release.tag} on ${channel})`,
+				msg: `mewrite is up to date (current ${VERSION}, latest ${release.tag} on ${channel})`,
 				current: VERSION,
 				latest: release.tag,
 				channel,
@@ -244,14 +244,12 @@ export async function runSelfUpdate(args: string[]): Promise<number> {
 	}
 
 	if (method !== "bun-binary") {
-		// cave isn't on npm (the `cave` name there is an unrelated package),
-		// so we cannot drive a package-manager update. Tell the user to
-		// reinstall via the canonical install script.
+		// Let the user's package manager keep owning the install.
 		const instr = getUpdateInstruction(PACKAGE_NAME);
 		emit(
 			{
 				ok: true,
-				msg: `cave was installed via ${method}; reinstall to upgrade — ${instr}`,
+				msg: `mewrite was installed via ${method}; reinstall to upgrade — ${instr}`,
 				current: VERSION,
 				latest: release.tag,
 				channel,
@@ -263,7 +261,7 @@ export async function runSelfUpdate(args: string[]): Promise<number> {
 		return 0;
 	}
 
-	process.stdout.write(chalk.bold(`Updating cave ${VERSION} → ${release.tag} (${channel})\n`));
+	process.stdout.write(chalk.bold(`Updating mewrite ${VERSION} → ${release.tag} (${channel})\n`));
 	const result = runInstaller(release.tag, { channel });
 	process.stdout.write(result.stdout);
 	if (result.stderr) process.stderr.write(result.stderr);

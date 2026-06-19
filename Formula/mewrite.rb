@@ -6,34 +6,33 @@ class Mewrite < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/Zhachory1/mewritecode/releases/download/v#{version}/cave-darwin-arm64.tar.gz"
+      url "https://github.com/Zhachory1/mewritecode/releases/download/v#{version}/mewrite-darwin-arm64.tar.gz"
       sha256 "PLACEHOLDER_DARWIN_ARM64"
     end
     on_intel do
-      url "https://github.com/Zhachory1/mewritecode/releases/download/v#{version}/cave-darwin-x64.tar.gz"
+      url "https://github.com/Zhachory1/mewritecode/releases/download/v#{version}/mewrite-darwin-x64.tar.gz"
       sha256 "PLACEHOLDER_DARWIN_X64"
     end
   end
 
   on_linux do
     on_arm do
-      url "https://github.com/Zhachory1/mewritecode/releases/download/v#{version}/cave-linux-arm64.tar.gz"
+      url "https://github.com/Zhachory1/mewritecode/releases/download/v#{version}/mewrite-linux-arm64.tar.gz"
       sha256 "PLACEHOLDER_LINUX_ARM64"
     end
     on_intel do
-      url "https://github.com/Zhachory1/mewritecode/releases/download/v#{version}/cave-linux-x64.tar.gz"
+      url "https://github.com/Zhachory1/mewritecode/releases/download/v#{version}/mewrite-linux-x64.tar.gz"
       sha256 "PLACEHOLDER_LINUX_X64"
     end
   end
 
   def install
-    # cave resolves theme/, export-html/, photon_rs_bg.wasm, etc. relative to
+    # mewrite resolves theme/, export-html/, photon_rs_bg.wasm, etc. relative to
     # dirname(process.execPath), so the binary and companions must live together.
     libexec.install Dir["*"]
-    bin.write_exec_script libexec/"cave"
-    bin.install_symlink bin/"cave" => "mewrite"
-    bin.install_symlink bin/"cave" => "mewrite-code"
-    bin.install_symlink bin/"cave" => "mewritecode"
+    bin.write_exec_script libexec/"mewrite"
+    bin.install_symlink bin/"mewrite" => "mewrite-code"
+    bin.install_symlink bin/"mewrite" => "mewritecode"
   end
 
   test do

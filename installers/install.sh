@@ -1,28 +1,28 @@
 #!/usr/bin/env bash
 #
-# Cave installer — used by the Homebrew formula and CI
-# smoke tests. End users should install via npm:
+# Me Write Code installer — used by the Homebrew formula and CI
+# smoke tests. End users can also install via npm:
 #
 #   npm install -g @zhachory1/mewrite-code
 #
 # Extracts the full release tarball (binary + theme/, export-html/,
 # photon_rs_bg.wasm, docs/, examples/) into a versioned dir and symlinks
-# a shim onto PATH. The bare binary alone is not enough: cave resolves
+# shims onto PATH. The bare binary alone is not enough: mewrite resolves
 # companions via dirname(process.execPath).
 #
 # Flags (all optional):
 #   --version <tag>      Install a specific tag (e.g. v0.65.2)
 #   --channel <chan>     stable | beta | canary (default: stable)
-#   --prefix <dir>       Install prefix (default: ~/.cave for non-root, /usr/local for root)
+#   --prefix <dir>       Install prefix (default: ~/.mewrite for non-root, /usr/local for root)
 #   --no-modify-path     Skip writing PATH export to shell rcs
 #   --dry-run            Print planned actions, do not download or write
 #   --help               Show this help
 #
-# Environment knobs (preserved for backward compatibility):
-#   CAVE_VERSION   same as --version
-#   CAVE_CHANNEL   same as --channel
-#   CAVE_PREFIX    same as --prefix
-#   CAVE_BASE_URL  override the download base (used by smoke tests)
+# Environment knobs:
+#   MEWRITE_VERSION   same as --version
+#   MEWRITE_CHANNEL   same as --channel
+#   MEWRITE_PREFIX    same as --prefix
+#   MEWRITE_BASE_URL  override the download base (used by smoke tests)
 #
 # This script is idempotent: re-running it is safe and just refreshes the
 # install. Older installs are pruned to KEEP_VERSIONS most recent.
@@ -31,7 +31,7 @@ set -euo pipefail
 
 REPO="Zhachory1/mewritecode"
 KEEP_VERSIONS=2
-CAVE_CHANNEL_DEFAULT="stable"
+MEWRITE_CHANNEL_DEFAULT="stable"
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -42,7 +42,7 @@ info() { printf '%s\n' "$*"; }
 log_step() { printf '  %s\n' "$*"; }
 
 usage() {
-    sed -n '3,28p' "$0" | sed 's/^# \{0,1\}//'
+    awk 'NR >= 3 && NR <= 28 { sub(/^# ?/, ""); print }' "$0"
     exit 0
 }
 
@@ -52,25 +52,25 @@ usage() {
 
 DRY_RUN=0
 NO_MODIFY_PATH=0
-CAVE_VERSION="${CAVE_VERSION:-}"
-CAVE_CHANNEL="${CAVE_CHANNEL:-$CAVE_CHANNEL_DEFAULT}"
-CAVE_PREFIX="${CAVE_PREFIX:-}"
+MEWRITE_VERSION="${MEWRITE_VERSION:-}"
+MEWRITE_CHANNEL="${MEWRITE_CHANNEL:-$MEWRITE_CHANNEL_DEFAULT}"
+MEWRITE_PREFIX="${MEWRITE_PREFIX:-}"
 
 while [ $# -gt 0 ]; do
     case "$1" in
         --version)
             [ $# -ge 2 ] || err "--version requires an argument"
-            CAVE_VERSION="$2"
+            MEWRITE_VERSION="$2"
             shift 2
             ;;
         --channel)
             [ $# -ge 2 ] || err "--channel requires an argument"
-            CAVE_CHANNEL="$2"
+            MEWRITE_CHANNEL="$2"
             shift 2
             ;;
         --prefix)
             [ $# -ge 2 ] || err "--prefix requires an argument"
-            CAVE_PREFIX="$2"
+            MEWRITE_PREFIX="$2"
             shift 2
             ;;
         --no-modify-path)
@@ -90,9 +90,9 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-case "$CAVE_CHANNEL" in
+case "$MEWRITE_CHANNEL" in
     stable|beta|canary) ;;
-    *) err "unknown channel: $CAVE_CHANNEL (expected stable|beta|canary)" ;;
+    *) err "unknown channel: $MEWRITE_CHANNEL (expected stable|beta|canary)" ;;
 esac
 
 # ---------------------------------------------------------------------------
@@ -136,7 +136,7 @@ fi
 # ---------------------------------------------------------------------------
 
 resolve_version_for_channel() {
-    case "$CAVE_CHANNEL" in
+    case "$MEWRITE_CHANNEL" in
         stable)
             curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
                 | grep '"tag_name"' | head -1 | cut -d'"' -f4
@@ -147,52 +147,52 @@ resolve_version_for_channel() {
             curl -fsSL "https://api.github.com/repos/${REPO}/releases?per_page=20" \
                 | grep '"tag_name"' \
                 | cut -d'"' -f4 \
-                | grep -E "${CAVE_CHANNEL}|rc|pre" \
+                | grep -E "${MEWRITE_CHANNEL}|rc|pre" \
                 | head -1
             ;;
     esac
 }
 
-if [ -z "$CAVE_VERSION" ]; then
-    CAVE_VERSION="$(resolve_version_for_channel || true)"
-    if [ -z "$CAVE_VERSION" ] && [ "$CAVE_CHANNEL" != "stable" ]; then
-        info "no ${CAVE_CHANNEL} release found; falling back to stable"
-        CAVE_CHANNEL="stable"
-        CAVE_VERSION="$(resolve_version_for_channel || true)"
+if [ -z "$MEWRITE_VERSION" ]; then
+    MEWRITE_VERSION="$(resolve_version_for_channel || true)"
+    if [ -z "$MEWRITE_VERSION" ] && [ "$MEWRITE_CHANNEL" != "stable" ]; then
+        info "no ${MEWRITE_CHANNEL} release found; falling back to stable"
+        MEWRITE_CHANNEL="stable"
+        MEWRITE_VERSION="$(resolve_version_for_channel || true)"
     fi
-    [ -n "$CAVE_VERSION" ] || err "could not resolve a release tag from GitHub"
+    [ -n "$MEWRITE_VERSION" ] || err "could not resolve a release tag from GitHub"
 fi
 
 # ---------------------------------------------------------------------------
 # Resolve prefix and paths
 # ---------------------------------------------------------------------------
 
-if [ -z "$CAVE_PREFIX" ]; then
+if [ -z "$MEWRITE_PREFIX" ]; then
     if [ "$(id -u)" = 0 ]; then
-        CAVE_PREFIX="/usr/local"
+        MEWRITE_PREFIX="/usr/local"
     else
-        CAVE_PREFIX="${HOME}/.cave"
+        MEWRITE_PREFIX="${HOME}/.mewrite"
     fi
 fi
 
-BASE_URL="${CAVE_BASE_URL:-https://github.com/${REPO}/releases/download/${CAVE_VERSION}}"
-TARBALL="cave-${TRIPLE}.tar.gz"
+BASE_URL="${MEWRITE_BASE_URL:-https://github.com/${REPO}/releases/download/${MEWRITE_VERSION}}"
+TARBALL="mewrite-${TRIPLE}.tar.gz"
 URL="${BASE_URL}/${TARBALL}"
 SUMS_URL="${BASE_URL}/SHA256SUMS"
 
-LIB_DIR="${CAVE_PREFIX}/lib/cave"
-BIN_DIR="${CAVE_PREFIX}/bin"
-VER_DIR="${LIB_DIR}/${CAVE_VERSION}"
+LIB_DIR="${MEWRITE_PREFIX}/lib/mewrite"
+BIN_DIR="${MEWRITE_PREFIX}/bin"
+VER_DIR="${LIB_DIR}/${MEWRITE_VERSION}"
 
 # ---------------------------------------------------------------------------
 # Print plan (and exit if dry-run)
 # ---------------------------------------------------------------------------
 
-info "Cave installer plan"
-log_step "channel       : ${CAVE_CHANNEL}"
-log_step "version       : ${CAVE_VERSION}"
+info "Me Write Code installer plan"
+log_step "channel       : ${MEWRITE_CHANNEL}"
+log_step "version       : ${MEWRITE_VERSION}"
 log_step "platform      : ${TRIPLE}"
-log_step "prefix        : ${CAVE_PREFIX}"
+log_step "prefix        : ${MEWRITE_PREFIX}"
 log_step "tarball       : ${URL}"
 log_step "checksum file : ${SUMS_URL}"
 log_step "install dir   : ${VER_DIR}"
@@ -210,10 +210,10 @@ fi
 # Idempotency: short-circuit if VER_DIR already has the binary
 # ---------------------------------------------------------------------------
 
-if [ -x "${VER_DIR}/cave" ] && [ -L "${BIN_DIR}/mewrite" ] && [ -L "${BIN_DIR}/mewrite-code" ] && [ -L "${BIN_DIR}/mewritecode" ]; then
-    EXISTING="$("${VER_DIR}/cave" --version 2>/dev/null || true)"
+if [ -x "${VER_DIR}/mewrite" ] && [ -L "${BIN_DIR}/mewrite" ] && [ -L "${BIN_DIR}/mewrite-code" ] && [ -L "${BIN_DIR}/mewritecode" ]; then
+    EXISTING="$("${VER_DIR}/mewrite" --version 2>/dev/null || true)"
     if [ -n "$EXISTING" ]; then
-        info "mewrite ${CAVE_VERSION} already installed at ${VER_DIR}"
+        info "mewrite ${MEWRITE_VERSION} already installed at ${VER_DIR}"
         info "run: mewrite update    to fetch newer releases"
         exit 0
     fi
@@ -229,7 +229,7 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 info ""
-info "Installing cave ${CAVE_VERSION} (${TRIPLE}) into ${CAVE_PREFIX}"
+info "Installing mewrite ${MEWRITE_VERSION} (${TRIPLE}) into ${MEWRITE_PREFIX}"
 
 log_step "downloading ${URL}"
 curl -fsSL "$URL" -o "${TMP}/${TARBALL}" || err "download failed: ${URL}"
@@ -257,16 +257,16 @@ fi
 
 log_step "extracting"
 tar -xzf "${TMP}/${TARBALL}" -C "$TMP"
-[ -d "${TMP}/cave" ] || err "tarball missing top-level cave/ dir"
+[ -d "${TMP}/mewrite" ] || err "tarball missing top-level mewrite/ dir"
 
 # Atomic-ish replace: remove old VER_DIR (if any) then move into place.
 rm -rf "$VER_DIR"
-mv "${TMP}/cave" "$VER_DIR"
-chmod +x "${VER_DIR}/cave"
+mv "${TMP}/mewrite" "$VER_DIR"
+chmod +x "${VER_DIR}/mewrite"
 
-ln -sfn "${VER_DIR}/cave" "${BIN_DIR}/mewrite"
-ln -sfn "${VER_DIR}/cave" "${BIN_DIR}/mewrite-code"
-ln -sfn "${VER_DIR}/cave" "${BIN_DIR}/mewritecode"
+ln -sfn "${VER_DIR}/mewrite" "${BIN_DIR}/mewrite"
+ln -sfn "${VER_DIR}/mewrite" "${BIN_DIR}/mewrite-code"
+ln -sfn "${VER_DIR}/mewrite" "${BIN_DIR}/mewritecode"
 
 # Prune older versions, keep most recent KEEP_VERSIONS (the one we just wrote
 # stays via mtime).
@@ -284,7 +284,7 @@ fi
 
 if [ "$NO_MODIFY_PATH" = 0 ] && [ "$BIN_DIR" != "/usr/local/bin" ] \
         && ! printf '%s' "$PATH" | tr ':' '\n' | grep -qx "$BIN_DIR"; then
-    SENTINEL="# added by cave installer"
+    SENTINEL="# added by mewrite installer"
     LINE="export PATH=\"${BIN_DIR}:\$PATH\""
     UPDATED=""
     for rc in "${HOME}/.zshrc" "${HOME}/.bashrc" "${HOME}/.profile"; do

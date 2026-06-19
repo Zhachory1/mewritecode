@@ -7,7 +7,7 @@ set -euo pipefail
 #   ./scripts/build-linux-packages.sh <version-or-tag> [archives-dir]
 #
 # Expects:
-#   - cave-linux-x64.tar.gz and/or cave-linux-arm64.tar.gz in archives-dir
+#   - mewrite-linux-x64.tar.gz and/or mewrite-linux-arm64.tar.gz in archives-dir
 #   - dpkg-deb for building .deb packages
 #   - rpmbuild for building .rpm packages
 #
@@ -35,9 +35,9 @@ if [ ! -d "$ARCHIVES_DIR" ]; then
     exit 1
 fi
 
-if [ ! -f "$ARCHIVES_DIR/cave-linux-x64.tar.gz" ] && [ ! -f "$ARCHIVES_DIR/cave-linux-arm64.tar.gz" ]; then
+if [ ! -f "$ARCHIVES_DIR/mewrite-linux-x64.tar.gz" ] && [ ! -f "$ARCHIVES_DIR/mewrite-linux-arm64.tar.gz" ]; then
     echo "Error: No Linux archives found in $ARCHIVES_DIR" >&2
-    echo "Expected: cave-linux-x64.tar.gz and/or cave-linux-arm64.tar.gz" >&2
+    echo "Expected: mewrite-linux-x64.tar.gz and/or mewrite-linux-arm64.tar.gz" >&2
     exit 1
 fi
 
@@ -48,7 +48,7 @@ DESCRIPTION="Me Write Code terminal coding agent"
 SECTION="devel"
 PRIORITY="optional"
 LIB_DIR="/usr/lib/mewrite-code"
-BIN_TARGET="../lib/mewrite-code/cave"
+BIN_TARGET="../lib/mewrite-code/mewrite"
 COMMANDS=(mewrite mewrite-code mewritecode)
 
 require_tool() {
@@ -61,7 +61,7 @@ require_tool() {
 build_deb() {
     local arch_name="$1"
     local deb_arch="$2"
-    local tarball="$ARCHIVES_DIR/cave-linux-${arch_name}.tar.gz"
+    local tarball="$ARCHIVES_DIR/mewrite-linux-${arch_name}.tar.gz"
 
     if [ ! -f "$tarball" ]; then
         echo "Skipping .deb for $arch_name (tarball not found)"
@@ -93,7 +93,7 @@ Architecture: $deb_arch
 Maintainer: $MAINTAINER
 Homepage: $HOMEPAGE
 Description: $DESCRIPTION
- Me Write Code is a terminal coding agent with token-saving caveman mode.
+ Me Write Code is a terminal coding agent.
 EOF
 
     dpkg-deb --build --root-owner-group "$build_dir" "$deb_file" >/dev/null || {
@@ -111,7 +111,7 @@ EOF
 build_rpm() {
     local arch_name="$1"
     local rpm_arch="$2"
-    local tarball="$ARCHIVES_DIR/cave-linux-${arch_name}.tar.gz"
+    local tarball="$ARCHIVES_DIR/mewrite-linux-${arch_name}.tar.gz"
 
     if [ ! -f "$tarball" ]; then
         echo "Skipping .rpm for $arch_name (tarball not found)"
@@ -141,7 +141,7 @@ Source0:        $PKG_NAME-%{version}.tar.gz
 BuildArch:      $rpm_arch
 
 %description
-Me Write Code is a terminal coding agent with token-saving caveman mode.
+Me Write Code is a terminal coding agent.
 
 %prep
 %setup -q -c
@@ -150,7 +150,7 @@ Me Write Code is a terminal coding agent with token-saving caveman mode.
 rm -rf %{buildroot}
 mkdir -p %{buildroot}${LIB_DIR}
 mkdir -p %{buildroot}/usr/bin
-cp -r cave/* %{buildroot}${LIB_DIR}/
+cp -r mewrite/* %{buildroot}${LIB_DIR}/
 for cmd in ${COMMANDS[*]}; do
   ln -s $BIN_TARGET %{buildroot}/usr/bin/\$cmd
 done
@@ -195,12 +195,12 @@ EOF
     rm -rf "$build_root"
 }
 
-if [ -f "$ARCHIVES_DIR/cave-linux-x64.tar.gz" ]; then
+if [ -f "$ARCHIVES_DIR/mewrite-linux-x64.tar.gz" ]; then
     build_deb x64 amd64
     build_rpm x64 x86_64
 fi
 
-if [ -f "$ARCHIVES_DIR/cave-linux-arm64.tar.gz" ]; then
+if [ -f "$ARCHIVES_DIR/mewrite-linux-arm64.tar.gz" ]; then
     build_deb arm64 arm64
     build_rpm arm64 aarch64
 fi

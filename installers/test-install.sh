@@ -51,24 +51,24 @@ assert_eq_int() {
 
 # 1. --help
 help_out="$("$SCRIPT" --help 2>&1)" || true
-assert_contains "$help_out" "Cave installer" "--help prints title"
+assert_contains "$help_out" "Me Write Code installer" "--help prints title"
 assert_contains "$help_out" "--version" "--help mentions --version flag"
 assert_contains "$help_out" "--dry-run" "--help mentions --dry-run flag"
 
 # 2. --dry-run with pinned version (no network)
-out="$("$SCRIPT" --dry-run --version v0.65.2 --prefix /tmp/cave-test-dryrun 2>&1)"
+out="$("$SCRIPT" --dry-run --version v0.65.2 --prefix /tmp/mewrite-test-dryrun 2>&1)"
 status=$?
 assert_eq_int $status 0 "--dry-run exits 0"
 assert_contains "$out" "v0.65.2" "--dry-run shows pinned version"
-assert_contains "$out" "/tmp/cave-test-dryrun" "--dry-run shows planned prefix"
+assert_contains "$out" "/tmp/mewrite-test-dryrun" "--dry-run shows planned prefix"
 assert_contains "$out" "[dry-run]" "--dry-run announces dry-run mode"
 assert_contains "$out" "channel       : stable" "--dry-run defaults to stable channel"
-[ ! -e /tmp/cave-test-dryrun ] && pass=$((pass + 1)) && printf '  ok   --dry-run did not create /tmp/cave-test-dryrun\n' \
-    || { printf '  FAIL --dry-run created /tmp/cave-test-dryrun\n'; fail=$((fail + 1)); }
+[ ! -e /tmp/mewrite-test-dryrun ] && pass=$((pass + 1)) && printf '  ok   --dry-run did not create /tmp/mewrite-test-dryrun\n' \
+    || { printf '  FAIL --dry-run created /tmp/mewrite-test-dryrun\n'; fail=$((fail + 1)); }
 
 # 3. --channel rejects unknown values
 set +e
-"$SCRIPT" --channel bogus --dry-run --version v0.65.2 --prefix /tmp/cave-test-dryrun >/dev/null 2>&1
+"$SCRIPT" --channel bogus --dry-run --version v0.65.2 --prefix /tmp/mewrite-test-dryrun >/dev/null 2>&1
 unknown_status=$?
 set -e
 if [ $unknown_status -ne 0 ]; then
@@ -80,7 +80,7 @@ else
 fi
 
 # 4. --channel beta is accepted
-out_beta="$("$SCRIPT" --channel beta --dry-run --version v0.65.2-beta.1 --prefix /tmp/cave-test-beta 2>&1)"
+out_beta="$("$SCRIPT" --channel beta --dry-run --version v0.65.2-beta.1 --prefix /tmp/mewrite-test-beta 2>&1)"
 assert_contains "$out_beta" "channel       : beta" "--channel beta accepted"
 
 printf '\n%s/%s tests passed\n' "$pass" "$((pass + fail))"

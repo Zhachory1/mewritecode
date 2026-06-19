@@ -10,7 +10,6 @@ on:
       - install.sh
       - install.ps1
       - installers/**
-      - Formula/cave.rb
       - Formula/mewrite.rb
       - scripts/build-binaries.sh
       - scripts/build-linux-packages.sh
@@ -85,23 +84,23 @@ jobs:
         if: matrix.triple != 'windows-x64'
         shell: bash
         env:
-          CAVE_VERSION: smoke
-          CAVE_BASE_URL: http://localhost:8000
-          CAVE_PREFIX: ${{ runner.temp }}/cave-smoke
+          MEWRITE_VERSION: smoke
+          MEWRITE_BASE_URL: http://localhost:8000
+          MEWRITE_PREFIX: ${{ runner.temp }}/mewrite-smoke
         run: |
           bash install.sh
-          "$CAVE_PREFIX/bin/cave" --version
+          "$MEWRITE_PREFIX/bin/mewrite" --version
 
       - name: Run windows installer
         if: matrix.triple == 'windows-x64'
         shell: pwsh
         env:
-          CAVE_VERSION: smoke
-          CAVE_BASE_URL: http://localhost:8000
-          CAVE_PREFIX: ${{ runner.temp }}\cave-smoke
+          MEWRITE_VERSION: smoke
+          MEWRITE_BASE_URL: http://localhost:8000
+          MEWRITE_PREFIX: ${{ runner.temp }}\mewrite-smoke
         run: |
           pwsh -File install.ps1
-          & "$env:CAVE_PREFIX\bin\cave.cmd" --version
+          & "$env:MEWRITE_PREFIX\bin\mewrite.cmd" --version
 
       - name: Stop http server
         if: always()

@@ -6,7 +6,7 @@ description: |
   Me Write Code is a terminal coding harness that stays provider-agnostic,
   terminal-native, and deeply extensible. Use it interactively, run it in
   print or JSON mode, embed it through the SDK, or extend it with TypeScript
-  modules, skills, prompt templates, themes, and CaveKit workflows.
+  modules, skills, prompt templates, themes, and workflows.
 
 grade: stable
 confinement: classic
@@ -16,16 +16,16 @@ architectures:
 
 apps:
   mewrite-code:
-    command: cave
+    command: mewrite
   mewrite:
-    command: cave
+    command: mewrite
   mewritecode:
-    command: cave
+    command: mewrite
 
 parts:
-  cave:
+  mewrite:
     plugin: dump
-    source: https://github.com/Zhachory1/mewritecode/releases/latest/download/cave-linux-x64.tar.gz
+    source: https://github.com/Zhachory1/mewritecode/releases/latest/download/mewrite-linux-x64.tar.gz
     source-type: tar
     organize:
-      cave/*: ./
+      mewrite/*: ./

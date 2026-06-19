@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 #
-# Rewrite Homebrew formulas with version + sha256s for the four unix tarballs.
+# Rewrite Homebrew formula with version + sha256s for the four unix tarballs.
 #
 # Usage:
 #   ./scripts/update-homebrew.sh <version> <dir-with-tarballs>
 #
 #   <version>            e.g. v0.65.3 or 0.65.3 (leading v is stripped)
-#   <dir-with-tarballs>  directory containing cave-{darwin-arm64,darwin-x64,linux-x64,linux-arm64}.tar.gz
+#   <dir-with-tarballs>  directory containing mewrite-{darwin-arm64,darwin-x64,linux-x64,linux-arm64}.tar.gz
 
 set -euo pipefail
 
@@ -15,7 +15,7 @@ TAR_DIR="${2:?tarball dir required}"
 VERSION="${VERSION#v}"
 
 cd "$(dirname "$0")/.."
-FORMULAS=(Formula/mewrite.rb Formula/cave.rb)
+FORMULAS=(Formula/mewrite.rb)
 
 sha256_of() {
     if command -v sha256sum >/dev/null 2>&1; then
@@ -25,10 +25,10 @@ sha256_of() {
     fi
 }
 
-DARWIN_ARM64_SHA="$(sha256_of "${TAR_DIR}/cave-darwin-arm64.tar.gz")"
-DARWIN_X64_SHA="$(sha256_of "${TAR_DIR}/cave-darwin-x64.tar.gz")"
-LINUX_ARM64_SHA="$(sha256_of "${TAR_DIR}/cave-linux-arm64.tar.gz")"
-LINUX_X64_SHA="$(sha256_of "${TAR_DIR}/cave-linux-x64.tar.gz")"
+DARWIN_ARM64_SHA="$(sha256_of "${TAR_DIR}/mewrite-darwin-arm64.tar.gz")"
+DARWIN_X64_SHA="$(sha256_of "${TAR_DIR}/mewrite-darwin-x64.tar.gz")"
+LINUX_ARM64_SHA="$(sha256_of "${TAR_DIR}/mewrite-linux-arm64.tar.gz")"
+LINUX_X64_SHA="$(sha256_of "${TAR_DIR}/mewrite-linux-x64.tar.gz")"
 
 # macOS/BSD sed differs from GNU sed on -i; handle both.
 sed_inplace() {
@@ -49,12 +49,12 @@ import re, sys
 path, da, dx, la, lx = sys.argv[1:]
 src = open(path).read()
 mapping = {
-    "cave-darwin-arm64.tar.gz": da,
-    "cave-darwin-x64.tar.gz":   dx,
-    "cave-linux-arm64.tar.gz":  la,
-    "cave-linux-x64.tar.gz":    lx,
+    "mewrite-darwin-arm64.tar.gz": da,
+    "mewrite-darwin-x64.tar.gz":   dx,
+    "mewrite-linux-arm64.tar.gz":  la,
+    "mewrite-linux-x64.tar.gz":    lx,
 }
-pat = re.compile(r'(url ".*?/(cave-[a-z0-9-]+\.tar\.gz)"\s*\n\s*sha256 ")[^"]*(")', re.M)
+pat = re.compile(r'(url ".*?/(mewrite-[a-z0-9-]+\.tar\.gz)"\s*\n\s*sha256 ")[^"]*(")', re.M)
 def repl(m):
     tri = m.group(2)
     return m.group(1) + mapping[tri] + m.group(3)
