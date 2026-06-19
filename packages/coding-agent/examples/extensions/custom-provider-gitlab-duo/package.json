@@ -1,7 +1,7 @@
 {
 	"name": "mewrite-code-extension-custom-provider-gitlab-duo",
 	"private": true,
-	"version": "1.16.2",
+	"version": "0.65.4",
 	"type": "module",
 	"scripts": {
 		"clean": "echo 'nothing to clean'",

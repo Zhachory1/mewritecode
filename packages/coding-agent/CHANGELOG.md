@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.65.4] - 2026-06-19
+
 ### Added
 
 - Added static APT and Yum repository publishing for release-built Debian and RPM packages.
