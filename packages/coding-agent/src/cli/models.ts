@@ -7,25 +7,22 @@
  *   mewrite models inspect <id>                     — show model details
  */
 
-import { homedir } from "node:os";
-import { join } from "node:path";
 import {
 	type FetchChannel,
 	fetchAndCacheRegistry,
 	getCachePath,
 	loadRegistry,
 	type Registry,
-} from "@zhachory1/mewrite-ai/registry";
+} from "@zhachory1/mewrite-ai";
 import chalk from "chalk";
+import { getAgentDir } from "../config.js";
 
 // ---------------------------------------------------------------------------
 // Path helpers
 // ---------------------------------------------------------------------------
 
 function getAgentConfigDir(): string {
-	const envDir = process.env.CAVE_CODING_AGENT_DIR;
-	if (envDir) return envDir;
-	return join(homedir(), ".cave", "agent");
+	return getAgentDir();
 }
 
 // ---------------------------------------------------------------------------

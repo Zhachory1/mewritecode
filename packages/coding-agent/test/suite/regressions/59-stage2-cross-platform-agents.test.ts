@@ -33,7 +33,7 @@ beforeEach(() => {
 	userDir = join(tmpRoot, "user-cave");
 	packageDir = join(tmpRoot, "bundled-pkg");
 	userHome = join(tmpRoot, "home");
-	mkdirSync(join(cwd, ".cave", "agents"), { recursive: true });
+	mkdirSync(join(cwd, ".mewrite", "agents"), { recursive: true });
 	mkdirSync(join(cwd, ".claude", "agents"), { recursive: true });
 	mkdirSync(join(userDir, "agents"), { recursive: true });
 	mkdirSync(join(packageDir, "agents"), { recursive: true });
@@ -109,7 +109,7 @@ describe("#59 stage 2 — CC tool-name aliasing", () => {
 
 	describe("loadAgentDefs end-to-end aliasing", () => {
 		it("loads a CC-authored persona and rewrites tool names to cave canonical", () => {
-			writeAgent(join(cwd, ".cave", "agents"), "cc-persona", {
+			writeAgent(join(cwd, ".mewrite", "agents"), "cc-persona", {
 				name: "cc-persona",
 				description: "authored for Claude Code",
 				tools: ["Read", "Bash", "Grep"],
@@ -129,7 +129,7 @@ describe("#59 stage 2 — CC tool-name aliasing", () => {
 		});
 
 		it("does NOT emit alias diagnostic for an all-lowercase persona", () => {
-			writeAgent(join(cwd, ".cave", "agents"), "cave-native", {
+			writeAgent(join(cwd, ".mewrite", "agents"), "cave-native", {
 				name: "cave-native",
 				description: "cave-native tool naming",
 				tools: ["read", "grep"],
@@ -140,7 +140,7 @@ describe("#59 stage 2 — CC tool-name aliasing", () => {
 		});
 
 		it("Glob in persona frontmatter expands to grep + find in def.tools", () => {
-			writeAgent(join(cwd, ".cave", "agents"), "globby", {
+			writeAgent(join(cwd, ".mewrite", "agents"), "globby", {
 				name: "globby",
 				description: "uses CC Glob",
 				tools: ["Glob"],
@@ -214,10 +214,10 @@ describe("#59 stage 2 — cross-platform discovery (opt-in)", () => {
 		expect(agents.find((a) => a.def.name === "env-enabled")).toBeUndefined();
 	});
 
-	it("cave-canonical wins over CC alias on name collision (user scope)", () => {
-		// Same agent name in BOTH cave's ~/.cave/agent/agents/ AND ~/.claude/agents/.
+	it("mewrite-canonical wins over CC alias on name collision (user scope)", () => {
+		// Same agent name in BOTH cave's ~/.mewrite/agent/agents/ AND ~/.claude/agents/.
 		// cave's version is scanned first; the CC version overwrites in `byName.set`
-		// because both are "user" scope — but cave-canonical is what should win.
+		// because both are "user" scope — but mewrite-canonical is what should win.
 		// This test pins the documented behavior: CC overwrites in scope, project
 		// overrides both. Stage 2 design: within user scope, last-write-wins after
 		// scanning cave first — so the CC version WINS. That matches "user dir
@@ -229,7 +229,7 @@ describe("#59 stage 2 — cross-platform discovery (opt-in)", () => {
 		// scanned wins.
 		writeAgent(join(userDir, "agents"), "shared", {
 			name: "shared",
-			description: "cave-canonical version",
+			description: "mewrite-canonical version",
 		});
 		writeAgent(join(userHome, ".claude", "agents"), "shared", {
 			name: "shared",
@@ -249,7 +249,7 @@ describe("#59 stage 2 — cross-platform discovery (opt-in)", () => {
 			name: "trumped",
 			description: "user CC version",
 		});
-		writeAgent(join(cwd, ".cave", "agents"), "trumped", {
+		writeAgent(join(cwd, ".mewrite", "agents"), "trumped", {
 			name: "trumped",
 			description: "project cave version",
 		});

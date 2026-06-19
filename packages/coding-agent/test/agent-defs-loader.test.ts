@@ -21,7 +21,7 @@ beforeEach(() => {
 	cwd = join(tmpRoot, "project");
 	userDir = join(tmpRoot, "user-cave");
 	packageDir = join(tmpRoot, "bundled-pkg");
-	mkdirSync(join(cwd, ".cave", "agents"), { recursive: true });
+	mkdirSync(join(cwd, ".mewrite", "agents"), { recursive: true });
 	mkdirSync(join(userDir, "agents"), { recursive: true });
 	mkdirSync(join(packageDir, "agents"), { recursive: true });
 });
@@ -50,7 +50,7 @@ function writeAgent(dir: string, name: string, frontmatter: Record<string, unkno
 
 describe("parseAgentDefFile", () => {
 	it("parses a minimal agent def", () => {
-		const filePath = writeAgent(join(cwd, ".cave", "agents"), "explore", {
+		const filePath = writeAgent(join(cwd, ".mewrite", "agents"), "explore", {
 			name: "explore",
 			description: "scout",
 		});
@@ -63,7 +63,7 @@ describe("parseAgentDefFile", () => {
 	});
 
 	it("parses the full WS6 frontmatter superset", () => {
-		const filePath = writeAgent(join(cwd, ".cave", "agents"), "reviewer", {
+		const filePath = writeAgent(join(cwd, ".mewrite", "agents"), "reviewer", {
 			name: "reviewer",
 			description: "critique",
 			tools: ["read", "grep"],
@@ -92,7 +92,7 @@ describe("parseAgentDefFile", () => {
 	});
 
 	it("accepts comma-separated string for tools (Claude Code compatibility)", () => {
-		const filePath = writeAgent(join(cwd, ".cave", "agents"), "scout", {
+		const filePath = writeAgent(join(cwd, ".mewrite", "agents"), "scout", {
 			name: "scout",
 			description: "fast",
 			tools: "read, grep, find",
@@ -102,14 +102,14 @@ describe("parseAgentDefFile", () => {
 	});
 
 	it("skips defs missing required fields", () => {
-		const filePath = writeAgent(join(cwd, ".cave", "agents"), "noname", {});
+		const filePath = writeAgent(join(cwd, ".mewrite", "agents"), "noname", {});
 		const { def, diagnostics } = parseAgentDefFile(filePath, "project");
 		expect(def).toBeNull();
 		expect(diagnostics.some((d) => d.message === "description is required")).toBe(true);
 	});
 
 	it("derives name from filename when frontmatter omits it", () => {
-		const filePath = writeAgent(join(cwd, ".cave", "agents"), "infer-name", {
+		const filePath = writeAgent(join(cwd, ".mewrite", "agents"), "infer-name", {
 			description: "implicit",
 		});
 		const { def, diagnostics } = parseAgentDefFile(filePath, "project");
@@ -118,7 +118,7 @@ describe("parseAgentDefFile", () => {
 	});
 
 	it("preserves unknown frontmatter keys (CC passthrough)", () => {
-		const filePath = writeAgent(join(cwd, ".cave", "agents"), "passthrough", {
+		const filePath = writeAgent(join(cwd, ".mewrite", "agents"), "passthrough", {
 			name: "passthrough",
 			description: "unknown keys",
 			"argument-hint": "<file>",
@@ -134,7 +134,7 @@ describe("parseAgentDefFile", () => {
 
 describe("parseAgentDefFile — tool-name validation (warnings)", () => {
 	it("aliases CC-cased known tools, warns on unknown tools, and reports bad disallowedTools names", () => {
-		const filePath = writeAgent(join(cwd, ".cave", "agents"), "badtools", {
+		const filePath = writeAgent(join(cwd, ".mewrite", "agents"), "badtools", {
 			name: "badtools",
 			description: "has bad tool names",
 			tools: ["Write", "bogus"],
@@ -169,7 +169,7 @@ describe("parseAgentDefFile — tool-name validation (warnings)", () => {
 	});
 
 	it("does not warn on dynamic tool names (memory_*, mcp__*)", () => {
-		const filePath = writeAgent(join(cwd, ".cave", "agents"), "dyntools", {
+		const filePath = writeAgent(join(cwd, ".mewrite", "agents"), "dyntools", {
 			name: "dyntools",
 			description: "dynamic tools",
 			tools: ["memory_save", "mcp__x__y"],
@@ -180,7 +180,7 @@ describe("parseAgentDefFile — tool-name validation (warnings)", () => {
 	});
 
 	it("warns when the effective tool set can write but cannot locate files", () => {
-		const filePath = writeAgent(join(cwd, ".cave", "agents"), "writeonly", {
+		const filePath = writeAgent(join(cwd, ".mewrite", "agents"), "writeonly", {
 			name: "writeonly",
 			description: "edit + write only",
 			tools: ["edit", "write"],
@@ -194,7 +194,7 @@ describe("parseAgentDefFile — tool-name validation (warnings)", () => {
 	});
 
 	it("warns when disallowedTools cancels out the entire tools list (effective set empty)", () => {
-		const filePath = writeAgent(join(cwd, ".cave", "agents"), "lockedout", {
+		const filePath = writeAgent(join(cwd, ".mewrite", "agents"), "lockedout", {
 			name: "lockedout",
 			description: "tools fully disallowed",
 			tools: ["read"],
@@ -209,7 +209,7 @@ describe("parseAgentDefFile — tool-name validation (warnings)", () => {
 
 describe("loadAgentDefs", () => {
 	it("loads from project scope only when other scopes empty", () => {
-		writeAgent(join(cwd, ".cave", "agents"), "alpha", {
+		writeAgent(join(cwd, ".mewrite", "agents"), "alpha", {
 			name: "alpha",
 			description: "project",
 		});
@@ -222,7 +222,7 @@ describe("loadAgentDefs", () => {
 	it("loads from all three scopes (project + user + bundled)", () => {
 		writeAgent(join(packageDir, "agents"), "builtin1", { name: "builtin1", description: "b" });
 		writeAgent(join(userDir, "agents"), "user1", { name: "user1", description: "u" });
-		writeAgent(join(cwd, ".cave", "agents"), "project1", { name: "project1", description: "p" });
+		writeAgent(join(cwd, ".mewrite", "agents"), "project1", { name: "project1", description: "p" });
 		const result = loadAgentDefs({ cwd, userDir, packageDir });
 		const names = result.agents.map((a) => a.def.name).sort();
 		expect(names).toEqual(["builtin1", "project1", "user1"]);
@@ -231,7 +231,7 @@ describe("loadAgentDefs", () => {
 	it("project scope overrides user and builtin on name collision", () => {
 		writeAgent(join(packageDir, "agents"), "explore", { name: "explore", description: "builtin" });
 		writeAgent(join(userDir, "agents"), "explore", { name: "explore", description: "user" });
-		writeAgent(join(cwd, ".cave", "agents"), "explore", { name: "explore", description: "project" });
+		writeAgent(join(cwd, ".mewrite", "agents"), "explore", { name: "explore", description: "project" });
 		const result = loadAgentDefs({ cwd, userDir, packageDir });
 		expect(result.agents).toHaveLength(1);
 		expect(result.agents[0].def.description).toBe("project");
@@ -250,7 +250,7 @@ describe("loadAgentDefs", () => {
 	it("respects skip flags", () => {
 		writeAgent(join(packageDir, "agents"), "x", { name: "x", description: "b" });
 		writeAgent(join(userDir, "agents"), "y", { name: "y", description: "u" });
-		writeAgent(join(cwd, ".cave", "agents"), "z", { name: "z", description: "p" });
+		writeAgent(join(cwd, ".mewrite", "agents"), "z", { name: "z", description: "p" });
 		const onlyProject = loadAgentDefs({ cwd, userDir, packageDir, skipBundled: true, skipUser: true });
 		expect(onlyProject.agents.map((a) => a.def.name)).toEqual(["z"]);
 	});
@@ -274,7 +274,7 @@ describe("loadAgentDefs", () => {
 	});
 
 	it("findAgentDef returns the matching loaded def", () => {
-		writeAgent(join(cwd, ".cave", "agents"), "alpha", { name: "alpha", description: "a" });
+		writeAgent(join(cwd, ".mewrite", "agents"), "alpha", { name: "alpha", description: "a" });
 		const result = loadAgentDefs({ cwd, userDir, packageDir });
 		const found = findAgentDef(result, "alpha");
 		expect(found?.def.name).toBe("alpha");
@@ -282,8 +282,8 @@ describe("loadAgentDefs", () => {
 	});
 
 	it("formatAgentList returns a friendly preview", () => {
-		writeAgent(join(cwd, ".cave", "agents"), "alpha", { name: "alpha", description: "first" });
-		writeAgent(join(cwd, ".cave", "agents"), "beta", { name: "beta", description: "second" });
+		writeAgent(join(cwd, ".mewrite", "agents"), "alpha", { name: "alpha", description: "first" });
+		writeAgent(join(cwd, ".mewrite", "agents"), "beta", { name: "beta", description: "second" });
 		const result = loadAgentDefs({ cwd, userDir, packageDir });
 		const text = formatAgentList(result);
 		expect(text).toContain("alpha");

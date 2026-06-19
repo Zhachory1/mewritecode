@@ -129,17 +129,17 @@ beforeEach(() => {
 	cwd = join(tmpRoot, "project");
 	userDir = join(tmpRoot, "user-cave");
 	packageDir = join(tmpRoot, "bundled-pkg");
-	mkdirSync(join(cwd, ".cave", "agents"), { recursive: true });
+	mkdirSync(join(cwd, ".mewrite", "agents"), { recursive: true });
 	mkdirSync(join(userDir, "agents"), { recursive: true });
 	mkdirSync(join(packageDir, "agents"), { recursive: true });
 
 	// Seed two simple agents.
 	writeFileSync(
-		join(cwd, ".cave", "agents", "explore.md"),
+		join(cwd, ".mewrite", "agents", "explore.md"),
 		["---", "name: explore", "description: scout", "tools: read, grep", "---", "", "You are explore."].join("\n"),
 	);
 	writeFileSync(
-		join(cwd, ".cave", "agents", "reviewer.md"),
+		join(cwd, ".mewrite", "agents", "reviewer.md"),
 		["---", "name: reviewer", "description: critique", "tools: read, grep", "---", "", "You are reviewer."].join(
 			"\n",
 		),
@@ -148,7 +148,7 @@ beforeEach(() => {
 	// Write-capable agent (#41): edit + write in its allow-list. Used to assert a
 	// subagent can actually receive write tools / autopilot env.
 	writeFileSync(
-		join(cwd, ".cave", "agents", "implementer.md"),
+		join(cwd, ".mewrite", "agents", "implementer.md"),
 		[
 			"---",
 			"name: implementer",
@@ -162,7 +162,7 @@ beforeEach(() => {
 
 	// Write-capable agent with one tool disallowed (allow-list + deny-list).
 	writeFileSync(
-		join(cwd, ".cave", "agents", "implementer-nobash.md"),
+		join(cwd, ".mewrite", "agents", "implementer-nobash.md"),
 		[
 			"---",
 			"name: implementer-nobash",
@@ -178,7 +178,7 @@ beforeEach(() => {
 	// Agent with ONLY disallowedTools (no `tools:` allow-list). Pre-existing gap:
 	// the deny-list was ignored unless `tools:` was also set (#41 finding).
 	writeFileSync(
-		join(cwd, ".cave", "agents", "denylist-only.md"),
+		join(cwd, ".mewrite", "agents", "denylist-only.md"),
 		[
 			"---",
 			"name: denylist-only",
@@ -192,7 +192,7 @@ beforeEach(() => {
 
 	// Agent with no tool scoping at all → child should default to full write.
 	writeFileSync(
-		join(cwd, ".cave", "agents", "unscoped.md"),
+		join(cwd, ".mewrite", "agents", "unscoped.md"),
 		["---", "name: unscoped", "description: full access", "---", "", "You are unscoped."].join("\n"),
 	);
 });
@@ -543,7 +543,7 @@ describe("Task tool — #41 delegated approval (CAVE_APPROVAL_MODE strip)", () =
 	it("background subagent in approval mode → child env does NOT carry CAVE_APPROVAL_MODE", async () => {
 		process.env[KEY] = "1";
 		writeFileSync(
-			join(cwd, ".cave", "agents", "bg-impl.md"),
+			join(cwd, ".mewrite", "agents", "bg-impl.md"),
 			[
 				"---",
 				"name: bg-impl",

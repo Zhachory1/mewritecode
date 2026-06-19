@@ -99,11 +99,10 @@ function isDirectory(p: string): boolean {
 }
 
 function findNearestProjectAgentsDir(cwd: string): string | null {
-	// #62: cave's project config dir is `.cave/`; the pre-rebrand `.pi/` is kept
-	// as a fallback so projects mid-migration still resolve. Cave-canonical wins
-	// at the same level of the tree.
 	let currentDir = cwd;
 	while (true) {
+		const mewrite = path.join(currentDir, ".mewrite", "agents");
+		if (isDirectory(mewrite)) return mewrite;
 		const cave = path.join(currentDir, ".cave", "agents");
 		if (isDirectory(cave)) return cave;
 		const pi = path.join(currentDir, ".pi", "agents");
@@ -133,10 +132,8 @@ export function discoverAgents(cwd: string, scope: AgentScope): AgentDiscoveryRe
 	const projectAgentsDir = findNearestProjectAgentsDir(cwd);
 
 	// #59 stage 2: cross-platform discovery (Claude Code only in V1). OFF by
-	// default; opt in via env var. Cave's canonical dirs are scanned BEFORE the
-	// CC alias dirs at the same scope, then last-write-wins inside the map keeps
-	// CC entries when there's no cave entry, or cave entries when both exist
-	// (since cave is later in the user-scope order below).
+	// default; opt in via env var. Me Write Code's canonical dirs are scanned
+	// after CC alias dirs at the same scope, so native agents win on collision.
 	const crossPlatformEnabled = process.env.CAVE_CROSS_PLATFORM_AGENTS === "true";
 	const userClaudeDir = crossPlatformEnabled ? path.join(os.homedir(), ".claude", "agents") : null;
 	const projectClaudeDir = crossPlatformEnabled ? findNearestProjectClaudeAgentsDir(cwd) : null;

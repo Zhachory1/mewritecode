@@ -22,7 +22,7 @@ describe("WS5 slash-commands — discovery loader", () => {
 		cwd = mkdtempSync(join(tmpdir(), "cave-cmd-cwd-"));
 		agentDir = mkdtempSync(join(tmpdir(), "cave-cmd-agent-"));
 		bundledDir = mkdtempSync(join(tmpdir(), "cave-cmd-bundled-"));
-		projectDir = join(cwd, ".cave", "commands");
+		projectDir = join(cwd, ".mewrite", "commands");
 		userDir = join(agentDir, "commands");
 		mkdirSync(projectDir, { recursive: true });
 		mkdirSync(userDir, { recursive: true });
@@ -91,7 +91,7 @@ describe("WS5 slash-commands — discovery loader", () => {
 				"model: claude-3-5-sonnet-latest",
 				"effort: high",
 				"context: fork",
-				"agent: .cave/agents/critic.md",
+				"agent: .mewrite/agents/critic.md",
 				"hooks:",
 				"  PreToolUse:",
 				"    - matcher: '*'",
@@ -117,7 +117,7 @@ describe("WS5 slash-commands — discovery loader", () => {
 		expect(cmd.model).toBe("claude-3-5-sonnet-latest");
 		expect(cmd.effort).toBe("high");
 		expect(cmd.context).toBe("fork");
-		expect(cmd.agent).toBe(".cave/agents/critic.md");
+		expect(cmd.agent).toBe(".mewrite/agents/critic.md");
 		expect(cmd.hooks).toBeTypeOf("object");
 		expect(cmd.paths).toEqual(["src/**"]);
 		expect(cmd.shell).toBe("/bin/bash");
@@ -183,7 +183,7 @@ describe("WS5 slash-commands — expansion", () => {
 	beforeEach(() => {
 		cwd = mkdtempSync(join(tmpdir(), "cave-cmd-exp-"));
 		agentDir = mkdtempSync(join(tmpdir(), "cave-cmd-exp-agent-"));
-		projectDir = join(cwd, ".cave", "commands");
+		projectDir = join(cwd, ".mewrite", "commands");
 		mkdirSync(projectDir, { recursive: true });
 	});
 	afterEach(() => {

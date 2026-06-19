@@ -70,11 +70,11 @@ describe("#59 bundled subagent extension", () => {
 	it("discovers bundled sample agents (scout, planner, worker) via the extension's discoverAgents", () => {
 		// Empty user + project dirs. The only agents visible should be the
 		// bundled ones (those shipped in `packages/coding-agent/agents/`).
-		// `getAgentDir()` reads the global agent dir from env or `~/.cave/agent/`,
+		// `getAgentDir()` reads the global agent dir from env or `~/.mewrite/agent/`,
 		// which we can't easily override per test; instead point a fresh user
 		// dir to a tempfs that's known-empty.
-		const originalEnv = process.env.CAVE_AGENT_DIR ?? process.env.PI_AGENT_DIR;
-		process.env.CAVE_AGENT_DIR = tempUserDir;
+		const originalEnv = process.env.MEWRITE_CODING_AGENT_DIR ?? process.env.PI_AGENT_DIR;
+		process.env.MEWRITE_CODING_AGENT_DIR = tempUserDir;
 		process.env.PI_AGENT_DIR = tempUserDir;
 
 		try {
@@ -93,10 +93,10 @@ describe("#59 bundled subagent extension", () => {
 			}
 		} finally {
 			if (originalEnv === undefined) {
-				delete process.env.CAVE_AGENT_DIR;
+				delete process.env.MEWRITE_CODING_AGENT_DIR;
 				delete process.env.PI_AGENT_DIR;
 			} else {
-				process.env.CAVE_AGENT_DIR = originalEnv;
+				process.env.MEWRITE_CODING_AGENT_DIR = originalEnv;
 				process.env.PI_AGENT_DIR = originalEnv;
 			}
 		}
