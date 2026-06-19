@@ -50,9 +50,9 @@
 		"@typescript/native-preview": "7.0.0-dev.20260120.1",
 		"concurrently": "^9.2.1",
 		"husky": "^9.1.7",
+		"shx": "^0.4.0",
 		"tsx": "^4.20.3",
-		"typescript": "^5.9.2",
-		"shx": "^0.4.0"
+		"typescript": "^5.9.2"
 	},
 	"engines": {
 		"node": ">=20.0.0"
@@ -70,5 +70,8 @@
 			"rimraf": "6.1.2"
 		}
 	},
-	"description": "Me Write Code CLI monorepo"
+	"description": "Me Write Code CLI monorepo",
+	"optionalDependencies": {
+		"@rollup/rollup-linux-x64-gnu": "4.60.4"
+	}
 }
