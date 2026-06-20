@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed long-running agent work visibility by showing a compact live activity list under the running status spinner, including separate rows for parallel tools and subagents ([#20](https://github.com/Zhachory1/mewritecode/issues/20)).
+
 ## [0.65.10] - 2026-06-19
 
 ### Fixed

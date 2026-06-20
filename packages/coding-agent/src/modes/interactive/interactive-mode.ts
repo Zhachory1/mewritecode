@@ -345,6 +345,8 @@ export class InteractiveMode {
 
 	// F2 activity monitor overlay, backed by the session's ActivityRegistry.
 	private activityOverlay: ActivityOverlay | undefined = undefined;
+	// Compact inline activity monitor shown under the running loader.
+	private activityStatus: ActivityOverlay | undefined = undefined;
 	private activityPanel: SidePanelHandle | null = null;
 	// Live-refresh ticker for the open panel (re-renders elapsed/stalled each second).
 	private activityTicker: ReturnType<typeof setInterval> | undefined = undefined;
@@ -448,13 +450,19 @@ export class InteractiveMode {
 		// The registry's ActivitySnapshot is structurally identical to the
 		// tui-local one, so a thin list()/subscribe() adapter is all that's needed.
 		const activityRegistry = this.session.activityRegistry;
+		const activityRegistryAdapter = {
+			list: () => activityRegistry.list() as ActivitySnapshot[],
+			subscribe: (fn: () => void) => activityRegistry.subscribe(fn),
+		};
 		this.activityOverlay = new ActivityOverlay({
-			registry: {
-				list: () => activityRegistry.list() as ActivitySnapshot[],
-				subscribe: (fn) => activityRegistry.subscribe(fn),
-			},
+			registry: activityRegistryAdapter,
+		});
+		this.activityStatus = new ActivityOverlay({
+			registry: activityRegistryAdapter,
+			maxRows: 4,
 		});
 		this.activityOverlay.bindRedraw(() => this.ui.requestRender());
+		this.activityStatus.bindRedraw(() => this.ui.requestRender());
 		// Keep the spinner's blocking-leaf label fresh on every registry change
 		// (covers stall transitions / subagent chatter that arrive without a
 		// matching interactive-mode branch).
@@ -1525,10 +1533,12 @@ export class InteractiveMode {
 		this.activitySpinnerUnsub?.();
 		const reg = this.session.activityRegistry;
 		this.activitySpinnerUnsub = reg.subscribe(() => this.refreshSpinnerMessage());
-		this.activityOverlay?.setRegistry({
+		const activityRegistryAdapter = {
 			list: () => reg.list() as ActivitySnapshot[],
-			subscribe: (fn) => reg.subscribe(fn),
-		});
+			subscribe: (fn: () => void) => reg.subscribe(fn),
+		};
+		this.activityOverlay?.setRegistry(activityRegistryAdapter);
+		this.activityStatus?.setRegistry(activityRegistryAdapter);
 		await this.updateAvailableProviderCount();
 		this.updateEditorBorderColor();
 		this.updateTerminalTitle();
@@ -2786,6 +2796,9 @@ export class InteractiveMode {
 					true, // showElapsed
 				);
 				this.statusContainer.addChild(this.loadingAnimation);
+				if (this.activityStatus) {
+					this.statusContainer.addChild(this.activityStatus);
+				}
 				// Apply any pending working message queued before loader existed
 				if (this.pendingWorkingMessage !== undefined) {
 					if (this.pendingWorkingMessage) {
@@ -6233,6 +6246,7 @@ export class InteractiveMode {
 		this.activitySpinnerUnsub?.();
 		this.activitySpinnerUnsub = undefined;
 		this.activityOverlay?.dispose();
+		this.activityStatus?.dispose();
 		if (this.unsubscribe) {
 			this.unsubscribe();
 		}
