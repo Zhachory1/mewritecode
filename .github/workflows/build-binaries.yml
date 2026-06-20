@@ -135,8 +135,10 @@ jobs:
           registry-url: https://registry.npmjs.org
       - run: npm ci
       - run: npm run build
-      - run: npm publish --workspaces --access public
+      - name: Publish to npm
+        run: npm publish --workspaces --access public
         if: env.NODE_AUTH_TOKEN != ''
+        continue-on-error: true
 
   publish-docker:
     runs-on: ubuntu-latest

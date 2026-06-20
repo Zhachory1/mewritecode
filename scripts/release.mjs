@@ -109,7 +109,7 @@ console.log();
 console.log("Committing and tagging...");
 run("git add .");
 run(`git commit -m "Release v${version}"`);
-run(`git tag v${version}`);
+run(`git tag -a v${version} -m "v${version}"`);
 console.log();
 
 // 5. Publish
