@@ -52,6 +52,18 @@ jobs:
               return Buffer.from(fileContent.content, 'base64').toString('utf8');
             }
 
+            async function getOptionalTextFile(path) {
+              try {
+                return await getTextFile(path);
+              } catch (error) {
+                if (error && typeof error === 'object' && 'status' in error && error.status === 404) {
+                  console.log(`${path} not found; treating as empty`);
+                  return '';
+                }
+                throw error;
+              }
+            }
+
             async function closePullRequest(message) {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
@@ -74,7 +86,7 @@ jobs:
               return;
             }
 
-            const approvedContent = await getTextFile('.github/APPROVED_CONTRIBUTORS');
+            const approvedContent = await getOptionalTextFile('.github/APPROVED_CONTRIBUTORS');
             const approvedList = approvedContent
               .split('\n')
               .map(line => line.trim().toLowerCase())

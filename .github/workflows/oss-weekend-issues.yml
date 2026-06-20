@@ -51,18 +51,23 @@ jobs:
               return Buffer.from(fileContent.content, 'base64').toString('utf8');
             }
 
+            async function getOptionalTextFile(path) {
+              try {
+                return await getTextFile(path);
+              } catch (error) {
+                if (error && typeof error === 'object' && 'status' in error && error.status === 404) {
+                  console.log(`${path} not found; treating as empty`);
+                  return '';
+                }
+                throw error;
+              }
+            }
+
             const permission = await getPermission(issueAuthor);
             if (['admin', 'maintain', 'write'].includes(permission)) {
               console.log(`${issueAuthor} is a collaborator with ${permission} access`);
               return;
             }
-
-            const approvedContent = await getTextFile('.github/APPROVED_CONTRIBUTORS');
-            const approvedList = approvedContent
-              .split('\n')
-              .map(line => line.trim().toLowerCase())
-              .filter(line => line && !line.startsWith('#'));
-            const isApprovedContributor = approvedList.includes(issueAuthor.toLowerCase());
 
             let weekendState;
             try {
@@ -79,6 +84,13 @@ jobs:
               console.log('OSS weekend is not active');
               return;
             }
+
+            const approvedContent = await getOptionalTextFile('.github/APPROVED_CONTRIBUTORS');
+            const approvedList = approvedContent
+              .split('\n')
+              .map(line => line.trim().toLowerCase())
+              .filter(line => line && !line.startsWith('#'));
+            const isApprovedContributor = approvedList.includes(issueAuthor.toLowerCase());
 
             if (isApprovedContributor) {
               console.log(`${issueAuthor} is in the approved contributors list`);
