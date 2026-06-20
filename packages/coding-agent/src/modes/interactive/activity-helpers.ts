@@ -9,10 +9,12 @@
 import type { ActivityKind } from "../../core/activity/activity-registry.js";
 
 const SUBAGENT_TOOL_NAMES = new Set(["task", "agent"]);
+const MCP_TOOL_NAMES = new Set(["mcp_tool_call", "mcp_tool_search"]);
 
 /** Map a tool name to an activity kind (DD §11.3). MCP stays generic in v1 (B8). */
 export function kindOf(toolName: string): ActivityKind {
 	if (SUBAGENT_TOOL_NAMES.has(toolName)) return "subagent";
+	if (MCP_TOOL_NAMES.has(toolName)) return "mcp";
 	return "tool";
 }
 
@@ -31,6 +33,8 @@ export function labelOf(toolName: string, args: Record<string, unknown>): string
 		}
 		return "task";
 	}
+	if (toolName === "mcp_tool_call") return "mcp call";
+	if (toolName === "mcp_tool_search") return "mcp search";
 	return toolName;
 }
 
@@ -39,6 +43,14 @@ export function detailOf(toolName: string, args: Record<string, unknown>): strin
 	if (toolName === "bash") {
 		const cmd = typeof args.command === "string" ? args.command : undefined;
 		return cmd ? truncateDetail(cmd) : undefined;
+	}
+	if (toolName === "mcp_tool_call") {
+		const name = typeof args.name === "string" ? args.name : undefined;
+		return name ? truncateDetail(name) : undefined;
+	}
+	if (toolName === "mcp_tool_search") {
+		const query = typeof args.query === "string" ? args.query : undefined;
+		return query ? truncateDetail(query) : undefined;
 	}
 	const path =
 		typeof args.path === "string" ? args.path : typeof args.file_path === "string" ? args.file_path : undefined;

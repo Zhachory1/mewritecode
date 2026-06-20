@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Fixed the activity monitor to include `/activity` discovery, nested subagent indentation, MCP tool classification, and bash process IDs in live activity details ([#10](https://github.com/Zhachory1/mewritecode/issues/10)).
+- Fixed startup noise by no longer printing the full skills list on launch; use `/skills` to inspect available skills.
 - Fixed first-run onboarding dead ends by accepting friendly `/login` provider aliases, listing all valid aliases in errors, preserving `/help`, and covering the editor placeholder affordance ([#9](https://github.com/Zhachory1/mewritecode/issues/9)).
 - Fixed long-running agent work visibility by showing a compact live activity list under the running status spinner, including separate rows for parallel tools and subagents ([#20](https://github.com/Zhachory1/mewritecode/issues/20)).
 

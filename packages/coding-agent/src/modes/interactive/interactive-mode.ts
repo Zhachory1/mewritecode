@@ -1302,19 +1302,6 @@ export class InteractiveMode {
 				this.chatContainer.addChild(new Spacer(1));
 			}
 
-			const skills = skillsResult.skills;
-			if (skills.length > 0) {
-				const groups = this.buildScopeGroups(
-					skills.map((skill) => ({ path: skill.filePath, sourceInfo: skill.sourceInfo })),
-				);
-				const skillList = this.formatScopeGroups(groups, {
-					formatPath: (item) => this.formatDisplayPath(item.path),
-					formatPackagePath: (item) => this.getShortPath(item.path, item.sourceInfo),
-				});
-				this.chatContainer.addChild(new Text(`${sectionHeader("Skills")}\n${skillList}`, 0, 0));
-				this.chatContainer.addChild(new Spacer(1));
-			}
-
 			const templates = this.session.promptTemplates;
 			if (templates.length > 0) {
 				const groups = this.buildScopeGroups(
@@ -2463,6 +2450,11 @@ export class InteractiveMode {
 				this.editor.setText("");
 				return;
 			}
+			if (text === "/activity") {
+				this.editor.setText("");
+				this.toggleActivityOverlay();
+				return;
+			}
 			if (text === "/help") {
 				this.editor.setText("");
 				this.handleHelpCommand();
@@ -2995,9 +2987,12 @@ export class InteractiveMode {
 				// `detail: undefined` would erase a previously-set detail (e.g. the
 				// bash command) on an image-only / text-less partial (m-5).
 				const d = deriveDetail(event.partialResult);
+				const pid = this.extractBashPid(event.partialResult);
+				const commandDetail = detailOf(event.toolName, (event.args ?? {}) as Record<string, unknown>);
+				const pidDetail = pid !== undefined && commandDetail ? `pid ${pid} · ${commandDetail}` : undefined;
 				this.session.activityRegistry.update(event.toolCallId, {
 					lastProgressAt: Date.now(),
-					...(d !== undefined ? { detail: d } : {}),
+					...(pidDetail !== undefined ? { detail: pidDetail } : d !== undefined ? { detail: d } : {}),
 				});
 				this.refreshSpinnerMessage();
 				break;
@@ -3179,6 +3174,7 @@ export class InteractiveMode {
 				// "tool" phase.
 				const reg = this.session.activityRegistry;
 				const detail = event.phase === "tool" ? `→ ${event.detail ?? ""}` : (event.detail ?? "");
+				const parentId = event.subagentId.includes("#") ? event.subagentId.split("#", 1)[0] : undefined;
 				if (event.phase === "started") {
 					// In single-mode `subagentId === toolCallId`, already begun at
 					// tool_execution_start. Re-begin()+showStatus() here would emit a
@@ -3192,11 +3188,12 @@ export class InteractiveMode {
 							detail: event.detail ?? "starting",
 							startedAt: Date.now(),
 							lastProgressAt: Date.now(),
+							parentId,
 						});
 						this.showStatus(`◇ ${event.subagentName}: ${event.detail ?? "starting"}`);
 					}
 				} else if (event.phase === "tool" || event.phase === "message") {
-					reg.update(event.subagentId, { detail, lastProgressAt: Date.now() });
+					reg.update(event.subagentId, { detail, lastProgressAt: Date.now(), parentId });
 				} else if (event.phase === "completed") {
 					reg.end(event.subagentId);
 					this.showStatus(`✓ ${event.subagentName}: done`);
@@ -3253,6 +3250,14 @@ export class InteractiveMode {
 		this.lastStatusSpacer = spacer;
 		this.lastStatusText = text;
 		this.ui.requestRender();
+	}
+
+	private extractBashPid(partialResult: unknown): number | undefined {
+		if (!partialResult || typeof partialResult !== "object") return undefined;
+		const details = (partialResult as { details?: unknown }).details;
+		if (!details || typeof details !== "object") return undefined;
+		const pid = (details as { pid?: unknown }).pid;
+		return typeof pid === "number" && Number.isFinite(pid) ? pid : undefined;
 	}
 
 	/**

@@ -51,6 +51,15 @@ describe("ActivityRegistry", () => {
 		expect(ids[2]).toBe("fin"); // done sinks
 	});
 
+	it("computes depth from parent chains", () => {
+		const r = new ActivityRegistry();
+		r.begin({ id: "parent", kind: "subagent", label: "task", startedAt: now });
+		r.begin({ id: "child", kind: "tool", label: "bash", parentId: "parent", startedAt: now });
+
+		const child = r.list().find((row) => row.id === "child");
+		expect(child?.depth).toBe(1);
+	});
+
 	it("blockingLeaf returns oldest running non-model; model only if it's the sole runner", () => {
 		const r = new ActivityRegistry();
 		r.begin({ id: "model:1", kind: "model", label: "model response", startedAt: now - 8000 });

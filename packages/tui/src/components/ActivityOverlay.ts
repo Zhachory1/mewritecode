@@ -10,7 +10,7 @@
  * overlay therefore defines its OWN structural snapshot + registry interfaces.
  * The real `ActivityRegistry` (in coding-agent) returns objects that are
  * structurally compatible with {@link ActivitySnapshot}; interactive-mode
- * adapts them. Render is flat in v1 (the `depth` field is ignored).
+ * adapts them.
  */
 import { formatElapsed } from "../format-elapsed.js";
 import type { Component } from "../tui.js";
@@ -36,7 +36,7 @@ export interface ActivitySnapshot {
 	elapsedMs: number;
 	/** now - lastProgressAt; 0 when never progress-tracked or just progressed. */
 	stalledMs: number;
-	/** Nesting depth. Always 0 in v1 (flat render). */
+	/** Nesting depth for subagent/tool trees. */
 	depth: number;
 }
 
@@ -178,8 +178,9 @@ export class ActivityOverlay implements Component {
 	private formatRow(activity: ActivitySnapshot, width: number, isBlocker: boolean): string {
 		const glyph = this.glyph(activity);
 		const mark = isBlocker ? `${BLOCKER_MARK} ` : "";
+		const indent = "  ".repeat(Math.max(0, activity.depth));
 		const labelText = activity.detail ? `${activity.label}: ${activity.detail}` : activity.label;
-		const left = `${mark}${glyph} ${labelText}`;
+		const left = `${mark}${indent}${glyph} ${labelText}`;
 		const right = this.rightColumn(activity);
 		return this.theme.row(this.layoutRow(left, right, width));
 	}

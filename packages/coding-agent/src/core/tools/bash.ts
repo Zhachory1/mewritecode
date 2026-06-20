@@ -36,6 +36,7 @@ export type BashToolInput = Static<typeof bashSchema>;
 export interface BashToolDetails {
 	truncation?: TruncationResult;
 	fullOutputPath?: string;
+	pid?: number;
 }
 
 /**
@@ -55,6 +56,7 @@ export interface BashOperations {
 		cwd: string,
 		options: {
 			onData: (data: Buffer) => void;
+			onStart?: (info: { pid?: number }) => void;
 			signal?: AbortSignal;
 			timeout?: number;
 			env?: NodeJS.ProcessEnv;
@@ -70,7 +72,7 @@ export interface BashOperations {
  */
 export function createLocalBashOperations(): BashOperations {
 	return {
-		exec: (command, cwd, { onData, signal, timeout, env }) => {
+		exec: (command, cwd, { onData, onStart, signal, timeout, env }) => {
 			return new Promise((resolve, reject) => {
 				const { shell, args } = getShellConfig();
 				if (!existsSync(cwd)) {
@@ -83,6 +85,7 @@ export function createLocalBashOperations(): BashOperations {
 					env: env ?? getShellEnv(),
 					stdio: ["ignore", "pipe", "pipe"],
 				});
+				onStart?.({ pid: child.pid });
 				let timedOut = false;
 				let timeoutHandle: NodeJS.Timeout | undefined;
 				// Set timeout if provided.
@@ -348,6 +351,11 @@ export function createBashToolDefinition(
 
 				ops.exec(spawnContext.command, spawnContext.cwd, {
 					onData: handleData,
+					onStart: (info) => {
+						if (onUpdate && info.pid !== undefined) {
+							onUpdate({ content: [], details: { pid: info.pid } });
+						}
+					},
 					signal,
 					timeout,
 					env: spawnContext.env,

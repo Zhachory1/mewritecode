@@ -2,7 +2,13 @@ import { Container, type Terminal, TUI, visibleWidth } from "@zhachory1/mewrite-
 import { beforeAll, describe, expect, test, vi } from "vitest";
 import { KeybindingsManager } from "../src/core/keybindings.js";
 import { BUILTIN_SLASH_COMMANDS } from "../src/core/slash-commands.js";
-import { formatProviderChoices, parseLoginCommand } from "../src/modes/interactive/activity-helpers.js";
+import {
+	detailOf,
+	formatProviderChoices,
+	kindOf,
+	labelOf,
+	parseLoginCommand,
+} from "../src/modes/interactive/activity-helpers.js";
 import { CustomEditor } from "../src/modes/interactive/components/custom-editor.js";
 import { InteractiveMode } from "../src/modes/interactive/interactive-mode.js";
 import { getEditorTheme, initTheme } from "../src/modes/interactive/theme/theme.js";
@@ -95,10 +101,15 @@ describe("InteractiveMode onboarding affordances", () => {
 		expect(choices).toContain("github-copilot (copilot, github)");
 	});
 
-	test("registers /help as a wired built-in command", () => {
+	test("registers /help and /activity as wired built-in commands", () => {
 		expect(BUILTIN_SLASH_COMMANDS).toContainEqual({
 			name: "help",
 			description: "Show commands and keyboard shortcuts",
+			wired: true,
+		});
+		expect(BUILTIN_SLASH_COMMANDS).toContainEqual({
+			name: "activity",
+			description: "Toggle live activity monitor",
 			wired: true,
 		});
 	});
@@ -117,6 +128,24 @@ describe("InteractiveMode onboarding affordances", () => {
 		for (const line of editor.render(80)) {
 			expect(visibleWidth(line)).toBeLessThanOrEqual(80);
 		}
+	});
+});
+
+describe("InteractiveMode activity helpers", () => {
+	test("classifies MCP tools separately from generic tools", () => {
+		expect(kindOf("mcp_tool_call")).toBe("mcp");
+		expect(kindOf("mcp_tool_search")).toBe("mcp");
+		expect(labelOf("mcp_tool_call", {})).toBe("mcp call");
+		expect(labelOf("mcp_tool_search", {})).toBe("mcp search");
+		expect(detailOf("mcp_tool_call", { name: "mcp__github__search" })).toBe("mcp__github__search");
+		expect(detailOf("mcp_tool_search", { query: "repo logs" })).toBe("repo logs");
+	});
+
+	test("extracts bash PID from partial activity updates", () => {
+		const fakeThis: any = {};
+		const pid = (InteractiveMode as any).prototype.extractBashPid.call(fakeThis, { details: { pid: 12345 } });
+
+		expect(pid).toBe(12345);
 	});
 });
 
@@ -222,6 +251,7 @@ describe("InteractiveMode.showLoadedResources", () => {
 
 	function createShowLoadedResourcesThis(options: {
 		quietStartup: boolean;
+		quietResourceListing?: boolean;
 		verbose?: boolean;
 		skills?: Array<{ filePath: string }>;
 		skillDiagnostics?: Array<{ type: "warning" | "error" | "collision"; message: string }>;
@@ -231,6 +261,7 @@ describe("InteractiveMode.showLoadedResources", () => {
 			chatContainer: new Container(),
 			settingsManager: {
 				getQuietStartup: () => options.quietStartup,
+				getQuietResourceListing: () => options.quietResourceListing ?? true,
 			},
 			session: {
 				promptTemplates: [],
@@ -271,6 +302,23 @@ describe("InteractiveMode.showLoadedResources", () => {
 		});
 
 		expect(fakeThis.chatContainer.children).toHaveLength(0);
+	});
+
+	test("does not print the full startup skills list even in verbose resource output", () => {
+		const fakeThis = createShowLoadedResourcesThis({
+			quietStartup: false,
+			quietResourceListing: false,
+			verbose: true,
+			skills: [{ filePath: "/tmp/skill/SKILL.md" }],
+		});
+
+		(InteractiveMode as any).prototype.showLoadedResources.call(fakeThis, {
+			force: false,
+		});
+
+		const output = renderAll(fakeThis.chatContainer);
+		expect(output).not.toContain("[Skills]");
+		expect(output).not.toContain("resource-list");
 	});
 
 	test("still shows diagnostics on quiet startup when requested", () => {

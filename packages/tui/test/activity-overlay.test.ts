@@ -92,6 +92,18 @@ describe("ActivityOverlay", () => {
 		);
 	});
 
+	it("indents nested activity rows by depth", () => {
+		const reg = makeRegistry([
+			snap({ id: "parent", kind: "subagent", label: "reviewer", elapsedMs: 2000, depth: 0 }),
+			snap({ id: "child", kind: "tool", label: "bash", detail: "npm test", elapsedMs: 1000, depth: 1 }),
+		]);
+		const overlay = new ActivityOverlay({ registry: reg, maxRows: 20 });
+		const lines = overlay.render(80);
+		const child = lines.find((l) => l.includes("bash: npm test")) ?? "";
+
+		assert.match(child, / {2}● bash: npm test/);
+	});
+
 	it("renders elapsed and ' · stalled Ns' when stalled past the threshold", () => {
 		const reg = makeRegistry([
 			snap({
