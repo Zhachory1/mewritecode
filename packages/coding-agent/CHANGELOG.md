@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Fixed first-run onboarding dead ends by accepting friendly `/login` provider aliases, listing all valid aliases in errors, preserving `/help`, and covering the editor placeholder affordance ([#9](https://github.com/Zhachory1/mewritecode/issues/9)).
 - Fixed long-running agent work visibility by showing a compact live activity list under the running status spinner, including separate rows for parallel tools and subagents ([#20](https://github.com/Zhachory1/mewritecode/issues/20)).
 
 ## [0.65.10] - 2026-06-19

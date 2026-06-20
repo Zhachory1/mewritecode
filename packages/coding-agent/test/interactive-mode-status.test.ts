@@ -1,7 +1,11 @@
-import { Container } from "@zhachory1/mewrite-tui";
+import { Container, type Terminal, TUI, visibleWidth } from "@zhachory1/mewrite-tui";
 import { beforeAll, describe, expect, test, vi } from "vitest";
+import { KeybindingsManager } from "../src/core/keybindings.js";
+import { BUILTIN_SLASH_COMMANDS } from "../src/core/slash-commands.js";
+import { formatProviderChoices, parseLoginCommand } from "../src/modes/interactive/activity-helpers.js";
+import { CustomEditor } from "../src/modes/interactive/components/custom-editor.js";
 import { InteractiveMode } from "../src/modes/interactive/interactive-mode.js";
-import { initTheme } from "../src/modes/interactive/theme/theme.js";
+import { getEditorTheme, initTheme } from "../src/modes/interactive/theme/theme.js";
 
 function renderLastLine(container: Container, width = 120): string {
 	const last = container.children[container.children.length - 1];
@@ -12,6 +16,109 @@ function renderLastLine(container: Container, width = 120): string {
 function renderAll(container: Container, width = 120): string {
 	return container.children.flatMap((child) => child.render(width)).join("\n");
 }
+
+class FakeTerminal implements Terminal {
+	columns = 80;
+	rows = 24;
+	kittyProtocolActive = true;
+
+	start(): void {}
+	stop(): void {}
+	async drainInput(): Promise<void> {}
+	write(_data: string): void {}
+	moveBy(_lines: number): void {}
+	hideCursor(): void {}
+	showCursor(): void {}
+	clearLine(): void {}
+	clearFromCursor(): void {}
+	clearScreen(): void {}
+	setTitle(_title: string): void {}
+	enterAltScreen(): void {}
+	leaveAltScreen(): void {}
+	enableMouseTracking(): void {}
+	disableMouseTracking(): void {}
+	isTTY(): boolean {
+		return false;
+	}
+	async queryOsc(_sequence: string, _responsePrefix: string, _timeoutMs: number): Promise<string | null> {
+		return null;
+	}
+}
+
+describe("InteractiveMode onboarding affordances", () => {
+	const providers = [
+		{ id: "anthropic", aliases: ["claude"] },
+		{ id: "openai-codex", aliases: ["chatgpt", "openai", "codex"] },
+		{ id: "google-gemini-cli", aliases: ["gemini", "google"] },
+		{ id: "github-copilot", aliases: ["copilot", "github"] },
+	];
+
+	beforeAll(() => {
+		initTheme("dark");
+	});
+
+	test("resolves friendly /login aliases to provider ids", () => {
+		expect(parseLoginCommand("/login claude", providers)).toEqual({ kind: "provider", provider: "anthropic" });
+		expect(parseLoginCommand("/login chatgpt", providers)).toEqual({ kind: "provider", provider: "openai-codex" });
+		expect(parseLoginCommand("/login gemini", providers)).toEqual({
+			kind: "provider",
+			provider: "google-gemini-cli",
+		});
+		expect(parseLoginCommand("/login copilot", providers)).toEqual({
+			kind: "provider",
+			provider: "github-copilot",
+		});
+	});
+
+	test("continues to accept raw provider ids", () => {
+		expect(parseLoginCommand("/login anthropic", providers)).toEqual({ kind: "provider", provider: "anthropic" });
+		expect(parseLoginCommand("/login openai-codex", providers)).toEqual({
+			kind: "provider",
+			provider: "openai-codex",
+		});
+		expect(parseLoginCommand("/login google-gemini-cli", providers)).toEqual({
+			kind: "provider",
+			provider: "google-gemini-cli",
+		});
+		expect(parseLoginCommand("/login github-copilot", providers)).toEqual({
+			kind: "provider",
+			provider: "github-copilot",
+		});
+	});
+
+	test("lists raw provider ids and friendly aliases for invalid provider errors", () => {
+		const choices = formatProviderChoices(providers);
+
+		expect(choices).toContain("anthropic (claude)");
+		expect(choices).toContain("openai-codex (chatgpt, openai, codex)");
+		expect(choices).toContain("google-gemini-cli (gemini, google)");
+		expect(choices).toContain("github-copilot (copilot, github)");
+	});
+
+	test("registers /help as a wired built-in command", () => {
+		expect(BUILTIN_SLASH_COMMANDS).toContainEqual({
+			name: "help",
+			description: "Show commands and keyboard shortcuts",
+			wired: true,
+		});
+	});
+
+	test("custom editor renders the first-run placeholder without changing text", () => {
+		const editor = new CustomEditor(new TUI(new FakeTerminal()), getEditorTheme(), KeybindingsManager.create(), {
+			placeholder: "Type a task, or / for commands · F1 help",
+		});
+		editor.focused = true;
+
+		const output = editor.render(80).join("\n");
+
+		expect(output).toContain("ype a task, or / for commands · F1 help");
+		expect(output).toContain("\x1b[2m");
+		expect(editor.getText()).toBe("");
+		for (const line of editor.render(80)) {
+			expect(visibleWidth(line)).toBeLessThanOrEqual(80);
+		}
+	});
+});
 
 describe("InteractiveMode.showStatus", () => {
 	beforeAll(() => {

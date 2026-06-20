@@ -100,3 +100,7 @@ export function parseLoginCommand(
 	}
 	return { kind: "invalid", provider: arg };
 }
+
+export function formatProviderChoices(providers: ReadonlyArray<{ id: string; aliases?: readonly string[] }>): string {
+	return providers.map((p) => (p.aliases?.length ? `${p.id} (${p.aliases.join(", ")})` : p.id)).join(", ");
+}

@@ -116,7 +116,14 @@ import { copyToClipboard } from "../../utils/clipboard.js";
 import { extensionForImageMimeType, readClipboardImage } from "../../utils/clipboard-image.js";
 import { parseGitUrl } from "../../utils/git.js";
 import { ensureTool } from "../../utils/tools-manager.js";
-import { deriveDetail, detailOf, kindOf, labelOf, parseLoginCommand } from "./activity-helpers.js";
+import {
+	deriveDetail,
+	detailOf,
+	formatProviderChoices,
+	kindOf,
+	labelOf,
+	parseLoginCommand,
+} from "./activity-helpers.js";
 import { ActionBarComponent } from "./components/action-bar.js";
 import { showApprovalPrompt } from "./components/approval-prompt.js";
 import { ArminComponent } from "./components/armin.js";
@@ -2485,7 +2492,7 @@ export class InteractiveMode {
 				} else if (parsed.kind === "provider") {
 					await this.showLoginDialog(parsed.provider);
 				} else {
-					const names = providers.map((p) => (p.aliases?.length ? `${p.aliases[0]} (${p.id})` : p.id)).join(", ");
+					const names = formatProviderChoices(providers);
 					this.showError(`Unknown provider "${parsed.provider}". Try: ${names || "(none)"}`);
 				}
 				return;
