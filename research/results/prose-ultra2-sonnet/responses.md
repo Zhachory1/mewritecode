@@ -354,15 +354,15 @@ Let me find the relevant code first.
 The repomap doesn't show this symbol — it's in the eval/bench code on this branch. Let me search for it.
 
 ```
-grep -r "outputReductionPct" /Users/zhach/code/cavecode --include="*.ts" -l
+grep -r "outputReductionPct" /Users/zhach/code/mewritecode --include="*.ts" -l
 ```
 
 ```
-/Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts
+/Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/bench.ts
 ```
 
 ```
-grep -n "outputReductionPct" /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts
+grep -n "outputReductionPct" /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/bench.ts
 ```
 
 ```
@@ -373,7 +373,7 @@ grep -n "outputReductionPct" /Users/zhach/code/cavecode/packages/coding-agent/ev
 Now read the function and its callers:
 
 ```
-Read /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts offset=60 limit=120
+Read /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/bench.ts offset=60 limit=120
 ```
 
 ```
@@ -395,7 +395,7 @@ Read /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts
 ```
 
 ```
-grep -n "outputReductionPct" /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts
+grep -n "outputReductionPct" /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/bench.ts
 ```
 
 ```
@@ -406,7 +406,7 @@ grep -n "outputReductionPct" /Users/zhach/code/cavecode/packages/coding-agent/ev
 The file seems to have a discrepancy. Let me read the actual function more carefully:
 
 ```
-Read /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts offset=67 limit=10
+Read /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/bench.ts offset=67 limit=10
 ```
 
 ```
@@ -421,7 +421,7 @@ Read /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts
 Good. Now find all callers:
 
 ```
-grep -n "outputReductionPct\|reductionPct\|outputOff\|outputFull" /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts
+grep -n "outputReductionPct\|reductionPct\|outputOff\|outputFull" /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/bench.ts
 ```
 
 ```
@@ -475,11 +475,11 @@ grep -n "outputReductionPct\|reductionPct\|outputOff\|outputFull" /Users/zhach/c
 Now find the aggregate and table callers:
 
 ```
-grep -n "reductionPct\|outputOff\|outputFull" /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts | grep -v "^67:\|^68:\|^69:\|^70:\|^71:\|^75:\|^76:\|^77:\|^78:\|^79:\|^80:\|^81:\|^82:\|^96:\|^97:\|^98:\|^100:\|^102:\|^103:\|^104:\|^105:\|^106:\|^107:\|^108:"
+grep -n "reductionPct\|outputOff\|outputFull" /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/bench.ts | grep -v "^67:\|^68:\|^69:\|^70:\|^71:\|^75:\|^76:\|^77:\|^78:\|^79:\|^80:\|^81:\|^82:\|^96:\|^97:\|^98:\|^100:\|^102:\|^103:\|^104:\|^105:\|^106:\|^107:\|^108:"
 ```
 
 ```
-Read /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts offset=110 limit=120
+Read /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/bench.ts offset=110 limit=120
 ```
 
 ```
@@ -600,7 +600,7 @@ The guard only protects the `0/0` case. The `outputOff = 0, outputFull > 0` case
 Let me find the relevant code first.
 
 ```bash
-grep -r "outputReductionPct" /Users/zhach/code/cavecode --include="*.ts" -l
+grep -r "outputReductionPct" /Users/zhach/code/mewritecode --include="*.ts" -l
 ```
 
 ```
@@ -609,7 +609,7 @@ packages/coding-agent/evals/prose-40pct/aggregate.ts
 ```
 
 ```bash
-grep -n "outputReductionPct" /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/aggregate.ts
+grep -n "outputReductionPct" /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/bench.ts /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/aggregate.ts
 ```
 
 ```
@@ -618,7 +618,7 @@ packages/coding-agent/evals/prose-40pct/bench.ts:61:  return Math.round(((output
 ```
 
 ```bash
-grep -n "outputReductionPct\|outputOff\|outputFull\|reductionPct\|reduction_pct" /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts
+grep -n "outputReductionPct\|outputOff\|outputFull\|reductionPct\|reduction_pct" /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/bench.ts
 ```
 
 ```
@@ -628,7 +628,7 @@ packages/coding-agent/evals/prose-40pct/bench.ts:100:    outputReductionPct: out
 ```
 
 ```bash
-grep -n "outputReductionPct\|reductionPct\|reduction_pct\|outputOff\|outputFull" /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/aggregate.ts
+grep -n "outputReductionPct\|reductionPct\|reduction_pct\|outputOff\|outputFull" /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/aggregate.ts
 ```
 
 ```
@@ -636,7 +636,7 @@ packages/coding-agent/evals/prose-40pct/aggregate.ts:37:  outputReductionPct: nu
 ```
 
 ```bash
-sed -n '50,120p' /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts
+sed -n '50,120p' /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/bench.ts
 ```
 
 ```
@@ -657,7 +657,7 @@ sed -n '50,120p' /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40
 ```
 
 ```bash
-sed -n '1,60p' /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/aggregate.ts
+sed -n '1,60p' /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/aggregate.ts
 ```
 
 ```
@@ -691,7 +691,7 @@ sed -n '1,60p' /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pc
 ```
 
 ```bash
-sed -n '60,130p' /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/aggregate.ts
+sed -n '60,130p' /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/aggregate.ts
 ```
 
 ```
@@ -759,7 +759,7 @@ sed -n '60,130p' /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40
 Now let me check how `outputOff` is populated — specifically whether it can be 0 in practice:
 
 ```bash
-sed -n '60,105p' /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts
+sed -n '60,105p' /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/bench.ts
 ```
 
 ```

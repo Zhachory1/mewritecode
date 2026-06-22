@@ -723,7 +723,7 @@ export function enforceSkillTokenBudget(
 /**
  * Substitute variables in `text` using `ctx`.
  *
- * Supported (compatible with Claude Code, Codex, opencode, pi-code):
+ * Supported (compatible with Claude Code, Codex, opencode, mewrite-code):
  * - $ARGUMENTS — full args string joined with spaces
  * - $@ — alias of $ARGUMENTS
  * - $0, $1, $2, … — positional args (0-indexed: $0 is skill/command name)
@@ -734,7 +734,7 @@ export function enforceSkillTokenBudget(
  * - ${ENV_NAME} — fallback to process.env
  *
  * Replacement is non-recursive: substituted values are NOT scanned for
- * further substitutions. This matches pi-code/Claude Code behaviour.
+ * further substitutions. This matches mewrite-code/Claude Code behaviour.
  */
 export function substituteSkillVariables(text: string, ctx: SkillExpandContext): string {
 	const args = ctx.args ?? [];

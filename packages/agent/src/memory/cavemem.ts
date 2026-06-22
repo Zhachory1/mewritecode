@@ -15,10 +15,10 @@
  * pass) so we can reuse the warm transport even when the model isn't in the
  * loop.
  *
- * Pi-check: pi-code does not ship a memory provider abstraction. The published
- *   `pi-memory@0.3.8` is a different design (qmd-powered semantic search over
- *   per-day logs/scratchpad). It would slot in behind this same interface as
- *   a third provider if a user asked for it.
+ * Source check: upstream does not ship a memory provider abstraction. Existing
+ *   memory packages use different designs, such as qmd-powered semantic search
+ *   over per-day logs/scratchpad. They could slot in behind this same interface as
+ *   another provider if a user asked for it.
  */
 
 import { spawn } from "node:child_process";

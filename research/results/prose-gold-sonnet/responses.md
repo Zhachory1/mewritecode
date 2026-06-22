@@ -398,7 +398,7 @@ If other tools (CI scripts, log parsers, structured extractors) consume agent ou
 Let me find the relevant code first.
 
 ```bash
-grep -r "outputReductionPct" /Users/zhach/code/cavecode --include="*.ts" -l
+grep -r "outputReductionPct" /Users/zhach/code/mewritecode --include="*.ts" -l
 ```
 
 ```
@@ -407,7 +407,7 @@ research/evals/prose-gold/report.ts
 ```
 
 ```bash
-grep -n "outputReductionPct" /Users/zhach/code/cavecode/research/evals/prose-gold/grade.ts /Users/zhach/code/cavecode/research/evals/prose-gold/report.ts
+grep -n "outputReductionPct" /Users/zhach/code/mewritecode/research/evals/prose-gold/grade.ts /Users/zhach/code/mewritecode/research/evals/prose-gold/report.ts
 ```
 
 ```
@@ -418,7 +418,7 @@ research/evals/prose-gold/report.ts:75:  const reductionPct = outputReductionPct
 ```
 
 ```bash
-grep -n "" /Users/zhach/code/cavecode/research/evals/prose-gold/grade.ts | head -80
+grep -n "" /Users/zhach/code/mewritecode/research/evals/prose-gold/grade.ts | head -80
 ```
 
 ```
@@ -493,7 +493,7 @@ grep -n "" /Users/zhach/code/cavecode/research/evals/prose-gold/grade.ts | head 
 ```
 
 ```bash
-grep -n "" /Users/zhach/code/cavecode/research/evals/prose-gold/report.ts | head -120
+grep -n "" /Users/zhach/code/mewritecode/research/evals/prose-gold/report.ts | head -120
 ```
 
 ```
@@ -633,7 +633,7 @@ The repomap doesn't show it — I'll grep for it directly.
 **Finding the function:**
 
 ```
-grep -r "outputReductionPct" /Users/zhach/code/cavecode --include="*.ts" -l
+grep -r "outputReductionPct" /Users/zhach/code/mewritecode --include="*.ts" -l
 ```
 
 I can't run tools in this session. Let me reason from what I know about this codebase from the recent commits (prose bench, cave-mode tuning).

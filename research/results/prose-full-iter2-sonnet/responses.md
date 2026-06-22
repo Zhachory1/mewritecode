@@ -374,7 +374,7 @@ Looking at the branch context (`feat/prose-40pct`) and the eval infrastructure, 
 Let me search:
 
 ```
-grep -r "outputReductionPct" /Users/zhach/code/cavecode --include="*.ts" -l
+grep -r "outputReductionPct" /Users/zhach/code/mewritecode --include="*.ts" -l
 ```
 
 I don't have tool access to run commands. Let me reason from what I know about the codebase based on the branch and recent commits.
@@ -413,7 +413,7 @@ research/results/prose-*/  or  packages/coding-agent/src/evals/
 Or run:
 
 ```bash
-grep -r "outputReductionPct" /Users/zhach/code/cavecode --include="*.ts" -n
+grep -r "outputReductionPct" /Users/zhach/code/mewritecode --include="*.ts" -n
 ```
 
 and paste the output — then I can give you a precise, line-by-line trace.
@@ -423,7 +423,7 @@ and paste the output — then I can give you a precise, line-by-line trace.
 Let me find the relevant code first.
 
 ```bash
-grep -r "outputReductionPct" /Users/zhach/code/cavecode --include="*.ts" -l
+grep -r "outputReductionPct" /Users/zhach/code/mewritecode --include="*.ts" -l
 ```
 
 ```
@@ -432,7 +432,7 @@ packages/coding-agent/evals/prose-40pct/aggregate.ts
 ```
 
 ```bash
-grep -n "outputReductionPct" /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/aggregate.ts
+grep -n "outputReductionPct" /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/bench.ts /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/aggregate.ts
 ```
 
 ```
@@ -441,12 +441,12 @@ packages/coding-agent/evals/prose-40pct/bench.ts:61:    result.outputReductionPc
 ```
 
 ```bash
-grep -n "" /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts | sed -n '50,80p'
+grep -n "" /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/bench.ts | sed -n '50,80p'
 ```
 
 ```bash
 # Use read tool equivalent - cat with line numbers
-awk 'NR>=50 && NR<=80' /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts
+awk 'NR>=50 && NR<=80' /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/bench.ts
 ```
 
 ```
@@ -457,17 +457,17 @@ function outputReductionPct(outputOff: number, outputFull: number): number {
 ```
 
 ```bash
-awk 'NR>=55,NR<=75' /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts
+awk 'NR>=55,NR<=75' /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/bench.ts
 ```
 
 ```bash
-awk 'NR>=50 && NR<=80' /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts
+awk 'NR>=50 && NR<=80' /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/bench.ts
 ```
 
 Let me read the files directly:
 
 ```bash
-cat -n /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts
+cat -n /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/bench.ts
 ```
 
 ```
@@ -1983,7 +1983,7 @@ cat -n /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.
 The file seems to have blank lines. Let me read it properly:
 
 ```bash
-head -120 /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts
+head -120 /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/bench.ts
 ```
 
 ```
@@ -2083,7 +2083,7 @@ async function runBench(model: string, temperature: number): Promise<void> {
 ```
 
 ```bash
-sed -n '90,200p' /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts
+sed -n '90,200p' /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/bench.ts
 ```
 
 ```
@@ -2117,7 +2117,7 @@ sed -n '90,200p' /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40
 ```
 
 ```bash
-sed -n '200,350p' /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts
+sed -n '200,350p' /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/bench.ts
 ```
 
 ```
@@ -2139,7 +2139,7 @@ runBench(model, temperature).catch(console.error);
 Now the aggregate:
 
 ```bash
-cat /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/aggregate.ts
+cat /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/aggregate.ts
 ```
 
 ```

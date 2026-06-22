@@ -178,9 +178,9 @@ interface SpawnResult {
 }
 
 /**
- * Resolve which cave executable to spawn. Mirrors pi-code's subagent
- * `getPiInvocation` pattern — prefer the current process binary (so tests
- * with tsx run with tsx; production runs with node + dist), falling back to
+ * Resolve which cave executable to spawn. Mirrors the upstream subagent
+ * invocation pattern — prefer the current process binary (so tests with tsx
+ * run with tsx; production runs with node + dist), falling back to
  * `cave` on PATH.
  */
 function resolveCaveInvocation(args: string[], caveBin?: string): { command: string; args: string[] } {

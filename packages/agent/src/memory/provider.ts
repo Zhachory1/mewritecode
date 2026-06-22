@@ -16,10 +16,10 @@
  * The interface is intentionally narrow — every method maps 1:1 onto either
  * a cavemem MCP tool, a `cavemem hook run` invocation, or a markdown read.
  *
- * Pi-check: nothing in pi-code or the pi-* npm scope ships a memory-provider
- *   abstraction. `pi-memory@0.3.8` exists but is a different design (qmd-based
- *   semantic search over daily logs). We keep this interface narrow precisely
- *   so a pi-memory adapter could land here later without churn.
+ * Source check: no related upstream package ships this memory-provider
+ *   abstraction. Existing memory packages use different designs, such as qmd-based
+ *   semantic search over daily logs. We keep this interface narrow precisely
+ *   so another memory adapter could land here later without churn.
  */
 
 /** Granularity for the memory pipeline. */

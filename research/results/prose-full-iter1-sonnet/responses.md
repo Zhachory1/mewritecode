@@ -391,7 +391,7 @@ Looking at the branch name `feat/prose-40pct` and recent commits, this is likely
 Let me search:
 
 ```
-grep -r "outputReductionPct" /Users/zhach/code/cavecode --include="*.ts" -l
+grep -r "outputReductionPct" /Users/zhach/code/mewritecode --include="*.ts" -l
 ```
 
 I don't have tool access to run commands. Let me reason from what I know about the codebase based on the branch context.
@@ -445,15 +445,15 @@ Let me find the relevant code first.
 The repomap doesn't show it — it's project code. Let me search.
 
 ```
-grep -r "outputReductionPct" /Users/zhach/code/cavecode --include="*.ts" -l
+grep -r "outputReductionPct" /Users/zhach/code/mewritecode --include="*.ts" -l
 ```
 
 ```
-/Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts
+/Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/bench.ts
 ```
 
 ```
-grep -n "outputReductionPct" /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts
+grep -n "outputReductionPct" /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/bench.ts
 ```
 
 ```
@@ -462,7 +462,7 @@ grep -n "outputReductionPct" /Users/zhach/code/cavecode/packages/coding-agent/ev
 ```
 
 ```
-Read /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts 110 130
+Read /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/bench.ts 110 130
 ```
 
 ```
@@ -492,7 +492,7 @@ Read /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts
 Now let me see the aggregate and table usage:
 
 ```
-Read /Users/zhach/code/cavecode/packages/coding-agent/evals/prose-40pct/bench.ts 130 200
+Read /Users/zhach/code/mewritecode/packages/coding-agent/evals/prose-40pct/bench.ts 130 200
 ```
 
 ```

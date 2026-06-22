@@ -410,15 +410,15 @@ Let me find the relevant code first.
 The repomap doesn't show this function — it's in the eval/bench code on this branch. Let me locate it.
 
 ```
-grep -r "outputReductionPct" /Users/zhach/code/cavecode --include="*.ts" -l
+grep -r "outputReductionPct" /Users/zhach/code/mewritecode --include="*.ts" -l
 ```
 
 ```
-/Users/zhach/code/cavecode/evals/prose-microbench/bench.ts
+/Users/zhach/code/mewritecode/evals/prose-microbench/bench.ts
 ```
 
 ```
-grep -n "outputReductionPct" /Users/zhach/code/cavecode/evals/prose-microbench/bench.ts
+grep -n "outputReductionPct" /Users/zhach/code/mewritecode/evals/prose-microbench/bench.ts
 ```
 
 ```
@@ -427,7 +427,7 @@ grep -n "outputReductionPct" /Users/zhach/code/cavecode/evals/prose-microbench/b
 ```
 
 ```
-Read /Users/zhach/code/cavecode/evals/prose-microbench/bench.ts 50 70
+Read /Users/zhach/code/mewritecode/evals/prose-microbench/bench.ts 50 70
 ```
 
 ```
@@ -455,7 +455,7 @@ Read /Users/zhach/code/cavecode/evals/prose-microbench/bench.ts 50 70
 Now let me see the aggregate logic and the gate:
 
 ```
-grep -n "outputReductionPct\|aggregate\|pass\|gate\|median\|mean\|avg" /Users/zhach/code/cavecode/evals/prose-microbench/bench.ts | head -60
+grep -n "outputReductionPct\|aggregate\|pass\|gate\|median\|mean\|avg" /Users/zhach/code/mewritecode/evals/prose-microbench/bench.ts | head -60
 ```
 
 ```
@@ -498,7 +498,7 @@ Let me read the rest of the file for the aggregate/gate logic:
 ```
 
 ```
-Read /Users/zhach/code/cavecode/evals/prose-microbench/bench.ts 1 50
+Read /Users/zhach/code/mewritecode/evals/prose-microbench/bench.ts 1 50
 ```
 
 ```
@@ -558,7 +558,7 @@ Read /Users/zhach/code/cavecode/evals/prose-microbench/bench.ts 1 50
 ```
 
 ```
-Read /Users/zhach/code/cavecode/evals/prose-microbench/bench.ts 70 160
+Read /Users/zhach/code/mewritecode/evals/prose-microbench/bench.ts 70 160
 ```
 
 ```
@@ -699,15 +699,15 @@ Shows `100.0` — looks like a stellar result, no indication the run was degener
 Let me find the relevant code first.
 
 ```bash
-grep -r "outputReductionPct" /Users/zhach/code/cavecode --include="*.ts" -l
+grep -r "outputReductionPct" /Users/zhach/code/mewritecode --include="*.ts" -l
 ```
 
 ```
-/Users/zhach/code/cavecode/evals/prose-40pct/bench.ts
+/Users/zhach/code/mewritecode/evals/prose-40pct/bench.ts
 ```
 
 ```bash
-grep -n "outputReductionPct" /Users/zhach/code/cavecode/evals/prose-40pct/bench.ts
+grep -n "outputReductionPct" /Users/zhach/code/mewritecode/evals/prose-40pct/bench.ts
 ```
 
 ```
@@ -715,7 +715,7 @@ grep -n "outputReductionPct" /Users/zhach/code/cavecode/evals/prose-40pct/bench.
 ```
 
 ```bash
-grep -n "outputReductionPct\|outputOff\|outputFull\|reduction" /Users/zhach/code/cavecode/evals/prose-40pct/bench.ts | head -60
+grep -n "outputReductionPct\|outputOff\|outputFull\|reduction" /Users/zhach/code/mewritecode/evals/prose-40pct/bench.ts | head -60
 ```
 
 ```
@@ -726,7 +726,7 @@ grep -n "outputReductionPct\|outputOff\|outputFull\|reduction" /Users/zhach/code
 ```
 
 ```bash
-grep -n "outputReductionPct\|\.outputOff\|\.outputFull\|reductionPct\|reduct" /Users/zhach/code/cavecode/evals/prose-40pct/bench.ts
+grep -n "outputReductionPct\|\.outputOff\|\.outputFull\|reductionPct\|reduct" /Users/zhach/code/mewritecode/evals/prose-40pct/bench.ts
 ```
 
 ```
@@ -737,7 +737,7 @@ grep -n "outputReductionPct\|\.outputOff\|\.outputFull\|reductionPct\|reduct" /U
 ```
 
 ```bash
-sed -n '210,300p' /Users/zhach/code/cavecode/evals/prose-40pct/bench.ts
+sed -n '210,300p' /Users/zhach/code/mewritecode/evals/prose-40pct/bench.ts
 ```
 
 ```bash
@@ -747,7 +747,7 @@ sed -n '210,300p' /Users/zhach/code/cavecode/evals/prose-40pct/bench.ts
 Let me read the file directly.
 
 ```bash
-wc -l /Users/zhach/code/cavecode/evals/prose-40pct/bench.ts
+wc -l /Users/zhach/code/mewritecode/evals/prose-40pct/bench.ts
 ```
 
 ```
@@ -755,7 +755,7 @@ wc -l /Users/zhach/code/cavecode/evals/prose-40pct/bench.ts
 ```
 
 ```bash
-cat /Users/zhach/code/cavecode/evals/prose-40pct/bench.ts
+cat /Users/zhach/code/mewritecode/evals/prose-40pct/bench.ts
 ```
 
 ```typescript

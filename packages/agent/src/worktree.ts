@@ -7,10 +7,10 @@
  * parent session's working tree. After the subagent finishes, if no commits
  * were made, the worktree is auto-cleaned up.
  *
- * Pi-check: `pi-code` upstream ships a subagent example
+ * Source check: upstream ships a subagent example
  * (`packages/coding-agent/examples/extensions/subagent/`) but it does not use
- * git worktrees; it spawns plain `pi --mode json` child processes. Worktree
- * isolation is cave-specific (see plan §6 WS6). We keep the API minimal and
+ * git worktrees; it spawns plain JSON-mode child processes. Worktree
+ * isolation is Me Write Code-specific (see plan §6 WS6). We keep the API minimal and
  * test-friendly: every public function takes the `git` binary path + cwd
  * explicitly so it can be exercised in CI without polluting the developer's
  * own worktrees.

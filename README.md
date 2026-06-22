@@ -300,7 +300,7 @@ Me Write Code is actively being rebranded and hardened around the `mewrite` CLI 
 
 ## Acknowledgements
 
-Me Write Code is a fork of `pi-code` / `pi-mono` and builds on substantial upstream work by Mario Zechner and contributors. It also learns from terminal coding agents and developer tools including Claude Code, Codex, Aider, OpenCode, RTK, and Biome.
+Me Write Code builds on substantial upstream work by Mario Zechner and contributors. It also learns from terminal coding agents and developer tools including Claude Code, Codex, Aider, OpenCode, RTK, and Biome.
 
 ---
 

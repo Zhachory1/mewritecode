@@ -14,7 +14,7 @@ Reply take long. User stare at spinner. No way know why. Spinner say `Working...
 - an MCP call hanging?
 - nested subagent 2 levels deep, blocked?
 
-Today: no answer. User must guess, hit Esc, lose work. Claude Code show live list of running tasks/agents — user see at a glance what spawned, how long each run, which one slow. Cavecode lack this.
+Today: no answer. User must guess, hit Esc, lose work. Claude Code show live list of running tasks/agents — user see at a glance what spawned, how long each run, which one slow. Me Write Code lacks this.
 
 We just shipped stream idle-watchdog (auto-recover hung streams) + elapsed timer on spinner. Next step: **show the user the full set of concurrent activity the session kicked off, live, so they diagnose slowness themselves.**
 

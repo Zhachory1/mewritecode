@@ -17,7 +17,7 @@ Enabling subagent writes is reliable and legible: a misspelled or incomplete too
 
 ## 3. Non-Goals
 
-- No new permission system (autopilot stays; cavecode has no permission tier).
+- No new permission system (autopilot stays; Me Write Code has no permission tier).
 - No change to how `--tools` is passed to the child, or to plan-mode's allow-list.
 - Not hard-failing on unknown tool names — MCP (`mcp__server__tool`), memory (`memory_search`/`memory_save`), and skill-injected tool names are dynamic and legitimately absent from the static registry. Validation is **warn-only**.
 

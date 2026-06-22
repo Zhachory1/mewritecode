@@ -10,8 +10,8 @@ info:
 
     Provenance: opencode (sst/opencode, MIT) inspired the daemon-with-attach
     pattern; Codex app-server (Apache-2.0) inspired JSON-RPC over WebSocket
-    for low-latency token streaming. No `pi-code` upstream equivalent was
-    found — built from scratch in cave.
+    for low-latency token streaming. No upstream equivalent was
+    found — built from scratch in Me Write Code.
 servers:
   - url: http://127.0.0.1:7421
     description: Local daemon (default)

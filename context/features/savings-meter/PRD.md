@@ -22,7 +22,7 @@ A token-savings product whose number is marketing dies on contact with a skeptic
 
 **NOT in the headline (heuristic / unobservable):**
 - Caveman-mode OUTPUT terseness — no counterfactual; inherently a guess. Excluded from the headline number. (Optionally shown in `/savings` as a clearly-labeled `(est.)` line — see OQ.)
-- RTK command rewriting — cavecode never sees the un-rewritten output size.
+- RTK command rewriting — Me Write Code never sees the un-rewritten output size.
 
 All "measured" sources are computable from data **already in scope** (compression site `agent-session.ts:578/628`, `TruncationResult`, provider `usage`) — today simply **not captured**.
 

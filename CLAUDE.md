@@ -70,9 +70,9 @@ Legacy CaveKit kits/plans/impl have been moved to `context/archive/`.
 ## Agent Guidance
 
 - Read package-specific CLAUDE.md before touching that package.
-- Before building from scratch, run the **pi-check**: search `pi-code` upstream,
-  the `pi-*` npm scope, and pi extensions for an existing module. Vendor or wrap
-  if found. Note "borrowed from pi: <name>" in the deliverable. See plan §0.
+- Before building from scratch, run the **source check**: search upstream,
+  relevant npm scopes, and extensions for an existing module. Vendor or wrap
+  if found. Note borrowed components in the deliverable. See plan §0.
 - CaveKit (`@zhachory1/mewrite-cavekit`) has been removed; replaced by plan mode (read-only
   exploration), markdown skills, and recipes.
 - Don't add per-file "inspired by hermes-agent" attribution comments even when

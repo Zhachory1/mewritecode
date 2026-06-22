@@ -465,7 +465,7 @@ export function renderMarkdownTable(results: PromptProseResult[]): string {
 //
 // Genres: code-explain | trade-off | risk-enumeration | multi-step-trace |
 // short-factual. ≥3 prompts per genre across the partitions. code-explain prompts
-// INLINE real cavecode source (read at runtime, truncated); the other genres are
+// INLINE real Me Write Code source (read at runtime, truncated); the other genres are
 // natural questions about THIS codebase / general engineering. Each prompt is
 // tagged with its locked split. Override with --prompts <jsonl>.
 //

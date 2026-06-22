@@ -14,10 +14,10 @@
  * Search is a naive substring match across markdown bodies. Good enough for a
  * fallback; the moment cavemem appears we switch transparently.
  *
- * Pi-check: pi-code's coding-agent ships a `memory-bank` markdown layout in
- *   `ai/memory-bank/`. Format-compatible read paths are added here so an
- *   existing pi-code project's memory-bank shows up in cave's search results
- *   without copying. (Borrowed: directory layout from pi-code memory-bank.)
+ * Source check: upstream coding-agent layouts include a `memory-bank` markdown
+ *   directory in `ai/memory-bank/`. Format-compatible read paths are added here
+ *   so an existing project's memory-bank shows up in cave's search results
+ *   without copying. (Borrowed: memory-bank directory layout.)
  */
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
@@ -37,7 +37,7 @@ export interface FilesProviderOptions {
 	cwd?: string;
 	/** Override the memory dir root. Default: <cwd>/.cave/memory */
 	memoryDir?: string;
-	/** Extra read-only roots (e.g. pi-code memory-bank). */
+	/** Extra read-only roots (e.g. memory-bank). */
 	extraReadDirs?: string[];
 	/** Skip on-disk writes (useful for tests). */
 	readOnly?: boolean;
@@ -106,7 +106,7 @@ export class FilesProvider implements MemoryProvider {
 			if (hits.length >= limit) break;
 		}
 
-		// Also scan extra read dirs (pi-code memory-bank etc.).
+		// Also scan extra read dirs (memory-bank etc.).
 		if (hits.length < limit) {
 			for (const dir of this.extraReadDirs) {
 				if (!existsSync(dir)) continue;
