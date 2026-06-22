@@ -1,5 +1,78 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Me Write Code logo">
-  <rect width="64" height="64" rx="12" fill="#0d1117"/>
-  <path d="M16 44 L24 22 L32 36 L40 22 L48 44" fill="none" stroke="#d97757" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="32" cy="50" r="2" fill="#d97757"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%" role="img" aria-label="Me Write Code stick pencil logo">
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="3" dy="5" stdDeviation="4" flood-opacity="0.35" flood-color="#000000"/>
+    </filter>
+
+    <linearGradient id="wood" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#5A4634"/>
+      <stop offset="45%" stop-color="#7A5A3E"/>
+      <stop offset="100%" stop-color="#3F332A"/>
+    </linearGradient>
+
+    <linearGradient id="sharpened" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#F0E7D6"/>
+      <stop offset="70%" stop-color="#CDBF9D"/>
+      <stop offset="100%" stop-color="#8F7757"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="rotate(-35 100 100)" filter="url(#shadow)">
+    <path
+      d="M 58 88
+         C 84 82, 120 80, 168 87
+         L 181 100
+         L 168 113
+         C 122 120, 84 118, 58 112
+         Z"
+      fill="url(#wood)"
+    />
+
+    <path
+      d="M 58 88 C 92 91, 132 88, 168 87 L 181 100 C 137 96, 96 98, 58 88 Z"
+      fill="#6A4D35"
+      opacity="0.75"
+    />
+    <path
+      d="M 58 112 C 95 105, 136 107, 181 100 L 168 113 C 128 119, 91 118, 58 112 Z"
+      fill="#2F2925"
+      opacity="0.45"
+    />
+
+    <path d="M 76 93 C 100 90, 130 91, 158 95" stroke="#241F1C" stroke-width="2.4" stroke-linecap="round" fill="none" opacity="0.7"/>
+    <path d="M 72 104 C 102 109, 134 108, 165 104" stroke="#241F1C" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.65"/>
+    <path d="M 96 86 C 101 96, 101 106, 96 116" stroke="#8E6B46" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.8"/>
+    <path d="M 119 85 C 125 96, 125 106, 120 116" stroke="#8E6B46" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.75"/>
+    <path d="M 144 87 C 149 96, 148 105, 143 113" stroke="#8E6B46" stroke-width="2.6" stroke-linecap="round" fill="none" opacity="0.65"/>
+
+    <path
+      d="M 32 93
+         L 58 88
+         C 68 94, 68 106, 58 112
+         L 32 107
+         Z"
+      fill="url(#sharpened)"
+    />
+
+    <path d="M 58 88 L 40 99" stroke="#A99575" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M 58 112 L 41 103" stroke="#A99575" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M 68 100 L 32 100" stroke="#B8AA8E" stroke-width="1.5" stroke-linecap="round"/>
+
+    <path
+      d="M 15 100
+         L 32 93
+         L 32 107
+         Z"
+      fill="#17171A"
+    />
+    <path
+      d="M 15 100 L 32 97 L 32 103 Z"
+      fill="#303038"
+      opacity="0.9"
+    />
+
+    <circle cx="13" cy="100" r="3" fill="#FF6B35"/>
+    <circle cx="6" cy="94" r="1.4" fill="#FF6B35" opacity="0.8"/>
+    <circle cx="8" cy="108" r="1.8" fill="#FF6B35" opacity="0.8"/>
+  </g>
 </svg>

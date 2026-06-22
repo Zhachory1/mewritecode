@@ -37,6 +37,7 @@ const SECONDARY_WORDMARK: readonly string[] = [
 ];
 
 const WORDMARK_PRIMARY_ROWS = PRIMARY_WORDMARK.length;
+const TAGLINE = "Any Model, Less Tokens, Code Good";
 
 export class BannerComponent extends Container {
 	constructor(options: BannerOptions) {
@@ -46,6 +47,7 @@ export class BannerComponent extends Container {
 			const color = index < WORDMARK_PRIMARY_ROWS ? "accent" : "mdHeading";
 			this.addChild(new Text(row ? theme.fg(color, row) : row, 1, 0));
 		}
+		this.addChild(new Text(theme.fg("dim", TAGLINE), 1, 0));
 		const info = composeInfoLine(options);
 		if (info) {
 			this.addChild(new Text(info, 1, 0));
