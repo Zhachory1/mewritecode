@@ -136,9 +136,28 @@ jobs:
       - run: npm ci
       - run: npm run build
       - name: Publish to npm
+        id: publish
         run: npm publish --workspaces --access public
         if: env.NODE_AUTH_TOKEN != ''
         continue-on-error: true
+      - name: Record npm publish status
+        if: always()
+        run: |
+          mkdir -p publish-status
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "skipped" > publish-status/npm.txt
+            echo "NPM_TOKEN not configured" > publish-status/npm-note.txt
+          else
+            echo "${{ steps.publish.outcome }}" > publish-status/npm.txt
+            echo "npm publish step outcome: ${{ steps.publish.outcome }}" > publish-status/npm-note.txt
+          fi
+      - name: Upload npm publish status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: publish-status-npm
+          path: publish-status
+          retention-days: 30
 
   publish-docker:
     runs-on: ubuntu-latest
@@ -243,6 +262,59 @@ jobs:
           git add Formula/mewrite.rb
           git commit -m "chore(homebrew): bump formula to ${RELEASE_TAG}"
           git push origin HEAD:main
+
+  publish-status:
+    runs-on: ubuntu-latest
+    needs:
+      - build
+      - publish-npm
+      - publish-docker
+      - publish-linux-repos
+      - update-homebrew
+    if: always()
+    env:
+      RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      BUILD_STATUS: ${{ needs.build.result }}
+      NPM_JOB_STATUS: ${{ needs.publish-npm.result }}
+      DOCKER_STATUS: ${{ needs.publish-docker.result }}
+      LINUX_REPOS_STATUS: ${{ needs.publish-linux-repos.result }}
+      HOMEBREW_STATUS: ${{ needs.update-homebrew.result }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Download npm publish status
+        uses: actions/download-artifact@v4
+        with:
+          name: publish-status-npm
+          path: publish-status
+        continue-on-error: true
+      - name: Write publish status summary
+        run: |
+          npm_status="$NPM_JOB_STATUS"
+          npm_note="npm publish job result: $NPM_JOB_STATUS"
+          if [ -f publish-status/npm.txt ]; then npm_status="$(cat publish-status/npm.txt)"; fi
+          if [ -f publish-status/npm-note.txt ]; then npm_note="$(cat publish-status/npm-note.txt)"; fi
+          cat > "publish-status-${RELEASE_TAG}.md" <<EOF
+          # Publish status for ${RELEASE_TAG}
+
+          | Channel | Status | Notes |
+          | --- | --- | --- |
+          | GitHub release binaries | ${BUILD_STATUS} | Release archives, Debian/RPM artifacts, checksums |
+          | npm | ${npm_status} | ${npm_note} |
+          | Docker / GHCR | ${DOCKER_STATUS} | ghcr.io image tagged ${RELEASE_TAG} and latest |
+          | APT/Yum repos | ${LINUX_REPOS_STATUS} | gh-pages apt/ and yum/ repository publish |
+          | Homebrew | ${HOMEBREW_STATUS} | Formula/mewrite.rb bump on main |
+          | Snap | tracked | snap/snapcraft.yaml metadata only; no Snap store publish in this workflow |
+          EOF
+          cat "publish-status-${RELEASE_TAG}.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload publish status artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: publish-status-${{ env.RELEASE_TAG }}
+          path: publish-status-${{ env.RELEASE_TAG }}.md
+          retention-days: 90
+      - name: Attach publish status to GitHub Release
+        run: gh release upload "$RELEASE_TAG" "publish-status-${RELEASE_TAG}.md" --clobber
+        continue-on-error: true
 
   smoke-install:
     needs: build

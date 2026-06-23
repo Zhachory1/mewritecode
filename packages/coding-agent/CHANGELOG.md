@@ -6,6 +6,7 @@
 
 - Added CI documentation link checking and a permissions reference page ([#24](https://github.com/Zhachory1/mewritecode/issues/24)).
 - Added a release consistency guard for lockstep package versions, internal dependency ranges, lockfile state, and changelog state ([#22](https://github.com/Zhachory1/mewritecode/issues/22)).
+- Added a release publish-status artifact covering GitHub binaries, npm, Docker/GHCR, APT/Yum, Homebrew, and Snap metadata status ([#27](https://github.com/Zhachory1/mewritecode/issues/27)).
 
 ### Changed
 
