@@ -1,7 +1,7 @@
 # Me Write Code
 
 <p align="center">
-  <img src="docs/public/logo.svg" alt="Me Write Code logo" width="96" height="96">
+  <img src="docs/public/logo.svg" alt="Me Write Code logo" width="192" height="192">
 </p>
 
 <p align="center"><strong>me write less, me do more</strong></p>
