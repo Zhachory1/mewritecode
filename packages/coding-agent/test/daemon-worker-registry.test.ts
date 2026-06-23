@@ -1,7 +1,7 @@
 /**
- * WS9 — `cave worker` registry tests.
+ * WS9 — `mewrite worker` registry tests.
  *
- * Exercises the JSON-file registry at ~/.cave/workers.json by overriding HOME
+ * Exercises the JSON-file registry at ~/.mewrite/workers.json by overriding HOME
  * to a tmp directory. Verifies register/list/remove are idempotent and that
  * the file is byte-stable JSON.
  */
@@ -29,8 +29,8 @@ async function freshWorker() {
 	return await import("../src/cli/worker.js");
 }
 
-describe("cave worker registry", () => {
-	it("register writes ~/.cave/workers.json with the expected shape", async () => {
+describe("mewrite worker registry", () => {
+	it("register writes ~/.mewrite/workers.json with the expected shape", async () => {
 		const { handleWorkerCommand, readWorkersForTest } = await freshWorker();
 		const exitSpy = vi.spyOn(process, "exit").mockImplementation(((code?: number) => {
 			throw new Error(`__exit__:${code ?? 0}`);
@@ -48,7 +48,7 @@ describe("cave worker registry", () => {
 		expect(file.workers[0].url).toBe("http://1.2.3.4:7421");
 		expect(file.workers[0].registeredAt).toBeTruthy();
 
-		const path = join(tmpHome, ".cave", "workers.json");
+		const path = join(tmpHome, ".mewrite", "workers.json");
 		expect(existsSync(path)).toBe(true);
 		// Stable JSON: round-trip should be readable.
 		const raw = JSON.parse(readFileSync(path, "utf8"));

@@ -15,8 +15,12 @@
 		"build": "cd packages/tui && npm run build && cd ../ai && npm run build && cd ../agent && npm run build && cd ../coding-agent && npm run build && cd ../sdk && npm run build",
 		"dev": "concurrently --names \"ai,agent,coding-agent,tui\" --prefix-colors \"cyan,yellow,red,magenta\" \"cd packages/ai && npm run dev\" \"cd packages/agent && npm run dev\" \"cd packages/coding-agent && npm run dev\" \"cd packages/tui && npm run dev\"",
 		"dev:tsc": "concurrently --names \"ai\" --prefix-colors \"cyan\" \"cd packages/ai && npm run dev:tsc\"",
-		"check": "biome check --write --error-on-warnings . && tsgo --noEmit && npm run check:browser-smoke",
+		"check": "npm run format:check && tsgo --noEmit && npm run check:browser-smoke && npm run check:release-consistency",
+		"format:check": "biome check --error-on-warnings .",
+		"format:write": "biome check --write .",
 		"check:browser-smoke": "node scripts/check-browser-smoke.mjs",
+		"check:release-consistency": "node scripts/check-release-consistency.mjs",
+		"test:release-consistency": "node --test scripts/check-release-consistency.test.mjs",
 		"profile:tui": "node scripts/profile-coding-agent-node.mjs --mode tui",
 		"profile:rpc": "node scripts/profile-coding-agent-node.mjs --mode rpc",
 		"test": "npm run test --workspaces --if-present",
@@ -60,7 +64,7 @@
 	"version": "0.0.3",
 	"dependencies": {
 		"@mariozechner/jiti": "^2.6.5",
-		"@zhachory1/mewrite-code": "^0.65.2",
+		"@zhachory1/mewrite-code": "^0.65.11",
 		"get-east-asian-width": "^1.4.0"
 	},
 	"overrides": {

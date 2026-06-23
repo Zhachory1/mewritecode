@@ -187,8 +187,8 @@ export async function runOnboarding(settings: SettingsManager, io: WizardIO = DE
 	const ctx: AskCtx = { rl, out, prompt: promptFn };
 
 	try {
-		write(out, chalk.bold.cyan("\n  Welcome to cave\n"));
-		write(out, chalk.dim("  Four quick questions. You can change anything later via /config.\n"));
+		write(out, chalk.bold.cyan("\n  Welcome to Me Write Code\n"));
+		write(out, chalk.dim("  Four quick questions. You can change anything later via /settings.\n"));
 
 		// 1. Theme — auto-detect background.
 		const detectedDark = io.terminalIsDark?.();
@@ -223,7 +223,7 @@ export async function runOnboarding(settings: SettingsManager, io: WizardIO = DE
 		} else {
 			write(out, chalk.bold("\n2) Authentication\n"));
 			write(out, chalk.dim("  No API keys found in the environment.\n"));
-			write(out, chalk.dim("  Cave can log you in via OAuth now (no API key needed), or you can\n"));
+			write(out, chalk.dim("  Me Write Code can log you in via OAuth now (no API key needed), or you can\n"));
 			write(out, chalk.dim("  set ANTHROPIC_API_KEY / OPENAI_API_KEY / GEMINI_API_KEY (etc) and re-run.\n"));
 			const configureNow = await askYesNo(ctx, "Configure auth now?", true);
 			if (configureNow) {
@@ -282,7 +282,7 @@ export async function runOnboarding(settings: SettingsManager, io: WizardIO = DE
 		write(
 			out,
 			chalk.dim(
-				`  Saved to ${settings.constructor.name === "SettingsManager" ? "~/.cave/agent/settings.json" : "settings"}.\n`,
+				`  Saved to ${settings.constructor.name === "SettingsManager" ? "~/.mewrite/agent/settings.json" : "settings"}.\n`,
 			),
 		);
 

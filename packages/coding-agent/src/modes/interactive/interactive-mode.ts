@@ -3087,6 +3087,8 @@ export class InteractiveMode {
 				// after compaction; fire starter because we just compacted.
 				this.tribalSignalState = emptyTribalSignalState();
 				this.fireStarterState = { turnDeltas: [], lastCompactionTime: Date.now() };
+				this.setExtensionWidget("tribal-signal", undefined, { placement: "aboveEditor" });
+				this.setExtensionStatus("drift", undefined);
 				if (event.aborted) {
 					if (event.reason === "manual") {
 						this.showError("Compaction cancelled");

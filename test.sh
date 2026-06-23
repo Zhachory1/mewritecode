@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
-AUTH_FILE="$HOME/.cave/agent/auth.json"
-AUTH_BACKUP="$HOME/.cave/agent/auth.json.bak"
+AUTH_FILE="$HOME/.mewrite/agent/auth.json"
+AUTH_BACKUP="$HOME/.mewrite/agent/auth.json.bak"
 
 # Restore auth.json on exit (success or failure)
 cleanup() {

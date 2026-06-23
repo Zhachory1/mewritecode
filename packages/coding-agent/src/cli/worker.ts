@@ -1,5 +1,5 @@
 /**
- * WS9 — `cave worker` subcommand family.
+ * WS9 — `mewrite worker` subcommand family.
  *
  * Workers are remote `mewrite serve` daemons registered locally so the user
  * can prepend `&` to any prompt in interactive mode and have the session
@@ -7,10 +7,11 @@
  * terminal frees up; later, the user runs `mewrite attach <id>` against the
  * worker URL to resume.
  *
- * Worker registry lives at `~/.cave/workers.json`. The local registry is
- * separate from the daemon's own SQLite worker table — `cave worker` does
- * not require a running local daemon, just the JSON file. When a daemon
- * IS running locally, `cave worker register` ALSO posts the entry to
+ * Worker registry lives at `~/.mewrite/workers.json` (with legacy
+ * `~/.cave/workers.json` read fallback). The local registry is separate from
+ * the daemon's own SQLite worker table — `mewrite worker` does not require a
+ * running local daemon, just the JSON file. When a daemon IS running locally,
+ * `mewrite worker register` ALSO posts the entry to
  * `/v1/workers` so listings stay consistent.
  *
  * P0 ships: register / list / remove / start (stub). The actual `&`-prefix
@@ -37,11 +38,15 @@ interface WorkersFile {
 }
 
 function workersFilePath(): string {
+	return join(homedir(), ".mewrite", "workers.json");
+}
+
+function legacyWorkersFilePath(): string {
 	return join(homedir(), ".cave", "workers.json");
 }
 
 function readWorkers(): WorkersFile {
-	const path = workersFilePath();
+	const path = existsSync(workersFilePath()) ? workersFilePath() : legacyWorkersFilePath();
 	if (!existsSync(path)) return { workers: [] };
 	try {
 		const raw = readFileSync(path, "utf8");
@@ -58,17 +63,17 @@ function writeWorkers(file: WorkersFile): void {
 }
 
 function printHelp(): void {
-	console.log(`Usage: cave worker <subcommand>
+	console.log(`Usage: mewrite worker <subcommand>
 
 Subcommands:
   register <name> --url <url> [--token <t>] [--label k=v ...]
-                                    Register a remote cave daemon as a worker
+                                    Register a remote Me Write Code daemon as a worker
   list                              List registered workers
   remove <name>                     Unregister a worker
   start [--port <n>] [--token <t>]  Run \`mewrite serve\` configured as a worker
                                     (alias for \`mewrite serve --token ...\`)
 
-Workers persist to ~/.cave/workers.json. Use \`&prompt\` in interactive
+Workers persist to ~/.mewrite/workers.json. Legacy ~/.cave/workers.json is read if the new file does not exist. Use \`&prompt\` in interactive
 mode to dispatch a prompt to the most recently used worker (TODO ws9-dispatch).`);
 }
 
@@ -123,7 +128,7 @@ function doRegister(rest: string[]): number {
 function doList(): number {
 	const file = readWorkers();
 	if (file.workers.length === 0) {
-		console.log(chalk.dim("(no workers registered — try `cave worker register <name> --url ...`)"));
+		console.log(chalk.dim("(no workers registered — try `mewrite worker register <name> --url ...`)"));
 		return 0;
 	}
 	console.log(chalk.bold("NAME              URL                                  REGISTERED"));

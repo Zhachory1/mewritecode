@@ -1,20 +1,20 @@
 /**
- * WS16: `cave exec` CLI subcommand handler.
+ * WS16: `mewrite exec` CLI subcommand handler.
  *
  * Parses exec-specific flags and delegates to runExecMode.
  * Designed to be idiomatic for GitHub Actions / GitLab CI.
  *
  * Usage:
- *   cave exec [flags] "<prompt>"
+ *   mewrite exec [flags] "<prompt>"
  *
  * Flags:
  *   --json                          Emit stable JSONL events on stdout
  *   --output-schema <file>          Validate final message against JSON Schema (exit 2 on mismatch)
- *   --ephemeral                     Ignore ~/.cave and project .cave settings files
+ *   --ephemeral                     Ignore ~/.mewrite and project .mewrite settings files
  *   --skip-git-repo-check           Skip the git repository presence check
  *   --output-last-message <file>    Write final assistant text to a file atomically
  *   --cwd <dir>                     Override working directory for the session
- *   --model <pattern>               Override model (same format as cave --model)
+ *   --model <pattern>               Override model (same format as mewrite --model)
  *   --profile <name>                Select a named profile from settings
  *   --timeout <ms>                  Fail with exit 5 if not done within <ms> milliseconds
  *   --help, -h                      Show this help text
@@ -51,15 +51,15 @@ import { type ExecArgs, parseExecArgs } from "./exec-args.js";
 export { type ExecArgs, parseExecArgs } from "./exec-args.js";
 
 export function printExecHelp(): void {
-	console.log(`${chalk.bold("cave exec")} — non-interactive single-shot agent (CI mode)
+	console.log(`${chalk.bold("mewrite exec")} — non-interactive single-shot agent (CI mode)
 
 ${chalk.bold("Usage:")}
-  cave exec [flags] "<prompt>"
+  mewrite exec [flags] "<prompt>"
 
 ${chalk.bold("Flags:")}
   --json                           Emit stable JSONL event stream on stdout
   --output-schema <file>           Validate final message against JSON Schema (exit 2 on mismatch)
-  --ephemeral                      Ignore ~/.cave and project .cave settings files
+  --ephemeral                      Ignore ~/.mewrite and project .mewrite settings files
   --skip-git-repo-check            Skip the git repository presence check
   --output-last-message <file>     Write final assistant text to file atomically
   --cwd <dir>                      Working directory for the session (default: current dir)
@@ -88,24 +88,24 @@ ${chalk.bold("Event stream (--json) event types:")}
 
 ${chalk.bold("Examples:")}
   # Basic non-interactive run
-  cave exec "List all .ts files in src/"
+  mewrite exec "List all .ts files in src/"
 
   # CI mode with JSON events piped to jq
-  cave exec --json "Summarize the codebase" | jq 'select(.type == "session.end")'
+  mewrite exec --json "Summarize the codebase" | jq 'select(.type == "session.end")'
 
   # Validate structured output
-  cave exec --json --output-schema schema.json "Return JSON with field 'result'"
+  mewrite exec --json --output-schema schema.json "Return JSON with field 'result'"
 
   # Write final answer to file for downstream steps
-  cave exec --output-last-message /tmp/answer.txt "What is 2+2?"
+  mewrite exec --output-last-message /tmp/answer.txt "What is 2+2?"
 
   # Completely isolated from user config
-  cave exec --ephemeral --model anthropic/claude-haiku-4-5 "Hello"
+  mewrite exec --ephemeral --model anthropic/claude-haiku-4-5 "Hello"
 `);
 }
 
 /**
- * Handle `cave exec <args>` subcommand.
+ * Handle `mewrite exec <args>` subcommand.
  * Returns true when the exec subcommand was handled (even on error).
  */
 export async function handleExecCommand(args: string[]): Promise<boolean> {
@@ -122,8 +122,8 @@ export async function handleExecCommand(args: string[]): Promise<boolean> {
 	}
 
 	if (!execArgs.prompt.trim()) {
-		console.error(chalk.red("Error: cave exec requires a prompt argument"));
-		console.error(chalk.dim('  Usage: cave exec "your prompt here"'));
+		console.error(chalk.red("Error: mewrite exec requires a prompt argument"));
+		console.error(chalk.dim('  Usage: mewrite exec "your prompt here"'));
 		process.exit(1);
 	}
 

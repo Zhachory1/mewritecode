@@ -1,4 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
+import { emptyTribalSignalState } from "../src/modes/interactive/context-drift-widgets.js";
 import { InteractiveMode } from "../src/modes/interactive/interactive-mode.js";
 
 describe("InteractiveMode compaction events", () => {
@@ -15,6 +16,10 @@ describe("InteractiveMode compaction events", () => {
 			addMessageToChat: vi.fn(),
 			showError: vi.fn(),
 			showStatus: vi.fn(),
+			setExtensionWidget: vi.fn(),
+			setExtensionStatus: vi.fn(),
+			tribalSignalState: emptyTribalSignalState(),
+			fireStarterState: { turnDeltas: [100], lastCompactionTime: 0 },
 			flushCompactionQueue: vi.fn().mockResolvedValue(undefined),
 			ui: { requestRender: vi.fn() },
 		};
@@ -56,6 +61,10 @@ describe("InteractiveMode compaction events", () => {
 				summary: "summary",
 			}),
 		);
+		expect(fakeThis.setExtensionWidget).toHaveBeenCalledWith("tribal-signal", undefined, {
+			placement: "aboveEditor",
+		});
+		expect(fakeThis.setExtensionStatus).toHaveBeenCalledWith("drift", undefined);
 		expect(fakeThis.flushCompactionQueue).toHaveBeenCalledWith({ willRetry: false });
 	});
 });
