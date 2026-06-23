@@ -4,6 +4,11 @@ on:
   pull_request_target:
     types: [opened]
 
+# SECURITY: pull_request_target runs with elevated permissions. This workflow
+# must never check out PR head code, run scripts from the PR, or expose secrets
+# to forked contributors. Keep it limited to base-branch file reads and GitHub
+# API metadata/comment/close actions.
+
 jobs:
   check-contributor:
     runs-on: ubuntu-latest

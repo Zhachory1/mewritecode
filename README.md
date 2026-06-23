@@ -186,6 +186,20 @@ Plan mode keeps exploration read-only and avoids unnecessary edits/tool loops. A
 - Custom model/provider definitions
 - MCP/server-style workflows and integrations
 
+### Feature support status
+
+| Area | Status | Notes |
+|---|---|---|
+| `mewrite` interactive TUI, print, JSON/RPC modes | Shipped | Core package: `packages/coding-agent` |
+| Caveman Mode compression and read deduplication | Shipped | Token-saving defaults; RTK is optional |
+| OAuth/API-key providers | Shipped | Claude, ChatGPT/Codex, Gemini, Copilot, Bedrock, OpenRouter, and compatible endpoints |
+| Plan mode, checkpoints, rollback, session branching | Shipped | Stable local workflow controls |
+| Subagents and skills | Shipped | Bundled agents plus user/project definitions |
+| MCP client workflows | Shipped | stdio/in-process support; Streamable HTTP is tracked separately |
+| Native sandbox / approval controls | Beta | Use `/doctor`; treat as defense-in-depth |
+| Package-manager installs | Shipped | npm, Homebrew, Debian/RPM repos, Docker; Snap metadata is tracked but may lag publish |
+| `contrib/*` packages | Unsupported/contrib | Useful examples and integrations, not core support surface |
+
 ### Distribution
 
 - npm package: `@zhachory1/mewrite-code`
@@ -240,14 +254,18 @@ Provider-specific setup is documented in `packages/coding-agent/docs/providers.m
 
 This repository is a TypeScript monorepo.
 
-| Package | Purpose |
+| Package | Ownership |
 |---|---|
-| `packages/coding-agent` | `mewrite` CLI, TUI app, tools, sessions, extensions, release packaging |
+| `packages/coding-agent` | Main `mewrite` CLI, TUI app, tools, sessions, extensions, release packaging |
 | `packages/ai` | Provider abstraction, streaming APIs, model catalogs |
 | `packages/agent` | Agent loop, tool-call orchestration, message model |
 | `packages/tui` | Terminal UI primitives and rendering |
 | `packages/sdk` | Programmatic SDK for embedding agent sessions |
 | `packages/markdown-preview` | Markdown preview support |
+
+Bundled example workspaces under `packages/coding-agent/examples/extensions/*` are test fixtures and extension examples. Off-core packages in `contrib/` are unsupported/contrib surfaces; they are not part of the core install/build path.
+
+Start in `packages/coding-agent` for CLI/TUI/packaging work, `packages/ai` for providers, `packages/agent` for loop/tool runtime work, `packages/tui` for terminal rendering, and `docs/` or package READMEs for public documentation.
 
 Other useful directories:
 

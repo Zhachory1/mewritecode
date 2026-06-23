@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added CI documentation link checking and a permissions reference page ([#24](https://github.com/Zhachory1/mewritecode/issues/24)).
+- Added a release consistency guard for lockstep package versions, internal dependency ranges, lockfile state, and changelog state ([#22](https://github.com/Zhachory1/mewritecode/issues/22)).
+
+### Changed
+
+- Split non-mutating validation from formatting writes so `npm run check` no longer rewrites files ([#21](https://github.com/Zhachory1/mewritecode/issues/21)).
+- Documented feature support status and core vs contrib package ownership in the README ([#25](https://github.com/Zhachory1/mewritecode/issues/25), [#26](https://github.com/Zhachory1/mewritecode/issues/26)).
+- Documented `pull_request_target` safety invariants in privileged PR-check workflows ([#28](https://github.com/Zhachory1/mewritecode/issues/28)).
+
+### Fixed
+
+- Fixed compaction completion to clear stale context drift warnings ([#29](https://github.com/Zhachory1/mewritecode/issues/29)).
+- Fixed Me Write Code branding and default config-path drift in active onboarding, exec, worker, contributor, and test surfaces ([#23](https://github.com/Zhachory1/mewritecode/issues/23)).
+
 ## [0.65.11] - 2026-06-20
 
 ### Fixed

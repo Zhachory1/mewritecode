@@ -8,6 +8,10 @@ on:
         description: "Number of instances to run"
         required: false
         default: "50"
+
+permissions:
+  contents: write
+
 jobs:
   bench:
     runs-on: ubuntu-latest
