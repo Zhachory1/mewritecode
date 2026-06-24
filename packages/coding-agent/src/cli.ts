@@ -5,11 +5,13 @@
  *
  * Test with: npx tsx src/cli-new.ts [args...]
  */
-process.title = "mewrite-code";
 process.emitWarning = (() => {}) as typeof process.emitWarning;
 
 import { EnvHttpProxyAgent, setGlobalDispatcher } from "undici";
+import { APP_NAME } from "./config.js";
 import { main } from "./main.js";
+
+process.title = APP_NAME;
 
 setGlobalDispatcher(new EnvHttpProxyAgent());
 

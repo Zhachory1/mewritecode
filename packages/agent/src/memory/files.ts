@@ -37,6 +37,8 @@ export interface FilesProviderOptions {
 	cwd?: string;
 	/** Override the memory dir root. Default: <cwd>/.cave/memory */
 	memoryDir?: string;
+	/** Config dir name used when memoryDir is not set. Default: .cave */
+	configDirName?: string;
 	/** Extra read-only roots (e.g. memory-bank). */
 	extraReadDirs?: string[];
 	/** Skip on-disk writes (useful for tests). */
@@ -69,7 +71,7 @@ export class FilesProvider implements MemoryProvider {
 
 	constructor(options: FilesProviderOptions = {}) {
 		const cwd = options.cwd ?? process.cwd();
-		this.memoryDir = options.memoryDir ?? join(cwd, ".cave", "memory");
+		this.memoryDir = options.memoryDir ?? join(cwd, options.configDirName ?? ".cave", "memory");
 		this.extraReadDirs = (options.extraReadDirs ?? []).map((p) => resolve(p));
 		this.readOnly = options.readOnly === true;
 	}

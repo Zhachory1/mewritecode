@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added optional branded config-dir parameters for MCP discovery/token storage, file memory, worktrees, checkpoints, and compression model caches so downstream wrappers can isolate state without forking the package ([#31](https://github.com/Zhachory1/mewritecode/issues/31)).
+
 ## [0.65.11] - 2026-06-20
 
 ## [0.65.10] - 2026-06-19

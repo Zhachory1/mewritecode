@@ -37,16 +37,16 @@ export const LLMLINGUA2_MANIFEST: ModelManifest = {
 	vocabSha256: "",
 };
 
-export function modelsDir(): string {
-	return join(homedir(), ".cave", "models");
+export function modelsDir(configDirName = ".cave"): string {
+	return join(homedir(), configDirName, "models");
 }
 
-export function modelPath(manifest: ModelManifest): string {
-	return join(modelsDir(), manifest.filename);
+export function modelPath(manifest: ModelManifest, configDirName = ".cave"): string {
+	return join(modelsDir(configDirName), manifest.filename);
 }
 
-export function vocabPath(manifest: ModelManifest): string {
-	return join(modelsDir(), manifest.vocabFilename ?? "vocab.txt");
+export function vocabPath(manifest: ModelManifest, configDirName = ".cave"): string {
+	return join(modelsDir(configDirName), manifest.vocabFilename ?? "vocab.txt");
 }
 
 async function fileExists(path: string): Promise<boolean> {
@@ -58,12 +58,12 @@ async function fileExists(path: string): Promise<boolean> {
 	}
 }
 
-export async function isModelCached(manifest: ModelManifest): Promise<boolean> {
-	const modelOk = await fileExists(modelPath(manifest));
+export async function isModelCached(manifest: ModelManifest, configDirName = ".cave"): Promise<boolean> {
+	const modelOk = await fileExists(modelPath(manifest, configDirName));
 	if (!modelOk) return false;
 	// If manifest has vocab, check that too
 	if (manifest.vocabFilename) {
-		return fileExists(vocabPath(manifest));
+		return fileExists(vocabPath(manifest, configDirName));
 	}
 	return true;
 }
@@ -91,8 +91,9 @@ async function downloadArtifact(
 	sizeBytes: number,
 	artifactName: string,
 	onProgress?: (progress: DownloadProgress) => void,
+	configDirName = ".cave",
 ): Promise<void> {
-	const dir = modelsDir();
+	const dir = modelsDir(configDirName);
 	await mkdir(dir, { recursive: true });
 
 	const tmp = `${destPath}.tmp`;
@@ -142,28 +143,31 @@ async function downloadArtifact(
 export async function downloadModel(
 	manifest: ModelManifest,
 	onProgress?: (progress: DownloadProgress) => void,
+	configDirName = ".cave",
 ): Promise<string> {
 	// Download model
 	await downloadArtifact(
 		manifest.url,
-		modelPath(manifest),
+		modelPath(manifest, configDirName),
 		manifest.sha256,
 		manifest.sizeBytes,
 		manifest.filename,
 		onProgress,
+		configDirName,
 	);
 
 	// Download vocab if specified
 	if (manifest.vocabUrl && manifest.vocabFilename) {
 		await downloadArtifact(
 			manifest.vocabUrl,
-			vocabPath(manifest),
+			vocabPath(manifest, configDirName),
 			manifest.vocabSha256 ?? "",
 			1_000_000, // vocab.txt is ~1MB
 			manifest.vocabFilename,
 			onProgress,
+			configDirName,
 		);
 	}
 
-	return modelPath(manifest);
+	return modelPath(manifest, configDirName);
 }

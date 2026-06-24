@@ -10,7 +10,31 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const DEFAULT_APP_NAME = "mewrite";
+const DEFAULT_PACKAGE_NAME = "@zhachory1/mewrite-code";
+const DEFAULT_REPO = "Zhachory1/mewritecode";
+const DEFAULT_CONFIG_DIR_NAME = ".mewrite";
 const DEFAULT_PACKAGE_DIR_ENV = `${DEFAULT_APP_NAME.toUpperCase()}_PACKAGE_DIR`;
+const GENERIC_PACKAGE_DIR_ENV = "CODING_AGENT_PACKAGE_DIR";
+
+export interface DistributionConfig {
+	name?: string;
+	appName?: string;
+	displayName?: string;
+	configDir?: string;
+	configDirName?: string;
+	packageDirEnv?: string;
+	packageDir?: string;
+	selfUpdate?: {
+		enabled?: boolean;
+		repo?: string;
+		packageName?: string;
+		installDirName?: string;
+		productDirName?: string;
+		disableEnv?: string;
+	};
+}
+
+let resolvedAppConfig: DistributionConfig | undefined;
 
 /**
  * Detect if we're running as a Bun compiled binary.
@@ -21,6 +45,13 @@ export const isBunBinary =
 
 /** Detect if Bun is the runtime (compiled binary or bun run) */
 export const isBunRuntime = !!process.versions.bun;
+
+function expandHome(path: string | undefined): string | undefined {
+	if (!path) return undefined;
+	if (path === "~") return homedir();
+	if (path.startsWith("~/")) return homedir() + path.slice(1);
+	return path;
+}
 
 // =============================================================================
 // Install Method Detection
@@ -54,12 +85,12 @@ export function detectInstallMethod(): InstallMethod {
 /**
  * Suggest how to update Me Write Code.
  */
-export function getUpdateInstruction(_packageName: string): string {
+export function getUpdateInstruction(packageName: string = PACKAGE_NAME): string {
 	const method = detectInstallMethod();
 	if (method === "bun-binary") {
-		return "Run: `mewrite self-update`";
+		return `Run: \`${APP_NAME} self-update\``;
 	}
-	return "Run: `npm install -g @zhachory1/mewrite-code@latest`";
+	return `Run: \`npm install -g ${packageName}@latest\``;
 }
 
 // =============================================================================
@@ -74,12 +105,14 @@ export function getUpdateInstruction(_packageName: string): string {
  */
 export function getPackageDir(): string {
 	// Allow override via environment variable (useful for Nix/Guix where store paths tokenize poorly)
-	const envDir = process.env[DEFAULT_PACKAGE_DIR_ENV];
-	if (envDir) {
-		if (envDir === "~") return homedir();
-		if (envDir.startsWith("~/")) return homedir() + envDir.slice(1);
-		return envDir;
-	}
+	const configuredEnvDir = resolvedAppConfig?.packageDirEnv ? process.env[resolvedAppConfig.packageDirEnv] : undefined;
+	const envDir =
+		configuredEnvDir ??
+		resolvedAppConfig?.packageDir ??
+		process.env[GENERIC_PACKAGE_DIR_ENV] ??
+		process.env[DEFAULT_PACKAGE_DIR_ENV];
+	const expandedEnvDir = expandHome(envDir);
+	if (expandedEnvDir) return expandedEnvDir;
 
 	if (isBunBinary) {
 		// Bun binary: process.execPath points to the compiled executable
@@ -94,11 +127,13 @@ export function getPackageDir(): string {
 			try {
 				const pkg = JSON.parse(readFileSync(packageJsonPath, "utf-8")) as {
 					name?: string;
-					mewriteConfig?: unknown;
-					piConfig?: unknown;
+					mewriteConfig?: DistributionConfig;
+					piConfig?: DistributionConfig;
 				};
-				if (pkg.name === "@zhachory1/mewrite-code" || pkg.mewriteConfig || pkg.piConfig) {
-					return dir;
+				const config = pkg.mewriteConfig ?? pkg.piConfig;
+				if (pkg.name === "@zhachory1/mewrite-code" || config) {
+					const configuredEnvDir = config?.packageDirEnv ? process.env[config.packageDirEnv] : undefined;
+					return expandHome(configuredEnvDir ?? config?.packageDir) ?? dir;
 				}
 			} catch {
 				// Keep walking; a malformed ancestor package.json should not hide package assets.
@@ -196,16 +231,26 @@ export function getBundledPromptsDir(): string {
 // =============================================================================
 
 const pkg = JSON.parse(readFileSync(getPackageJsonPath(), "utf-8"));
-const appConfig = pkg.mewriteConfig ?? pkg.piConfig ?? {};
+const appConfig = (pkg.mewriteConfig ?? pkg.piConfig ?? {}) as DistributionConfig;
+resolvedAppConfig = appConfig;
+const selfUpdateConfig = appConfig.selfUpdate ?? {};
 
-export const APP_NAME: string = appConfig.name || "pi";
-export const CONFIG_DIR_NAME: string = appConfig.configDir || ".pi";
+export const APP_NAME: string = appConfig.appName || appConfig.name || DEFAULT_APP_NAME;
+export const DISPLAY_NAME: string = appConfig.displayName || APP_NAME;
+export const CONFIG_DIR_NAME: string = appConfig.configDirName || appConfig.configDir || DEFAULT_CONFIG_DIR_NAME;
 export const VERSION: string = pkg.version;
+export const SELF_UPDATE_ENABLED: boolean = selfUpdateConfig.enabled ?? pkg.name === DEFAULT_PACKAGE_NAME;
+export const PACKAGE_NAME: string = selfUpdateConfig.packageName || DEFAULT_PACKAGE_NAME;
+export const RELEASE_REPO: string = selfUpdateConfig.repo || DEFAULT_REPO;
+export const INSTALL_DIR_NAME: string = selfUpdateConfig.installDirName || APP_NAME;
+export const INSTALL_PRODUCT_DIR_NAME: string = selfUpdateConfig.productDirName || APP_NAME;
+export const LEGACY_CONFIG_DIR_NAMES: readonly string[] = [".cave"];
 
 // e.g., MEWRITE_CODING_AGENT_DIR
 export const ENV_AGENT_DIR = `${APP_NAME.toUpperCase()}_CODING_AGENT_DIR`;
-export const ENV_PACKAGE_DIR = `${APP_NAME.toUpperCase()}_PACKAGE_DIR`;
+export const ENV_PACKAGE_DIR = appConfig.packageDirEnv || `${APP_NAME.toUpperCase()}_PACKAGE_DIR`;
 export const ENV_SHARE_VIEWER_URL = `${APP_NAME.toUpperCase()}_SHARE_VIEWER_URL`;
+export const ENV_DISABLE_UPDATE_CHECK = selfUpdateConfig.disableEnv || `${APP_NAME.toUpperCase()}_DISABLE_UPDATE_CHECK`;
 
 const DEFAULT_SHARE_VIEWER_URL = "";
 
@@ -220,13 +265,14 @@ export function getShareViewerUrl(gistId: string): string {
 // =============================================================================
 
 /** Get the agent config directory (e.g., ~/.pi/agent/) */
+export function getDistributionConfig(): DistributionConfig {
+	return structuredClone(appConfig);
+}
+
 export function getAgentDir(): string {
 	const envDir = process.env[ENV_AGENT_DIR];
 	if (envDir) {
-		// Expand tilde to home directory
-		if (envDir === "~") return homedir();
-		if (envDir.startsWith("~/")) return homedir() + envDir.slice(1);
-		return envDir;
+		return expandHome(envDir) ?? envDir;
 	}
 	return join(homedir(), CONFIG_DIR_NAME, "agent");
 }

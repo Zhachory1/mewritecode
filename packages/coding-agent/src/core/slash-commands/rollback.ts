@@ -13,6 +13,7 @@
 
 import { relative, resolve } from "node:path";
 import { checkpoints } from "@zhachory1/mewrite-agent";
+import { CONFIG_DIR_NAME } from "../../config.js";
 
 const { CheckpointManager } = checkpoints;
 
@@ -28,7 +29,7 @@ export interface RollbackCommandResult {
 
 export async function runRollbackCommand(args: string, io: RollbackCommandIO): Promise<RollbackCommandResult> {
 	const argv = args.trim().split(/\s+/).filter(Boolean);
-	const mgr = new CheckpointManager(io.projectRoot);
+	const mgr = new CheckpointManager(io.projectRoot, undefined, CONFIG_DIR_NAME);
 
 	if (argv[0] === "list" || argv[0] === "ls") {
 		return formatList(mgr);

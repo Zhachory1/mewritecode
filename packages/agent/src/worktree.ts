@@ -43,6 +43,8 @@ export interface CreateWorktreeOptions {
 	baseRef?: string;
 	/** Override the worktree directory. Defaults to `<repoRoot>/.cave/worktrees/<id>`. */
 	worktreeDir?: string;
+	/** Config dir name used when worktreeDir is not set. Default: .cave */
+	configDirName?: string;
 	/** Override the branch name. Defaults to `cave/agent/<id>`. */
 	branchName?: string;
 	/** Path to git binary. Defaults to `git`. */
@@ -65,8 +67,8 @@ export interface RemoveWorktreeOptions {
 }
 
 /** Compute the canonical worktree directory for a given id. */
-export function getWorktreeRoot(repoRoot: string, id: string): string {
-	return resolve(repoRoot, ".cave", "worktrees", id);
+export function getWorktreeRoot(repoRoot: string, id: string, configDirName = ".cave"): string {
+	return resolve(repoRoot, configDirName, "worktrees", id);
 }
 
 /** Sanitize an id into a valid git ref segment. */
@@ -90,7 +92,7 @@ async function run(gitBin: string, args: string[], cwd: string): Promise<{ stdou
 export async function createWorktree(opts: CreateWorktreeOptions): Promise<CreateWorktreeResult> {
 	const gitBin = opts.gitBin ?? "git";
 	const id = sanitizeId(opts.id);
-	const worktreeDir = opts.worktreeDir ?? getWorktreeRoot(opts.repoRoot, id);
+	const worktreeDir = opts.worktreeDir ?? getWorktreeRoot(opts.repoRoot, id, opts.configDirName);
 	const branchName = opts.branchName ?? `cave/agent/${id}`;
 	const baseRef = opts.baseRef ?? (await getCurrentHead(gitBin, opts.repoRoot));
 
@@ -240,6 +242,6 @@ export async function detectRepoRoot(dir: string, gitBin = "git"): Promise<strin
 export const CAVE_AGENT_BRANCH_PREFIX = "cave/agent/";
 
 /** Default worktrees subtree under .cave/. */
-export function caveWorktreesDir(repoRoot: string): string {
-	return join(repoRoot, ".cave", "worktrees");
+export function caveWorktreesDir(repoRoot: string, configDirName = ".cave"): string {
+	return join(repoRoot, configDirName, "worktrees");
 }

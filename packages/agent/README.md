@@ -399,6 +399,25 @@ execute: async (toolCallId, params, signal, onUpdate) => {
 
 Thrown errors are caught by the agent and reported to the LLM as tool errors with `isError: true`.
 
+## Branded storage paths
+
+Low-level helpers default to historical `.cave` storage for compatibility, but embedders can pass a config dir name to derive branded storage roots without importing `@zhachory1/mewrite-code`:
+
+```typescript
+import { checkpoints, mcp, getWorktreeRoot, memory, modelsDir } from "@zhachory1/mewrite-agent";
+
+const configDirName = ".examplecode";
+
+mcp.loadMcpConfig(process.cwd(), process.env.HOME, { configDirName, legacyConfigDirNames: [".cave"] });
+new mcp.FileKeyStore(mcp.defaultStorePath(configDirName));
+new memory.FilesProvider({ cwd: process.cwd(), configDirName });
+getWorktreeRoot(process.cwd(), "agent-1", configDirName);
+new checkpoints.CheckpointManager(process.cwd(), undefined, configDirName);
+modelsDir(configDirName);
+```
+
+Prefer passing concrete paths when an API already accepts them. Use config-dir overrides for branded wrappers that need `.examplecode`/`~/.examplecode` state isolation while keeping upstream `.cave` defaults unchanged.
+
 ## Proxy Usage
 
 For browser apps that proxy through a backend:

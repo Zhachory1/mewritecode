@@ -1,7 +1,9 @@
 // discovery.ts — find and load .mcp.json files.
 //
-// Project: <cwd>/.mcp.json (preferred) or <cwd>/.cave/mcp.json (fallback).
-// User:    ~/.cave/mcp.json (preferred) or ~/.claude/mcp.json (compat read).
+// Project: <cwd>/.mcp.json (preferred), branded <cwd>/<configDir>/mcp.json,
+// or legacy <cwd>/.cave/mcp.json (fallback).
+// User:    branded ~/<configDir>/mcp.json, legacy ~/.cave/mcp.json, or
+// ~/.claude / ~/.codex compatibility configs.
 //
 // Schema is byte-compatible with Claude Code / Codex `mcp.json`. A user can
 // paste their existing config in unchanged and it will load.
@@ -25,27 +27,55 @@ export interface LoadedConfig {
 	errors: Array<{ path: string; message: string }>;
 }
 
-const PROJECT_PATHS = [".mcp.json", ".cave/mcp.json"] as const;
-
-function userPaths(home: string): string[] {
-	return [join(home, ".cave", "mcp.json"), join(home, ".claude", "mcp.json"), join(home, ".codex", "mcp.json")];
+export interface McpDiscoveryOptions {
+	configDirName?: string;
+	legacyConfigDirNames?: readonly string[];
 }
 
-export function getProjectConfigPath(cwd = process.cwd()): string {
-	return resolve(cwd, PROJECT_PATHS[0]);
+function unique(paths: string[]): string[] {
+	return [...new Set(paths)];
 }
 
-export function getUserConfigPath(home = homedir()): string {
-	return join(home, ".cave", "mcp.json");
+function projectPaths(configDirName = ".cave", legacyConfigDirNames: readonly string[] = [".cave"]): string[] {
+	return unique([
+		".mcp.json",
+		join(configDirName, "mcp.json"),
+		...legacyConfigDirNames.map((dir) => join(dir, "mcp.json")),
+	]);
 }
 
-export function getDiscoverySources(cwd = process.cwd(), home = homedir()): DiscoverySource[] {
+function userPaths(
+	home: string,
+	configDirName = ".cave",
+	legacyConfigDirNames: readonly string[] = [".cave"],
+): string[] {
+	return unique([
+		join(home, configDirName, "mcp.json"),
+		...legacyConfigDirNames.map((dir) => join(home, dir, "mcp.json")),
+		join(home, ".claude", "mcp.json"),
+		join(home, ".codex", "mcp.json"),
+	]);
+}
+
+export function getProjectConfigPath(cwd = process.cwd(), options: McpDiscoveryOptions = {}): string {
+	return resolve(cwd, projectPaths(options.configDirName, options.legacyConfigDirNames)[0]);
+}
+
+export function getUserConfigPath(home = homedir(), options: McpDiscoveryOptions = {}): string {
+	return join(home, options.configDirName ?? ".cave", "mcp.json");
+}
+
+export function getDiscoverySources(
+	cwd = process.cwd(),
+	home = homedir(),
+	options: McpDiscoveryOptions = {},
+): DiscoverySource[] {
 	const out: DiscoverySource[] = [];
-	for (const rel of PROJECT_PATHS) {
+	for (const rel of projectPaths(options.configDirName, options.legacyConfigDirNames)) {
 		const p = resolve(cwd, rel);
 		out.push({ scope: "project", path: p, exists: existsSync(p) });
 	}
-	for (const p of userPaths(home)) {
+	for (const p of userPaths(home, options.configDirName, options.legacyConfigDirNames)) {
 		out.push({ scope: "user", path: p, exists: existsSync(p) });
 	}
 	return out;
@@ -80,8 +110,8 @@ function entriesToConfigs(parsed: McpConfigFile | undefined): McpServerConfig[] 
  * Load and merge MCP config files. Project-scope wins over user-scope on name
  * collisions; the first existing file at each scope is the authoritative one.
  */
-export function loadMcpConfig(cwd = process.cwd(), home = homedir()): LoadedConfig {
-	const sources = getDiscoverySources(cwd, home);
+export function loadMcpConfig(cwd = process.cwd(), home = homedir(), options: McpDiscoveryOptions = {}): LoadedConfig {
+	const sources = getDiscoverySources(cwd, home, options);
 	const errors: Array<{ path: string; message: string }> = [];
 	const byName = new Map<string, McpServerConfig>();
 	let settings: McpSettings = {};

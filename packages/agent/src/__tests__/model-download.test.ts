@@ -14,6 +14,13 @@ describe("model-download", () => {
 		expect(modelPath(LLMLINGUA2_MANIFEST)).toBe(join(homedir(), ".cave", "models", LLMLINGUA2_MANIFEST.filename));
 	});
 
+	it("accepts a branded config dir", () => {
+		expect(modelsDir(".roktcode")).toBe(join(homedir(), ".roktcode", "models"));
+		expect(modelPath(LLMLINGUA2_MANIFEST, ".roktcode")).toBe(
+			join(homedir(), ".roktcode", "models", LLMLINGUA2_MANIFEST.filename),
+		);
+	});
+
 	it("vocabPath joins dir + vocabFilename", () => {
 		expect(vocabPath(LLMLINGUA2_MANIFEST)).toBe(
 			join(homedir(), ".cave", "models", LLMLINGUA2_MANIFEST.vocabFilename!),

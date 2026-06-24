@@ -26,11 +26,20 @@ import { spawn, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import chalk from "chalk";
-import { detectInstallMethod, getAgentDir, getUpdateInstruction, VERSION } from "../config.js";
+import {
+	APP_NAME,
+	detectInstallMethod,
+	ENV_DISABLE_UPDATE_CHECK,
+	getAgentDir,
+	getUpdateInstruction,
+	INSTALL_DIR_NAME,
+	INSTALL_PRODUCT_DIR_NAME,
+	PACKAGE_NAME,
+	RELEASE_REPO,
+	SELF_UPDATE_ENABLED,
+	VERSION,
+} from "../config.js";
 import { SettingsManager } from "../core/settings-manager.js";
-
-const REPO = "Zhachory1/mewritecode";
-const PACKAGE_NAME = "mewrite-code";
 
 export interface RemoteRelease {
 	tag: string;
@@ -59,13 +68,13 @@ export async function resolveRemoteRelease(
 	fetchImpl: typeof fetch = fetch,
 ): Promise<RemoteRelease | undefined> {
 	if (channel === "stable") {
-		const r = await fetchImpl(`${apiBase}/repos/${REPO}/releases/latest`);
+		const r = await fetchImpl(`${apiBase}/repos/${RELEASE_REPO}/releases/latest`);
 		if (!r.ok) return undefined;
 		const j = (await r.json()) as { tag_name?: string; published_at?: string };
 		if (!j.tag_name) return undefined;
 		return { tag: j.tag_name, publishedAt: j.published_at };
 	}
-	const r = await fetchImpl(`${apiBase}/repos/${REPO}/releases?per_page=20`);
+	const r = await fetchImpl(`${apiBase}/repos/${RELEASE_REPO}/releases?per_page=20`);
 	if (!r.ok) return undefined;
 	const list = (await r.json()) as Array<{ tag_name?: string; published_at?: string; prerelease?: boolean }>;
 	const candidate = list.find((rel) => rel.tag_name && (rel.tag_name.includes(channel) || rel.prerelease));
@@ -103,8 +112,9 @@ export async function maybeNotifyUpdateAvailable(
 	settings: SettingsManager,
 	opts: { fetchImpl?: typeof fetch; now?: () => Date; channel?: "stable" | "beta" | "canary" } = {},
 ): Promise<string | undefined> {
+	if (!SELF_UPDATE_ENABLED) return undefined;
 	if (!settings.getUpdateAutoCheck()) return undefined;
-	if (process.env.MEWRITE_DISABLE_UPDATE_CHECK === "1") return undefined;
+	if (process.env[ENV_DISABLE_UPDATE_CHECK] === "1") return undefined;
 	const now = opts.now?.() ?? new Date();
 	const last = settings.getUpdateLastCheckedAt();
 	if (last) {
@@ -141,7 +151,7 @@ function locateInstallerScript(): string | undefined {
 	}
 	const home = process.env.HOME;
 	if (home) {
-		candidates.push(join(home, ".mewrite", "lib", "mewrite", "installers", "install.sh"));
+		candidates.push(join(home, INSTALL_DIR_NAME, "lib", INSTALL_PRODUCT_DIR_NAME, "installers", "install.sh"));
 	}
 	// Also try the temp clone path used by `mewrite self-update --bootstrap`.
 	candidates.push("/tmp/mewrite-installers/install.sh");
@@ -162,7 +172,7 @@ export function runInstaller(
 ): { code: number; stdout: string; stderr: string } {
 	const script = opts.script ?? locateInstallerScript();
 	if (!script) {
-		throw new Error("install.sh not found locally; run `npm install -g @zhachory1/mewrite-code@latest` to refresh");
+		throw new Error(`install.sh not found locally; run \`npm install -g ${PACKAGE_NAME}@latest\` to refresh`);
 	}
 	const args = ["--version", version];
 	if (opts.channel) args.push("--channel", opts.channel);
@@ -202,6 +212,11 @@ export async function runSelfUpdate(args: string[]): Promise<number> {
 			? (args[channelArgIdx + 1] as "stable" | "beta" | "canary")
 			: undefined;
 
+	if (!SELF_UPDATE_ENABLED) {
+		emit({ ok: false, msg: `${APP_NAME} self-update is not configured for this distribution` }, json);
+		return 1;
+	}
+
 	const settings = SettingsManager.create(process.cwd(), getAgentDir());
 	const channel = overrideChannel ?? settings.getUpdateChannel();
 	const method = detectInstallMethod();
@@ -216,7 +231,7 @@ export async function runSelfUpdate(args: string[]): Promise<number> {
 		emit(
 			{
 				ok: true,
-				msg: `mewrite is up to date (current ${VERSION}, latest ${release.tag} on ${channel})`,
+				msg: `${APP_NAME} is up to date (current ${VERSION}, latest ${release.tag} on ${channel})`,
 				current: VERSION,
 				latest: release.tag,
 				channel,
@@ -249,7 +264,7 @@ export async function runSelfUpdate(args: string[]): Promise<number> {
 		emit(
 			{
 				ok: true,
-				msg: `mewrite was installed via ${method}; reinstall to upgrade — ${instr}`,
+				msg: `${APP_NAME} was installed via ${method}; reinstall to upgrade — ${instr}`,
 				current: VERSION,
 				latest: release.tag,
 				channel,
@@ -261,7 +276,7 @@ export async function runSelfUpdate(args: string[]): Promise<number> {
 		return 0;
 	}
 
-	process.stdout.write(chalk.bold(`Updating mewrite ${VERSION} → ${release.tag} (${channel})\n`));
+	process.stdout.write(chalk.bold(`Updating ${APP_NAME} ${VERSION} → ${release.tag} (${channel})\n`));
 	const result = runInstaller(release.tag, { channel });
 	process.stdout.write(result.stdout);
 	if (result.stderr) process.stderr.write(result.stderr);

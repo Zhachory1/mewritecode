@@ -11,6 +11,7 @@
  */
 
 import { checkpoints } from "@zhachory1/mewrite-agent";
+import { CONFIG_DIR_NAME } from "../../config.js";
 
 const { CheckpointManager } = checkpoints;
 
@@ -48,7 +49,7 @@ export async function runCheckpointCommand(args: string, io: CheckpointCommandIO
 	}
 
 	try {
-		const mgr = new CheckpointManager(io.projectRoot);
+		const mgr = new CheckpointManager(io.projectRoot, undefined, CONFIG_DIR_NAME);
 		const result = await mgr.manualSnapshot(name, io.sessionId);
 
 		const fileCount = result.files.length;

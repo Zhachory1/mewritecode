@@ -34,8 +34,8 @@ export function repoHash(projectRoot: string): string {
 }
 
 /** Where the shadow repo and index live for a given project. */
-export function shadowDirFor(projectRoot: string, home = homedir()): string {
-	return join(home, ".cave", "checkpoints", repoHash(projectRoot));
+export function shadowDirFor(projectRoot: string, home = homedir(), configDirName = ".cave"): string {
+	return join(home, configDirName, "checkpoints", repoHash(projectRoot));
 }
 
 const LOCK_TIMEOUT_MS = 5_000;
@@ -94,8 +94,9 @@ export class CheckpointManager {
 	constructor(
 		readonly projectRoot: string,
 		home = homedir(),
+		configDirName = ".cave",
 	) {
-		this.shadowDir = shadowDirFor(projectRoot, home);
+		this.shadowDir = shadowDirFor(projectRoot, home, configDirName);
 		const shadowGitDir = join(this.shadowDir, ".git");
 
 		if (!existsSync(this.shadowDir)) {

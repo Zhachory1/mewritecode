@@ -41,7 +41,7 @@ import {
 	resetApiProviders,
 	supportsXhigh,
 } from "@zhachory1/mewrite-ai";
-import { getDocsPath } from "../config.js";
+import { CONFIG_DIR_NAME, getDocsPath } from "../config.js";
 import { theme } from "../modes/interactive/theme/theme.js";
 import { stripFrontmatter } from "../utils/frontmatter.js";
 import { sleep } from "../utils/sleep.js";
@@ -960,7 +960,7 @@ export class AgentSession {
 	/** Lazy-instantiated shadow-git checkpoint manager bound to this session's cwd. */
 	get checkpointManager(): CheckpointManagerInstance {
 		if (!this._checkpointMgr) {
-			this._checkpointMgr = new CheckpointManager(this._cwd);
+			this._checkpointMgr = new CheckpointManager(this._cwd, undefined, CONFIG_DIR_NAME);
 		}
 		return this._checkpointMgr;
 	}

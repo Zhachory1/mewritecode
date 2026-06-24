@@ -11,6 +11,7 @@
 import { relative, resolve } from "node:path";
 import { checkpoints } from "@zhachory1/mewrite-agent";
 import chalk from "chalk";
+import { CONFIG_DIR_NAME } from "../config.js";
 
 const { CheckpointManager } = checkpoints;
 
@@ -28,7 +29,7 @@ export async function handleRollbackCommand(argv: string[]): Promise<boolean> {
 
 async function handleList(): Promise<boolean> {
 	const cwd = process.cwd();
-	const mgr = new CheckpointManager(cwd);
+	const mgr = new CheckpointManager(cwd, undefined, CONFIG_DIR_NAME);
 	const entries = mgr.list(20);
 
 	if (entries.length === 0) {
@@ -72,7 +73,7 @@ async function handleRollback(args: string[]): Promise<boolean> {
 		repoRelFile = relative(cwd, abs);
 	}
 
-	const mgr = new CheckpointManager(cwd);
+	const mgr = new CheckpointManager(cwd, undefined, CONFIG_DIR_NAME);
 
 	const totalSnapshots = mgr.getIndex().entries().length;
 	if (totalSnapshots === 0) {

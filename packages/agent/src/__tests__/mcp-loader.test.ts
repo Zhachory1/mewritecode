@@ -83,6 +83,26 @@ describe("loadMcpConfig", () => {
 		expect(result.servers.map((s) => s.name)).toContain("user_only");
 	});
 
+	it("loads branded config paths before legacy fallbacks", () => {
+		mkdirSync(join(home, ".roktcode"), { recursive: true });
+		mkdirSync(join(home, ".cave"), { recursive: true });
+		mkdirSync(join(tmp, ".roktcode"), { recursive: true });
+		writeFileSync(join(home, ".cave", "mcp.json"), JSON.stringify({ mcpServers: { legacy: { command: "old" } } }));
+		writeFileSync(
+			join(home, ".roktcode", "mcp.json"),
+			JSON.stringify({ mcpServers: { branded: { command: "new" } } }),
+		);
+		writeFileSync(
+			join(tmp, ".roktcode", "mcp.json"),
+			JSON.stringify({ mcpServers: { project: { command: "proj" } } }),
+		);
+		const result = loadMcpConfig(tmp, home, { configDirName: ".roktcode", legacyConfigDirNames: [".cave"] });
+		expect(result.servers.map((s) => s.name).sort()).toEqual(["branded", "project"]);
+		expect(getDiscoverySources(tmp, home, { configDirName: ".roktcode" }).map((s) => s.path)).toContain(
+			join(home, ".roktcode", "mcp.json"),
+		);
+	});
+
 	it("project config wins over user config on name collision", () => {
 		mkdirSync(join(home, ".cave"), { recursive: true });
 		writeFileSync(join(home, ".cave", "mcp.json"), JSON.stringify({ mcpServers: { both: { command: "user-cmd" } } }));

@@ -21,8 +21,8 @@ export interface ShadowRepoPath {
 	gitDir: string;
 }
 
-export function shadowRepoPath(sessionId: string, home = homedir()): ShadowRepoPath {
-	const dir = join(home, ".cave", "checkpoints", sessionId);
+export function shadowRepoPath(sessionId: string, home = homedir(), configDirName = ".cave"): ShadowRepoPath {
+	const dir = join(home, configDirName, "checkpoints", sessionId);
 	return { dir, gitDir: join(dir, ".git") };
 }
 
@@ -44,8 +44,9 @@ export class ShadowCheckpoints {
 	constructor(
 		public readonly sessionId: string,
 		home = homedir(),
+		configDirName = ".cave",
 	) {
-		this.path = shadowRepoPath(sessionId, home);
+		this.path = shadowRepoPath(sessionId, home, configDirName);
 	}
 
 	get repoPath(): ShadowRepoPath {

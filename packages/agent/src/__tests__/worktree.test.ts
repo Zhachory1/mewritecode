@@ -71,6 +71,11 @@ describe("getWorktreeRoot + caveWorktreesDir", () => {
 		expect(getWorktreeRoot("/repo", "alpha")).toBe("/repo/.cave/worktrees/alpha");
 		expect(caveWorktreesDir("/repo")).toBe("/repo/.cave/worktrees");
 	});
+
+	it("accepts a branded config dir", () => {
+		expect(getWorktreeRoot("/repo", "alpha", ".roktcode")).toBe("/repo/.roktcode/worktrees/alpha");
+		expect(caveWorktreesDir("/repo", ".roktcode")).toBe("/repo/.roktcode/worktrees");
+	});
 });
 
 describe("CAVE_AGENT_BRANCH_PREFIX", () => {
@@ -99,8 +104,8 @@ describe("detectRepoRoot", () => {
 
 describe("createWorktree", () => {
 	it("creates a fresh worktree on a new branch", async () => {
-		const result = await createWorktree({ repoRoot, id: "alpha" });
-		expect(result.worktreeDir).toBe(join(repoRoot, ".cave", "worktrees", "alpha"));
+		const result = await createWorktree({ repoRoot, id: "alpha", configDirName: ".roktcode" });
+		expect(result.worktreeDir).toBe(join(repoRoot, ".roktcode", "worktrees", "alpha"));
 		expect(result.branchName).toBe("cave/agent/alpha");
 		expect(existsSync(result.worktreeDir)).toBe(true);
 		// Verify git knows about it.

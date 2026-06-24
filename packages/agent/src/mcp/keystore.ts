@@ -1,6 +1,6 @@
 // keystore.ts — token cache for MCP OAuth bearer tokens.
 //
-// Today: file-based store at `~/.cave/mcp-tokens.json` with mode 0600.
+// Today: file-based store at `~/.cave/mcp-tokens.json` by default with mode 0600.
 // TODO(ws2-keytar): swap in `keytar` for OS keychain (Keychain on macOS,
 // libsecret on Linux, Credential Vault on Windows). Keytar requires native
 // compilation, which complicates the bun-built binary; the file store is the
@@ -28,8 +28,8 @@ export interface KeyStore {
 
 const SERVICE = "cave.mcp";
 
-function defaultStorePath(): string {
-	return join(homedir(), ".cave", "mcp-tokens.json");
+export function defaultStorePath(configDirName = ".cave"): string {
+	return join(homedir(), configDirName, "mcp-tokens.json");
 }
 
 interface StoredFile {

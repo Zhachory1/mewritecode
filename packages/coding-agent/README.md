@@ -429,6 +429,28 @@ mewrite --mode rpc
 
 Protocol details: [docs/rpc.md](docs/rpc.md)
 
+### Downstream branded wrappers
+
+Thin downstream packages can depend on `@zhachory1/mewrite-code` and set package metadata instead of copying the monorepo. Add `mewriteConfig` to the wrapper package and point `CODING_AGENT_PACKAGE_DIR` at that package before importing the CLI:
+
+```json
+{
+  "name": "@example/examplecode",
+  "bin": { "examplecode": "dist/cli.js" },
+  "mewriteConfig": {
+    "name": "examplecode",
+    "displayName": "Example Code",
+    "configDir": ".examplecode",
+    "packageDirEnv": "EXAMPLECODE_PACKAGE_DIR",
+    "selfUpdate": { "enabled": false }
+  }
+}
+```
+
+`CODING_AGENT_PACKAGE_DIR` is the bootstrap override used before package metadata is loaded. Once metadata is loaded, the package-specific env named by `packageDirEnv` is honored for asset lookup. User config then defaults to `~/.examplecode/agent`, project config to `.examplecode/`, and lower-level storage paths can derive from the same config dir.
+
+For non-upstream distributions, self-update is disabled unless the wrapper explicitly provides a complete `selfUpdate` configuration.
+
 ---
 
 ## CLI Reference

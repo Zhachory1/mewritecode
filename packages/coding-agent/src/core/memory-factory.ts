@@ -10,6 +10,7 @@
 
 import { join } from "node:path";
 import { memory as memoryNs } from "@zhachory1/mewrite-agent";
+import { CONFIG_DIR_NAME } from "../config.js";
 
 type MemoryProvider = memoryNs.MemoryProvider;
 
@@ -50,9 +51,9 @@ export async function resolveMemoryProvider(opts: MemoryFactoryOptions): Promise
 		const ok = await cavemem.isAvailable().catch(() => false);
 		provider = ok
 			? cavemem
-			: new memoryNs.FilesProvider({ cwd: opts.cwd, memoryDir: join(opts.cwd, ".cave", "memory") });
+			: new memoryNs.FilesProvider({ cwd: opts.cwd, memoryDir: join(opts.cwd, CONFIG_DIR_NAME, "memory") });
 	} else {
-		provider = new memoryNs.FilesProvider({ cwd: opts.cwd, memoryDir: join(opts.cwd, ".cave", "memory") });
+		provider = new memoryNs.FilesProvider({ cwd: opts.cwd, memoryDir: join(opts.cwd, CONFIG_DIR_NAME, "memory") });
 	}
 	_cache.set(key, { provider, cwd: opts.cwd, allowCavemem });
 	return provider;

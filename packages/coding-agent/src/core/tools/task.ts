@@ -30,6 +30,7 @@ import {
 	validateSubagentOutput,
 } from "@zhachory1/mewrite-agent";
 import { Text } from "@zhachory1/mewrite-tui";
+import { CONFIG_DIR_NAME } from "../../config.js";
 import {
 	filterAgentsByMcpAvailability,
 	findAgentDef,
@@ -600,7 +601,7 @@ async function maybeCreateWorktree(
 		return { cwd: parentCwd };
 	}
 	try {
-		const wt = await createWorktree({ repoRoot, id });
+		const wt = await createWorktree({ repoRoot, id, configDirName: CONFIG_DIR_NAME });
 		return { cwd: wt.worktreeDir, worktree: wt };
 	} catch {
 		// Fall back to shared cwd if worktree creation fails (e.g. offline mirror).

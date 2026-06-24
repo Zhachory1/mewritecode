@@ -92,6 +92,12 @@ describe("shadowDirFor", () => {
 		const hash = repoHash("/my/project");
 		expect(dir).toBe(`/home/user/.cave/checkpoints/${hash}`);
 	});
+
+	it("accepts a branded config dir", () => {
+		const dir = shadowDirFor("/my/project", "/home/user", ".roktcode");
+		const hash = repoHash("/my/project");
+		expect(dir).toBe(`/home/user/.roktcode/checkpoints/${hash}`);
+	});
 });
 
 // ─── unit: CheckpointIndex ───────────────────────────────────────────────────

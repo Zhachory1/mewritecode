@@ -127,10 +127,10 @@ describe("WS11 self-update logic", () => {
 			expect(r).toBeUndefined();
 		});
 
-		it("respects CAVE_DISABLE_UPDATE_CHECK=1", async () => {
+		it("respects the configured disable-update env", async () => {
 			const s = settings();
-			const prev = process.env.CAVE_DISABLE_UPDATE_CHECK;
-			process.env.CAVE_DISABLE_UPDATE_CHECK = "1";
+			const prev = process.env.MEWRITE_DISABLE_UPDATE_CHECK;
+			process.env.MEWRITE_DISABLE_UPDATE_CHECK = "1";
 			const fakeFetch = async () => {
 				throw new Error("should not be called");
 			};
@@ -138,8 +138,8 @@ describe("WS11 self-update logic", () => {
 				const r = await maybeNotifyUpdateAvailable(s, { fetchImpl: fakeFetch as unknown as typeof fetch });
 				expect(r).toBeUndefined();
 			} finally {
-				if (prev === undefined) delete process.env.CAVE_DISABLE_UPDATE_CHECK;
-				else process.env.CAVE_DISABLE_UPDATE_CHECK = prev;
+				if (prev === undefined) delete process.env.MEWRITE_DISABLE_UPDATE_CHECK;
+				else process.env.MEWRITE_DISABLE_UPDATE_CHECK = prev;
 			}
 		});
 	});
