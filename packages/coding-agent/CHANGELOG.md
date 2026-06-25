@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added downstream MCP discovery policy support for package-dir `.mcp.json` plus opt-outs for project, user, legacy, Claude Code, and Codex paths ([#32](https://github.com/Zhachory1/mewritecode/issues/32)).
+
 ## [0.66.0] - 2026-06-24
 
 ### Added

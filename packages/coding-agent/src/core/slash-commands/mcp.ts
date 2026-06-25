@@ -15,7 +15,7 @@
 //   /mcp reload           → reconnect everything
 
 import { mcp as agentMcp } from "@zhachory1/mewrite-agent";
-import { CONFIG_DIR_NAME, LEGACY_CONFIG_DIR_NAMES } from "../../config.js";
+import { MCP_DISCOVERY_OPTIONS } from "../../config.js";
 
 export interface SlashContext {
 	cwd: string;
@@ -51,18 +51,16 @@ export function parseMcpSlash(line: string): { verb: string; args: string[] } {
 	return { verb: parts[0], args: parts.slice(1) };
 }
 
-const DEFAULT_MCP_DISCOVERY_OPTIONS = { configDirName: CONFIG_DIR_NAME, legacyConfigDirNames: LEGACY_CONFIG_DIR_NAMES };
-
 async function buildHub(ctx: SlashContext): Promise<agentMcp.McpHub> {
 	if (ctx.hub) return ctx.hub;
-	const loaded = agentMcp.loadMcpConfig(ctx.cwd, undefined, ctx.mcpDiscoveryOptions ?? DEFAULT_MCP_DISCOVERY_OPTIONS);
+	const loaded = agentMcp.loadMcpConfig(ctx.cwd, undefined, ctx.mcpDiscoveryOptions ?? MCP_DISCOVERY_OPTIONS);
 	const hub = new agentMcp.McpHub({ settings: loaded.settings });
 	for (const server of loaded.servers) hub.addServer(server);
 	return hub;
 }
 
 async function runList(ctx: SlashContext): Promise<SlashResult> {
-	const loaded = agentMcp.loadMcpConfig(ctx.cwd, undefined, ctx.mcpDiscoveryOptions ?? DEFAULT_MCP_DISCOVERY_OPTIONS);
+	const loaded = agentMcp.loadMcpConfig(ctx.cwd, undefined, ctx.mcpDiscoveryOptions ?? MCP_DISCOVERY_OPTIONS);
 	if (loaded.errors.length > 0) {
 		return fail("MCP config errors:", ...loaded.errors.map((e) => `  ${e.path}: ${e.message}`));
 	}

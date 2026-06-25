@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added package-dir MCP config discovery and policy switches for downstream distributions to disable project, user, legacy, Claude Code, and Codex MCP paths ([#32](https://github.com/Zhachory1/mewritecode/issues/32)).
+
 ## [0.66.0] - 2026-06-24
 
 ### Added

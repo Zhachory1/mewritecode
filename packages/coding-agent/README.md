@@ -442,12 +442,20 @@ Thin downstream packages can depend on `@zhachory1/mewrite-code` and set package
     "displayName": "Example Code",
     "configDir": ".examplecode",
     "packageDirEnv": "EXAMPLECODE_PACKAGE_DIR",
+    "mcp": {
+      "includeRootProjectConfig": false,
+      "includeProjectConfigDir": false,
+      "includeUserConfigDir": false,
+      "legacyConfigDirNames": [],
+      "includeClaudeConfig": false,
+      "includeCodexConfig": false
+    },
     "selfUpdate": { "enabled": false }
   }
 }
 ```
 
-`CODING_AGENT_PACKAGE_DIR` is the bootstrap override used before package metadata is loaded. Once metadata is loaded, the package-specific env named by `packageDirEnv` is honored for asset lookup. User config then defaults to `~/.examplecode/agent`, project config to `.examplecode/`, and lower-level storage paths can derive from the same config dir.
+`CODING_AGENT_PACKAGE_DIR` is the bootstrap override used before package metadata is loaded. Once metadata is loaded, the package-specific env named by `packageDirEnv` is honored for asset lookup. User config then defaults to `~/.examplecode/agent`, project config to `.examplecode/`, and lower-level storage paths can derive from the same config dir. The `mcp` block reads `PACKAGE_DIR/.mcp.json` by default and can disable project, user, legacy `.cave`, Claude Code, and Codex compatibility paths when a downstream distribution needs isolated MCP configuration.
 
 For non-upstream distributions, self-update is disabled unless the wrapper explicitly provides a complete `selfUpdate` configuration.
 

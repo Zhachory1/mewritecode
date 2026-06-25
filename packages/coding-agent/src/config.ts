@@ -32,6 +32,15 @@ export interface DistributionConfig {
 		productDirName?: string;
 		disableEnv?: string;
 	};
+	mcp?: {
+		includePackageConfig?: boolean;
+		includeRootProjectConfig?: boolean;
+		includeProjectConfigDir?: boolean;
+		includeUserConfigDir?: boolean;
+		legacyConfigDirNames?: string[];
+		includeClaudeConfig?: boolean;
+		includeCodexConfig?: boolean;
+	};
 }
 
 let resolvedAppConfig: DistributionConfig | undefined;
@@ -244,7 +253,17 @@ export const PACKAGE_NAME: string = selfUpdateConfig.packageName || DEFAULT_PACK
 export const RELEASE_REPO: string = selfUpdateConfig.repo || DEFAULT_REPO;
 export const INSTALL_DIR_NAME: string = selfUpdateConfig.installDirName || APP_NAME;
 export const INSTALL_PRODUCT_DIR_NAME: string = selfUpdateConfig.productDirName || APP_NAME;
-export const LEGACY_CONFIG_DIR_NAMES: readonly string[] = [".cave"];
+export const LEGACY_CONFIG_DIR_NAMES: readonly string[] = appConfig.mcp?.legacyConfigDirNames ?? [".cave"];
+export const MCP_DISCOVERY_OPTIONS = {
+	configDirName: CONFIG_DIR_NAME,
+	legacyConfigDirNames: LEGACY_CONFIG_DIR_NAMES,
+	includeRootProjectConfig: appConfig.mcp?.includeRootProjectConfig,
+	includeProjectConfigDir: appConfig.mcp?.includeProjectConfigDir,
+	includeUserConfigDir: appConfig.mcp?.includeUserConfigDir,
+	includeClaudeConfig: appConfig.mcp?.includeClaudeConfig,
+	includeCodexConfig: appConfig.mcp?.includeCodexConfig,
+	packageConfigPath: appConfig.mcp?.includePackageConfig === false ? undefined : join(getPackageDir(), ".mcp.json"),
+} as const;
 
 // e.g., MEWRITE_CODING_AGENT_DIR
 export const ENV_AGENT_DIR = `${APP_NAME.toUpperCase()}_CODING_AGENT_DIR`;

@@ -17,7 +17,7 @@ import { homedir } from "node:os";
 import { dirname } from "node:path";
 import { mcp as agentMcp } from "@zhachory1/mewrite-agent";
 import chalk from "chalk";
-import { CONFIG_DIR_NAME, LEGACY_CONFIG_DIR_NAMES } from "../config.js";
+import { MCP_DISCOVERY_OPTIONS } from "../config.js";
 import { runMcpSlashCommand } from "../core/slash-commands/mcp.js";
 
 type McpConfigFile = agentMcp.McpConfigFile;
@@ -47,8 +47,6 @@ function writeConfigFile(path: string, data: McpConfigFile): void {
 	if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 	writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`, "utf8");
 }
-
-const MCP_DISCOVERY_OPTIONS = { configDirName: CONFIG_DIR_NAME, legacyConfigDirNames: LEGACY_CONFIG_DIR_NAMES };
 
 function configPath(scope: "user" | "project", cwd: string): string {
 	return scope === "user"

@@ -1,9 +1,12 @@
-// discovery.ts — find and load .mcp.json files.
+// discovery.ts — find and load MCP config files.
 //
-// Project: <cwd>/.mcp.json (preferred), branded <cwd>/<configDir>/mcp.json,
-// or legacy <cwd>/.cave/mcp.json (fallback).
-// User:    branded ~/<configDir>/mcp.json, legacy ~/.cave/mcp.json, or
-// ~/.claude / ~/.codex compatibility configs.
+// Default discovery preserves historical compatibility:
+//   package: optional package-shipped config when provided by a wrapper
+//   project: <cwd>/.mcp.json, then <cwd>/.cave/mcp.json
+//   user:    ~/.cave/mcp.json, ~/.claude/mcp.json, ~/.codex/mcp.json
+//
+// Downstream distributions can pass a policy that disables those compatibility
+// paths and reads only a package-shipped .mcp.json.
 //
 // Schema is byte-compatible with Claude Code / Codex `mcp.json`. A user can
 // paste their existing config in unchanged and it will load.
@@ -15,7 +18,7 @@ import { join, resolve } from "node:path";
 import type { McpConfigFile, McpServerConfig, McpSettings } from "./types.js";
 
 export interface DiscoverySource {
-	scope: "project" | "user";
+	scope: "package" | "project" | "user";
 	path: string;
 	exists: boolean;
 }
@@ -30,35 +33,45 @@ export interface LoadedConfig {
 export interface McpDiscoveryOptions {
 	configDirName?: string;
 	legacyConfigDirNames?: readonly string[];
+	includeRootProjectConfig?: boolean;
+	includeProjectConfigDir?: boolean;
+	includeUserConfigDir?: boolean;
+	includeClaudeConfig?: boolean;
+	includeCodexConfig?: boolean;
+	packageConfigPath?: string;
 }
 
 function unique(paths: string[]): string[] {
 	return [...new Set(paths)];
 }
 
-function projectPaths(configDirName = ".cave", legacyConfigDirNames: readonly string[] = [".cave"]): string[] {
-	return unique([
-		".mcp.json",
-		join(configDirName, "mcp.json"),
+function projectPaths(options: McpDiscoveryOptions = {}): string[] {
+	const configDirName = options.configDirName ?? ".cave";
+	const legacyConfigDirNames = options.legacyConfigDirNames ?? [".cave"];
+	const paths = [
+		...(options.includeProjectConfigDir === false ? [] : [join(configDirName, "mcp.json")]),
 		...legacyConfigDirNames.map((dir) => join(dir, "mcp.json")),
-	]);
+	];
+	if (options.includeRootProjectConfig !== false) paths.unshift(".mcp.json");
+	return unique(paths);
 }
 
-function userPaths(
-	home: string,
-	configDirName = ".cave",
-	legacyConfigDirNames: readonly string[] = [".cave"],
-): string[] {
-	return unique([
-		join(home, configDirName, "mcp.json"),
+function userPaths(home: string, options: McpDiscoveryOptions = {}): string[] {
+	const configDirName = options.configDirName ?? ".cave";
+	const legacyConfigDirNames = options.legacyConfigDirNames ?? [".cave"];
+	const paths = [
+		...(options.includeUserConfigDir === false ? [] : [join(home, configDirName, "mcp.json")]),
 		...legacyConfigDirNames.map((dir) => join(home, dir, "mcp.json")),
-		join(home, ".claude", "mcp.json"),
-		join(home, ".codex", "mcp.json"),
-	]);
+	];
+	if (options.includeClaudeConfig !== false) paths.push(join(home, ".claude", "mcp.json"));
+	if (options.includeCodexConfig !== false) paths.push(join(home, ".codex", "mcp.json"));
+	return unique(paths);
 }
 
 export function getProjectConfigPath(cwd = process.cwd(), options: McpDiscoveryOptions = {}): string {
-	return resolve(cwd, projectPaths(options.configDirName, options.legacyConfigDirNames)[0]);
+	const path =
+		options.includeRootProjectConfig === false ? join(options.configDirName ?? ".cave", "mcp.json") : ".mcp.json";
+	return resolve(cwd, path);
 }
 
 export function getUserConfigPath(home = homedir(), options: McpDiscoveryOptions = {}): string {
@@ -71,11 +84,14 @@ export function getDiscoverySources(
 	options: McpDiscoveryOptions = {},
 ): DiscoverySource[] {
 	const out: DiscoverySource[] = [];
-	for (const rel of projectPaths(options.configDirName, options.legacyConfigDirNames)) {
+	if (options.packageConfigPath) {
+		out.push({ scope: "package", path: options.packageConfigPath, exists: existsSync(options.packageConfigPath) });
+	}
+	for (const rel of projectPaths(options)) {
 		const p = resolve(cwd, rel);
 		out.push({ scope: "project", path: p, exists: existsSync(p) });
 	}
-	for (const p of userPaths(home, options.configDirName, options.legacyConfigDirNames)) {
+	for (const p of userPaths(home, options)) {
 		out.push({ scope: "user", path: p, exists: existsSync(p) });
 	}
 	return out;
@@ -107,14 +123,21 @@ function entriesToConfigs(parsed: McpConfigFile | undefined): McpServerConfig[] 
 }
 
 /**
- * Load and merge MCP config files. Project-scope wins over user-scope on name
- * collisions; the first existing file at each scope is the authoritative one.
+ * Load and merge MCP config files. Package config provides defaults, user config
+ * overrides package config, and project config overrides both on name collisions.
  */
 export function loadMcpConfig(cwd = process.cwd(), home = homedir(), options: McpDiscoveryOptions = {}): LoadedConfig {
 	const sources = getDiscoverySources(cwd, home, options);
 	const errors: Array<{ path: string; message: string }> = [];
 	const byName = new Map<string, McpServerConfig>();
 	let settings: McpSettings = {};
+
+	const packageSource = sources.find((s) => s.scope === "package" && s.exists);
+	if (packageSource) {
+		const parsed = safeParse(packageSource.path, errors);
+		for (const c of entriesToConfigs(parsed)) byName.set(c.name, c);
+		if (parsed?.settings) settings = { ...settings, ...parsed.settings };
+	}
 
 	const userSource = sources.find((s) => s.scope === "user" && s.exists);
 	if (userSource) {

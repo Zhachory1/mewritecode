@@ -84,23 +84,57 @@ describe("loadMcpConfig", () => {
 	});
 
 	it("loads branded config paths before legacy fallbacks", () => {
-		mkdirSync(join(home, ".roktcode"), { recursive: true });
+		mkdirSync(join(home, ".brandcode"), { recursive: true });
 		mkdirSync(join(home, ".cave"), { recursive: true });
-		mkdirSync(join(tmp, ".roktcode"), { recursive: true });
+		mkdirSync(join(tmp, ".brandcode"), { recursive: true });
 		writeFileSync(join(home, ".cave", "mcp.json"), JSON.stringify({ mcpServers: { legacy: { command: "old" } } }));
 		writeFileSync(
-			join(home, ".roktcode", "mcp.json"),
+			join(home, ".brandcode", "mcp.json"),
 			JSON.stringify({ mcpServers: { branded: { command: "new" } } }),
 		);
 		writeFileSync(
-			join(tmp, ".roktcode", "mcp.json"),
+			join(tmp, ".brandcode", "mcp.json"),
 			JSON.stringify({ mcpServers: { project: { command: "proj" } } }),
 		);
-		const result = loadMcpConfig(tmp, home, { configDirName: ".roktcode", legacyConfigDirNames: [".cave"] });
+		const result = loadMcpConfig(tmp, home, { configDirName: ".brandcode", legacyConfigDirNames: [".cave"] });
 		expect(result.servers.map((s) => s.name).sort()).toEqual(["branded", "project"]);
-		expect(getDiscoverySources(tmp, home, { configDirName: ".roktcode" }).map((s) => s.path)).toContain(
-			join(home, ".roktcode", "mcp.json"),
+		expect(getDiscoverySources(tmp, home, { configDirName: ".brandcode" }).map((s) => s.path)).toContain(
+			join(home, ".brandcode", "mcp.json"),
 		);
+	});
+
+	it("can read only a package-shipped .mcp.json", () => {
+		const packageConfig = join(tmp, "package-dir", ".mcp.json");
+		mkdirSync(join(tmp, "package-dir"), { recursive: true });
+		mkdirSync(join(tmp, ".brandcode"), { recursive: true });
+		mkdirSync(join(home, ".brandcode"), { recursive: true });
+		mkdirSync(join(home, ".claude"), { recursive: true });
+		mkdirSync(join(home, ".codex"), { recursive: true });
+		writeFileSync(join(tmp, ".mcp.json"), JSON.stringify({ mcpServers: { root: { command: "root" } } }));
+		writeFileSync(
+			join(tmp, ".brandcode", "mcp.json"),
+			JSON.stringify({ mcpServers: { project: { command: "proj" } } }),
+		);
+		writeFileSync(
+			join(home, ".brandcode", "mcp.json"),
+			JSON.stringify({ mcpServers: { user: { command: "user" } } }),
+		);
+		writeFileSync(join(home, ".claude", "mcp.json"), JSON.stringify({ mcpServers: { claude: { command: "cc" } } }));
+		writeFileSync(join(home, ".codex", "mcp.json"), JSON.stringify({ mcpServers: { codex: { command: "cx" } } }));
+		writeFileSync(packageConfig, JSON.stringify({ mcpServers: { packaged: { command: "pkg" } } }));
+
+		const result = loadMcpConfig(tmp, home, {
+			configDirName: ".brandcode",
+			legacyConfigDirNames: [],
+			includeRootProjectConfig: false,
+			includeProjectConfigDir: false,
+			includeUserConfigDir: false,
+			includeClaudeConfig: false,
+			includeCodexConfig: false,
+			packageConfigPath: packageConfig,
+		});
+		expect(result.servers.map((s) => s.name)).toEqual(["packaged"]);
+		expect(result.sources.map((s) => s.path)).toEqual([packageConfig]);
 	});
 
 	it("project config wins over user config on name collision", () => {
