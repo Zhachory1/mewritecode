@@ -1,5 +1,6 @@
 import { Container, type Terminal, TUI, visibleWidth } from "@zhachory1/mewrite-tui";
 import { beforeAll, describe, expect, test, vi } from "vitest";
+import { VERSION } from "../src/config.js";
 import { KeybindingsManager } from "../src/core/keybindings.js";
 import { BUILTIN_SLASH_COMMANDS } from "../src/core/slash-commands.js";
 import {
@@ -146,6 +147,47 @@ describe("InteractiveMode activity helpers", () => {
 		const pid = (InteractiveMode as any).prototype.extractBashPid.call(fakeThis, { details: { pid: 12345 } });
 
 		expect(pid).toBe(12345);
+	});
+});
+
+describe("InteractiveMode startup changelog", () => {
+	beforeAll(() => {
+		initTheme("dark");
+	});
+
+	test("does not show changelog on startup by default but records current version", () => {
+		const setLastChangelogVersion = vi.fn();
+		const fakeThis: any = {
+			session: { state: { messages: [] } },
+			settingsManager: {
+				getLastChangelogVersion: () => "0.0.0",
+				getShowChangelogOnStartup: () => false,
+				setLastChangelogVersion,
+			},
+		};
+
+		const changelog = (InteractiveMode as any).prototype.getChangelogForDisplay.call(fakeThis);
+
+		expect(changelog).toBeUndefined();
+		expect(setLastChangelogVersion).toHaveBeenCalledWith(VERSION);
+	});
+
+	test("renders condensed startup changelog only when markdown is provided", () => {
+		const fakeThis: any = {
+			startupNoticesShown: false,
+			changelogMarkdown: "## [1.2.3] - 2026-01-01\n\n### Added\n\n- Example",
+			version: "1.2.3",
+			chatContainer: new Container(),
+			settingsManager: { getCollapseChangelog: () => true },
+			getMarkdownThemeWithSettings: () => ({}),
+		};
+
+		(InteractiveMode as any).prototype.showStartupNoticesIfNeeded.call(fakeThis);
+		const output = renderAll(fakeThis.chatContainer);
+
+		expect(output).toContain("Updated to v1.2.3");
+		expect(output).toContain("/changelog");
+		expect(output).not.toContain("What's New");
 	});
 });
 

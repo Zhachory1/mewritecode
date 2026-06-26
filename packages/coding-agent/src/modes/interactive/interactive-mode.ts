@@ -130,6 +130,7 @@ import { ActionBarComponent } from "./components/action-bar.js";
 import { showApprovalPrompt } from "./components/approval-prompt.js";
 import { ArminComponent } from "./components/armin.js";
 import { AssistantMessageComponent } from "./components/assistant-message.js";
+import { loadBannerLogo } from "./components/banner.js";
 import { BashExecutionComponent } from "./components/bash-execution.js";
 import { BorderedLoader } from "./components/bordered-loader.js";
 import { BranchSummaryMessageComponent } from "./components/branch-summary-message.js";
@@ -693,6 +694,7 @@ export class InteractiveMode {
 
 		// Load changelog (only show new entries, skip for resumed sessions)
 		this.changelogMarkdown = this.getChangelogForDisplay();
+		const startupLogo = await loadBannerLogo();
 
 		// Ensure fd and rg are available (downloads if missing, adds to PATH via getBinDir)
 		// Both are needed: fd for autocomplete, rg for grep tool and bash commands
@@ -713,6 +715,7 @@ export class InteractiveMode {
 				: undefined;
 			this.builtInHeader = new StartupHeaderComponent({
 				version: this.version,
+				logo: startupLogo,
 				caveModeEnabled: caveModeState.enabled,
 				caveModeIntensity: caveModeState.intensity,
 				model: this.session.state.model?.id,
@@ -983,7 +986,7 @@ export class InteractiveMode {
 
 	/**
 	 * Get changelog entries to display on startup.
-	 * Only shows new entries since last seen version, skips for resumed sessions.
+	 * Only shows new entries since last seen version when explicitly enabled.
 	 */
 	private getChangelogForDisplay(): string | undefined {
 		// Skip changelog for resumed/continued sessions (already have messages)
@@ -992,19 +995,25 @@ export class InteractiveMode {
 		}
 
 		const lastVersion = this.settingsManager.getLastChangelogVersion();
-		const changelogPath = getChangelogPath();
-		const entries = parseChangelog(changelogPath);
-
 		if (!lastVersion) {
 			// Fresh install - just record the version, don't show changelog
 			this.settingsManager.setLastChangelogVersion(VERSION);
 			return undefined;
-		} else {
-			const newEntries = getNewEntries(entries, lastVersion);
-			if (newEntries.length > 0) {
+		}
+
+		if (!this.settingsManager.getShowChangelogOnStartup()) {
+			if (lastVersion !== VERSION) {
 				this.settingsManager.setLastChangelogVersion(VERSION);
-				return newEntries.map((e) => e.content).join("\n\n");
 			}
+			return undefined;
+		}
+
+		const changelogPath = getChangelogPath();
+		const entries = parseChangelog(changelogPath);
+		const newEntries = getNewEntries(entries, lastVersion);
+		if (newEntries.length > 0) {
+			this.settingsManager.setLastChangelogVersion(VERSION);
+			return newEntries.map((e) => e.content).join("\n\n");
 		}
 
 		return undefined;
@@ -4141,6 +4150,7 @@ export class InteractiveMode {
 					currentTheme: this.settingsManager.getTheme() || "dark",
 					availableThemes: getAvailableThemes(),
 					hideThinkingBlock: this.hideThinkingBlock,
+					showChangelogOnStartup: this.settingsManager.getShowChangelogOnStartup(),
 					collapseChangelog: this.settingsManager.getCollapseChangelog(),
 					doubleEscapeAction: this.settingsManager.getDoubleEscapeAction(),
 					treeFilterMode: this.settingsManager.getTreeFilterMode(),
@@ -4216,6 +4226,9 @@ export class InteractiveMode {
 						// `children` before that dispose runs, leaking the live
 						// ToolExecutionComponent intervals.
 						this.rebuildChatFromMessages();
+					},
+					onShowChangelogOnStartupChange: (show) => {
+						this.settingsManager.setShowChangelogOnStartup(show);
 					},
 					onCollapseChangelogChange: (collapsed) => {
 						this.settingsManager.setCollapseChangelog(collapsed);

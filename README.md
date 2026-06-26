@@ -259,7 +259,7 @@ Downstream packages can depend on `@zhachory1/mewrite-code`, point `CODING_AGENT
 
 - CLI/app name and display name
 - user/project config directory names
-- startup wordmark/logo text and tagline
+- startup image logo or wordmark text and tagline
 - default theme and wrapper-shipped theme files
 - watch trigger marker (`// yourbrand!`, `// yourbrand?`)
 - docs, GitHub, Discord/community, changelog, and update URLs

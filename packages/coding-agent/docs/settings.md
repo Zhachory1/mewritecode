@@ -41,7 +41,8 @@ Edit directly or use `/settings` for common options.
 | `theme` | string | `"dark"` | Theme name (`"dark"`, `"light"`, or custom) |
 | `quietStartup` | boolean | `false` | Hide startup header |
 | `quietResourceListing` | boolean | `true` | Hide startup resource listings while keeping diagnostics on reload and verbose startup output |
-| `collapseChangelog` | boolean | `false` | Show condensed changelog after updates |
+| `showChangelogOnStartup` | boolean | `false` | Automatically show changelog after updates. `/changelog` remains available manually |
+| `collapseChangelog` | boolean | `false` | Show condensed startup changelog when `showChangelogOnStartup` is enabled |
 | `doubleEscapeAction` | string | `"tree"` | Action for double-escape: `"tree"`, `"fork"`, or `"none"` |
 | `treeFilterMode` | string | `"default"` | Default filter for `/tree`: `"default"`, `"no-tools"`, `"user-only"`, `"labeled-only"`, `"all"` |
 | `editorPaddingX` | number | `0` | Horizontal padding for input editor (0-3) |

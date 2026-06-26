@@ -124,6 +124,22 @@ describe("SettingsManager", () => {
 
 			expect(manager.getQuietResourceListing()).toBe(false);
 		});
+
+		it("defaults startup changelog display to off", () => {
+			const manager = SettingsManager.create(projectDir, agentDir);
+			expect(manager.getShowChangelogOnStartup()).toBe(false);
+		});
+
+		it("persists startup changelog display opt-in", async () => {
+			const manager = SettingsManager.create(projectDir, agentDir);
+
+			manager.setShowChangelogOnStartup(true);
+			await manager.flush();
+
+			const savedSettings = JSON.parse(readFileSync(join(agentDir, "settings.json"), "utf-8"));
+			expect(savedSettings.showChangelogOnStartup).toBe(true);
+			expect(SettingsManager.create(projectDir, agentDir).getShowChangelogOnStartup()).toBe(true);
+		});
 	});
 
 	describe("packages migration", () => {

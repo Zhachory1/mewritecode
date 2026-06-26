@@ -1,6 +1,6 @@
 import { Container, Text } from "@zhachory1/mewrite-tui";
 import { theme } from "../theme/theme.js";
-import { BannerComponent, type BannerSprite } from "./banner.js";
+import { BannerComponent, type BannerLogo, type BannerSprite } from "./banner.js";
 import { SessionPanelComponent } from "./session-panel.js";
 
 export interface StartupHeaderOptions {
@@ -14,6 +14,7 @@ export interface StartupHeaderOptions {
 	effort?: string;
 	cwd?: string;
 	sprite?: BannerSprite;
+	logo?: BannerLogo;
 	mode?: string;
 	auth?: string;
 }
@@ -36,6 +37,7 @@ export class StartupHeaderComponent extends Container {
 		effort,
 		cwd,
 		sprite,
+		logo,
 		mode,
 		auth,
 	}: StartupHeaderOptions) {
@@ -49,6 +51,7 @@ export class StartupHeaderComponent extends Container {
 				effort,
 				cwd,
 				sprite,
+				logo,
 				showSecondaryWordmark: shouldShowSecondaryWordmark(),
 			}),
 		);

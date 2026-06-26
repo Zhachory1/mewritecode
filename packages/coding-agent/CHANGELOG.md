@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Added downstream image-logo support via `mewriteConfig.branding.logoPath`, allowing branded wrappers to replace the startup ASCII wordmark with a package-shipped image.
+- Disabled automatic startup changelog display by default and added a `showChangelogOnStartup` setting for users who want upgrade notes shown on launch.
+
 ## [0.66.2] - 2026-06-26
 
 ### Added

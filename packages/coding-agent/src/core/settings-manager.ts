@@ -141,7 +141,8 @@ export interface Settings {
 	quietResourceListing?: boolean; // default: true - hide Skills/Extensions/Themes/Conflicts listing at startup (keeps ASCII header)
 	shellCommandPrefix?: string; // Prefix prepended to every bash command (e.g., "shopt -s expand_aliases" for alias support)
 	npmCommand?: string[]; // Command used for npm package lookup/install operations, argv-style (e.g., ["mise", "exec", "node@20", "--", "npm"])
-	collapseChangelog?: boolean; // Show condensed changelog after update (use /changelog for full)
+	showChangelogOnStartup?: boolean; // default: false - show changelog automatically after updates
+	collapseChangelog?: boolean; // Show condensed startup changelog when showChangelogOnStartup is enabled
 	packages?: PackageSource[]; // Array of npm/git package sources (string or object with filtering)
 	extensions?: string[]; // Array of local extension file paths or directories
 	skills?: string[]; // Array of local skill file paths or directories
@@ -879,6 +880,16 @@ export class SettingsManager {
 	setNpmCommand(command: string[] | undefined): void {
 		this.globalSettings.npmCommand = command ? [...command] : undefined;
 		this.markModified("npmCommand");
+		this.save();
+	}
+
+	getShowChangelogOnStartup(): boolean {
+		return this.settings.showChangelogOnStartup ?? false;
+	}
+
+	setShowChangelogOnStartup(show: boolean): void {
+		this.globalSettings.showChangelogOnStartup = show;
+		this.markModified("showChangelogOnStartup");
 		this.save();
 	}
 

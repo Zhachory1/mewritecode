@@ -26,4 +26,23 @@ describe("BannerComponent", () => {
 		expect(output).toContain("1.2.3");
 		expect(output).toContain("▒██");
 	});
+
+	it("uses a configured image logo instead of the text wordmark", () => {
+		const lines = new BannerComponent({
+			version: "1.2.3",
+			showSecondaryWordmark: true,
+			logo: {
+				base64Data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
+				mimeType: "image/png",
+				filename: "logo.png",
+				maxWidthCells: 20,
+			},
+		}).render(80);
+		const output = lines.join("\n");
+
+		expect(output).toContain("logo.png");
+		expect(output).toContain("Any Model, Less Tokens, Code Good");
+		expect(output).toContain("1.2.3");
+		expect(output).not.toContain("▒██");
+	});
 });

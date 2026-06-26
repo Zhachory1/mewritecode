@@ -13,8 +13,8 @@ describe("distribution config", () => {
 
 	function runConfigProbe(env: NodeJS.ProcessEnv): Record<string, unknown> {
 		const code = [
-			'import { APP_NAME, BANNER_TAGLINE, CHANGELOG_URL, CONFIG_DIR_NAME, DEFAULT_THEME_NAME, DISPLAY_NAME, DOCS_URL, ENV_PACKAGE_DIR, GITHUB_URL, MCP_DISCOVERY_OPTIONS, WATCH_MARKER, getDistributionThemePaths, getPackageDir, getThemesDir } from "./src/config.ts";',
-			"console.log(JSON.stringify({ appName: APP_NAME, displayName: DISPLAY_NAME, configDirName: CONFIG_DIR_NAME, envPackageDir: ENV_PACKAGE_DIR, packageDir: getPackageDir(), themesDir: getThemesDir(), distributionThemePaths: getDistributionThemePaths(), mcp: MCP_DISCOVERY_OPTIONS, watchMarker: WATCH_MARKER, bannerTagline: BANNER_TAGLINE, defaultThemeName: DEFAULT_THEME_NAME, githubUrl: GITHUB_URL, docsUrl: DOCS_URL, changelogUrl: CHANGELOG_URL }));",
+			'import { APP_NAME, BANNER_LOGO_MAX_WIDTH_CELLS, BANNER_LOGO_PATH, BANNER_TAGLINE, CHANGELOG_URL, CONFIG_DIR_NAME, DEFAULT_THEME_NAME, DISPLAY_NAME, DOCS_URL, ENV_PACKAGE_DIR, GITHUB_URL, MCP_DISCOVERY_OPTIONS, WATCH_MARKER, getDistributionThemePaths, getPackageDir, getThemesDir } from "./src/config.ts";',
+			"console.log(JSON.stringify({ appName: APP_NAME, displayName: DISPLAY_NAME, configDirName: CONFIG_DIR_NAME, envPackageDir: ENV_PACKAGE_DIR, packageDir: getPackageDir(), themesDir: getThemesDir(), distributionThemePaths: getDistributionThemePaths(), mcp: MCP_DISCOVERY_OPTIONS, watchMarker: WATCH_MARKER, bannerLogoPath: BANNER_LOGO_PATH, bannerLogoMaxWidthCells: BANNER_LOGO_MAX_WIDTH_CELLS, bannerTagline: BANNER_TAGLINE, defaultThemeName: DEFAULT_THEME_NAME, githubUrl: GITHUB_URL, docsUrl: DOCS_URL, changelogUrl: CHANGELOG_URL }));",
 		].join("\n");
 		const out = execFileSync("npx", ["tsx", "-e", code], {
 			cwd: process.cwd(),
@@ -107,6 +107,8 @@ describe("distribution config", () => {
 					name: "examplecode",
 					displayName: "Example Code",
 					branding: {
+						logoPath: "./assets/logo.png",
+						logoMaxWidthCells: 42,
 						tagline: "Ship Example",
 						watchMarker: "example",
 						githubUrl: "https://github.example.com/example/code",
@@ -121,6 +123,8 @@ describe("distribution config", () => {
 		const result = runConfigProbe({ CODING_AGENT_PACKAGE_DIR: packageDir });
 		expect(result.displayName).toBe("Example Code");
 		expect(result.watchMarker).toBe("example");
+		expect(result.bannerLogoPath).toBe(join(packageDir, "assets", "logo.png"));
+		expect(result.bannerLogoMaxWidthCells).toBe(42);
 		expect(result.bannerTagline).toBe("Ship Example");
 		expect(result.defaultThemeName).toBe("example-dark");
 		expect(result.distributionThemePaths).toEqual([join(packageDir, "themes", "example-dark.json")]);

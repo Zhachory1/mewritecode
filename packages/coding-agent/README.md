@@ -447,6 +447,8 @@ Thin downstream packages can depend on `@zhachory1/mewrite-code` and set package
     "configDir": ".examplecode",
     "packageDirEnv": "EXAMPLECODE_PACKAGE_DIR",
     "branding": {
+      "logoPath": "./assets/logo.png",
+      "logoMaxWidthCells": 48,
       "tagline": "Example Code for Example teams",
       "watchMarker": "examplecode",
       "docsUrl": "https://docs.example.com/examplecode",
@@ -473,7 +475,7 @@ Thin downstream packages can depend on `@zhachory1/mewrite-code` and set package
 }
 ```
 
-`CODING_AGENT_PACKAGE_DIR` is the bootstrap override used before package metadata is loaded. Once metadata is loaded, the package-specific env named by `packageDirEnv` is honored for asset lookup. User config then defaults to `~/.examplecode/agent`, project config to `.examplecode/`, and lower-level storage paths can derive from the same config dir. The `branding` block controls startup wordmark/tagline, watch comment marker (`// examplecode!`, `// examplecode?`), docs/community links, and update changelog links. The `theme.default` value selects a theme by name when the user has not chosen one; `theme.paths` loads wrapper-shipped theme files relative to the wrapper package. Shareable resource packages can also ship themes via package `pi.themes` or a package-root `themes/` directory. The `mcp` block reads `PACKAGE_DIR/.mcp.json` by default and can disable project, user, legacy `.cave`, Claude Code, and Codex compatibility paths when a downstream distribution needs isolated MCP configuration.
+`CODING_AGENT_PACKAGE_DIR` is the bootstrap override used before package metadata is loaded. Once metadata is loaded, the package-specific env named by `packageDirEnv` is honored for asset lookup. User config then defaults to `~/.examplecode/agent`, project config to `.examplecode/`, and lower-level storage paths can derive from the same config dir. The `branding` block controls startup image logo or wordmark, tagline, watch comment marker (`// examplecode!`, `// examplecode?`), docs/community links, and update changelog links. `logoPath` resolves relative to the wrapper package and supports PNG, JPEG, GIF, and WebP; when set and loadable, it replaces the ASCII wordmark. The `theme.default` value selects a theme by name when the user has not chosen one; `theme.paths` loads wrapper-shipped theme files relative to the wrapper package. Shareable resource packages can also ship themes via package `pi.themes` or a package-root `themes/` directory. The `mcp` block reads `PACKAGE_DIR/.mcp.json` by default and can disable project, user, legacy `.cave`, Claude Code, and Codex compatibility paths when a downstream distribution needs isolated MCP configuration.
 
 For non-upstream distributions, self-update is disabled unless the wrapper explicitly provides a complete `selfUpdate` configuration.
 

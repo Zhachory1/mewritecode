@@ -1,9 +1,24 @@
-import { Container, Text, truncateToWidth } from "@zhachory1/mewrite-tui";
-import { BANNER_PRIMARY_WORDMARK, BANNER_SECONDARY_WORDMARK, BANNER_TAGLINE } from "../../../config.js";
+import { readFile } from "node:fs/promises";
+import { Container, Image, Text, truncateToWidth } from "@zhachory1/mewrite-tui";
+import {
+	BANNER_LOGO_MAX_WIDTH_CELLS,
+	BANNER_LOGO_PATH,
+	BANNER_PRIMARY_WORDMARK,
+	BANNER_SECONDARY_WORDMARK,
+	BANNER_TAGLINE,
+} from "../../../config.js";
+import { detectSupportedImageMimeTypeFromFile } from "../../../utils/mime.js";
 import { theme } from "../theme/theme.js";
 
 // Retained for backwards-compatible call sites; the value is ignored.
 export type BannerSprite = "rock" | "rock-eyes" | "rock-ascii";
+
+export interface BannerLogo {
+	base64Data: string;
+	mimeType: string;
+	filename: string;
+	maxWidthCells?: number;
+}
 
 export interface BannerOptions {
 	version: string;
@@ -13,19 +28,48 @@ export interface BannerOptions {
 	cwd?: string;
 	sprite?: BannerSprite;
 	showSecondaryWordmark?: boolean;
+	logo?: BannerLogo;
 }
 
 const WORDMARK_PRIMARY_ROWS = BANNER_PRIMARY_WORDMARK.length;
 
+export async function loadBannerLogo(): Promise<BannerLogo | undefined> {
+	if (!BANNER_LOGO_PATH) return undefined;
+	try {
+		const mimeType = await detectSupportedImageMimeTypeFromFile(BANNER_LOGO_PATH);
+		if (!mimeType) return undefined;
+		const data = await readFile(BANNER_LOGO_PATH);
+		return {
+			base64Data: data.toString("base64"),
+			mimeType,
+			filename: BANNER_LOGO_PATH,
+			maxWidthCells: BANNER_LOGO_MAX_WIDTH_CELLS,
+		};
+	} catch {
+		return undefined;
+	}
+}
+
 export class BannerComponent extends Container {
 	constructor(options: BannerOptions) {
 		super();
-		const rows = options.showSecondaryWordmark
-			? [...BANNER_PRIMARY_WORDMARK, ...BANNER_SECONDARY_WORDMARK]
-			: BANNER_PRIMARY_WORDMARK;
-		for (const [index, row] of rows.entries()) {
-			const color = index < WORDMARK_PRIMARY_ROWS ? "accent" : "mdHeading";
-			this.addChild(new Text(row ? theme.fg(color, row) : row, 1, 0));
+		if (options.logo) {
+			this.addChild(
+				new Image(
+					options.logo.base64Data,
+					options.logo.mimeType,
+					{ fallbackColor: (text) => theme.fg("dim", text) },
+					{ maxWidthCells: options.logo.maxWidthCells, filename: options.logo.filename },
+				),
+			);
+		} else {
+			const rows = options.showSecondaryWordmark
+				? [...BANNER_PRIMARY_WORDMARK, ...BANNER_SECONDARY_WORDMARK]
+				: BANNER_PRIMARY_WORDMARK;
+			for (const [index, row] of rows.entries()) {
+				const color = index < WORDMARK_PRIMARY_ROWS ? "accent" : "mdHeading";
+				this.addChild(new Text(row ? theme.fg(color, row) : row, 1, 0));
+			}
 		}
 		this.addChild(new Text(theme.fg("dim", BANNER_TAGLINE), 1, 0));
 		const info = composeInfoLine(options);

@@ -48,6 +48,8 @@ export interface DistributionConfig {
 	packageDirEnv?: string;
 	packageDir?: string;
 	branding?: {
+		logoPath?: string;
+		logoMaxWidthCells?: number;
 		primaryWordmark?: string[];
 		secondaryWordmark?: string[];
 		tagline?: string;
@@ -321,6 +323,10 @@ export const DISCORD_URL: string = brandingConfig.discordUrl || DEFAULT_DISCORD_
 export const CHANGELOG_URL: string =
 	brandingConfig.changelogUrl || `${GITHUB_URL}/blob/main/packages/coding-agent/CHANGELOG.md`;
 export const WATCH_MARKER: string = brandingConfig.watchMarker || APP_NAME;
+export const BANNER_LOGO_PATH: string | undefined = brandingConfig.logoPath
+	? resolve(getPackageDir(), brandingConfig.logoPath)
+	: undefined;
+export const BANNER_LOGO_MAX_WIDTH_CELLS: number | undefined = brandingConfig.logoMaxWidthCells;
 export const WATCH_FIRE_MARKER: string = `${WATCH_MARKER}!`;
 export const WATCH_QA_MARKER: string = `${WATCH_MARKER}?`;
 export const BANNER_PRIMARY_WORDMARK: readonly string[] =
