@@ -17,6 +17,8 @@
     </linearGradient>
   </defs>
 
+  <circle cx="100" cy="100" r="94" fill="#FFFFFF"/>
+
   <g transform="rotate(-35 100 100)" filter="url(#shadow)">
     <path
       d="M 58 88
