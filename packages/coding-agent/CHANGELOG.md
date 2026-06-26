@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.66.2] - 2026-06-26
+
 ### Added
 
 - Added configurable downstream branding for startup wordmarks, tagline, default theme, watch markers, onboarding copy, MCP/update help, and docs/community URLs.
