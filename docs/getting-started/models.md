@@ -11,14 +11,14 @@ Me Write Code runs against any model your provider exposes. The defaults are cho
 
 ## Default models per provider
 
-| Provider | Default model | Editor model (architect mode) |
-|---|---|---|
-| Anthropic | `claude-sonnet-4` | `claude-haiku-4` |
-| OpenAI | `gpt-5-codex` | `gpt-5-mini` |
-| Google | `gemini-2.5-pro` | `gemini-2.5-flash` |
-| OpenRouter | `anthropic/claude-sonnet-4` | varies |
-| Groq | `llama-3.3-70b-versatile` | `llama-3.1-8b-instant` |
-| Cerebras | `qwen-2.5-coder-32b` | `llama-3.1-8b` |
+| Provider | Default model |
+|---|---|
+| Anthropic | `claude-opus-4-6` |
+| OpenAI | `gpt-5.4` |
+| Google | `gemini-2.5-pro` |
+| OpenRouter | `openai/gpt-5.1-codex` |
+| Groq | `openai/gpt-oss-120b` |
+| Cerebras | `zai-glm-4.7` |
 
 Override per session:
 
@@ -53,7 +53,7 @@ Use a strong model to plan, a cheaper model to execute. Drops cost ~3-5× on lon
 /architect set architectModel=claude-opus-4-7 editorModel=claude-haiku-4
 ```
 
-Or in `~/.cave/settings.json`:
+Or in `~/.mewrite/agent/settings.json`:
 
 ```json
 {
@@ -81,13 +81,13 @@ Subagent results are summarized to ≤500 tokens before re-entering the parent's
 
 ## Model registry
 
-Provider/model definitions live in a versioned registry at `github.com/cave-cli/registry`. Update locally without releasing Me Write Code:
+Provider/model definitions ship with Me Write Code and can be refreshed without upgrading the CLI:
 
 ```bash
 mewrite models update
 ```
 
-Override per-machine in `~/.cave/registry.json`. See [Provider Registry](/reference/tools#registry) for schema.
+Override per-machine in `~/.mewrite/agent/registry.json`. See [Provider Registry](/reference/tools#registry) for schema.
 
 ## Cost-aware defaults
 

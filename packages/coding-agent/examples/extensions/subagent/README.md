@@ -2,11 +2,11 @@
 
 Delegate tasks to specialized subagents with isolated context windows.
 
-> **Default-installed since cave [next-version]**. No install step required — `caveman` loads this extension automatically on startup, and the sample agents (`scout`, `planner`, `worker`) are available via cave's bundled agents (`packages/coding-agent/agents/`). To override or extend, drop your own version under `~/.mewrite/agent/extensions/subagent/` or your project's `.mewrite/extensions/subagent/`.
+> **Bundled by default.** No install step required — `mewrite` loads this extension automatically on startup, and the sample agents (`scout`, `planner`, `worker`) are available via bundled agents in `packages/coding-agent/agents/`. To override or extend, drop your own version under `~/.mewrite/agent/extensions/subagent/` or your project's `.mewrite/extensions/subagent/`.
 
 ## Features
 
-- **Isolated context**: Each subagent runs in a separate `pi` process
+- **Isolated context**: Each subagent runs in a separate `mewrite` process
 - **Streaming output**: See tool calls and progress as they happen
 - **Parallel streaming**: All parallel tasks stream updates simultaneously
 - **Markdown rendering**: Final output rendered with proper formatting (expanded view)
@@ -18,16 +18,16 @@ Delegate tasks to specialized subagents with isolated context windows.
 ```
 subagent/
 ├── README.md            # This file
-├── index.ts             # The extension (entry point) — default-loaded by cave
+├── index.ts             # The extension entry point
 └── agents.ts            # Agent discovery logic (scans bundled + user + project)
 ```
 
-- Sample agents (`scout.md`, `planner.md`, `worker.md`) ship in `packages/coding-agent/agents/` alongside cave's other bundled agents (`critic`, `editor`, `explore`, etc.).
-- Workflow prompts (`implement.md`, `scout-and-plan.md`, `implement-and-review.md`) ship in `packages/coding-agent/prompts/` and are available as `/implement`, `/scout-and-plan`, `/implement-and-review` from any cave session.
+- Sample agents (`scout.md`, `planner.md`, `worker.md`) ship in `packages/coding-agent/agents/` alongside other bundled agents (`critic`, `editor`, `explore`, etc.).
+- Workflow prompts (`implement.md`, `scout-and-plan.md`, `implement-and-review.md`) ship in `packages/coding-agent/prompts/` and are available as `/implement`, `/scout-and-plan`, `/implement-and-review` from any Me Write Code session.
 
 ## Installation
 
-**None required.** The extension is bundled with cave and loaded on startup.
+**None required.** The extension is bundled with Me Write Code and loaded on startup.
 
 If you want to override the bundled version with a local modification:
 
@@ -46,11 +46,11 @@ mkdir -p .mewrite/extensions/subagent
 
 ## Security Model
 
-This tool executes a separate `pi` subprocess with a delegated system prompt and tool/model configuration.
+This tool executes a separate `mewrite` subprocess with a delegated system prompt and tool/model configuration.
 
-**Project-local agents** (`.pi/agents/*.md`) are repo-controlled prompts that can instruct the model to read files, run bash commands, etc.
+**Project-local agents** (`.mewrite/agents/*.md`) are repo-controlled prompts that can instruct the model to read files, run bash commands, etc.
 
-**Default behavior:** Only loads **user-level agents** from `~/.pi/agent/agents`.
+**Default behavior:** Loads bundled agents and user-level agents from `~/.mewrite/agent/agents`.
 
 To enable project-local agents, pass `agentScope: "both"` (or `"project"`). Only do this for repositories you trust.
 
@@ -128,8 +128,8 @@ System prompt for the agent goes here.
 ```
 
 **Locations:**
-- `~/.pi/agent/agents/*.md` - User-level (always loaded)
-- `.pi/agents/*.md` - Project-level (only with `agentScope: "project"` or `"both"`)
+- `~/.mewrite/agent/agents/*.md` - User-level
+- `.mewrite/agents/*.md` - Project-level
 
 Project agents override user agents with the same name when `agentScope: "both"`.
 

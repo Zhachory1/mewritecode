@@ -17,7 +17,7 @@ npm install -g @zhachory1/mewrite-code
 
 # 2. Project context
 #    Codex's AGENTS.md → mewrite-code reads it directly. No copy needed.
-#    Layered with CAVE.md and CLAUDE.md if any are present.
+#    Layered with CLAUDE.md if present.
 
 # 3. MCP
 #    .mcp.json — Me Write Code reads the Codex format directly.
@@ -35,7 +35,7 @@ mewrite
 
 | Codex | Me Write Code | Notes |
 |---|---|---|
-| `AGENTS.md` | `AGENTS.md` (read) | Layered with CAVE.md / CLAUDE.md |
+| `AGENTS.md` | `AGENTS.md` (read) | Layered with `CLAUDE.md` when present |
 | `.mcp.json` | `.mcp.json` | Identical schema |
 | `.codex-plugin/plugin.json` | `.cave-plugin/plugin.json` | Compatible at root level |
 | `--cd` | `--cwd` | Same semantics |
@@ -44,19 +44,19 @@ mewrite
 
 ## Permissions / sandbox
 
-Me Write Code runs autopilot — there is no `--sandbox` flag, no permission prompts, and no Seatbelt/Landlock policy. If you relied on Codex's `read_only` / `workspace_write` / `danger_full_access` profiles, drop them; mewrite-code will execute every tool request directly. The OS still enforces filesystem permissions and you can constrain a session by tightening the agent's `tools` list (e.g. omitting `bash`, `edit`, `write`).
+Me Write Code supports plan mode, approval mode, checkpoints, and beta native sandboxing. If you relied on Codex's `read_only` / `workspace_write` / `danger_full_access` profiles, map them to Me Write Code's plan/approval/sandbox settings and verify with `mewrite doctor`.
 
 ## ChatGPT OAuth
 
-Both Codex and Me Write Code authenticate against ChatGPT Plus/Pro. The Me Write Code login command is `/login chatgpt`. Tokens land in your OS keychain.
+Both Codex and Me Write Code authenticate against ChatGPT Plus/Pro. The Me Write Code login command is `/login chatgpt`. Tokens land in `~/.mewrite/agent/auth.json` with user-only file permissions.
 
-If you also have ChatGPT-keyed Codex sessions running, the two share nothing — they each have their own token cache.
+If you also have ChatGPT-keyed Codex sessions running, the two share nothing — they each have their own credential cache.
 
 ## Differences
 
 ### Provider flexibility
 
-Codex is OpenAI-only. Me Write Code supports 20+ providers and 6 OAuth flows. After migrating you can:
+Codex is OpenAI-only. Me Write Code supports 20+ providers and 5 built-in OAuth flows. After migrating you can:
 
 ```bash
 mewrite --model claude-sonnet-4
@@ -66,7 +66,7 @@ mewrite --model groq/llama-3.3-70b-versatile
 
 ### Caveman Mode compression
 
-Me Write Code compresses tool output by default (~85% reduction). Codex doesn't. Expect markedly lower token bills. Disable with `--no-caveman-mode` if you suspect it's interfering.
+Me Write Code compresses tool output by default. Exact savings depend on task and provider; use `/cave off` in the TUI if you suspect compression is interfering.
 
 ### Daemon / app-server
 

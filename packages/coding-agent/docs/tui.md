@@ -1,10 +1,10 @@
-> pi can create TUI components. Ask it to build one for your use case.
+> Me Write Code can create TUI components. Ask it to build one for your use case.
 
 # TUI Components
 
 Extensions and custom tools can render custom TUI components for interactive user interfaces. This page covers the component system and available building blocks.
 
-**Source:** [`@zhachory1/mewrite-tui`](https://github.com/badlogic/pi-mono/tree/main/packages/tui)
+**Source:** [`@zhachory1/mewrite-tui`](https://github.com/Zhachory1/mewritecode/tree/main/packages/tui)
 
 ## Component Interface
 
@@ -86,6 +86,8 @@ Without this propagation, typing with an IME (Chinese, Japanese, Korean, etc.) w
 
 ## Using Components
 
+Code examples name the `ExtensionAPI` parameter `pi`; it is the API handle, not the product name.
+
 **In extensions** via `ctx.ui.custom()`:
 
 ```typescript
@@ -96,7 +98,7 @@ pi.on("session_start", async (_event, ctx) => {
 });
 ```
 
-**In custom tools** via `pi.ui.custom()`:
+**In custom tools** via the `ExtensionAPI` parameter's `ui.custom()`:
 
 ```typescript
 async execute(toolCallId, params, onUpdate, ctx, signal) {

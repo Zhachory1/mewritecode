@@ -11,7 +11,7 @@ When something breaks, start here. If your issue isn't covered, [open a GitHub i
 
 ## Install
 
-### `cave: command not found` after install
+### `mewrite: command not found` after install
 
 Restart your shell, or:
 
@@ -22,13 +22,13 @@ source ~/.bashrc     # bash
 
 If still missing, the installer printed the install path — add it to your PATH.
 
-### `Operation not permitted` writing to `~/.cave`
+### `Operation not permitted` writing to `~/.mewrite`
 
 Filesystem is read-only or owned by another user. Run:
 
 ```bash
-ls -la ~/.cave
-chown -R "$USER" ~/.cave
+ls -la ~/.mewrite
+chown -R "$USER" ~/.mewrite
 ```
 
 ### Apple silicon: `bad CPU type in executable`
@@ -44,7 +44,7 @@ npm install -g @zhachory1/mewrite-code
 ### OAuth opens browser but never completes
 
 1. Check that the loopback port (random in 1024-65535) isn't firewalled.
-2. Try device-code auth: `mewrite login --device-auth`.
+2. If loopback auth still fails, use API-key auth for that provider.
 3. Disable VPN that intercepts loopback.
 
 ### `401 Unauthorized` on a stored token
@@ -52,8 +52,9 @@ npm install -g @zhachory1/mewrite-code
 Token expired and refresh failed. Re-login:
 
 ```bash
-mewrite logout <provider>
-mewrite login <provider>
+mewrite
+/logout <provider>
+/login <provider>
 ```
 
 ### Linux libsecret not found
@@ -68,7 +69,7 @@ sudo apt install libsecret-1-0 libsecret-tools
 sudo pacman -S libsecret
 ```
 
-If your distro lacks libsecret, set `CAVE_INSECURE_KEYRING=1` to fall back to a plaintext token file (warning is shown).
+If your distro lacks libsecret, prefer API-key auth via environment variables.
 
 ## Sessions
 
@@ -80,7 +81,7 @@ Stuck on context load. Kill and:
 mewrite -r --no-context     # browse without loading any session
 ```
 
-Then identify and remove the bad session in `~/.cave/sessions/<cwd-hash>/`.
+Then identify and remove the bad session under `~/.mewrite/agent/sessions/`.
 
 ### `/tree` shows no branches
 
@@ -100,7 +101,7 @@ Default tool timeout is 60s. Override per call:
 > use Bash with --timeout 600 to run the long-running migration
 ```
 
-Or globally in `~/.cave/settings.json`:
+Or globally in `~/.mewrite/agent/settings.json`:
 
 ```json
 {
@@ -110,7 +111,7 @@ Or globally in `~/.cave/settings.json`:
 
 ### `Edit` keeps applying to the wrong location
 
-The model's view of the file is stale. After a hook writes to the file, ask cave to re-read:
+The model's view of the file is stale. After a hook writes to the file, ask Me Write Code to re-read:
 
 ```
 > re-read src/foo.ts and apply the change
@@ -121,8 +122,8 @@ The model's view of the file is stale. After a hook writes to the file, ask cave
 Lower compression intensity:
 
 ```bash
-/mewrite lite                 # default is "full" (in TUI)
-/mewrite off                  # turn off entirely
+/cave lite                    # default is "full" (in TUI)
+/cave off                     # turn off entirely
 ```
 
 ## Permissions
@@ -166,7 +167,7 @@ By default Me Write Code defers MCP schemas — only names are listed until the 
 Check the matcher:
 
 ```bash
-mewrite hooks test PreToolUse --tool Edit --path src/foo.ts
+/hooks test PreToolUse --tool Edit --path src/foo.ts
 ```
 
 Reports whether each hook would fire for that input. Common mistake: `paths` glob doesn't include the actual file path.
@@ -186,7 +187,7 @@ cavemem --version
 mewrite mcp doctor   # should show cavemem reachable
 ```
 
-If missing: `npm install -g cavemem` then `mewrite init`.
+If missing: `npm install -g cavemem`, then register it with `mewrite mcp add cavemem --command cavemem --arg mcp`.
 
 ### Memory injection too noisy
 
@@ -219,8 +220,8 @@ Run `/compact` to manually compact. Or enable auto-compact at a lower threshold:
 ## Reporting issues
 
 ```bash
-mewrite doctor > /tmp/cave-doctor.txt
-mewrite version > /tmp/cave-version.txt
+mewrite doctor > /tmp/mewrite-doctor.txt
+mewrite version > /tmp/mewrite-version.txt
 ```
 
 Attach both to a [GitHub issue](https://github.com/Zhachory1/mewritecode/issues/new). Include the prompt that triggered the bug if reproducible.

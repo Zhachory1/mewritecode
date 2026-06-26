@@ -1,6 +1,6 @@
 # Examples
 
-Example code for pi-coding-agent SDK and extensions.
+Example code for the Me Write Code SDK and extensions.
 
 ## Directories
 

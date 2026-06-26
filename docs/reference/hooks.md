@@ -5,7 +5,7 @@ description: 12-event lifecycle hooks. settings.json schema is identical to Clau
 
 # Hooks
 
-Hooks are shell commands triggered by lifecycle events. Me Write Code matches **Claude Code's settings.json schema verbatim** — paste your existing `~/.claude/settings.json` into `~/.cave/settings.json` and your hooks Just Work.
+Hooks are shell commands triggered by lifecycle events. Me Write Code uses the Claude Code hook schema, with Me Write Code config stored under `~/.mewrite/agent/`.
 
 <CopyForLlms />
 
@@ -18,7 +18,7 @@ Hooks are shell commands triggered by lifecycle events. Me Write Code matches **
 | `UserPromptSubmit` | User sends a turn | sync, advisory (stdout → context) |
 | `Stop` | Model returns final response | sync, advisory |
 | `SubagentStop` | A subagent returns to parent | sync, advisory |
-| `PreToolUse` | Before any tool call | **sync, blocking, 30s timeout** |
+| `PreToolUse` | Before any tool call | sync, advisory/input-mutating, 30s timeout |
 | `PostToolUse` | After any tool call | async by default |
 | `PreCompact` | Before context compaction | sync, advisory |
 | `PostCompact` | After context compaction | sync, advisory |
@@ -33,22 +33,31 @@ Hooks are shell commands triggered by lifecycle events. Me Write Code matches **
     "hooks": {
         "PreToolUse": [
             {
-                "matcher": { "tool": "Edit|Write", "paths": ["src/**/*.ts"] },
-                "command": ["bash", "-lc", "biome check --staged"],
-                "timeout": 30,
-                "decision": "deny-on-nonzero"
+                "matcher": "Edit|Write",
+                "hooks": [
+                    {
+                        "command": "biome check --staged",
+                        "timeout": 30
+                    }
+                ]
             }
         ],
         "PostToolUse": [
             {
-                "matcher": { "tool": "Edit" },
-                "command": ["bash", "-lc", "biome format --write \"$CAVE_HOOK_FILES\""]
+                "matcher": "Edit|Write",
+                "hooks": [
+                    {
+                        "command": "path=$(jq -r '.tool_input.path // .tool_input.file_path // empty'); [ -z \"$path\" ] || biome format --write \"$path\""
+                    }
+                ]
             }
         ],
         "Stop": [
             {
-                "command": ["bash", "-lc", "npm test --silent"],
-                "decision": "advisory"
+                "matcher": "*",
+                "hooks": [
+                    { "command": "npm test --silent" }
+                ]
             }
         ]
     }
@@ -57,24 +66,16 @@ Hooks are shell commands triggered by lifecycle events. Me Write Code matches **
 
 ## Matchers
 
-| Matcher key | Purpose |
+| Matcher | Purpose |
 |---|---|
-| `tool` | Regex against tool name. `Edit\|Write` matches both. |
-| `paths` | Glob patterns. Hook only fires if a tool argument is a path under a glob. |
-| `provider` | Restrict by active provider. |
-| `cwd` | Glob against the session's cwd. |
-| `arguments` | JSONPath-ish match against tool arguments. |
+| `Edit\|Write` | Regex against tool name for `PreToolUse` / `PostToolUse` |
+| `startup`, `resume`, `clear`, `compact` | Session-start sources |
+| `manual`, `auto` | Compaction trigger type |
+| `*` or omitted | Match everything for that event |
 
-## Decisions
+## Hook output
 
-`PreToolUse` hooks return one of:
-
-| Decision | Effect |
-|---|---|
-| `allow` | Tool call proceeds. Default if exit 0. |
-| `deny` | Tool call denied. Reason fed back to the model. Exit 2 from the hook. |
-| `ask` | User is prompted before the tool call. |
-| `defer` | Skip this hook this turn (used by recipes). |
+`PreToolUse` hooks are currently advisory. They can add context and may return `hookSpecificOutput.updatedInput` to adjust tool input, but they do not block tool execution yet. Use approval mode and tool allowlists for hard gates.
 
 `PostToolUse` and other events: stdout from the hook is appended to the model's context as a system reminder. Exit code is logged but not used to gate.
 
@@ -93,8 +94,10 @@ Example: a `PostToolUse` hook that reports failing tests:
     "hooks": {
         "PostToolUse": [
             {
-                "matcher": { "tool": "Edit|Write" },
-                "command": ["bash", "-lc", "npm test --silent --json | jq '.numFailedTests' || true"]
+                "matcher": "Edit|Write",
+                "hooks": [
+                    { "command": "npm test --silent --json | jq '.numFailedTests' || true" }
+                ]
             }
         ]
     }
@@ -103,22 +106,22 @@ Example: a `PostToolUse` hook that reports failing tests:
 
 If the count is non-zero, the model sees `123` in its context and proactively fixes failures.
 
-## Default hooks shipped with Me Write Code
+## Bundled hook recipes
 
 | Hook | Event | Purpose |
 |---|---|---|
 | `auto-format` | `PostToolUse` Edit/Write | Run Biome / prettier on changed files |
 | `auto-test` | `Stop` | Run the test suite, report failures |
-| `commit-gate` | `PreToolUse` Bash matching `git commit` | Enforce conventional-commit format |
-| `secret-scan` | `PreToolUse` Write | Block writes that contain secrets (`gitleaks` / `trufflehog`) |
+| `commit-gate` | `PreToolUse` Bash matching `git commit` | Report non-conventional commit messages |
+| `secret-scan` | `PreToolUse` Write | Report writes that contain secrets (`gitleaks` / `trufflehog`) |
 
-Disable any of these in `settings.json` by setting `enabled: false`.
+These recipes are not enabled by default. View them with `/hooks recipes` and install or copy the ones you want.
 
 ## Slash commands
 
-```bash
-mewrite hooks list             # all hooks, scope, status
-mewrite hooks test PreToolUse --tool Edit --path src/foo.ts
+```text
+/hooks list
+/hooks test PreToolUse --tool Edit --path src/foo.ts
 ```
 
 `/hooks` opens the same view inside the TUI.
@@ -126,7 +129,7 @@ mewrite hooks test PreToolUse --tool Edit --path src/foo.ts
 ## Importing Claude Code hooks
 
 ```bash
-cp ~/.claude/settings.json ~/.cave/settings.json
+cp ~/.claude/settings.json ~/.mewrite/agent/settings.json
 # adjust permission mode if needed; the rest works as-is
 ```
 

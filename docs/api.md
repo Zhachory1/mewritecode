@@ -1,6 +1,6 @@
 ---
 title: API Reference
-description: SDK, JSON-RPC, OpenAPI, and embedding cave in your own apps.
+description: SDK, JSON-RPC, OpenAPI, and embedding Me Write Code in your own apps.
 ---
 
 # API Reference
@@ -29,7 +29,7 @@ const result = await session.prompt("What files are in the current directory?");
 console.log(result.text);
 ```
 
-Useful for: building a custom UI on top of mewrite-code's runtime, embedding cave in a larger app, scripted batch runs.
+Useful for: building a custom UI on top of Me Write Code's runtime, embedding the agent loop in a larger app, or scripted batch runs.
 
 Full TypeScript types are exported from the `mewrite` package. See [packages/coding-agent](https://github.com/Zhachory1/mewritecode/tree/main/packages/coding-agent) for source.
 
@@ -43,8 +43,9 @@ npm install @zhachory1/mewrite-sdk
 import { CaveClient } from "@zhachory1/mewrite-sdk";
 
 const client = new CaveClient({
-    host: "localhost:39245",
-    token: process.env.CAVE_TOKEN,
+    host: "localhost",
+    port: 7421,
+    token: process.env.MEWRITE_TOKEN,
 });
 
 const session = await client.sessions.create({
@@ -63,34 +64,15 @@ for await (const event of session.events()) {
 
 The `@zhachory1/mewrite-sdk` package is generated from the daemon's OpenAPI spec. See [Daemon](/reference/daemon) for the protocol details.
 
-## 3. JSON-RPC over stdin/stdout
+## 3. RPC over stdin/stdout
 
 ```bash
 mewrite --mode rpc
 ```
 
-JSONL on stdin, JSONL on stdout. One request per line.
+RPC mode uses JSONL commands with a `type` field, not JSON-RPC 2.0 method names. See [packages/coding-agent/docs/rpc.md](https://github.com/Zhachory1/mewritecode/blob/main/packages/coding-agent/docs/rpc.md) for the current command and event schema.
 
-Methods:
-
-| Method | Purpose |
-|---|---|
-| `session.create` | Start a new session |
-| `session.prompt` | Send a user turn |
-| `session.events` | Subscribe to events (server-streamed) |
-| `session.tool.allow` | Respond to a permission prompt |
-| `session.compact` | Manual compaction |
-| `session.fork` | Branch the session |
-| `session.close` | Close and persist |
-
-Example:
-
-```jsonl
-{"jsonrpc":"2.0","id":1,"method":"session.create","params":{"model":"claude-sonnet-4"}}
-{"jsonrpc":"2.0","id":2,"method":"session.prompt","params":{"sessionId":"abc","text":"hello"}}
-```
-
-Useful for: integrating cave with editors (LSP-style), building shell scripts that pipe through mewrite-code, writing other-language clients.
+Useful for: editor integrations, shell scripts that pipe through Me Write Code, and clients in other languages.
 
 ## 4. Print mode + JSON output
 
@@ -104,28 +86,22 @@ mewrite exec "lint and fix" --output-schema schema.json
 
 `--output-schema` validates the model's final response against a JSON Schema. Useful for CI gates.
 
-Stable JSON event stream:
+`mewrite exec --json` emits JSONL events such as:
 
 ```jsonl
-{"type":"session.start","sessionId":"abc","model":"claude-sonnet-4"}
-{"type":"tool.call","tool":"Read","args":{"path":"src/foo.ts"}}
-{"type":"tool.result","tool":"Read","ok":true}
-{"type":"token","text":"This file..."}
-{"type":"session.end","cost":0.012,"tokens":{"in":1200,"out":80}}
+{"type":"session.start","session_id":"<uuid>","cwd":"/path/to/project"}
+{"type":"message.user","content":"List all TypeScript files"}
+{"type":"tool.call","name":"bash","input":{"command":"find src -name '*.ts'"},"id":"call-1"}
+{"type":"tool.result","id":"call-1","ok":true,"output":"src/index.ts\n"}
+{"type":"message.assistant","content":"...","cost":{}}
+{"type":"session.end","exit":0,"cost":{"input_tokens":100,"output_tokens":50,"total_cost_usd":0.001}}
 ```
 
-The schema is versioned. Pin `--protocol-version=v1` for stability across cave releases.
+See [exec docs](https://github.com/Zhachory1/mewritecode/blob/main/packages/coding-agent/docs/exec.md) for the full schema.
 
 ## OpenAPI spec
 
-The daemon serves its own OpenAPI 3.1 spec:
-
-```bash
-mewrite serve &
-curl http://localhost:39245/openapi.yaml
-```
-
-Or browse the spec on GitHub: [packages/coding-agent/openapi.yaml](https://github.com/Zhachory1/mewritecode/blob/main/packages/coding-agent/openapi.yaml).
+The packaged OpenAPI 3.0.3 spec is available in the repository: [packages/coding-agent/openapi.yaml](https://github.com/Zhachory1/mewritecode/blob/main/packages/coding-agent/openapi.yaml). The running daemon does not currently serve `/openapi.yaml`.
 
 ## Extension API (in-process)
 

@@ -13,15 +13,15 @@ Skills are markdown files the model auto-loads when their description matches th
 
 | Scope | Path |
 |---|---|
-| Project | `.cave/skills/<name>/SKILL.md` |
-| User | `~/.cave/skills/<name>/SKILL.md` |
+| Project | `.mewrite/skills/<name>/SKILL.md` |
+| User | `~/.mewrite/agent/skills/<name>/SKILL.md` |
 | Plugin | inside an installed plugin's `skills/` directory |
 
 A skill directory may include attached files referenced by the skill body — e.g. example fixtures, vendored helpers.
 
 ## Authoring
 
-`.cave/skills/secure-review/SKILL.md`:
+`.mewrite/skills/secure-review/SKILL.md`:
 
 ```markdown
 ---
@@ -83,7 +83,7 @@ See [Plugin Marketplace](/cookbook#plugin-marketplace).
 ## Importing Claude Code skills
 
 ```bash
-cp -r ~/.claude/skills/* ~/.cave/skills/
+cp -r ~/.claude/skills/* ~/.mewrite/agent/skills/
 ```
 
 Format-identical. Drop in. The 5k re-attach cap, the 25k shared budget, and the description-match trigger logic all match Claude Code's defaults.

@@ -12,7 +12,7 @@ Concrete, copy-pasteable patterns. Every snippet was tested before publication.
 ## `mewrite exec` in GitHub Actions
 
 ```yaml
-# .github/workflows/cave-review.yml
+# .github/workflows/mewrite-review.yml
 name: Me Write Code PR review
 on: [pull_request]
 jobs:
@@ -21,8 +21,8 @@ jobs:
         steps:
             - uses: actions/checkout@v4
             - run: npm install -g @zhachory1/mewrite-code
-            - run: cave exec "review the diff vs main and post a 200-word PR comment with findings" \
-                  --output-schema .github/cave-review-schema.json \
+            - run: mewrite exec "review the diff vs main and post a 200-word PR comment with findings" \
+                  --output-schema .github/mewrite-review-schema.json \
                   --skip-git-repo-check
               env:
                   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -33,7 +33,7 @@ Me Write Code's stable JSON event stream on stdout is parsed by the action runne
 ## Multi-agent code review
 
 ```yaml
-# .cave/recipes/parallel-review.yaml
+# .mewrite/recipes/parallel-review.yaml
 name: "Parallel code review"
 goal: |
   Review the diff vs main from three perspectives in parallel:
@@ -58,10 +58,11 @@ Run: `mewrite run-recipe parallel-review`. Three subagents run in parallel workt
 mewrite serve --port 39245 --token $TOKEN
 
 # expose via cloudflared
-cloudflared tunnel run caveman-tunnel
+cloudflared tunnel run mewrite-tunnel
 
 # colleague's machine
-mewrite attach --host https://cave.example.com:39245 --token $TOKEN
+mewrite sessions --host mewrite.example.com --port 39245 --token $TOKEN
+mewrite attach <session-id> --host mewrite.example.com --port 39245 --token $TOKEN
 ```
 
 Both clients see the same session. Tokens stream in real-time to both.
@@ -69,7 +70,7 @@ Both clients see the same session. Tokens stream in real-time to both.
 ## Auto-format on every Edit
 
 ```json
-// ~/.cave/settings.json
+// ~/.mewrite/agent/settings.json
 {
     "hooks": {
         "PostToolUse": [
@@ -78,7 +79,7 @@ Both clients see the same session. Tokens stream in real-time to both.
                 "command": [
                     "bash",
                     "-lc",
-                    "biome format --write \"$CAVE_HOOK_FILES\" 2>/dev/null || prettier --write \"$CAVE_HOOK_FILES\""
+                    "files=$(jq -r '[.tool_input.path, .tool_input.file_path] | map(select(.)) | @sh'); [ -z \"$files\" ] || eval biome format --write $files"
                 ]
             }
         ]
@@ -86,7 +87,7 @@ Both clients see the same session. Tokens stream in real-time to both.
 }
 ```
 
-`$CAVE_HOOK_FILES` is space-separated newline-safe file paths from the tool call.
+Hook commands receive a Claude Code-compatible JSON payload on stdin. `CAVE_PROJECT_DIR`, `CLAUDE_PROJECT_DIR`, `CAVE_SESSION_ID`, and `CAVE_HOOK_EVENT` are set in the environment.
 
 ## Block writes that contain secrets
 
@@ -99,7 +100,7 @@ Both clients see the same session. Tokens stream in real-time to both.
                 "command": [
                     "bash",
                     "-lc",
-                    "cat \"$CAVE_HOOK_FILE\" | gitleaks detect --no-git --pipe && echo ok"
+                    "jq -r '.tool_input.content // empty' | gitleaks detect --no-git --pipe && echo ok"
                 ],
                 "decision": "deny-on-nonzero",
                 "timeout": 10
@@ -109,28 +110,15 @@ Both clients see the same session. Tokens stream in real-time to both.
 }
 ```
 
-Me Write Code passes the file content via `$CAVE_HOOK_FILE`. Non-zero exit denies the write and tells the model why.
+For `Write` calls, file content is available in the hook stdin JSON. Non-zero exit denies the write and tells the model why.
 
-## Use cave as an MCP server from Claude Desktop
+## Use Me Write Code as an MCP server
 
 ```bash
-mewrite mcp-server --port 39250
+mewrite mcp-server
 ```
 
-Then in Claude Desktop's `claude_desktop_config.json`:
-
-```json
-{
-    "mcpServers": {
-        "cave": {
-            "transport": "http",
-            "url": "http://localhost:39250"
-        }
-    }
-}
-```
-
-Claude Desktop now sees Me Write Code's coding tools (Read, Glob, Grep, Bash, Edit, Write).
+Current server mode is stdio-based and exposes a minimal health tool. Use MCP client mode (`mewrite mcp add ...`) for production tool integrations today.
 
 ## Plugin marketplace
 
@@ -143,13 +131,13 @@ mewrite plugin marketplace add https://plugins.example.com/marketplace.json
 mewrite plugin upgrade
 ```
 
-Author your own:
+Author your own from the TUI:
 
-```bash
-mewrite plugin scaffold my-pack
-$EDITOR my-pack/.cave-plugin/plugin.json
-mewrite plugin publish my-pack    # publishes to the configured marketplace
+```text
+/plugin create
 ```
+
+This invokes the bundled plugin-creator skill, which scaffolds `.cave-plugin/plugin.json` and the resource directories. Publish by pushing the plugin repo and adding it to a marketplace JSON.
 
 ## Architect / editor split for a tight budget
 
@@ -169,7 +157,7 @@ mewrite --watch
 Then in your editor:
 
 ```typescript
-// cave! refactor this function to use async iterators
+// mewrite! refactor this function to use async iterators
 function processLines(input: string): string[] {
     return input.split("\n").filter(Boolean);
 }
@@ -181,7 +169,7 @@ Me Write Code detects the trailing `!`, runs an edit-class turn with the surroun
 
 ```bash
 mewrite -r                                         # browse and pick
-mewrite --session ~/.cave/sessions/.../abc.jsonl   # load directly
+mewrite --session ~/.mewrite/agent/sessions/.../abc.jsonl   # load directly
 ```
 
 To share a reproducible session: export to HTML (`/export session.html`) or copy the session file. Replay functionality is planned for future releases.

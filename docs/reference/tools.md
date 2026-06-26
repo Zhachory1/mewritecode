@@ -14,18 +14,18 @@ Me Write Code ships seven built-in tools, plus dynamic tools loaded from MCP ser
 | Tool | Purpose | Default mode access |
 |---|---|---|
 | `Read` | Read a file or range of lines | always |
-| `Glob` | Match filenames | always |
+| `Find` / `Ls` | Locate files and list directories | always |
 | `Grep` | Search file contents (ripgrep-backed) | always |
-| `Bash` | Run shell commands | gated by sandbox |
-| `Edit` | Find/replace edit on a file | gated by permission mode |
-| `Write` | Write a file | gated by permission mode |
+| `Bash` | Run shell commands | gated by sandbox/approval settings |
+| `Edit` | Find/replace edit on a file | gated by approval settings |
+| `Write` | Write a file | gated by approval settings |
 | `Task` / `Agent` | Dispatch a [subagent](/reference/subagents) | always |
 
-Plan mode restricts to `Read`, `Glob`, `Grep`, and `Bash` with a read-only allowlist. Enable with `/plan` in the TUI. See [Plan Mode](/reference/plan-mode).
+Plan mode restricts to read-only tools (`Read`, `Find`, `Ls`, `Grep`, and safe `Bash`). Enable with `/plan` in the TUI. See [Plan Mode](/reference/plan-mode).
 
 ## Caveman Mode compression
 
-Four compression layers, always on. Break-even after one tool call.
+Four compression layers reduce repeated and verbose context. Exact savings depend on provider, model, and task; the public benchmark is under revalidation.
 
 | Layer | What happens | Impact |
 |---|---|---|
@@ -48,7 +48,7 @@ Four compression layers, always on. Break-even after one tool call.
 }
 ```
 
-Override per session with `--max-tool-lines 200`. Override globally in `~/.cave/settings.json`.
+Override per session with `--max-tool-lines 200`. Override globally in `~/.mewrite/agent/settings.json`.
 
 ## Cost transparency
 
@@ -62,18 +62,18 @@ Session summary on `/exit`:
 
 ```
 session: 32 turns · 2h 14m
-total: $1.84 — saved $5.51 vs Claude Code (cave-mode A/B)
+total: $1.84 — cache + compression savings reported separately
 breakdown:
   system    +1,200 tokens
   repomap     +840
   history  +12,150
   files     +8,421
-  tools    +18,902 (cave-mode -82%)
+  tools    +18,902 (compressed)
 ```
 
 `/tokens` opens a live breakdown panel.
 
-Daily/weekly totals persist to `~/.cave/usage.json`. See [Cost Transparency Panel](/reference/tools#cost-transparency).
+Daily/weekly totals persist under `~/.mewrite/agent/`. See [Cost Transparency Panel](/reference/tools#cost-transparency).
 
 ## ToolSearch (deferred MCP schemas)
 
@@ -81,11 +81,10 @@ By default, MCP tools are listed by name only. The model fetches the schema via 
 
 ## Registry
 
-Provider, model, and tool defaults live in a versioned registry at `github.com/cave-cli/registry`. Pull updates without releasing Me Write Code:
+Provider, model, and tool defaults ship with Me Write Code and can be refreshed without upgrading the CLI:
 
 ```bash
 mewrite models update
-mewrite tools update
 ```
 
-Override locally in `~/.cave/registry.json`.
+Override locally in `~/.mewrite/agent/registry.json`.

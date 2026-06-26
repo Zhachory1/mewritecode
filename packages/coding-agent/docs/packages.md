@@ -1,185 +1,121 @@
-> pi can help you create pi packages. Ask it to bundle your extensions, skills, prompt templates, or themes.
+# Resource Packages
 
-# Pi Packages
+Me Write Code packages bundle extensions, skills, prompt templates, themes, hooks, agents, and MCP config so teams can share agent behavior through npm, git, or local paths.
 
-Pi packages bundle extensions, skills, prompt templates, and themes so you can share them through npm or git. A package can declare resources in `package.json` under the `pi` key, or use conventional directories.
-
-## Table of Contents
-
-- [Install and Manage](#install-and-manage)
-- [Package Sources](#package-sources)
-- [Creating a Pi Package](#creating-a-pi-package)
-- [Package Structure](#package-structure)
-- [Dependencies](#dependencies)
-- [Package Filtering](#package-filtering)
-- [Enable and Disable Resources](#enable-and-disable-resources)
-- [Scope and Deduplication](#scope-and-deduplication)
-
-## Install and Manage
-
-> **Security:** Pi packages run with full system access. Extensions execute arbitrary code, and skills can instruct the model to perform any action including running executables. Review source code before installing third-party packages.
+## Install and manage
 
 ```bash
-pi install npm:@foo/bar@1.0.0
-pi install git:github.com/user/repo@v1
-pi install https://github.com/user/repo  # raw URLs work too
-pi install /absolute/path/to/package
-pi install ./relative/path/to/package
+mewrite install npm:@foo/bar@1.0.0
+mewrite install git:github.com/user/repo@v1
+mewrite install https://github.com/user/repo
+mewrite install /absolute/path/to/package
+mewrite install ./relative/path/to/package
 
-pi remove npm:@foo/bar
-pi list    # show installed packages from settings
-pi update  # update all non-pinned packages
+mewrite remove npm:@foo/bar
+mewrite list
+mewrite update
 ```
 
-By default, `install` and `remove` write to global settings (`~/.pi/agent/settings.json`). Use `-l` to write to project settings (`.pi/settings.json`) instead. Project settings can be shared with your team, and pi installs any missing packages automatically on startup.
+By default, install/remove update `~/.mewrite/agent/settings.json`. Use project-local settings when you want a repo to share the same package list through `.mewrite/settings.json`.
 
-To try a package without installing it, use `--extension` or `-e`. This installs to a temporary directory for the current run only:
+To load a package for one run without installing it:
 
 ```bash
-pi -e npm:@foo/bar
-pi -e git:github.com/user/repo
+mewrite --extension npm:@foo/bar
+mewrite --extension git:github.com/user/repo
 ```
 
-## Package Sources
+## Security
 
-Pi accepts three source types in settings and `pi install`.
+Packages can run arbitrary code through extensions and hooks. Skills and prompts can instruct the model to run commands. Review third-party packages before installing them.
+
+## Sources
 
 ### npm
 
-```
+```text
 npm:@scope/pkg@1.2.3
 npm:pkg
 ```
 
-- Versioned specs are pinned and skipped by `pi update`.
+- Versioned specs are pinned and skipped by `mewrite update`.
 - Global installs use `npm install -g`.
-- Project installs go under `.pi/npm/`.
-- Set `npmCommand` in `settings.json` to pin npm package lookup and install operations to a specific wrapper command such as `mise` or `asdf`.
-
-Example:
-
-```json
-{
-  "npmCommand": ["mise", "exec", "node@20", "--", "npm"]
-}
-```
+- Project installs go under `.mewrite/npm/`.
+- Set `npmCommand` in settings to use a wrapper like `mise` or `asdf`.
 
 ### git
 
-```
+```text
 git:github.com/user/repo@v1
 git:git@github.com:user/repo@v1
 https://github.com/user/repo@v1
 ssh://git@github.com/user/repo@v1
 ```
 
-- Without `git:` prefix, only protocol URLs are accepted (`https://`, `http://`, `ssh://`, `git://`).
-- With `git:` prefix, shorthand formats are accepted, including `github.com/user/repo` and `git@github.com:user/repo`.
-- HTTPS and SSH URLs are both supported.
-- SSH URLs use your configured SSH keys automatically (respects `~/.ssh/config`).
-- For non-interactive runs (for example CI), you can set `GIT_TERMINAL_PROMPT=0` to disable credential prompts and set `GIT_SSH_COMMAND` (for example `ssh -o BatchMode=yes -o ConnectTimeout=5`) to fail fast.
-- Refs pin the package and skip `pi update`.
-- Cloned to `~/.pi/agent/git/<host>/<path>` (global) or `.pi/git/<host>/<path>` (project).
-- Runs `npm install` after clone or pull if `package.json` exists.
+- Refs pin the package and skip updates.
+- Clones live under `~/.mewrite/agent/git/` or `.mewrite/git/`.
+- `npm install` runs after clone/pull when `package.json` exists.
+- SSH URLs use the user's normal SSH config.
 
-**SSH examples:**
-```bash
-# git@host:path shorthand (requires git: prefix)
-pi install git:git@github.com:user/repo
+### local paths
 
-# ssh:// protocol format
-pi install ssh://git@github.com/user/repo
-
-# With version ref
-pi install git:git@github.com:user/repo@v1.0.0
-```
-
-### Local Paths
-
-```
+```text
 /absolute/path/to/package
 ./relative/path/to/package
 ```
 
-Local paths point to files or directories on disk and are added to settings without copying. Relative paths are resolved against the settings file they appear in. If the path is a file, it loads as a single extension. If it is a directory, pi loads resources using package rules.
+Local paths are referenced in settings; files are not copied. Relative paths resolve from the settings file that contains them.
 
-## Creating a Pi Package
+## Package manifest
 
-Add a `pi` manifest to `package.json` or use conventional directories. Include the `pi-package` keyword for discoverability.
+Declare resources in `package.json` with `mewrite` metadata, or use conventional directories.
 
 ```json
 {
   "name": "my-package",
-  "keywords": ["pi-package"],
-  "pi": {
+  "keywords": ["mewrite-package"],
+  "mewrite": {
     "extensions": ["./extensions"],
     "skills": ["./skills"],
     "prompts": ["./prompts"],
-    "themes": ["./themes"]
+    "themes": ["./themes"],
+    "agents": ["./agents"],
+    "hooks": ["./hooks"]
   }
 }
 ```
 
-Paths are relative to the package root. Arrays support glob patterns and `!exclusions`.
+Paths are relative to package root. Arrays support glob patterns and `!` exclusions.
 
-### Gallery Metadata
+Legacy `pi` package metadata may still be read for compatibility, but new packages should use `mewrite`.
 
-The [package gallery](https://shittycodingagent.ai/packages) displays packages tagged with `pi-package`. Add `video` or `image` fields to show a preview:
+## Conventional directories
 
-```json
-{
-  "name": "my-package",
-  "keywords": ["pi-package"],
-  "pi": {
-    "extensions": ["./extensions"],
-    "video": "https://example.com/demo.mp4",
-    "image": "https://example.com/screenshot.png"
-  }
-}
-```
+If no manifest is present, Me Write Code discovers:
 
-- **video**: MP4 only. On desktop, autoplays on hover. Clicking opens a fullscreen player.
-- **image**: PNG, JPEG, GIF, or WebP. Displayed as a static preview.
-
-If both are set, video takes precedence.
-
-## Package Structure
-
-### Convention Directories
-
-If no `pi` manifest is present, pi auto-discovers resources from these directories:
-
-- `extensions/` loads `.ts` and `.js` files
-- `skills/` recursively finds `SKILL.md` folders and loads top-level `.md` files as skills
-- `prompts/` loads `.md` files
-- `themes/` loads `.json` files
+- `extensions/` — `.ts` and `.js` extension files
+- `skills/` — `SKILL.md` directories and top-level Markdown skills
+- `prompts/` — Markdown prompt templates
+- `themes/` — JSON themes
+- `agents/` — Markdown subagent definitions
+- `hooks/` — hook scripts
+- `.mcp.json` — MCP server definitions
 
 ## Dependencies
 
-Third party runtime dependencies belong in `dependencies` in `package.json`. Dependencies that do not register extensions, skills, prompt templates, or themes also belong in `dependencies`. When pi installs a package from npm or git, it runs `npm install`, so those dependencies are installed automatically.
+Runtime dependencies belong in `dependencies`. Packages installed from npm or git run `npm install`, so dependencies are available automatically.
 
-Pi bundles core packages for extensions and skills. If you import any of these, list them in `peerDependencies` with a `"*"` range and do not bundle them: `@zhachory1/mewrite-ai`, `@zhachory1/mewrite-agent`, `mewrite`, `@zhachory1/mewrite-tui`, `@sinclair/typebox`.
+If an extension imports Me Write Code packages, declare them as peer dependencies with a `"*"` range and do not bundle them:
 
-Other pi packages must be bundled in your tarball. Add them to `dependencies` and `bundledDependencies`, then reference their resources through `node_modules/` paths. Pi loads packages with separate module roots, so separate installs do not collide or share modules.
+- `@zhachory1/mewrite-code`
+- `@zhachory1/mewrite-ai`
+- `@zhachory1/mewrite-agent`
+- `@zhachory1/mewrite-tui`
+- `@sinclair/typebox`
 
-Example:
+## Filtering
 
-```json
-{
-  "dependencies": {
-    "shitty-extensions": "^1.0.1"
-  },
-  "bundledDependencies": ["shitty-extensions"],
-  "pi": {
-    "extensions": ["extensions", "node_modules/shitty-extensions/extensions"],
-    "skills": ["skills", "node_modules/shitty-extensions/skills"]
-  }
-}
-```
-
-## Package Filtering
-
-Filter what a package loads using the object form in settings:
+Settings can load only selected resources from a package:
 
 ```json
 {
@@ -196,23 +132,18 @@ Filter what a package loads using the object form in settings:
 }
 ```
 
-`+path` and `-path` are exact paths relative to the package root.
+Rules:
 
-- Omit a key to load all of that type.
-- Use `[]` to load none of that type.
+- Omit a key to load all resources of that type.
+- Use `[]` to load none.
 - `!pattern` excludes matches.
 - `+path` force-includes an exact path.
 - `-path` force-excludes an exact path.
-- Filters layer on top of the manifest. They narrow down what is already allowed.
 
-## Enable and Disable Resources
+## Scope and deduplication
 
-Use `pi config` to enable or disable extensions, skills, prompt templates, and themes from installed packages and local directories. Works for both global (`~/.pi/agent`) and project (`.pi/`) scopes.
+Packages can appear in both global and project settings. Project entries win. Identity is determined by:
 
-## Scope and Deduplication
-
-Packages can appear in both global and project settings. If the same package appears in both, the project entry wins. Identity is determined by:
-
-- npm: package name
-- git: repository URL without ref
-- local: resolved absolute path
+- npm package name
+- git repository URL without ref
+- resolved absolute local path

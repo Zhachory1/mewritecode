@@ -1,32 +1,32 @@
 ---
 title: MCP
-description: Model Context Protocol — clients, transports, and cave-as-MCP-server.
+description: Model Context Protocol — clients, transports, and Me Write Code as an MCP server.
 ---
 
 # MCP
 
-Me Write Code is a first-class MCP client and can also serve as an MCP server. Three transports: **stdio** (subprocess + JSON-RPC), **Streamable HTTP** (SSE deprecating mid-2026), and **in-process** (zero-spawn for mewrite-code's own tools).
+Me Write Code is a first-class MCP client and can also serve a minimal MCP server. Current supported client transports are **stdio** (subprocess + JSON-RPC) and **in-process** (zero-spawn for bundled tools). Streamable HTTP is tracked separately.
 
 <CopyForLlms />
 
 ## Quick start
 
 ```bash
-mewrite mcp add cavemem
-mewrite mcp add gh --command "github-mcp" --transport stdio
+mewrite mcp add cavemem --command cavemem --arg mcp
+mewrite mcp add gh --command github-mcp
 mewrite mcp list
 mewrite mcp doctor
 ```
 
-`mewrite mcp add` reads from a registry and writes to `~/.cave/mcp.json` or `.mcp.json` (project-scope).
+`mewrite mcp add` writes to project `.mcp.json` by default. Use `--user` to write to `~/.mewrite/mcp.json`.
 
 ## Configuration
 
-`.mcp.json` (project) or `~/.cave/mcp.json` (user):
+`.mcp.json` (project) or `~/.mewrite/mcp.json` (user):
 
 ```json
 {
-    "servers": {
+    "mcpServers": {
         "cavemem": {
             "transport": "stdio",
             "command": "cavemem",
@@ -34,9 +34,9 @@ mewrite mcp doctor
             "env": {}
         },
         "github": {
-            "transport": "http",
-            "url": "https://mcp.github.com/v1",
-            "auth": "oauth"
+            "transport": "stdio",
+            "command": "github-mcp",
+            "env": { "GITHUB_TOKEN": "..." }
         },
         "filesystem": {
             "transport": "inproc",
@@ -53,18 +53,12 @@ User config is merged on top of project config. The `transport` determines how M
 | Transport | When to use |
 |---|---|
 | `stdio` | Local subprocess. Standard for community MCP servers. |
-| `http` | Remote MCP servers. Streamable HTTP (SSE deprecating). |
+| `http` | Planned; not implemented in the current MCP client. |
 | `inproc` | Bundled with Me Write Code; zero spawn, lowest latency. |
 
 ## OAuth 2.1
 
-Servers that require auth use the **two-tool pattern**:
-
-1. The model calls `<server>__authenticate` — returns an OAuth URL.
-2. The user opens the URL, completes auth.
-3. The model calls `<server>__complete_authentication` to finalize.
-
-Tokens land in your OS keychain (via `keytar`). Re-auth on token expiry is automatic.
+OAuth support is still provider-specific. For now, prefer MCP servers that accept tokens via environment variables or command-line configuration.
 
 ## Tool namespacing
 
@@ -74,9 +68,9 @@ MCP tools are namespaced as `mcp__<server>__<tool>` to avoid collisions. The mod
 
 By default Me Write Code only lists MCP tool **names** in the always-on context. Schemas are fetched on demand via `ToolSearch`. This matches Anthropic's pattern and cuts ~85% of context bloat.
 
-## Warm pool
+## Lifecycle
 
-Idle stdio MCP servers are SIGSTOP'd to reclaim memory. They're SIGCONT'd on the next call. Eviction policy: LRU, max idle 10 minutes.
+Idle stdio MCP transports are closed by the client when swept. They are restarted on demand.
 
 ## Me Write Code as MCP server
 
@@ -84,7 +78,7 @@ Idle stdio MCP servers are SIGSTOP'd to reclaim memory. They're SIGCONT'd on the
 mewrite mcp-server
 ```
 
-Exposes Me Write Code's coding-agent tools to other MCP clients (Claude Desktop, Codex, opencode). Useful for multi-agent setups where Me Write Code is the "executor" and another agent is the planner.
+Current server mode is stdio-based and exposes a minimal health tool. Full coding-tool server mode is planned separately.
 
 ## Importing Claude Code / Codex MCP config
 
@@ -97,5 +91,5 @@ cp .claude.json .mcp.json   # if you had a Claude-only config in the same shape
 ## Troubleshooting
 
 - **`mewrite mcp doctor`** — pings every configured server, reports timeouts and auth failures.
-- **`mewrite mcp logs <server>`** — tails the stderr of a stdio server.
+- Check the terminal that launched the stdio server for stderr output.
 - **Server crashes loop** — Me Write Code backs off to 1 / 5 / 30 minute retry intervals; you'll see a doctor warning.

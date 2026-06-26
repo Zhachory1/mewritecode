@@ -18,7 +18,7 @@ Plan mode is a permission profile + a prompt convention. The agent is restricted
 ## Enter plan mode
 
 ```bash
-cave                 # then /plan in TUI
+mewrite              # then /plan in TUI
 /plan                # inside a session
 ```
 
@@ -32,8 +32,8 @@ Or use the built-in `/plan` slash command in the TUI.
 
 In plan mode:
 
-- Tools allowed: `Read`, `Glob`, `Grep`, `Bash` (with read-only allowlist), `Task` (subagents inherit plan mode unless overridden).
-- Tools blocked: `Edit`, `Write`, network calls, exec outside the allowlist.
+- Tools allowed: `Read`, `Find`, `Ls`, `Grep`, and safe `Bash`.
+- Tools blocked: `Edit`, `Write`, `Task`, network calls, and exec outside the allowlist.
 - The system prompt instructs the model to end with a structured `## Plan` section.
 
 ## Plan format
@@ -85,7 +85,7 @@ This is the cheapest way to use a frontier model for hard reasoning while keepin
 
 ## Plans on disk
 
-`/plan save <name>` writes the current plan to `.cave/plans/<name>.md`.
+`/plan save <name>` writes the current plan to `.mewrite/plans/<name>.md`.
 
 ## Importing from Claude Code
 

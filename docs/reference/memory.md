@@ -12,7 +12,7 @@ Me Write Code delegates persistent memory to **cavemem** — the user's existing
 ## What cavemem provides
 
 - SQLite (FTS5) storage with hybrid search: BM25 + local vectors (`Xenova/all-MiniLM-L6-v2`, alpha=0.5).
-- ~75% prose-token reduction via caveman-grammar compression. Code, paths, and URLs preserved byte-for-byte.
+- Prose-token reduction via compact grammar. Code, paths, and URLs preserved byte-for-byte.
 - Stdio MCP server with four tools: `search`, `timeline`, `get_observations`, `list_sessions`.
 - Hook CLI: `cavemem hook run <event>` reads stdin and writes observations.
 - Privacy: `<private>...</private>` blocks are redacted before storage.
@@ -32,14 +32,16 @@ On session start, mewrite-code runs `cavemem search "<task summary>"` and inject
 
 ## Setup
 
-If `cavemem` is on your `$PATH`, cave wires it during `mewrite init`. If not:
+If `cavemem` is on your `$PATH`, Me Write Code can use it as the memory backend:
 
 ```bash
 npm install -g cavemem
-mewrite init    # detects cavemem, writes hook stubs to ~/.cave/settings.json
+mewrite mcp add cavemem --command cavemem --arg mcp
 ```
 
-To disable: `/memory off` (session-only) or remove the hooks from `settings.json` (permanent).
+Memory recall/tools are enabled when the provider is reachable. To auto-record lifecycle observations through hooks, start sessions with `CAVE_MEMORY_AUTO_RECORD=1` or wire the cavemem hook commands manually in `~/.mewrite/agent/settings.json`.
+
+To disable for a session: `/memory off`.
 
 ## Slash commands
 
@@ -63,7 +65,7 @@ Run nightly (via cron) or on-demand with `/memory consolidate`. Me Write Code cl
 
 ```bash
 # nightly cron
-0 2 * * * cave memory consolidate --since 24h --model haiku
+0 2 * * * mewrite memory consolidate --since 24h --model haiku
 ```
 
 ### Auto-trigger learning
@@ -72,7 +74,7 @@ When a tool call fails twice and then succeeds, mewrite-code writes a "lesson" o
 
 ```
 kind: lesson
-context: "applying eslint-config-cave to a TypeScript monorepo"
+context: "applying Biome config to a TypeScript monorepo"
 fail: "biome.json with deprecated lint key"
 fix: "rename to linter, drop the legacy formatter block"
 provenance: [obs_id_1, obs_id_2, obs_id_3]
@@ -98,13 +100,13 @@ Imports the per-fact `.md` files as cavemem observations.
 
 ## Falling back to files
 
-If you don't want cavemem, set `memory.provider: files` in `~/.cave/settings.json`. Me Write Code then uses plain `.cave/memory/*.md` files and `CLAUDE.md` for project context.
+If you don't want cavemem, set `memory.provider: files` in `~/.mewrite/agent/settings.json`. Me Write Code then uses plain `.mewrite/memory/*.md` files and project context docs.
 
 ```json
 {
     "memory": {
         "provider": "files",
-        "files": { "dir": ".cave/memory" }
+        "files": { "dir": ".mewrite/memory" }
     }
 }
 ```

@@ -5,14 +5,14 @@ description: YAML pipelines for repeatable agent workflows.
 
 # Recipes
 
-A recipe is a YAML file at `.cave/recipes/<name>.yaml` that pins a goal, a model, a tool allowlist, and optional sub-recipes. Goose-style schema.
+A recipe is a YAML file at `.mewrite/recipes/<name>.yaml` that pins a goal, model, tool allowlist, and optional sub-recipes. Goose-style schema.
 
 <CopyForLlms />
 
 ## Schema
 
 ```yaml
-# .cave/recipes/migrate-to-biome.yaml
+# .mewrite/recipes/migrate-to-biome.yaml
 name: "Migrate to Biome"
 goal: |
   Replace ESLint + Prettier with Biome 2.x. Update CI. Remove old configs.
@@ -33,7 +33,7 @@ env:
   BIOME_VERSION: 2.3.5
 
 include:
-  - bump-deps   # re-uses .cave/recipes/bump-deps.yaml
+  - bump-deps   # re-uses .mewrite/recipes/bump-deps.yaml
 
 steps:
   - "Audit current ESLint/Prettier config"
@@ -99,14 +99,14 @@ Hooks fire during recipe execution like any other session. Useful pairing:
 The fastest path is copying a built-in:
 
 ```bash
-cp ~/.cave/recipes/release.yaml .cave/recipes/release-rc.yaml
-$EDITOR .cave/recipes/release-rc.yaml
+cp ~/.mewrite/agent/recipes/release.yaml .mewrite/recipes/release-rc.yaml
+$EDITOR .mewrite/recipes/release-rc.yaml
 ```
 
 Validate:
 
 ```bash
-mewrite recipes lint .cave/recipes/release-rc.yaml
+mewrite recipes lint .mewrite/recipes/release-rc.yaml
 ```
 
 The linter checks: required keys, model exists in the registry, tools are valid, includes resolve.

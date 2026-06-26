@@ -5,7 +5,7 @@ description: Built-in slash commands and how to author your own as Markdown file
 
 # Slash Commands
 
-Inside the TUI, type `/` to open the command palette. Me Write Code ships 10 built-in commands and reads user-authored markdown commands from `~/.cave/commands/` and project-local `.cave/commands/`.
+Inside the TUI, type `/` to open the command palette. Me Write Code ships built-in commands and reads user-authored markdown commands from `~/.mewrite/agent/commands/` and project-local `.mewrite/commands/`.
 
 <CopyForLlms />
 
@@ -15,8 +15,8 @@ Inside the TUI, type `/` to open the command palette. Me Write Code ships 10 bui
 |---|---|
 | `/login` `/logout` | OAuth flow for any provider |
 | `/model` | Switch model mid-session, transcript reformatted in place |
-| `/provider` | List/switch active provider |
-| `/settings` | Edit `~/.cave/settings.json` in your `$EDITOR` |
+
+| `/settings` | Edit `~/.mewrite/agent/settings.json` in your `$EDITOR` |
 | `/new` `/resume` `/tree` `/fork` | Session lifecycle and branching |
 | `/compact` | Manual context compaction (auto on overflow) |
 | `/copy` `/export` `/share` | Copy transcript / export JSON / share link |
@@ -30,7 +30,7 @@ Inside the TUI, type `/` to open the command palette. Me Write Code ships 10 bui
 
 ## Default user commands shipped with Me Write Code
 
-These ship in `~/.cave/commands/` after first run. You can edit or delete any of them.
+These ship in `~/.mewrite/agent/commands/` after first run. You can edit or delete any of them.
 
 | Command | What it does |
 |---|---|
@@ -43,11 +43,11 @@ These ship in `~/.cave/commands/` after first run. You can edit or delete any of
 | `/sec-review` | Run a security audit pass on the diff |
 | `/clean` | Delete dead imports, unused vars |
 | `/log` | Append a session note to `CHANGELOG.md` |
-| `/migrate` | Run a recipe from `.cave/recipes/` |
+| `/migrate` | Run a recipe from `.mewrite/recipes/` |
 
 ## Authoring a slash command
 
-Create `~/.cave/commands/my-cmd.md`:
+Create `~/.mewrite/agent/commands/my-cmd.md`:
 
 ```markdown
 ---
@@ -89,14 +89,14 @@ Frontmatter keys (full list — superset of Claude Code):
 
 ### Hot reload
 
-Me Write Code watches `~/.cave/commands/` and `.cave/commands/` for changes. Save the file, the new version is live on the next `/`.
+Me Write Code watches `~/.mewrite/agent/commands/` and `.mewrite/commands/` for changes. Save the file, the new version is live on the next `/`.
 
 ## Project vs user vs plugin scope
 
 | Scope | Path | When to use |
 |---|---|---|
-| Project | `.cave/commands/*.md` | Lives in repo; team shares it |
-| User | `~/.cave/commands/*.md` | Personal preferences |
+| Project | `.mewrite/commands/*.md` | Lives in repo; team shares it |
+| User | `~/.mewrite/agent/commands/*.md` | Personal preferences |
 | Plugin | `node_modules/<plugin>/commands/*.md` | Installed via `mewrite plugin install` |
 
 User overrides project overrides plugin. Conflicts surface in `mewrite doctor`.
@@ -104,7 +104,7 @@ User overrides project overrides plugin. Conflicts surface in `mewrite doctor`.
 ## Importing from Claude Code
 
 ```bash
-cp ~/.claude/commands/*.md ~/.cave/commands/
+cp ~/.claude/commands/*.md ~/.mewrite/agent/commands/
 ```
 
 The frontmatter formats are identical. Paste-and-go.

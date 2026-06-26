@@ -1,11 +1,11 @@
 # DOOM Overlay Demo
 
-Play DOOM as an overlay in pi. Demonstrates that the overlay system can handle real-time game rendering at 35 FPS.
+Play DOOM as an overlay in Me Write Code. Demonstrates that the overlay system can handle real-time game rendering at 35 FPS.
 
 ## Usage
 
 ```bash
-pi --extension ./examples/extensions/doom-overlay
+mewrite --extension ./examples/extensions/doom-overlay
 ```
 
 Then run:
@@ -43,4 +43,4 @@ Height is calculated from width to maintain DOOM's 3.2:1 aspect ratio (accountin
 
 - [id Software](https://github.com/id-Software/DOOM) for the original DOOM
 - [doomgeneric](https://github.com/ozkl/doomgeneric) for the portable DOOM implementation
-- [pi-doom](https://github.com/badlogic/pi-doom) for the original pi integration
+- the original DOOM terminal integration this example was adapted from

@@ -51,31 +51,24 @@ The tap is auto-updated by the release pipeline.
 
 ::: details Debian / Ubuntu
 
-Download the `.deb` package from [GitHub releases](https://github.com/Zhachory1/mewritecode/releases/latest) and install:
-
 ```bash
-curl -LO https://github.com/Zhachory1/mewritecode/releases/latest/download/mewrite-code_<version>_amd64.deb
-sudo apt install ./mewrite-code_<version>_amd64.deb
+echo "deb [trusted=yes] https://raw.githubusercontent.com/Zhachory1/mewritecode/gh-pages/apt ./" | sudo tee /etc/apt/sources.list.d/mewrite.list
+sudo apt update
+sudo apt install mewrite-code
 ```
 
-Also available: `mewrite-code_<version>_arm64.deb` for ARM64 systems. The primary command is `mewrite`; the package also installs `mewrite-code` and `mewritecode` aliases.
-
-**Note:** These are individual release downloads, not repository-backed apt packages. A proper apt repository is planned for a future release.
+The primary command is `mewrite`; the package also installs `mewrite-code` and `mewritecode` aliases.
 
 :::
 
 ::: details Fedora / RHEL / CentOS
 
-Download the `.rpm` package from [GitHub releases](https://github.com/Zhachory1/mewritecode/releases/latest) and install:
-
 ```bash
-curl -LO https://github.com/Zhachory1/mewritecode/releases/latest/download/mewrite-code-<version>-1.x86_64.rpm
-sudo dnf install ./mewrite-code-<version>-1.x86_64.rpm  # or yum
+sudo curl -fsSL https://raw.githubusercontent.com/Zhachory1/mewritecode/gh-pages/yum/mewrite.repo -o /etc/yum.repos.d/mewrite.repo
+sudo dnf install mewrite-code  # or yum
 ```
 
-Also available: `mewrite-code-<version>-1.aarch64.rpm` for ARM64 systems. The primary command is `mewrite`; the package also installs `mewrite-code` and `mewritecode` aliases.
-
-**Note:** These are individual release downloads, not repository-backed dnf/yum packages. A proper RPM repository is planned for a future release.
+The primary command is `mewrite`; the package also installs `mewrite-code` and `mewritecode` aliases.
 
 :::
 
@@ -134,31 +127,27 @@ mewrite doctor
 Me Write Code checks the GitHub releases API once per 24 hours and prompts before applying. To pin a channel:
 
 ```bash
-mewrite update --channel stable    # default
-mewrite update --channel beta
-mewrite update --channel canary
+mewrite self-update --channel stable    # default
+mewrite self-update --channel beta
+mewrite self-update --channel canary
 ```
 
 To update on demand:
 
 ```bash
-mewrite update
+mewrite self-update
 ```
 
-To roll back to the previous version:
-
-```bash
-mewrite update --rollback
-```
+Rollback is not currently exposed as a CLI command; reinstall the desired version with your package manager if needed.
 
 ## Uninstall
 
 ```bash
-rm -rf ~/.cave
+rm -rf ~/.mewrite
 # remove the mewrite-code symlink from your PATH (~/.local/bin/mewrite or /usr/local/bin/mewrite)
 ```
 
-Sessions live in `~/.cave/sessions/`. Memory (cavemem) lives in `~/.cavemem/` and is **not** removed by the above — clean it explicitly if needed.
+Sessions and user config live under `~/.mewrite/agent/`. Memory (cavemem) lives in `~/.cavemem/` and is **not** removed by the above — clean it explicitly if needed.
 
 ## Headless / CI install
 

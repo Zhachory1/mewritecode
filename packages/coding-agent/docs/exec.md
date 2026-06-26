@@ -1,4 +1,4 @@
-# cave exec — CI / Non-Interactive Mode
+# mewrite exec — CI / Non-Interactive Mode
 
 `mewrite exec` runs a single agent prompt without a terminal UI and exits. It is designed for use in GitHub Actions, GitLab CI, shell scripts, and other automation contexts.
 
@@ -16,7 +16,7 @@ The assistant response is written to stdout and the process exits when done.
 |------|-------------|
 | `--json` | Emit a stable JSONL event stream on stdout instead of plain text |
 | `--output-schema <file>` | Validate the final message against a JSON Schema (exit 2 on mismatch) |
-| `--ephemeral` | Ignore `~/.cave/settings.json` and project `.cave/settings.json`; use only CLI args and env |
+| `--ephemeral` | Ignore `~/.mewrite/agent/settings.json` and project `.mewrite/settings.json`; use only CLI args and env |
 | `--skip-git-repo-check` | Skip the git repository presence check |
 | `--output-last-message <file>` | Write the final assistant text to a file atomically |
 | `--cwd <dir>` | Working directory for the agent session (default: `$PWD`) |
@@ -108,8 +108,8 @@ cat /tmp/answer.txt
 
 In ephemeral mode, `mewrite exec` ignores all user and project config files:
 
-- `~/.cave/agent/settings.json` is not loaded
-- `.cave/settings.json` in the project root is not loaded
+- `~/.mewrite/agent/settings.json` is not loaded
+- `.mewrite/settings.json` in the project root is not loaded
 - Extension and skill auto-discovery is disabled
 
 This is useful for reproducible CI runs that must not be affected by a developer's local settings.
@@ -148,11 +148,11 @@ mewrite exec \
   "Hello, are you working?"
 
 # GitHub Actions example
-- name: Run cave exec
+- name: Run mewrite exec
   run: |
     mewrite exec \
       --json \
-      --output-last-message ${{ runner.temp }}/cave-result.txt \
+      --output-last-message ${{ runner.temp }}/mewrite-result.txt \
       --ephemeral \
       "Review the changed files and summarise"
   env:

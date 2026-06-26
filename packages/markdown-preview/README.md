@@ -9,7 +9,7 @@ Loaded as a `@zhachory1/mewrite-code` extension; not intended as a standalone li
 Bundled with `@zhachory1/mewrite-code` by default. To load explicitly:
 
 ```bash
-caveman --extension @zhachory1/mewrite-markdown-preview "render this README"
+mewrite --extension @zhachory1/mewrite-markdown-preview "render this README"
 ```
 
 ## What it does

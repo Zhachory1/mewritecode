@@ -8,7 +8,7 @@
 
 Me Write Code is the `mewrite` CLI package in [Zhachory1/mewritecode](https://github.com/Zhachory1/mewritecode).
 
-Me Write Code is a minimal terminal coding harness that stays provider-agnostic, terminal-native, deeply extensible, and downstream-brandable. Use it interactively, run it in print or JSON mode, embed it through the SDK, extend it with TypeScript modules, skills, prompt templates, themes, and CaveKit workflows, or wrap it as a branded distribution without forking core code.
+Me Write Code is a terminal coding agent that is provider-agnostic, terminal-native, extensible, and downstream-brandable. Use it interactively, run it in print or JSON mode, embed it through the SDK, extend it with TypeScript modules, skills, prompt templates, and themes, or wrap it as a branded distribution without forking core code.
 
 ---
 
@@ -102,14 +102,13 @@ Platform notes: [Windows](docs/windows.md) · [Termux](docs/termux.md) · [tmux]
 
 ## What Me Write Code Adds
 
-Me Write Code keeps upstream extensibility goals, then adds fork-specific workflows and compression features on top.
+Me Write Code combines the core terminal coding workflow with token-saving defaults and broad provider support.
 
 | Area | Me Write Code |
 |------|------|
 | Multi-provider coding agent | Built in |
 | Caveman Mode | 3-layer token compression |
 | RTK integration | Optional bash command rewriting + output reduction |
-| CaveKit | Draft → Architect → Build → Inspect workflow |
 | Package ecosystem | Install prompts, skills, themes, and extensions via npm or git |
 | Brandable wrappers | Change app name, logo/wordmark, colors, docs links, watch markers, MCP policy, and update links from package metadata |
 | SDK + RPC | Embed in apps or automate from other runtimes |
@@ -237,13 +236,13 @@ Caveman Mode is enabled by default and reduces token waste without changing work
 - returns stub when unchanged file is re-read
 - reduces repeated context injection during refactors
 
-Change level with `/mewrite [lite|full|ultra|off]`.
+Change level with `/cave [lite|full|ultra|off]`.
 
 Settings reference: [docs/settings.md](docs/settings.md)
 
-### Benchmark Results
+### Benchmarks
 
-Run `npm run bench:offline` to reproduce. Results on 10 real-world tool output fixtures:
+Token-efficiency claims are under revalidation. Run `npm run bench:offline` for local compression analysis on fixture data.
 
 #### Tool Output Compression
 
@@ -292,14 +291,7 @@ Run `npm run bench:offline` to reproduce. Results on 10 real-world tool output f
 | full | +175 tokens | 1 tool call | **+567K tokens saved** |
 | ultra | +195 tokens | 1 tool call | **+566K tokens saved** |
 
-Caveman Mode pays for itself on the **first tool call** of every session.
-
-#### Cost Impact (Sonnet pricing, $3/M input)
-
-```
-  15-turn session:  ~$1.70 saved per session
-  30-turn session:  ~$6.92 saved per session  (91% tool compression)
-```
+Break-even depends on prompt size, model, provider pricing, and tool output volume.
 
 #### Session Replay (real sessions)
 
@@ -475,7 +467,7 @@ Thin downstream packages can depend on `@zhachory1/mewrite-code` and set package
 }
 ```
 
-`CODING_AGENT_PACKAGE_DIR` is the bootstrap override used before package metadata is loaded. Once metadata is loaded, the package-specific env named by `packageDirEnv` is honored for asset lookup. User config then defaults to `~/.examplecode/agent`, project config to `.examplecode/`, and lower-level storage paths can derive from the same config dir. The `branding` block controls startup image logo or wordmark, tagline, watch comment marker (`// examplecode!`, `// examplecode?`), docs/community links, and update changelog links. `logoPath` resolves relative to the wrapper package and supports PNG, JPEG, GIF, and WebP; when set and loadable, it replaces the ASCII wordmark. The `theme.default` value selects a theme by name when the user has not chosen one; `theme.paths` loads wrapper-shipped theme files relative to the wrapper package. Shareable resource packages can also ship themes via package `pi.themes` or a package-root `themes/` directory. The `mcp` block reads `PACKAGE_DIR/.mcp.json` by default and can disable project, user, legacy `.cave`, Claude Code, and Codex compatibility paths when a downstream distribution needs isolated MCP configuration.
+`CODING_AGENT_PACKAGE_DIR` is the bootstrap override used before package metadata is loaded. Once metadata is loaded, the package-specific env named by `packageDirEnv` is honored for asset lookup. User config then defaults to `~/.examplecode/agent`, project config to `.examplecode/`, and lower-level storage paths can derive from the same config dir. The `branding` block controls startup image logo or wordmark, tagline, watch comment marker (`// examplecode!`, `// examplecode?`), docs/community links, and update changelog links. `logoPath` resolves relative to the wrapper package and supports PNG, JPEG, GIF, and WebP; when set and loadable, it replaces the ASCII wordmark. The `theme.default` value selects a theme by name when the user has not chosen one; `theme.paths` loads wrapper-shipped theme files relative to the wrapper package. Shareable resource packages can also ship themes via package metadata or a package-root `themes/` directory. The `mcp` block reads `PACKAGE_DIR/.mcp.json` by default and can disable project, user, legacy `.cave`, Claude Code, and Codex compatibility paths when a downstream distribution needs isolated MCP configuration.
 
 For non-upstream distributions, self-update is disabled unless the wrapper explicitly provides a complete `selfUpdate` configuration.
 
@@ -486,16 +478,6 @@ For non-upstream distributions, self-update is disabled unless the wrapper expli
 ```bash
 mewrite [options] [@files...] [messages...]
 ```
-
-### Subcommands
-
-| Command | Description |
-|---------|-------------|
-| `mewrite goal start "<text>" [flags]` | Autonomous goal loop (Ralph-style) |
-| `mewrite goal resume [id] [--force]` | Resume a paused/completed goal |
-| `mewrite goal status [id]` | Show goal state, ledger, transcript |
-| `mewrite goal cancel [id]` | Mark goal as cancelled |
-| `mewrite goal list` | List all goals in project |
 
 ### Subcommands
 
@@ -540,7 +522,7 @@ mewrite [options] [@files...] [messages...]
 |---------|-------------|
 | `/plan` | Toggle plan mode (read-only exploration) |
 | `/act` | Execute a saved plan |
-| `/mewrite [level]` | Adjust token compression |
+| `/cave [level]` | Adjust token compression |
 | `/login`, `/logout` | OAuth authentication |
 | `/model` | Switch models |
 | `/settings` | Configure settings |

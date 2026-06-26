@@ -4,8 +4,8 @@ Me Write Code uses JSON settings files with project settings overriding global s
 
 | Location | Scope |
 |----------|-------|
-| `~/.cave/agent/settings.json` | Global (all projects) |
-| `.cave/settings.json` | Project (current directory) |
+| `~/.mewrite/agent/settings.json` | Global (all projects) |
+| `.mewrite/settings.json` | Project (current directory) |
 
 Edit directly or use `/settings` for common options.
 
@@ -67,13 +67,13 @@ Edit directly or use `/settings` for common options.
 }
 ```
 
-### Caveman Mode
+### Compression Mode
 
-Caveman Mode is a 3-layer token compression system that reduces token usage while preserving technical accuracy.
+Compression mode is a 3-layer token compression system that reduces token usage while preserving technical accuracy.
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
-| `caveMode.enabled` | boolean | `true` | Enable cave mode communication compression |
+| `caveMode.enabled` | boolean | `true` | Enable communication compression |
 | `caveMode.intensity` | string | `"full"` | Compression level: `"lite"`, `"full"`, or `"ultra"` |
 | `caveMode.toolCompression` | boolean | `true` | Compress tool output (strip ANSI, collapse blanks, truncate long output) |
 
@@ -99,7 +99,7 @@ Tool compression applies three steps to all tool output:
 2. Collapse 3+ consecutive blank lines to a single blank line
 3. Truncate output exceeding 500 lines (keeps first 200 + last 100 lines)
 
-Use `/cave [lite|full|ultra|off]` to change intensity during a session without editing settings.
+Use `/settings` to change intensity during a session without editing settings.
 
 ### RTK (Rust Token Killer)
 
@@ -188,7 +188,7 @@ When a provider requests a retry delay longer than `maxDelayMs` (e.g., Google's 
 | `sessionDir` | string | - | Directory where session files are stored. Accepts absolute or relative paths. |
 
 ```json
-{ "sessionDir": ".cave/sessions" }
+{ "sessionDir": ".mewrite/sessions" }
 ```
 
 When multiple sources specify a session directory, `--session-dir` CLI flag takes precedence over `sessionDir` in settings.json.
@@ -215,7 +215,7 @@ When multiple sources specify a session directory, `--session-dir` CLI flag take
 
 These settings define where to load extensions, skills, prompts, and themes from.
 
-Paths in `~/.cave/agent/settings.json` resolve relative to `~/.cave/agent`. Paths in `.cave/settings.json` resolve relative to `.cave`. Absolute paths and `~` are supported.
+Paths in `~/.mewrite/agent/settings.json` resolve relative to `~/.mewrite/agent`. Paths in `.mewrite/settings.json` resolve relative to `.mewrite`. Absolute paths and `~` are supported.
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
@@ -234,7 +234,7 @@ String form loads all resources from a package:
 
 ```json
 {
-  "packages": ["pi-skills", "@org/my-extension"]
+  "packages": ["@org/team-skills", "@org/my-extension"]
 }
 ```
 
@@ -244,7 +244,7 @@ Object form filters which resources to load:
 {
   "packages": [
     {
-      "source": "pi-skills",
+      "source": "@org/team-skills",
       "skills": ["brave-search", "transcribe"],
       "extensions": []
     }
@@ -280,22 +280,22 @@ See [packages.md](packages.md) for package management details.
     "maxRetries": 3
   },
   "enabledModels": ["claude-*", "gpt-4o"],
-  "packages": ["pi-skills"]
+  "packages": ["@org/team-skills"]
 }
 ```
 
 ## Project Overrides
 
-Project settings (`.cave/settings.json`) override global settings. Nested objects are merged:
+Project settings (`.mewrite/settings.json`) override global settings. Nested objects are merged:
 
 ```json
-// ~/.cave/agent/settings.json (global)
+// ~/.mewrite/agent/settings.json (global)
 {
   "theme": "dark",
   "compaction": { "enabled": true, "reserveTokens": 16384 }
 }
 
-// .cave/settings.json (project)
+// .mewrite/settings.json (project)
 {
   "compaction": { "reserveTokens": 8192 }
 }

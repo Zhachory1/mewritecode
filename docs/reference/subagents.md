@@ -17,7 +17,7 @@ A subagent is a child Me Write Code process with its own context window, tool al
 
 ## Definition
 
-`.cave/agents/explore.md`:
+`.mewrite/agents/explore.md`:
 
 ```markdown
 ---
@@ -33,7 +33,7 @@ isolation: none
 ---
 ```
 
-For implementer-class agents, set `isolation: worktree` to spawn the agent in a fresh git worktree at `.cave/worktrees/<id>`. Worktrees are cleaned on agent exit unless `--keep-worktree`.
+For implementer-class agents, set `isolation: worktree` to spawn the agent in a fresh git worktree at `.mewrite/worktrees/<id>`. Worktrees are cleaned on agent exit unless `--keep-worktree`.
 
 ## Frontmatter
 
@@ -63,7 +63,7 @@ For implementer-class agents, set `isolation: worktree` to spawn the agent in a 
 | `Critic` | Adversarial review of a proposed plan |
 | `Editor` | Apply a specific, already-decided edit in-place (no worktree) |
 
-Override or extend in `.cave/agents/`.
+Override or extend in `.mewrite/agents/`.
 
 ## Giving a subagent write capability
 
@@ -85,8 +85,8 @@ rather than a silent no-op.
 
 | Mode | Frontmatter | Where edits land | Trade-off |
 |---|---|---|---|
-| In-place (default) | omit `isolation`, or `isolation: none` | The parent's working tree | No merge step — matches cave's autopilot model. Use for "just make this edit." |
-| Isolated | `isolation: worktree` | A fresh `git worktree` at `.cave/worktrees/<id>` | Reviewable, parent index stays clean, but you must merge the worktree yourself. Use for larger or risky change sets. |
+| In-place (default) | omit `isolation`, or `isolation: none` | The parent's working tree | No merge step. Use for small, concrete edits. |
+| Isolated | `isolation: worktree` | A fresh `git worktree` at `.mewrite/worktrees/<id>` | Reviewable, parent index stays clean, but you must merge the worktree yourself. Use for larger or risky change sets. |
 
 The bundled `Editor` agent ships in-place (no `isolation`) with a tight
 description so it is dispatched only for concrete, already-decided edits. Set
@@ -155,12 +155,12 @@ Recommended `observability.phase` values are `plan`, `implement`, `test`,
 
 The parent receives `output` for model context and can separately render or
 persist `observability` as a dashboard. Full transcripts persist to
-`~/.cave/sessions/<id>.trace.jsonl`.
+`~/.mewrite/agent/sessions/<id>.trace.jsonl`.
 
 ## Importing Claude Code agents
 
 ```bash
-cp ~/.claude/agents/*.md ~/.cave/agents/
+cp ~/.claude/agents/*.md ~/.mewrite/agent/agents/
 ```
 
 Frontmatter is a superset. Tool names match.

@@ -1,4 +1,4 @@
-> pi can create prompt templates. Ask it to build one for your workflow.
+> Me Write Code can create prompt templates. Ask it to build one for your workflow.
 
 # Prompt Templates
 
@@ -6,11 +6,11 @@ Prompt templates are Markdown snippets that expand into full prompts. Type `/nam
 
 ## Locations
 
-Pi loads prompt templates from:
+Me Write Code loads prompt templates from:
 
-- Global: `~/.pi/agent/prompts/*.md`
-- Project: `.pi/prompts/*.md`
-- Packages: `prompts/` directories or `pi.prompts` entries in `package.json`
+- Global: `~/.mewrite/agent/prompts/*.md`
+- Project: `.mewrite/prompts/*.md`
+- Packages: `prompts/` directories or legacy `pi.prompts` entries in `package.json` (manifest key still named `pi`)
 - Settings: `prompts` array with files or directories
 - CLI: `--prompt-template <path>` (repeatable)
 

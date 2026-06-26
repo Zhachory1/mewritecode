@@ -45,7 +45,7 @@ mewrite
 
 :::
 
-The OAuth flow opens a browser and stores tokens in your OS keychain (macOS Keychain, Linux libsecret, Windows Credential Manager).
+The OAuth flow opens a browser and stores credentials in `~/.mewrite/agent/auth.json` with user-only file permissions.
 
 See the full [Auth & Providers](/getting-started/auth) page for the 20+ supported backends.
 
@@ -66,7 +66,7 @@ Type a prompt and the agent responds. Type `/help` for the full slash-command li
 ## What just happened
 
 1. npm installed the `@zhachory1/mewrite-code` package globally, registering `mewrite`, `mewritecode`, and `mewrite-code` commands.
-2. On first launch, the wizard ran (4 questions: theme, auth, default model, telemetry off-by-default) and persisted your choice to `~/.cave/settings.json`.
+2. On first launch, the wizard ran and persisted your choices to `~/.mewrite/agent/settings.json`.
 3. **Caveman Mode** compression is on by default. Tool output (bash, grep, file reads) is summarized before re-entering context.
 
 ## Common next steps
@@ -84,7 +84,7 @@ Type a prompt and the agent responds. Type `/help` for the full slash-command li
 ## Troubleshooting
 
 - `mewrite: command not found` after install — restart your shell, or check that the npm global bin dir is on your PATH (`npm config get prefix`).
-- Wizard didn't appear — delete `~/.cave/settings.json` and run `mewrite` again.
+- Wizard didn't appear — delete `~/.mewrite/agent/settings.json` and run `mewrite` again.
 - Auth fails on Linux — install `libsecret` (`apt install libsecret-1-0` on Debian/Ubuntu) or use API keys via env.
 
 More: [Troubleshooting](/troubleshooting).

@@ -37,8 +37,8 @@ mewrite
 | `/architect` | `/architect` | Architect/editor split |
 | `--map-tokens N` | `/repomap set mapTokens=N` | Same default (1024) |
 | `--edit-format` | `--edit-format` | `whole`/`diff`/`udiff`/`editor-diff`/`editor-whole` |
-| `.aider.conf.yml` | `~/.cave/settings.json` | Different format, same options |
-| Conventions file | `CAVE.md` / `CLAUDE.md` | Read on session start |
+| `.aider.conf.yml` | `~/.mewrite/agent/settings.json` | Different format, same options |
+| Conventions file | `AGENTS.md` / `CLAUDE.md` | Read on session start |
 
 ## Repo map
 
@@ -87,7 +87,7 @@ Aider compresses by selecting smaller context (repo map). Me Write Code addition
 
 ### Watch mode
 
-Aider's `// ai!` and `// ai?` magic comments — Me Write Code has the same with `// cave!` and `// cave?`:
+Aider's `// ai!` and `// ai?` magic comments — Me Write Code uses `// mewrite!` and `// mewrite?`:
 
 ```bash
 mewrite --watch
@@ -97,11 +97,11 @@ Trailing `!` triggers code edits with cwd + comment + surrounding lines as conte
 
 ### Session model
 
-Aider sessions are tied to a chat history file. Me Write Code sessions are JSONL files in `~/.cave/sessions/<cwd-hash>/<id>.jsonl`. Branchable via `/tree` and `/fork`.
+Aider sessions are tied to a chat history file. Me Write Code sessions are JSONL files under `~/.mewrite/agent/sessions/`. Branchable via `/tree` and `/fork`.
 
 ## Conventions file
 
-Aider reads `<repo>/.aider/conventions.md`. Me Write Code reads `CAVE.md`, `AGENTS.md`, and `CLAUDE.md` in priority order, layered. Move your conventions file to one of those names and you're done.
+Aider reads `<repo>/.aider/conventions.md`. Me Write Code reads `AGENTS.md` and `CLAUDE.md` as project context. Move your conventions file to one of those names and you're done.
 
 ## Cost tracking
 
@@ -111,4 +111,4 @@ Aider was first to surface per-message cost inline. Me Write Code does the same:
 [$0.0042 (cached: $0.0001)] Sonnet 4 · 12,431 in / 412 out
 ```
 
-`/tokens` opens a live breakdown. Daily totals in `~/.cave/usage.json`.
+`/tokens` opens a live breakdown. Daily totals persist under `~/.mewrite/agent/`.

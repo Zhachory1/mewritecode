@@ -5,7 +5,7 @@ description: Zero-migration. Paste your existing config and Me Write Code Just W
 
 # Migrating from Claude Code
 
-The promise: **paste your existing Claude Code config into `~/.cave/` and Me Write Code behaves the same — only cheaper**. Me Write Code's authoring formats are a superset of Claude Code's.
+Me Write Code can reuse Claude Code authoring formats while storing its own config under `~/.mewrite/agent/` and project config under `.mewrite/`.
 
 <CopyForLlms />
 
@@ -16,16 +16,16 @@ The promise: **paste your existing Claude Code config into `~/.cave/` and Me Wri
 npm install -g @zhachory1/mewrite-code
 
 # 2. Copy config
-cp -r ~/.claude/commands ~/.cave/
-cp -r ~/.claude/skills ~/.cave/
-cp -r ~/.claude/agents ~/.cave/
-cp ~/.claude/settings.json ~/.cave/settings.json    # hooks + statusLine
+mkdir -p ~/.mewrite/agent
+cp -r ~/.claude/commands ~/.mewrite/agent/
+cp -r ~/.claude/skills ~/.mewrite/agent/
+cp -r ~/.claude/agents ~/.mewrite/agent/
+cp ~/.claude/settings.json ~/.mewrite/agent/settings.json    # hooks + statusLine
 
 # 3. Project-scope
-ln -s .claude .cave   # or: cp -r .claude .cave (if you want them independent)
+cp -r .claude .mewrite   # optional project-scope import
 
-# 4. CLAUDE.md → CAVE.md (or keep CLAUDE.md; mewrite-code reads both)
-ln -s CLAUDE.md CAVE.md
+# 4. Keep CLAUDE.md or add AGENTS.md; Me Write Code reads both.
 
 # 5. MCP — already standard
 #    .mcp.json works as-is.
@@ -38,12 +38,12 @@ mewrite
 
 | Claude Code | Me Write Code | Notes |
 |---|---|---|
-| `~/.claude/settings.json` | `~/.cave/settings.json` | Hooks + statusLine identical schema (mewrite-code runs hooks as observers) |
-| `~/.claude/commands/*.md` | `~/.cave/commands/*.md` | Frontmatter is a superset |
-| `~/.claude/skills/<name>/SKILL.md` | `~/.cave/skills/<name>/SKILL.md` | Identical |
-| `~/.claude/agents/<name>.md` | `~/.cave/agents/<name>.md` | Frontmatter is a superset |
+| `~/.claude/settings.json` | `~/.mewrite/agent/settings.json` | Hooks + statusLine compatible schema |
+| `~/.claude/commands/*.md` | `~/.mewrite/agent/commands/*.md` | Frontmatter is a superset |
+| `~/.claude/skills/<name>/SKILL.md` | `~/.mewrite/agent/skills/<name>/SKILL.md` | Identical |
+| `~/.claude/agents/<name>.md` | `~/.mewrite/agent/agents/<name>.md` | Frontmatter is a superset |
 | `.mcp.json` | `.mcp.json` | Same path; no change |
-| `CLAUDE.md` | `CLAUDE.md` (read) or `CAVE.md` (preferred) | Me Write Code reads both, layered |
+| `CLAUDE.md` | `CLAUDE.md` or `AGENTS.md` | Me Write Code reads both, layered |
 | Auto-Memory | cavemem | Different backend; same UX |
 
 ## Differences worth knowing
@@ -72,22 +72,19 @@ mewrite --model claude-sonnet-4   # default behavior matches Claude Code
 By default Caveman Mode compression is **on**, which Claude Code doesn't have. Expect tool-output token consumption to drop ~85%. If something looks off, bisect with:
 
 ```bash
-/mewrite off
+/cave off
 ```
 
-### Permissions
+### Permissions and hooks
 
-Me Write Code runs in autopilot — there is no permission prompt, no `--permission-mode` flag, and no Shift+Tab mode cycle. Tools always execute. If you need a tool firewall, write a `PreToolUse` hook (it can rewrite tool input but cannot block).
-
-### Hooks
-
-`PreToolUse` and `PostToolUse` fire as **observers**. They can patch tool input via `hookSpecificOutput.updatedInput` and add stdout to context, but they cannot deny or block a tool call. Claude Code's "exit code 2 = deny" semantics do not apply here.
+Me Write Code supports plan mode, approval mode, checkpoints, and beta native sandboxing. `PreToolUse` hooks can deny, ask, or allow tool calls via Claude Code-compatible hook output.
 
 ## Confirming the migration worked
 
 ```bash
 mewrite doctor                    # general health
-mewrite hooks list                # all hooks loaded
+# inside the TUI:
+/hooks list                       # all hooks loaded
 mewrite skills list               # all skills loaded
 mewrite agents list               # all subagents loaded
 mewrite mcp doctor                # MCP servers reachable
@@ -97,7 +94,7 @@ If any of these report mismatches, [open an issue](https://github.com/Zhachory1/
 
 ## Why not just use Claude Code?
 
-- **Cost.** Caveman Mode compression saves $1.70-$6.92 per typical session (proven in `npm run bench:offline`).
+- **Token efficiency.** Caveman Mode, tool-output budgets, read deduplication, and prompt-cache-friendly sessions reduce context waste.
 - **Provider flexibility.** Use ChatGPT Plus, Copilot, Gemini, or any OpenAI-compatible endpoint.
 - **Session branching.** `/tree`, `/fork` — no major competitor has this.
 - **MIT.** No vendor lock-in; self-host the daemon.
