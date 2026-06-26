@@ -1,5 +1,5 @@
 /**
- * WS18 - watch-agent-run: agent dispatch shim for mewrite watch triggers.
+ * WS18 - watch-agent-run: agent dispatch shim for watch triggers.
  *
  * Kept in a separate module so watch.ts can dynamically import it
  * (avoids loading the entire agent runtime at watcher startup).
@@ -7,12 +7,13 @@
  * The full agent wiring (createAgentSessionRuntime + runPrintMode)
  * is performed in main.ts when the user is in interactive mode via
  * the /watch slash command, which wires a real agentRun callback.
- * In standalone `mewrite watch` mode this shim emits the prompt to stderr
- * and delegates to `mewrite -p "<prompt>"` via a child process.
+ * In standalone watch mode this shim emits the prompt to stderr
+ * and delegates to the current binary via a child process.
  */
 
 import { spawn } from "node:child_process";
 import chalk from "chalk";
+import { APP_NAME, WATCH_FIRE_MARKER, WATCH_QA_MARKER } from "../config.js";
 
 export interface WatchAgentRunOptions {
 	model?: string;
@@ -20,13 +21,13 @@ export interface WatchAgentRunOptions {
 }
 
 /**
- * Run the mewrite agent for a single watch trigger.
+ * Run the agent for a single watch trigger.
  *
- * Spawns `mewrite -p <prompt>` as a child process so the full session
+ * Spawns the current binary with `-p <prompt>` as a child process so the full session
  * runtime initialises cleanly. Captures stdout and returns it as
  * the response string.
  *
- * isReadOnly=true (mewrite?) passes --tools read,grep,find,ls so the
+ * isReadOnly=true passes --tools read,grep,find,ls so the
  * agent cannot write files.
  */
 export async function runWatchAgentRun(
@@ -35,8 +36,8 @@ export async function runWatchAgentRun(
 	isReadOnly: boolean,
 	options: WatchAgentRunOptions = {},
 ): Promise<string> {
-	const marker = isReadOnly ? "mewrite?" : "mewrite!";
-	process.stderr.write(chalk.cyan(`[mewrite watch] ${marker} triggered in ${filePath} — running agent...\n`));
+	const marker = isReadOnly ? WATCH_QA_MARKER : WATCH_FIRE_MARKER;
+	process.stderr.write(chalk.cyan(`[${APP_NAME} watch] ${marker} triggered in ${filePath} — running agent...\n`));
 
 	const mewriteBin = process.argv[1]; // same binary that is running
 
@@ -71,13 +72,13 @@ export async function runWatchAgentRun(
 				process.stderr.write(chalk.dim(stderr));
 			}
 			if (code !== 0) {
-				process.stderr.write(chalk.yellow(`[mewrite watch] agent exited with code ${code}\n`));
+				process.stderr.write(chalk.yellow(`[${APP_NAME} watch] agent exited with code ${code}\n`));
 			}
 			resolve(stdout.trim());
 		});
 
 		child.on("error", (err) => {
-			process.stderr.write(chalk.red(`[mewrite watch] failed to spawn agent: ${err.message}\n`));
+			process.stderr.write(chalk.red(`[${APP_NAME} watch] failed to spawn agent: ${err.message}\n`));
 			resolve("");
 		});
 	});

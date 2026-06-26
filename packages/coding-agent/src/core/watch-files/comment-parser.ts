@@ -1,13 +1,10 @@
 /*
  * WS18 - Watch-Files comment parser.
  *
- * Scans a file's content for mewrite comment markers across multiple languages:
- *   "// mewrite!"  - fire trigger (js/ts/go/rust/c/cpp/java)
- *   "# mewrite!"   - fire trigger (py/rb/sh)
- *   "-- mewrite!"  - fire trigger (lua/sql)
- *   "mewrite?"     - Q&A trigger (read-only)
- *   "mewrite"      - accumulate context (no suffix)
+ * Scans a file's content for configured comment markers across multiple languages.
  */
+
+import { WATCH_FIRE_MARKER, WATCH_MARKER, WATCH_QA_MARKER } from "../../config.js";
 
 export type CommentKind = "fire" | "qa" | "context";
 
@@ -70,33 +67,33 @@ export function getPrefixesForExt(ext: string): string[] {
 }
 
 /**
- * Parse the text after a mewrite marker to determine kind and payload.
- * Returns null if the marker is not a mewrite comment.
+ * Parse the text after a watch marker to determine kind and payload.
+ * Returns null if the marker is not a configured watch comment.
  */
 function parseMarkerText(afterPrefix: string): { kind: CommentKind; text: string } | null {
 	const trimmed = afterPrefix.trim();
 
-	// Check for block-comment close (handles `/* mewrite! */` style)
+	// Check for block-comment close (handles inline block marker style)
 	const withoutBlockClose = trimmed.replace(/\s*\*\/\s*$/, "").trim();
 
 	const toCheck = withoutBlockClose;
 
-	if (toCheck.startsWith("mewrite!")) {
-		return { kind: "fire", text: toCheck.slice("mewrite!".length).trim() };
+	if (toCheck.startsWith(WATCH_FIRE_MARKER)) {
+		return { kind: "fire", text: toCheck.slice(WATCH_FIRE_MARKER.length).trim() };
 	}
-	if (toCheck.startsWith("mewrite?")) {
-		return { kind: "qa", text: toCheck.slice("mewrite?".length).trim() };
+	if (toCheck.startsWith(WATCH_QA_MARKER)) {
+		return { kind: "qa", text: toCheck.slice(WATCH_QA_MARKER.length).trim() };
 	}
-	// Must be exactly "mewrite" or "mewrite " followed by context text (not mewrite! or mewrite?)
-	if (toCheck === "mewrite" || toCheck.startsWith("mewrite ")) {
-		return { kind: "context", text: toCheck.slice("mewrite".length).trim() };
+	// Must be exactly the marker or marker + space followed by context text (not fire or Q&A)
+	if (toCheck === WATCH_MARKER || toCheck.startsWith(`${WATCH_MARKER} `)) {
+		return { kind: "context", text: toCheck.slice(WATCH_MARKER.length).trim() };
 	}
 
 	return null;
 }
 
 /**
- * Parse all mewrite comments from file content.
+ * Parse all configured watch comments from file content.
  *
  * @param content — full file text
  * @param ext — file extension (without dot), used to determine comment prefixes

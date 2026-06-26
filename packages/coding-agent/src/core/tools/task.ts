@@ -30,7 +30,7 @@ import {
 	validateSubagentOutput,
 } from "@zhachory1/mewrite-agent";
 import { Text } from "@zhachory1/mewrite-tui";
-import { CONFIG_DIR_NAME } from "../../config.js";
+import { APP_NAME, CONFIG_DIR_NAME } from "../../config.js";
 import {
 	filterAgentsByMcpAvailability,
 	findAgentDef,
@@ -179,7 +179,7 @@ interface SpawnResult {
 }
 
 /**
- * Resolve which cave executable to spawn. Mirrors the upstream subagent
+ * Resolve which executable to spawn. Mirrors the upstream subagent
  * invocation pattern — prefer the current process binary (so tests with tsx
  * run with tsx; production runs with node + dist), falling back to
  * `cave` on PATH.
@@ -195,7 +195,7 @@ function resolveCaveInvocation(args: string[], caveBin?: string): { command: str
 	if (!isGenericRuntime) {
 		return { command: process.execPath, args };
 	}
-	return { command: "cave", args };
+	return { command: APP_NAME, args };
 }
 
 /**

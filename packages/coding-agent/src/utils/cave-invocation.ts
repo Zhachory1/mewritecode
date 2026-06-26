@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { basename } from "node:path";
+import { APP_NAME } from "../config.js";
 
 export interface CaveInvocation {
 	command: string;
@@ -7,11 +8,11 @@ export interface CaveInvocation {
 }
 
 /**
- * Resolve how to spawn same cave executable currently running.
+ * Resolve how to spawn same executable currently running.
  *
  * - source / dist script run → `node <script>`
  * - compiled binary run      → `<binary>`
- * - generic runtime fallback → `mewrite` on PATH
+ * - generic runtime fallback → configured app name on PATH
  */
 export function resolveCurrentCaveInvocation(): CaveInvocation {
 	const currentScript = process.argv[1];
@@ -25,5 +26,5 @@ export function resolveCurrentCaveInvocation(): CaveInvocation {
 		return { command: process.execPath, argsPrefix: [] };
 	}
 
-	return { command: "mewrite", argsPrefix: [] };
+	return { command: APP_NAME, argsPrefix: [] };
 }

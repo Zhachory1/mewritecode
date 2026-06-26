@@ -5,6 +5,7 @@
 	"type": "module",
 	"mewriteConfig": {
 		"name": "mewrite",
+		"displayName": "Me Write Code",
 		"configDir": ".mewrite"
 	},
 	"bin": {

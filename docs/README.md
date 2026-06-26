@@ -1,6 +1,6 @@
 # Me Write Code Docs
 
-VitePress source for [getcaveman.dev/docs](https://getcaveman.dev/docs).
+VitePress source for the configured Me Write Code docs site.
 
 ## Local dev
 
@@ -43,7 +43,7 @@ npm run preview      # serves the built site
 
 ## Deploy
 
-The site builds to `docs/.vitepress/dist/`. The deploy target is `getcaveman.dev/docs/` — base URL is `/docs/` (set in `.vitepress/config.ts`).
+The site builds to `docs/.vitepress/dist/`. Branding and deploy URLs are configured in `.vitepress/config.ts` via `DOCS_SITE_TITLE`, `DOCS_SITE_URL`, `DOCS_BASE`, `DOCS_GITHUB_URL`, and `DOCS_DISCORD_URL`.
 
 A GitHub Actions workflow rebuilds the site on push to `main` and uploads to GitHub Pages or the configured static host. See `.github/workflows/docs.yml` (out of scope for this initial scaffold; track via WS11 release pipeline).
 

@@ -4,7 +4,14 @@
 
 import type { ThinkingLevel } from "@zhachory1/mewrite-agent";
 import chalk from "chalk";
-import { APP_NAME, CONFIG_DIR_NAME, ENV_AGENT_DIR, ENV_PACKAGE_DIR, ENV_SHARE_VIEWER_URL } from "../config.js";
+import {
+	APP_NAME,
+	CONFIG_DIR_NAME,
+	ENV_AGENT_DIR,
+	ENV_PACKAGE_DIR,
+	ENV_SHARE_VIEWER_URL,
+	WATCH_FIRE_MARKER,
+} from "../config.js";
 import type { ExtensionFlag } from "../core/extensions/types.js";
 import { allTools, type ToolName } from "../core/tools/index.js";
 
@@ -48,7 +55,7 @@ export interface Args {
 	listModels?: string | true;
 	offline?: boolean;
 	verbose?: boolean;
-	/** WS18: watch mode flag (`mewrite --watch` or `mewrite watch`) */
+	/** WS18: watch mode flag (`--watch` or `watch`) */
 	watch?: boolean;
 	/** Hard cap on assistant turns within a run (subagent.maxTurns parity). */
 	maxTurns?: number;
@@ -246,7 +253,7 @@ ${chalk.bold("Usage:")}
   ${APP_NAME} run-recipe <name>               Run YAML recipes
   ${APP_NAME} goal <subcommand>               Autonomous goal loop (start, resume, status, cancel, list)
   ${APP_NAME} mcp <subcommand>                MCP server management (add, list, doctor, remove)
-  ${APP_NAME} watch [paths]                   File watcher for // mewrite! triggers
+  ${APP_NAME} watch [paths]                   File watcher for // ${WATCH_FIRE_MARKER} triggers
   ${APP_NAME} exec [flags] "<prompt>"         Non-interactive CI mode
   ${APP_NAME} serve                           Start daemon for remote clients
   ${APP_NAME} attach                          Attach to a running daemon session
@@ -286,7 +293,7 @@ ${chalk.bold("Options:")}
   --list-models [search]         List available models (with optional fuzzy search)
   --verbose                      Force verbose startup (overrides quietStartup setting)
   --offline                      Disable startup network operations (same as PI_OFFLINE=1)
-  --watch                        Start watch mode (alias for \`mewrite watch\`)
+  --watch                        Start watch mode (alias for \`${APP_NAME} watch\`)
   --max-turns <n>                Cap assistant turns within a run (subagent.maxTurns parity)
   --approval                     OPT-IN approval mode: prompt before writes/bash (human-review, NOT a sandbox)
   --help, -h                     Show this help

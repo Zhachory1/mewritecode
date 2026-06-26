@@ -1,7 +1,7 @@
 /**
  * WS18 — `/watch` slash command.
  *
- * Toggle watch mode on/off from an interactive mewrite session.
+ * Toggle watch mode on/off from an interactive session.
  *
  * Subcommands:
  *   /watch           — toggle watch mode (start if stopped, stop if running)
@@ -15,6 +15,7 @@
  * callback supplied at registration time.
  */
 
+import { APP_NAME, WATCH_FIRE_MARKER, WATCH_MARKER, WATCH_QA_MARKER } from "../../config.js";
 import type { AgentRunFn } from "../watch-files/trigger.js";
 import { DEFAULT_WATCH_EXTENSIONS, startWatcher, type WatcherHandle } from "../watch-files/watcher.js";
 
@@ -48,7 +49,7 @@ export interface WatchCommandIO {
 
 export const WATCH_SLASH_COMMAND = {
 	name: "watch",
-	description: "Toggle watch mode: fire agent on // mewrite! comments in source files",
+	description: `Toggle watch mode: fire agent on // ${WATCH_FIRE_MARKER} comments in source files`,
 } as const;
 
 /**
@@ -99,14 +100,14 @@ export async function runWatchCommand(args: string, io: WatchCommandIO = {}): Pr
 
 Subcommands:
   /watch         — toggle watch mode
-  /watch on      — start watching cwd for mewrite! markers
+  /watch on      — start watching cwd for ${WATCH_FIRE_MARKER} markers
   /watch off     — stop watching
   /watch status  — show current state
   /watch help    — this help
 
-When active, any // mewrite! comment (or language equivalent) in a source
+When active, any // ${WATCH_FIRE_MARKER} comment (or language equivalent) in a source
 file triggers the agent to process the instruction. The marker is removed
-on success. // mewrite? triggers a read-only Q&A. // mewrite accumulates context.`,
+on success. // ${WATCH_QA_MARKER} triggers a read-only Q&A. // ${WATCH_MARKER} accumulates context.`,
 				state: current,
 			};
 		}
@@ -136,7 +137,7 @@ function startWatch(state: WatchCommandState, io: WatchCommandIO): WatchCommandR
 	io.state = next;
 	return {
 		exitCode: 0,
-		output: `Watch mode started. Watching: ${state.cwd}\nDrop // mewrite! comments to fire the agent.`,
+		output: `Watch mode started. Watching: ${state.cwd}\nDrop // ${WATCH_FIRE_MARKER} comments to fire the agent.`,
 		state: next,
 	};
 }
@@ -151,6 +152,8 @@ function stopWatch(state: WatchCommandState, io: WatchCommandIO): WatchCommandRe
 
 /** Fallback agentRun used when no real agent is wired (prints to stderr). */
 const defaultAgentRun: AgentRunFn = async (_prompt, filePath, isReadOnly) => {
-	process.stderr.write(`[mewrite /watch] ${isReadOnly ? "Q&A" : "fire"} trigger in ${filePath} — no agent wired\n`);
+	process.stderr.write(
+		`[${APP_NAME} /watch] ${isReadOnly ? "Q&A" : "fire"} trigger in ${filePath} — no agent wired\n`,
+	);
 	return "";
 };

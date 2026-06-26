@@ -5,7 +5,7 @@ import { TypeCompiler } from "@sinclair/typebox/compiler";
 import type { EditorTheme, MarkdownTheme, SelectListTheme } from "@zhachory1/mewrite-tui";
 import chalk from "chalk";
 import { highlight, supportsLanguage } from "cli-highlight";
-import { getCustomThemesDir, getThemesDir } from "../../../config.js";
+import { DEFAULT_THEME_NAME, getCustomThemesDir, getThemesDir } from "../../../config.js";
 import type { SourceInfo } from "../../../core/source-info.js";
 
 // ============================================================================
@@ -688,7 +688,7 @@ function detectTerminalBackground(): "dark" | "light" {
 }
 
 function getDefaultTheme(): string {
-	return detectTerminalBackground();
+	return DEFAULT_THEME_NAME ?? detectTerminalBackground();
 }
 
 // ============================================================================

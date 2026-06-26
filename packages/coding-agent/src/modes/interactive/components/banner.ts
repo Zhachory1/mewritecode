@@ -1,4 +1,5 @@
 import { Container, Text, truncateToWidth } from "@zhachory1/mewrite-tui";
+import { BANNER_PRIMARY_WORDMARK, BANNER_SECONDARY_WORDMARK, BANNER_TAGLINE } from "../../../config.js";
 import { theme } from "../theme/theme.js";
 
 // Retained for backwards-compatible call sites; the value is ignored.
@@ -14,40 +15,19 @@ export interface BannerOptions {
 	showSecondaryWordmark?: boolean;
 }
 
-const PRIMARY_WORDMARK: readonly string[] = [
-	"██   ██ ███████     ██     ██ ██████  ██ ████████ ███████",
-	"███ ███ ██          ██     ██ ██   ██ ██    ██    ██",
-	"███████ █████       ██  █  ██ ██████  ██    ██    █████",
-	"██ █ ██ ██           ██ █ ██  ██   ██ ██    ██    ██",
-	"██   ██ ███████       █████   ██   ██ ██    ██    ███████",
-];
-
-const SECONDARY_WORDMARK: readonly string[] = [
-	"",
-	"           ▄████▄   ▒█████  ▓█████▄ ▓█████",
-	"          ▒██▀ ▀█  ▒██▒  ██▒▒██▀ ██▌▓█   ▀",
-	"          ▒▓█    ▄ ▒██░  ██▒░██   █▌▒███",
-	"          ▒▓▓▄ ▄██▒▒██   ██░░██_  █▌▒▓█  ▄",
-	"          ▒ ▓███▀ ░░ ████▓▒░░██████ ░▒████▒",
-	"          ░ ░▒ ▒  ░░ ▒░▒░▒░ ░ ▒▒▓  ▒░░ ▒░ ░",
-	"            ░  ▒     ░ ▒ ▒░ ░ ▒▒ ░  ░░ ░  ░",
-	"          ░        ░ ░ ░ ▒  ░ ▒  ░     ░",
-	"          ░ ░          ░ ░    ░        ░  ░",
-	"          ░                 ░",
-];
-
-const WORDMARK_PRIMARY_ROWS = PRIMARY_WORDMARK.length;
-const TAGLINE = "Any Model, Less Tokens, Code Good";
+const WORDMARK_PRIMARY_ROWS = BANNER_PRIMARY_WORDMARK.length;
 
 export class BannerComponent extends Container {
 	constructor(options: BannerOptions) {
 		super();
-		const rows = options.showSecondaryWordmark ? [...PRIMARY_WORDMARK, ...SECONDARY_WORDMARK] : PRIMARY_WORDMARK;
+		const rows = options.showSecondaryWordmark
+			? [...BANNER_PRIMARY_WORDMARK, ...BANNER_SECONDARY_WORDMARK]
+			: BANNER_PRIMARY_WORDMARK;
 		for (const [index, row] of rows.entries()) {
 			const color = index < WORDMARK_PRIMARY_ROWS ? "accent" : "mdHeading";
 			this.addChild(new Text(row ? theme.fg(color, row) : row, 1, 0));
 		}
-		this.addChild(new Text(theme.fg("dim", TAGLINE), 1, 0));
+		this.addChild(new Text(theme.fg("dim", BANNER_TAGLINE), 1, 0));
 		const info = composeInfoLine(options);
 		if (info) {
 			this.addChild(new Text(info, 1, 0));

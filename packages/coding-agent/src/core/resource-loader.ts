@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve, sep } from "node:path";
 import chalk from "chalk";
-import { CONFIG_DIR_NAME, getAgentDir, getBundledPromptsDir } from "../config.js";
+import { CONFIG_DIR_NAME, getAgentDir, getBundledPromptsDir, getDistributionThemePaths } from "../config.js";
 import { loadThemeFromPath, type Theme } from "../modes/interactive/theme/theme.js";
 import type { ResourceDiagnostic } from "./diagnostics.js";
 
@@ -464,9 +464,13 @@ export class DefaultResourceLoader implements ResourceLoader {
 			}
 		}
 
+		const distributionThemePaths = getDistributionThemePaths();
 		const themePaths = this.noThemes
 			? this.mergePaths(cliEnabledThemes, this.additionalThemePaths)
-			: this.mergePaths([...cliEnabledThemes, ...enabledThemes], this.additionalThemePaths);
+			: this.mergePaths(
+					[...cliEnabledThemes, ...enabledThemes, ...distributionThemePaths],
+					this.additionalThemePaths,
+				);
 
 		this.lastThemePaths = themePaths;
 		this.updateThemesFromPaths(themePaths, metadataByPath);

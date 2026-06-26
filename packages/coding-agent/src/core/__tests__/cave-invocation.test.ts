@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { APP_NAME } from "../../config.js";
 import { resolveCurrentCaveInvocation } from "../../utils/cave-invocation.js";
 
 afterEach(() => {
@@ -32,6 +33,16 @@ describe("resolveCurrentCaveInvocation", () => {
 
 		expect(resolveCurrentCaveInvocation()).toEqual({
 			command: "/Applications/cave",
+			argsPrefix: [],
+		});
+	});
+
+	it("falls back to configured app name when generic runtime has no script", () => {
+		vi.spyOn(process, "argv", "get").mockReturnValue(["/usr/bin/node", "/missing/cli.js"]);
+		vi.spyOn(process, "execPath", "get").mockReturnValue("/usr/bin/node");
+
+		expect(resolveCurrentCaveInvocation()).toEqual({
+			command: APP_NAME,
 			argsPrefix: [],
 		});
 	});

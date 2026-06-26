@@ -1,5 +1,5 @@
 /**
- * `mewrite doctor` (WS11) — diagnostic / health check command.
+ * Doctor command (WS11) — diagnostic / health check command.
  *
  * Reports kernel + arch, terminal capabilities, sandbox availability, MCP
  * servers reachable, missing tooling, and auth status. Output is human
@@ -17,7 +17,7 @@ import { homedir, release as osRelease, platform } from "node:os";
 import { join } from "node:path";
 import { getEnvApiKey } from "@zhachory1/mewrite-ai";
 import chalk from "chalk";
-import { CONFIG_DIR_NAME, getAgentDir, VERSION } from "../config.js";
+import { APP_NAME, CONFIG_DIR_NAME, getAgentDir, VERSION } from "../config.js";
 import { SettingsManager } from "../core/settings-manager.js";
 
 export type DoctorCheckStatus = "ok" | "warn" | "fail" | "info";
@@ -148,7 +148,7 @@ function detectTooling(): DoctorCheck[] {
 			id: `tool-${tool}`,
 			label: `Tool: ${tool}`,
 			status: path ? "ok" : required ? "fail" : "warn",
-			detail: path ?? (required ? "missing — install before using cave" : "missing — optional"),
+			detail: path ?? (required ? `missing — install before using ${APP_NAME}` : "missing — optional"),
 		});
 	}
 	return checks;
@@ -175,7 +175,7 @@ function detectAuth(): DoctorCheck[] {
 			id: "auth",
 			label: "Auth",
 			status: "warn",
-			detail: "no API keys found in env. Run `mewrite login` or set ANTHROPIC_API_KEY / OPENAI_API_KEY / etc.",
+			detail: `no API keys found in env. Run \`${APP_NAME} login\` or set ANTHROPIC_API_KEY / OPENAI_API_KEY / etc.`,
 		});
 	}
 	return checks;
@@ -197,7 +197,7 @@ function detectMcpReachability(cwd: string): DoctorCheck[] {
 			id: "mcp-config",
 			label: "MCP config files",
 			status: "info",
-			detail: "no .mcp.json found (project or user). Run `mewrite mcp add <name>` to register one.",
+			detail: `no .mcp.json found (project or user). Run \`${APP_NAME} mcp add <name>\` to register one.`,
 		});
 	} else {
 		checks.push({
@@ -208,7 +208,7 @@ function detectMcpReachability(cwd: string): DoctorCheck[] {
 		});
 	}
 	// We intentionally don't spawn MCP servers from doctor — that's the job of
-	// `mewrite mcp doctor` (WS2). We only verify the config is parseable.
+	// `${APP_NAME} mcp doctor` (WS2). We only verify the config is parseable.
 	return checks;
 }
 
@@ -237,7 +237,9 @@ function detectOnboarding(cwd: string): DoctorCheck[] {
 				id: "onboarding",
 				label: "First-run wizard",
 				status: completed ? "ok" : "warn",
-				detail: completed ? "completed" : "not yet completed — run `cave` interactively to start the wizard",
+				detail: completed
+					? "completed"
+					: `not yet completed — run \`${APP_NAME}\` interactively to start the wizard`,
 			},
 			{
 				id: "telemetry",
@@ -319,7 +321,7 @@ function statusBadge(s: DoctorCheckStatus): string {
 export function formatDoctorReport(report: DoctorReport): string {
 	const lines: string[] = [];
 	lines.push(
-		chalk.bold(`cave ${report.version}`) +
+		chalk.bold(`${APP_NAME} ${report.version}`) +
 			chalk.dim(`  (${report.platform}/${report.arch}, kernel ${report.kernel})`),
 	);
 	lines.push(chalk.dim(`node ${report.node}${report.bun ? `, bun ${report.bun}` : ""}`));

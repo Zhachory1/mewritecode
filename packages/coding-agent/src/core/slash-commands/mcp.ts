@@ -5,7 +5,7 @@
 // Today's hand-off contract: the interactive layer dispatches on the literal
 // command string and calls `runMcpSlashCommand()` with the rest of the line.
 //
-// Subcommands (mirror the `mewrite mcp` CLI surface):
+// Subcommands (mirror the configured `mcp` CLI surface):
 //   /mcp                  → list (default)
 //   /mcp list             → show configured servers
 //   /mcp add <name> ...   → add a server (delegates to mcp-cli helper)
@@ -15,7 +15,7 @@
 //   /mcp reload           → reconnect everything
 
 import { mcp as agentMcp } from "@zhachory1/mewrite-agent";
-import { MCP_DISCOVERY_OPTIONS } from "../../config.js";
+import { APP_NAME, DISPLAY_NAME, MCP_DISCOVERY_OPTIONS } from "../../config.js";
 
 export interface SlashContext {
 	cwd: string;
@@ -107,7 +107,7 @@ async function runLogin(args: string[]): Promise<SlashResult> {
 	return ok(
 		`/mcp login ${name}: OAuth 2.1 + PKCE flow not yet wired (WS2 follow-up).`,
 		"Workaround: set bearerTokenEnv on the server entry in .mcp.json and",
-		"export the token in the shell. Cave will pick it up on next /mcp reload.",
+		`export the token in the shell. ${DISPLAY_NAME} will pick it up on next /mcp reload.`,
 	);
 }
 
@@ -127,7 +127,7 @@ export async function runMcpSlashCommand(line: string, ctx: SlashContext): Promi
 		case "remove":
 		case "rm":
 			return ok(
-				`Use the CLI form for now: mewrite mcp ${verb} ${args.join(" ")}`,
+				`Use the CLI form for now: ${APP_NAME} mcp ${verb} ${args.join(" ")}`,
 				"Slash-side mutations land with WS5 (commands registry refactor).",
 			);
 		case "reload":
@@ -149,5 +149,5 @@ export async function runMcpSlashCommand(line: string, ctx: SlashContext): Promi
  */
 export const MCP_SLASH_COMMAND = {
 	name: "mcp",
-	description: "Manage MCP servers (list, doctor, login, reload). See: mewrite mcp --help.",
+	description: `Manage MCP servers (list, doctor, login, reload). See: ${APP_NAME} mcp --help.`,
 } as const;

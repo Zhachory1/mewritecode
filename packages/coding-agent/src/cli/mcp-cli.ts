@@ -1,23 +1,23 @@
-// mcp-cli.ts — `mewrite mcp <subcommand>` handler.
+// mcp-cli.ts — MCP subcommand handler.
 //
 // Subcommands:
-//   mewrite mcp list                                     → show configured servers
-//   mewrite mcp doctor                                   → health probe + tool counts
-//   mewrite mcp add <name> --command "<cmd>" [--arg ...] → add a stdio server
-//   mewrite mcp add <name> --url <url> [--auth oauth]    → add an HTTP server
-//   mewrite mcp remove <name>                            → remove a server
-//   mewrite mcp login <name>                             → OAuth login (stub)
-//   mewrite mcp-server                                   → run cave AS an MCP server
+//   <app> mcp list                                     → show configured servers
+//   <app> mcp doctor                                   → health probe + tool counts
+//   <app> mcp add <name> --command "<cmd>" [--arg ...] → add a stdio server
+//   <app> mcp add <name> --url <url> [--auth oauth]    → add an HTTP server
+//   <app> mcp remove <name>                            → remove a server
+//   <app> mcp login <name>                             → OAuth login (stub)
+//   <app> mcp-server                                   → run as an MCP server
 //
-// Servers persist to project `.mcp.json` (default) or user `~/.cave/mcp.json`
+// Servers persist to project `.mcp.json` (default) or configured user mcp.json
 // (`--user`). Schema is byte-compat with Claude Code / Codex `.mcp.json`.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname } from "node:path";
+import { dirname, relative } from "node:path";
 import { mcp as agentMcp } from "@zhachory1/mewrite-agent";
 import chalk from "chalk";
-import { MCP_DISCOVERY_OPTIONS } from "../config.js";
+import { APP_NAME, DISPLAY_NAME, MCP_DISCOVERY_OPTIONS } from "../config.js";
 import { runMcpSlashCommand } from "../core/slash-commands/mcp.js";
 
 type McpConfigFile = agentMcp.McpConfigFile;
@@ -55,7 +55,7 @@ function configPath(scope: "user" | "project", cwd: string): string {
 }
 
 function parseAdd(args: string[]): AddOptions {
-	if (args.length === 0) throw new Error("usage: mewrite mcp add <name> [--command <cmd>] [--url <url>] [--user]");
+	if (args.length === 0) throw new Error(`usage: ${APP_NAME} mcp add <name> [--command <cmd>] [--url <url>] [--user]`);
 	const name = args[0];
 	const opts: AddOptions = { name, user: false, args: [] };
 	for (let i = 1; i < args.length; i++) {
@@ -140,7 +140,7 @@ function doAdd(args: string[], cwd: string): number {
 
 function doRemove(args: string[], cwd: string): number {
 	if (args.length === 0) {
-		console.error("usage: mewrite mcp remove <name> [--user]");
+		console.error(`usage: ${APP_NAME} mcp remove <name> [--user]`);
 		return 1;
 	}
 	const name = args[0];
@@ -168,7 +168,14 @@ async function doLogin(args: string[], cwd: string): Promise<number> {
 }
 
 function printHelp(): void {
-	console.log(`Usage: mewrite mcp <subcommand> [args...]
+	const userConfigPath = formatPathForHelp(configPath("user", process.cwd()));
+	const projectConfigPath = formatPathForHelp(configPath("project", process.cwd()));
+	const discoverySources = agentMcp
+		.getDiscoverySources(process.cwd(), homedir(), MCP_DISCOVERY_OPTIONS)
+		.map((source) => `  ${source.scope}: ${formatPathForHelp(source.path)}`)
+		.join("\n");
+
+	console.log(`Usage: ${APP_NAME} mcp <subcommand> [args...]
 
 Subcommands:
   list                              List configured MCP servers (project + user).
@@ -179,16 +186,29 @@ Subcommands:
   login <name>                      OAuth 2.1 + PKCE login (stub for now — see TODO(ws2-oauth)).
 
 Options:
-  --user                            Operate on ~/.cave/mcp.json instead of ./.mcp.json
+  --user                            Operate on ${userConfigPath} instead of ${projectConfigPath}
 
 Format compat:
-  cave reads ./.mcp.json, ./.cave/mcp.json, ~/.cave/mcp.json, ~/.claude/mcp.json,
-  ~/.codex/mcp.json. Schema is byte-compatible with Claude Code and Codex.`);
+  ${DISPLAY_NAME} reads these configured MCP sources:
+${discoverySources}
+  Schema is byte-compatible with Claude Code and Codex.`);
+}
+
+function formatPathForHelp(filePath: string): string {
+	const home = homedir();
+	if (filePath.startsWith(home)) {
+		return `~${filePath.slice(home.length)}`;
+	}
+	const rel = relative(process.cwd(), filePath);
+	if (rel && !rel.startsWith("..") && !rel.startsWith("/")) {
+		return rel.startsWith(".") ? rel : `./${rel}`;
+	}
+	return filePath;
 }
 
 export async function handleMcpCommand(args: string[]): Promise<boolean> {
 	if (args.length === 0 || args[0] !== "mcp") {
-		// also handle `mewrite mcp-server` mode
+		// also handle MCP server mode
 		if (args[0] === "mcp-server") {
 			await runCaveAsMcpServer();
 			return true;
@@ -240,18 +260,18 @@ export async function handleMcpCommand(args: string[]): Promise<boolean> {
 }
 
 /**
- * `mewrite mcp-server` mode — cave acts AS an MCP server over stdio.
+ * MCP server mode — this app acts AS an MCP server over stdio.
  *
- * This is the Codex pattern (cave-as-MCP-server) so other agents can call cave.
- * Today it serves the cave-side tools list. The full implementation lands with
+ * This is the Codex pattern (agent-as-MCP-server) so other agents can call this app.
+ * Today it serves the app-side tools list. The full implementation lands with
  * a follow-up that wires the actual @zhachory1/mewrite-code tool surface in.
  */
 async function runCaveAsMcpServer(): Promise<void> {
 	const server = new agentMcp.McpServer();
 	// Future: pull tools from @zhachory1/mewrite-code allTools and register here.
 	server.register({
-		name: "cave_health",
-		description: "Returns 'ok' if cave is responding.",
+		name: "health",
+		description: `Returns 'ok' if ${DISPLAY_NAME} is responding.`,
 		schema: { type: "object", properties: {} },
 		call: () => ({ status: "ok", version: "v2" }),
 	});

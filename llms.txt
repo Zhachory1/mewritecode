@@ -15,8 +15,8 @@ Each linked page is plain markdown.
 npm install -g @zhachory1/mewrite-code
 ```
 
-Requires Node.js 20+. Binaries `caveman` (primary) and `mewrite-code` (alias)
-are both registered on PATH.
+Requires Node.js 20+. Binaries `mewrite`, `mewritecode`, and `mewrite-code`
+are registered on PATH.
 
 ## npm package
 
@@ -40,8 +40,8 @@ are both registered on PATH.
 
 - [Slash Commands](docs/reference/slash-commands.md): built-ins + authoring markdown commands
 - [Recipes](docs/reference/recipes.md): YAML pipelines, Goose-style schema
-- [MCP](docs/reference/mcp.md): client + cave-as-server, stdio/HTTP/inproc transports
-- [Daemon](docs/reference/daemon.md): caveman serve, multi-client attach, worker mode
+- [MCP](docs/reference/mcp.md): client + app-as-server, stdio/HTTP/inproc transports
+- [Daemon](docs/reference/daemon.md): `mewrite serve`, multi-client attach, worker mode
 
 ## Migration
 
@@ -63,9 +63,9 @@ are both registered on PATH.
 3. Session branching (`/tree`, `/fork`)
 4. Plan mode + autonomous goal loop
 5. Worktree-isolated subagents via Task tool
-6. Native MCP client; mewrite-code can serve as MCP server
+6. Native MCP client; Me Write Code can serve as MCP server
 7. Aider-grade repo map (PageRank) + edit-format-per-model
-8. Daemon (`caveman serve`) survives SSH drops; multi-client attach
+8. Daemon (`mewrite serve`) survives SSH drops; multi-client attach
 9. Shadow-git checkpoints + `/rollback N`
 10. cavemem-backed memory with episodic-to-semantic consolidation
 11. Claude Code authoring formats (settings.json, commands, skills, agents) — paste-and-go compat

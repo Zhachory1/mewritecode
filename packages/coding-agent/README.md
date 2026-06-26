@@ -8,7 +8,7 @@
 
 Me Write Code is the `mewrite` CLI package in [Zhachory1/mewritecode](https://github.com/Zhachory1/mewritecode).
 
-Me Write Code is a minimal terminal coding harness that stays provider-agnostic, terminal-native, and deeply extensible. Use it interactively, run it in print or JSON mode, embed it through the SDK, or extend it with TypeScript modules, skills, prompt templates, themes, and CaveKit workflows.
+Me Write Code is a minimal terminal coding harness that stays provider-agnostic, terminal-native, deeply extensible, and downstream-brandable. Use it interactively, run it in print or JSON mode, embed it through the SDK, extend it with TypeScript modules, skills, prompt templates, themes, and CaveKit workflows, or wrap it as a branded distribution without forking core code.
 
 ---
 
@@ -111,6 +111,7 @@ Me Write Code keeps upstream extensibility goals, then adds fork-specific workfl
 | RTK integration | Optional bash command rewriting + output reduction |
 | CaveKit | Draft → Architect → Build → Inspect workflow |
 | Package ecosystem | Install prompts, skills, themes, and extensions via npm or git |
+| Brandable wrappers | Change app name, logo/wordmark, colors, docs links, watch markers, MCP policy, and update links from package metadata |
 | SDK + RPC | Embed in apps or automate from other runtimes |
 
 ---
@@ -366,7 +367,7 @@ On-demand capability packs in:
 Docs: [docs/skills.md](docs/skills.md)
 
 ### Extensions
-TypeScript modules can register tools, commands, event handlers, keybindings, UI, sub-agents, permission gates, MCP integrations, and more.
+TypeScript modules can register tools, commands, event handlers, keybindings, UI, sub-agents, permission gates, MCP integrations, providers, and more.
 
 ```typescript
 export default function (api: ExtensionAPI) {
@@ -384,6 +385,9 @@ Built-in: `dark`, `light`. Custom themes live in:
 - `.mewrite/themes/`
 
 Docs: [docs/themes.md](docs/themes.md)
+
+### Downstream branding
+Thin wrappers can rebrand Me Write Code through `mewriteConfig` in their package metadata. Supported knobs include app/display name, config dir, startup wordmark/tagline, default theme and theme files, watch comment markers, docs/community/changelog URLs, update policy, and MCP discovery policy. See [Downstream branded wrappers](#downstream-branded-wrappers).
 
 ### Me Write Code Packages
 Bundle and share extensions, skills, prompts, and themes via npm or git.
@@ -442,6 +446,20 @@ Thin downstream packages can depend on `@zhachory1/mewrite-code` and set package
     "displayName": "Example Code",
     "configDir": ".examplecode",
     "packageDirEnv": "EXAMPLECODE_PACKAGE_DIR",
+    "branding": {
+      "tagline": "Example Code for Example teams",
+      "watchMarker": "examplecode",
+      "docsUrl": "https://docs.example.com/examplecode",
+      "githubUrl": "https://github.com/example/examplecode",
+      "discordUrl": "https://discord.gg/examplecode",
+      "changelogUrl": "https://github.com/example/examplecode/blob/main/CHANGELOG.md",
+      "primaryWordmark": ["EXAMPLE CODE"],
+      "secondaryWordmark": []
+    },
+    "theme": {
+      "default": "example-dark",
+      "paths": ["./themes/example-dark.json"]
+    },
     "mcp": {
       "includeRootProjectConfig": false,
       "includeProjectConfigDir": false,
@@ -455,7 +473,7 @@ Thin downstream packages can depend on `@zhachory1/mewrite-code` and set package
 }
 ```
 
-`CODING_AGENT_PACKAGE_DIR` is the bootstrap override used before package metadata is loaded. Once metadata is loaded, the package-specific env named by `packageDirEnv` is honored for asset lookup. User config then defaults to `~/.examplecode/agent`, project config to `.examplecode/`, and lower-level storage paths can derive from the same config dir. The `mcp` block reads `PACKAGE_DIR/.mcp.json` by default and can disable project, user, legacy `.cave`, Claude Code, and Codex compatibility paths when a downstream distribution needs isolated MCP configuration.
+`CODING_AGENT_PACKAGE_DIR` is the bootstrap override used before package metadata is loaded. Once metadata is loaded, the package-specific env named by `packageDirEnv` is honored for asset lookup. User config then defaults to `~/.examplecode/agent`, project config to `.examplecode/`, and lower-level storage paths can derive from the same config dir. The `branding` block controls startup wordmark/tagline, watch comment marker (`// examplecode!`, `// examplecode?`), docs/community links, and update changelog links. The `theme.default` value selects a theme by name when the user has not chosen one; `theme.paths` loads wrapper-shipped theme files relative to the wrapper package. Shareable resource packages can also ship themes via package `pi.themes` or a package-root `themes/` directory. The `mcp` block reads `PACKAGE_DIR/.mcp.json` by default and can disable project, user, legacy `.cave`, Claude Code, and Codex compatibility paths when a downstream distribution needs isolated MCP configuration.
 
 For non-upstream distributions, self-update is disabled unless the wrapper explicitly provides a complete `selfUpdate` configuration.
 

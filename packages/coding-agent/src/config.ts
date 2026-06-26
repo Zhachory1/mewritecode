@@ -14,7 +14,30 @@ const DEFAULT_PACKAGE_NAME = "@zhachory1/mewrite-code";
 const DEFAULT_REPO = "Zhachory1/mewritecode";
 const DEFAULT_CONFIG_DIR_NAME = ".mewrite";
 const DEFAULT_PACKAGE_DIR_ENV = `${DEFAULT_APP_NAME.toUpperCase()}_PACKAGE_DIR`;
+const DEFAULT_DISCORD_URL = "https://discord.com/invite/nKXTsAcmbT";
 const GENERIC_PACKAGE_DIR_ENV = "CODING_AGENT_PACKAGE_DIR";
+
+const DEFAULT_BANNER_PRIMARY_WORDMARK: readonly string[] = [
+	"██   ██ ███████     ██     ██ ██████  ██ ████████ ███████",
+	"███ ███ ██          ██     ██ ██   ██ ██    ██    ██",
+	"███████ █████       ██  █  ██ ██████  ██    ██    █████",
+	"██ █ ██ ██           ██ █ ██  ██   ██ ██    ██    ██",
+	"██   ██ ███████       █████   ██   ██ ██    ██    ███████",
+];
+
+const DEFAULT_BANNER_SECONDARY_WORDMARK: readonly string[] = [
+	"",
+	"           ▄████▄   ▒█████  ▓█████▄ ▓█████",
+	"          ▒██▀ ▀█  ▒██▒  ██▒▒██▀ ██▌▓█   ▀",
+	"          ▒▓█    ▄ ▒██░  ██▒░██   █▌▒███",
+	"          ▒▓▓▄ ▄██▒▒██   ██░░██_  █▌▒▓█  ▄",
+	"          ▒ ▓███▀ ░░ ████▓▒░░██████ ░▒████▒",
+	"          ░ ░▒ ▒  ░░ ▒░▒░▒░ ░ ▒▒▓  ▒░░ ▒░ ░",
+	"            ░  ▒     ░ ▒ ▒░ ░ ▒▒ ░  ░░ ░  ░",
+	"          ░        ░ ░ ░ ▒  ░ ▒  ░     ░",
+	"          ░ ░          ░ ░    ░        ░  ░",
+	"          ░                 ░",
+];
 
 export interface DistributionConfig {
 	name?: string;
@@ -24,6 +47,20 @@ export interface DistributionConfig {
 	configDirName?: string;
 	packageDirEnv?: string;
 	packageDir?: string;
+	branding?: {
+		primaryWordmark?: string[];
+		secondaryWordmark?: string[];
+		tagline?: string;
+		watchMarker?: string;
+		docsUrl?: string;
+		githubUrl?: string;
+		discordUrl?: string;
+		changelogUrl?: string;
+	};
+	theme?: {
+		default?: string;
+		paths?: string[];
+	};
 	selfUpdate?: {
 		enabled?: boolean;
 		repo?: string;
@@ -60,6 +97,35 @@ function expandHome(path: string | undefined): string | undefined {
 	if (path === "~") return homedir();
 	if (path.startsWith("~/")) return homedir() + path.slice(1);
 	return path;
+}
+
+function hasRuntimeAssets(dir: string): boolean {
+	return (
+		existsSync(join(dir, "theme", "dark.json")) ||
+		existsSync(join(dir, "src", "modes", "interactive", "theme", "dark.json")) ||
+		existsSync(join(dir, "dist", "modes", "interactive", "theme", "dark.json"))
+	);
+}
+
+function getRuntimeAssetPackageDir(): string {
+	const packageDir = getPackageDir();
+	if (hasRuntimeAssets(packageDir)) return packageDir;
+
+	let dir = __dirname;
+	while (dir !== dirname(dir)) {
+		if (hasRuntimeAssets(dir)) return dir;
+		dir = dirname(dir);
+	}
+
+	return packageDir;
+}
+
+function srcOrDistAssetPath(packageDir: string, ...segments: string[]): string {
+	const srcPath = join(packageDir, "src", ...segments);
+	if (existsSync(srcPath)) return srcPath;
+	const distPath = join(packageDir, "dist", ...segments);
+	if (existsSync(distPath)) return distPath;
+	return distPath;
 }
 
 // =============================================================================
@@ -165,9 +231,8 @@ export function getThemesDir(): string {
 		return join(dirname(process.execPath), "theme");
 	}
 	// Theme is in modes/interactive/theme/ relative to src/ or dist/
-	const packageDir = getPackageDir();
-	const srcOrDist = existsSync(join(packageDir, "src")) ? "src" : "dist";
-	return join(packageDir, srcOrDist, "modes", "interactive", "theme");
+	const packageDir = getRuntimeAssetPackageDir();
+	return srcOrDistAssetPath(packageDir, "modes", "interactive", "theme");
 }
 
 /**
@@ -180,9 +245,8 @@ export function getExportTemplateDir(): string {
 	if (isBunBinary) {
 		return join(dirname(process.execPath), "export-html");
 	}
-	const packageDir = getPackageDir();
-	const srcOrDist = existsSync(join(packageDir, "src")) ? "src" : "dist";
-	return join(packageDir, srcOrDist, "core", "export-html");
+	const packageDir = getRuntimeAssetPackageDir();
+	return srcOrDistAssetPath(packageDir, "core", "export-html");
 }
 
 /** Get path to package.json */
@@ -220,9 +284,8 @@ export function getInteractiveAssetsDir(): string {
 	if (isBunBinary) {
 		return join(dirname(process.execPath), "assets");
 	}
-	const packageDir = getPackageDir();
-	const srcOrDist = existsSync(join(packageDir, "src")) ? "src" : "dist";
-	return join(packageDir, srcOrDist, "modes", "interactive", "assets");
+	const packageDir = getRuntimeAssetPackageDir();
+	return srcOrDistAssetPath(packageDir, "modes", "interactive", "assets");
 }
 
 /** Get path to a bundled interactive asset */
@@ -232,7 +295,7 @@ export function getBundledInteractiveAssetPath(name: string): string {
 
 /** Resolve the bundled prompt-templates dir shipped with the package. */
 export function getBundledPromptsDir(): string {
-	return join(getPackageDir(), "prompts");
+	return join(getRuntimeAssetPackageDir(), "prompts");
 }
 
 // =============================================================================
@@ -243,6 +306,7 @@ const pkg = JSON.parse(readFileSync(getPackageJsonPath(), "utf-8"));
 const appConfig = (pkg.mewriteConfig ?? pkg.piConfig ?? {}) as DistributionConfig;
 resolvedAppConfig = appConfig;
 const selfUpdateConfig = appConfig.selfUpdate ?? {};
+const brandingConfig = appConfig.branding ?? {};
 
 export const APP_NAME: string = appConfig.appName || appConfig.name || DEFAULT_APP_NAME;
 export const DISPLAY_NAME: string = appConfig.displayName || APP_NAME;
@@ -251,6 +315,20 @@ export const VERSION: string = pkg.version;
 export const SELF_UPDATE_ENABLED: boolean = selfUpdateConfig.enabled ?? pkg.name === DEFAULT_PACKAGE_NAME;
 export const PACKAGE_NAME: string = selfUpdateConfig.packageName || DEFAULT_PACKAGE_NAME;
 export const RELEASE_REPO: string = selfUpdateConfig.repo || DEFAULT_REPO;
+export const GITHUB_URL: string = brandingConfig.githubUrl || `https://github.com/${RELEASE_REPO}`;
+export const DOCS_URL: string = brandingConfig.docsUrl || `${GITHUB_URL}/tree/main/packages/coding-agent/docs`;
+export const DISCORD_URL: string = brandingConfig.discordUrl || DEFAULT_DISCORD_URL;
+export const CHANGELOG_URL: string =
+	brandingConfig.changelogUrl || `${GITHUB_URL}/blob/main/packages/coding-agent/CHANGELOG.md`;
+export const WATCH_MARKER: string = brandingConfig.watchMarker || APP_NAME;
+export const WATCH_FIRE_MARKER: string = `${WATCH_MARKER}!`;
+export const WATCH_QA_MARKER: string = `${WATCH_MARKER}?`;
+export const BANNER_PRIMARY_WORDMARK: readonly string[] =
+	brandingConfig.primaryWordmark ?? DEFAULT_BANNER_PRIMARY_WORDMARK;
+export const BANNER_SECONDARY_WORDMARK: readonly string[] =
+	brandingConfig.secondaryWordmark ?? DEFAULT_BANNER_SECONDARY_WORDMARK;
+export const BANNER_TAGLINE: string = brandingConfig.tagline || "Any Model, Less Tokens, Code Good";
+export const DEFAULT_THEME_NAME: string | undefined = appConfig.theme?.default;
 export const INSTALL_DIR_NAME: string = selfUpdateConfig.installDirName || APP_NAME;
 export const INSTALL_PRODUCT_DIR_NAME: string = selfUpdateConfig.productDirName || APP_NAME;
 export const LEGACY_CONFIG_DIR_NAMES: readonly string[] = appConfig.mcp?.legacyConfigDirNames ?? [".cave"];
@@ -286,6 +364,10 @@ export function getShareViewerUrl(gistId: string): string {
 /** Get the agent config directory (e.g., ~/.pi/agent/) */
 export function getDistributionConfig(): DistributionConfig {
 	return structuredClone(appConfig);
+}
+
+export function getDistributionThemePaths(): string[] {
+	return (appConfig.theme?.paths ?? []).map((themePath) => resolve(getPackageDir(), themePath));
 }
 
 export function getAgentDir(): string {

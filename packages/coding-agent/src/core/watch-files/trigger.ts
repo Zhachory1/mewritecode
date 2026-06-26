@@ -2,21 +2,21 @@
  * WS18 — Watch-Files trigger dispatcher.
  *
  * When a file change is detected:
- *  1. Parse mewrite comments (fire/qa/context).
+ *  1. Parse configured watch comments (fire/qa/context).
  *  2. Accumulate "context" comments into a running buffer.
- *  3. On "fire" (mewrite!) — build a prompt from accumulated context + surrounding
- *     lines, dispatch to the provided agentRun callback, remove the trigger
- *     comment from disk on success.
- *  4. On "qa" (mewrite?) — same but read-only (no file modification).
+ *  3. On "fire" — build a prompt from accumulated context + surrounding lines,
+ *     dispatch to the provided agentRun callback, remove the trigger comment from disk on success.
+ *  4. On "qa" — same but read-only (no file modification).
  *  5. Cycle protection — ignore files the agent itself just modified.
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { extname } from "node:path";
+import { APP_NAME } from "../../config.js";
 import { type MewriteComment, parseMewriteComments, removeLine, surroundingLines } from "./comment-parser.js";
 
 export interface TriggerContext {
-	/** Accumulated "mewrite" context comments (cleared after each fire/qa). */
+	/** Accumulated watch context comments (cleared after each fire/qa). */
 	accumulatedContext: string[];
 }
 
@@ -37,7 +37,7 @@ export interface TriggerOptions {
 
 /**
  * Process a single changed file:
- *  - Parse mewrite comments.
+ *  - Parse configured watch comments.
  *  - Accumulate context markers.
  *  - Dispatch fire/qa triggers to agentRun.
  *  - Remove fire comment from disk on success.
@@ -91,7 +91,7 @@ export async function processTriggers(
 			response = await agentRun(context, filePath, isReadOnly);
 		} catch (err) {
 			process.stderr.write(
-				`[mewrite watch] agent error for ${filePath}:${adjustedLine}: ${err instanceof Error ? err.message : String(err)}\n`,
+				`[${APP_NAME} watch] agent error for ${filePath}:${adjustedLine}: ${err instanceof Error ? err.message : String(err)}\n`,
 			);
 			continue;
 		}
@@ -106,12 +106,12 @@ export async function processTriggers(
 				lineOffset -= 1; // one line was removed
 			} catch (err) {
 				process.stderr.write(
-					`[mewrite watch] failed to remove trigger comment from ${filePath}: ${err instanceof Error ? err.message : String(err)}\n`,
+					`[${APP_NAME} watch] failed to remove trigger comment from ${filePath}: ${err instanceof Error ? err.message : String(err)}\n`,
 				);
 			}
 		} else {
 			// Q&A: print response to stderr
-			process.stderr.write(`[mewrite watch] ${filePath}:${adjustedLine} Q&A response:\n${response}\n`);
+			process.stderr.write(`[${APP_NAME} watch] ${filePath}:${adjustedLine} Q&A response:\n${response}\n`);
 		}
 
 		// Consumed — clear accumulated context

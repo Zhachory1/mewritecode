@@ -31,6 +31,7 @@ Claude Code-style tools are powerful, but long sessions can burn tokens quickly 
 | Terminal-first coding | Interactive TUI, print mode, JSON/RPC modes, shell dispatch, file references |
 | Multi-provider models | Anthropic, OpenAI, Gemini, Vertex, Bedrock, Mistral, Groq, xAI, OpenRouter, Copilot, OpenCode, and compatible endpoints |
 | Agent extensibility | Skills, prompt templates, extensions, custom tools, hooks, themes, MCP/server workflows |
+| Downstream branding | Thin wrappers can change app name, config dir, logo/wordmark, tagline, colors, docs links, watch markers, MCP policy, and update links without forking core code |
 | Safer iteration | Plan mode, session branching, checkpoints/rollback, goal loop, resumable sessions |
 | Package-manager installs | npm, Homebrew, APT, Yum/DNF, release tarballs, Docker, Snap metadata |
 
@@ -179,12 +180,15 @@ Plan mode keeps exploration read-only and avoids unnecessary edits/tool loops. A
 
 ### Extensibility
 
+Me Write Code is designed as an extensible harness, not a closed app. You can extend behavior at runtime, package reusable capabilities, or wrap the CLI as a branded downstream distribution without copying the monorepo.
+
 - Skills: reusable instruction packs
 - Prompt templates: reusable slash-command prompts
 - Extensions: TypeScript modules that register tools, commands, UI, hooks, events, providers, and shortcuts
 - Themes: built-in and custom TUI themes
 - Custom model/provider definitions
 - MCP/server-style workflows and integrations
+- Downstream wrappers: configurable app name, display name, config directory, startup wordmark/logo text, tagline, default theme/colors, watch markers, docs/community URLs, changelog/update URLs, and MCP discovery policy
 
 ### Feature support status
 
@@ -196,6 +200,7 @@ Plan mode keeps exploration read-only and avoids unnecessary edits/tool loops. A
 | Plan mode, checkpoints, rollback, session branching | Shipped | Stable local workflow controls |
 | Subagents and skills | Shipped | Bundled agents plus user/project definitions |
 | MCP client workflows | Shipped | stdio/in-process support; Streamable HTTP is tracked separately |
+| Downstream branded wrappers | Shipped | Configure branding, colors/themes, config dirs, docs links, update links, and MCP policy via package metadata |
 | Native sandbox / approval controls | Beta | Use `/doctor`; treat as defense-in-depth |
 | Package-manager installs | Shipped | npm, Homebrew, Debian/RPM repos, Docker; Snap metadata is tracked but may lag publish |
 | `contrib/*` packages | Unsupported/contrib | Useful examples and integrations, not core support surface |
@@ -247,6 +252,21 @@ Common environment variables:
 | `MEWRITE_CACHE_RETENTION=long` | Request extended prompt cache where supported |
 
 Provider-specific setup is documented in `packages/coding-agent/docs/providers.md`.
+
+### Downstream branded wrappers
+
+Downstream packages can depend on `@zhachory1/mewrite-code`, point `CODING_AGENT_PACKAGE_DIR` at their wrapper package, and declare `mewriteConfig` in their own `package.json`. Supported wrapper metadata includes:
+
+- CLI/app name and display name
+- user/project config directory names
+- startup wordmark/logo text and tagline
+- default theme and wrapper-shipped theme files
+- watch trigger marker (`// yourbrand!`, `// yourbrand?`)
+- docs, GitHub, Discord/community, changelog, and update URLs
+- MCP discovery policy and package-shipped `.mcp.json`
+- self-update policy
+
+Full example: `packages/coding-agent/README.md#downstream-branded-wrappers`.
 
 ---
 

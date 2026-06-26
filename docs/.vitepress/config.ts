@@ -1,37 +1,42 @@
 import { defineConfig } from "vitepress";
 
-// Cave docs site — VitePress.
-// Live at https://getcaveman.dev/docs (deploy target).
-// Sidebar mirrors the WS12 spec section list.
+// Docs site branding is environment-configurable for downstream distributions.
+const siteTitle = process.env.DOCS_SITE_TITLE ?? "Me Write Code";
+const siteDescription =
+    process.env.DOCS_SITE_DESCRIPTION ??
+    "Terminal coding harness with token-saving Caveman Mode. Provider-agnostic, terminal-native, MIT.";
+const docsBase = process.env.DOCS_BASE ?? "/docs/";
+const docsSiteUrl = process.env.DOCS_SITE_URL ?? "https://zhachory1.github.io/mewritecode";
+const githubUrl = process.env.DOCS_GITHUB_URL ?? "https://github.com/Zhachory1/mewritecode";
+const discordUrl = process.env.DOCS_DISCORD_URL ?? "https://discord.com/invite/nKXTsAcmbT";
+const docsUrl = `${docsSiteUrl.replace(/\/$/, "")}${docsBase}`;
 
 export default defineConfig({
-    title: "Cave",
-    description:
-        "Best-in-class terminal coding agent. Token efficiency under revalidation — see #8. 20+ provider OAuth. MIT.",
+    title: siteTitle,
+    description: siteDescription,
     lastUpdated: true,
     cleanUrls: true,
-    base: "/docs/",
-    sitemap: { hostname: "https://getcaveman.dev" },
+    base: docsBase,
+    sitemap: { hostname: docsSiteUrl },
 
     head: [
         ["link", { rel: "icon", href: "/docs/favicon.svg", type: "image/svg+xml" }],
         ["meta", { name: "theme-color", content: "#0d1117" }],
         ["meta", { property: "og:type", content: "website" }],
-        ["meta", { property: "og:title", content: "Cave — terminal coding agent" }],
+        ["meta", { property: "og:title", content: `${siteTitle} — terminal coding agent` }],
         [
             "meta",
             {
                 property: "og:description",
-                content:
-                    "Token efficiency under revalidation — see #8. 20+ provider OAuth. Plan mode, subagents, MCP, sandbox, hooks. MIT.",
+                content: siteDescription,
             },
         ],
-        ["meta", { property: "og:url", content: "https://getcaveman.dev/docs/" }],
+        ["meta", { property: "og:url", content: docsUrl }],
     ],
 
     themeConfig: {
-        siteTitle: "Cave",
-        logo: { src: "/logo.svg", alt: "Cave" },
+        siteTitle,
+        logo: { src: "/logo.svg", alt: siteTitle },
 
         nav: [
             { text: "Docs", link: "/getting-started/quickstart" },
@@ -42,8 +47,8 @@ export default defineConfig({
             {
                 text: "Links",
                 items: [
-                    { text: "GitHub", link: "https://github.com/Zhachory1/mewritecode" },
-                    { text: "Discord", link: "https://discord.gg/cave-cli" },
+                    { text: "GitHub", link: githubUrl },
+                    { text: "Discord", link: discordUrl },
                     { text: "llms.txt", link: "/llms.txt" },
                 ],
             },
@@ -98,8 +103,8 @@ export default defineConfig({
         ],
 
         socialLinks: [
-            { icon: "github", link: "https://github.com/Zhachory1/mewritecode" },
-            { icon: "discord", link: "https://discord.gg/cave-cli" },
+            { icon: "github", link: githubUrl },
+            { icon: "discord", link: discordUrl },
         ],
 
         footer: {
@@ -108,8 +113,7 @@ export default defineConfig({
         },
 
         editLink: {
-            pattern:
-                "https://github.com/Zhachory1/mewritecode/edit/main/docs/:path",
+            pattern: `${githubUrl}/edit/main/docs/:path`,
             text: "Edit this page on GitHub",
         },
 

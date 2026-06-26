@@ -4,6 +4,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { APP_NAME } from "../../../config.js";
 import { MCP_SLASH_COMMAND, parseMcpSlash, runMcpSlashCommand } from "../mcp.js";
 
 describe("MCP_SLASH_COMMAND metadata", () => {
@@ -98,6 +99,6 @@ describe("runMcpSlashCommand", () => {
 	it("/mcp add hints to use CLI", async () => {
 		const result = await runMcpSlashCommand("/mcp add fs npx -y server", { cwd });
 		expect(result.errors).toBe(0);
-		expect(result.lines.join("\n")).toMatch(/mewrite mcp add/);
+		expect(result.lines.join("\n")).toContain(`${APP_NAME} mcp add`);
 	});
 });

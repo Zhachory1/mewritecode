@@ -3,15 +3,23 @@
 // Config paths
 export {
 	APP_NAME,
+	BANNER_PRIMARY_WORDMARK,
+	BANNER_SECONDARY_WORDMARK,
+	BANNER_TAGLINE,
+	CHANGELOG_URL,
 	CONFIG_DIR_NAME,
+	DEFAULT_THEME_NAME,
+	DISCORD_URL,
 	DISPLAY_NAME,
 	type DistributionConfig,
+	DOCS_URL,
 	ENV_AGENT_DIR,
 	ENV_DISABLE_UPDATE_CHECK,
 	ENV_PACKAGE_DIR,
 	ENV_SHARE_VIEWER_URL,
 	getAgentDir,
 	getDistributionConfig,
+	getDistributionThemePaths,
 	getPackageDir,
 	INSTALL_DIR_NAME,
 	INSTALL_PRODUCT_DIR_NAME,
@@ -20,6 +28,9 @@ export {
 	RELEASE_REPO,
 	SELF_UPDATE_ENABLED,
 	VERSION,
+	WATCH_FIRE_MARKER,
+	WATCH_MARKER,
+	WATCH_QA_MARKER,
 } from "./config.js";
 export {
 	AgentSession,

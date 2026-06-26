@@ -15,7 +15,7 @@
 import { createInterface, type Interface as ReadlineInterface } from "node:readline";
 import { getEnvApiKey } from "@zhachory1/mewrite-ai";
 import chalk from "chalk";
-import { VERSION } from "../config.js";
+import { DISPLAY_NAME, getSettingsPath, VERSION } from "../config.js";
 import type { SettingsManager } from "../core/settings-manager.js";
 
 /**
@@ -92,6 +92,14 @@ interface AskCtx {
 
 function write(out: NodeJS.WritableStream, s: string): void {
 	out.write(s);
+}
+
+function formatHomePath(filePath: string): string {
+	const home = process.env.HOME || process.env.USERPROFILE;
+	if (home && filePath.startsWith(home)) {
+		return `~${filePath.slice(home.length)}`;
+	}
+	return filePath;
 }
 
 function ask(ctx: AskCtx, prompt: string): Promise<string> {
@@ -187,7 +195,7 @@ export async function runOnboarding(settings: SettingsManager, io: WizardIO = DE
 	const ctx: AskCtx = { rl, out, prompt: promptFn };
 
 	try {
-		write(out, chalk.bold.cyan("\n  Welcome to Me Write Code\n"));
+		write(out, chalk.bold.cyan(`\n  Welcome to ${DISPLAY_NAME}\n`));
 		write(out, chalk.dim("  Four quick questions. You can change anything later via /settings.\n"));
 
 		// 1. Theme — auto-detect background.
@@ -223,7 +231,7 @@ export async function runOnboarding(settings: SettingsManager, io: WizardIO = DE
 		} else {
 			write(out, chalk.bold("\n2) Authentication\n"));
 			write(out, chalk.dim("  No API keys found in the environment.\n"));
-			write(out, chalk.dim("  Me Write Code can log you in via OAuth now (no API key needed), or you can\n"));
+			write(out, chalk.dim(`  ${DISPLAY_NAME} can log you in via OAuth now (no API key needed), or you can\n`));
 			write(out, chalk.dim("  set ANTHROPIC_API_KEY / OPENAI_API_KEY / GEMINI_API_KEY (etc) and re-run.\n"));
 			const configureNow = await askYesNo(ctx, "Configure auth now?", true);
 			if (configureNow) {
@@ -264,7 +272,10 @@ export async function runOnboarding(settings: SettingsManager, io: WizardIO = DE
 
 		// 4. Telemetry — default OFF (WS11 mandate).
 		write(out, chalk.bold("\n4) Telemetry\n"));
-		write(out, chalk.dim("  Cave does NOT send telemetry by default. Opt-in only. You can change this later.\n"));
+		write(
+			out,
+			chalk.dim(`  ${DISPLAY_NAME} does NOT send telemetry by default. Opt-in only. You can change this later.\n`),
+		);
 		const telemetry = await askYesNo(ctx, "Enable anonymous usage telemetry?", false);
 
 		const answers: WizardAnswers = {
@@ -282,7 +293,7 @@ export async function runOnboarding(settings: SettingsManager, io: WizardIO = DE
 		write(
 			out,
 			chalk.dim(
-				`  Saved to ${settings.constructor.name === "SettingsManager" ? "~/.mewrite/agent/settings.json" : "settings"}.\n`,
+				`  Saved to ${settings.constructor.name === "SettingsManager" ? formatHomePath(getSettingsPath()) : "settings"}.\n`,
 			),
 		);
 

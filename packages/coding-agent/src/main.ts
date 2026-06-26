@@ -32,7 +32,7 @@ import { handleSubagentsCommand } from "./cli/subagents-cli.js";
 import { runSelfUpdate } from "./cli/update.js";
 import { handleWatchCommand } from "./cli/watch.js";
 import { handleWorkerCommand } from "./cli/worker.js";
-import { getAgentDir, getModelsPath, VERSION } from "./config.js";
+import { APP_NAME, getAgentDir, getModelsPath, VERSION } from "./config.js";
 import { type CreateAgentSessionRuntimeFactory, createAgentSessionRuntime } from "./core/agent-session-runtime.js";
 import {
 	type AgentSessionRuntimeDiagnostic,
@@ -59,7 +59,12 @@ import { allTools } from "./core/tools/index.js";
 import { runMigrations, showDeprecationWarnings } from "./migrations.js";
 import { InteractiveMode, runPrintMode, runRpcMode } from "./modes/index.js";
 import { ExtensionSelectorComponent } from "./modes/interactive/components/extension-selector.js";
-import { initTheme, setDetectedBackground, stopThemeWatcher } from "./modes/interactive/theme/theme.js";
+import {
+	initTheme,
+	setDetectedBackground,
+	setRegisteredThemes,
+	stopThemeWatcher,
+} from "./modes/interactive/theme/theme.js";
 import { DEFAULT_IO, runOnboarding, shouldRunOnboarding } from "./onboarding/wizard.js";
 import { handleConfigCommand, handlePackageCommand } from "./package-manager-cli.js";
 import { isLocalPath } from "./utils/paths.js";
@@ -564,7 +569,7 @@ export async function main(args: string[]) {
 		return;
 	}
 
-	// WS18: cave watch — file watcher for // cave! comment triggers.
+	// WS18: watch — file watcher for configured comment triggers.
 	if (await handleWatchCommand(args)) {
 		return;
 	}
@@ -863,6 +868,7 @@ export async function main(args: string[]) {
 			// Probe is best-effort; theme.ts falls back to COLORFGBG/CAVE_TERM_BG/dark.
 		}
 	}
+	setRegisteredThemes(resourceLoader.getThemes().themes);
 	initTheme(settingsManager.getTheme(), appMode === "interactive");
 	time("initTheme");
 
@@ -885,7 +891,7 @@ export async function main(args: string[]) {
 		console.error("  ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, etc.");
 		console.error(chalk.yellow(`\nOr create ${getModelsPath()}`));
 		console.error(chalk.yellow("\nOr log in with OAuth (no API key needed):"));
-		console.error("  caveman login            (or `caveman login --device-auth` over SSH)");
+		console.error(`  ${APP_NAME} login            (or \`${APP_NAME} login --device-auth\` over SSH)`);
 		process.exit(1);
 	}
 
@@ -898,7 +904,7 @@ export async function main(args: string[]) {
 		console.error("  ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, etc.");
 		console.error(chalk.yellow("\nOr log in with OAuth (no API key needed):"));
 		console.error(
-			`  caveman login --provider ${session.model.provider}   (or \`caveman login --device-auth\` over SSH)`,
+			`  ${APP_NAME} login --provider ${session.model.provider}   (or \`${APP_NAME} login --device-auth\` over SSH)`,
 		);
 		process.exit(1);
 	}

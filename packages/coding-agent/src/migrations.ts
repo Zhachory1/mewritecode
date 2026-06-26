@@ -5,13 +5,11 @@
 import chalk from "chalk";
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
-import { CONFIG_DIR_NAME, getAgentDir, getBinDir } from "./config.js";
+import { CHANGELOG_URL, CONFIG_DIR_NAME, GITHUB_URL, getAgentDir, getBinDir } from "./config.js";
 import { migrateKeybindingsConfig } from "./core/keybindings.js";
 
-const MIGRATION_GUIDE_URL =
-	"https://github.com/Zhachory1/mewritecode/blob/main/packages/coding-agent/CHANGELOG.md#extensions-migration";
-const EXTENSIONS_DOC_URL =
-	"https://github.com/Zhachory1/mewritecode/blob/main/packages/coding-agent/docs/extensions.md";
+const MIGRATION_GUIDE_URL = `${CHANGELOG_URL}#extensions-migration`;
+const EXTENSIONS_DOC_URL = `${GITHUB_URL}/blob/main/packages/coding-agent/docs/extensions.md`;
 
 /**
  * Migrate legacy oauth.json and settings.json apiKeys to auth.json.

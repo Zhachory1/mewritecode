@@ -1,24 +1,17 @@
 /**
- * WS18 — `mewrite watch` subcommand.
+ * WS18 — watch subcommand.
  *
- * Long-lived process that watches the repository for mewrite comment markers
- * and fires the agent when `// mewrite!` (or language-equivalent) is detected.
- *
- * Usage:
- *   mewrite watch [paths...]                  — watch cwd (or specified paths)
- *   mewrite watch --poll <ms>                 — polling fallback (network mounts)
- *   mewrite watch --debounce <ms>             — override debounce (default 500ms)
- *   mewrite watch --ext ts,py,rs             — restrict to extensions
- *   mewrite watch --no-session               — don't persist session
- *   mewrite watch --model <pattern>          — model to use for agent runs
- *   mewrite watch --help                     — show help
+ * Long-lived process that watches the repository for configured comment markers
+ * and fires the agent when the fire marker is detected.
  */
 
 import { resolve } from "node:path";
 import { cwd as processCwd } from "node:process";
 import chalk from "chalk";
+import { APP_NAME, WATCH_FIRE_MARKER, WATCH_MARKER, WATCH_QA_MARKER } from "../config.js";
 import type { AgentRunFn } from "../core/watch-files/trigger.js";
 import { DEFAULT_WATCH_EXTENSIONS, startWatcher } from "../core/watch-files/watcher.js";
+import { runWatchAgentRun } from "./watch-agent-run.js";
 
 interface WatchArgs {
 	paths: string[];
@@ -74,7 +67,7 @@ function parseWatchArgs(args: string[]): WatchArgs {
 				if (!a.startsWith("-")) {
 					out.paths.push(resolve(a));
 				} else {
-					process.stderr.write(chalk.yellow(`[mewrite watch] unknown flag: ${a}\n`));
+					process.stderr.write(chalk.yellow(`[${APP_NAME} watch] unknown flag: ${a}\n`));
 				}
 		}
 	}
@@ -87,18 +80,18 @@ function parseWatchArgs(args: string[]): WatchArgs {
 }
 
 function printHelp(): void {
-	console.log(`Usage: mewrite watch [paths...] [options]
+	console.log(`Usage: ${APP_NAME} watch [paths...] [options]
 
-Watch source files for mewrite comment markers and dispatch the agent.
+Watch source files for ${WATCH_MARKER} comment markers and dispatch the agent.
 
 Markers (multi-language):
-  // mewrite!  <instruction>  — fire: edit the file, remove marker on success
-  // mewrite?  <question>     — Q&A: read-only, print response to stderr
-  // mewrite   <context>      — accumulate context for next fire/Q&A
+  // ${WATCH_FIRE_MARKER}  <instruction>  — fire: edit the file, remove marker on success
+  // ${WATCH_QA_MARKER}  <question>     — Q&A: read-only, print response to stderr
+  // ${WATCH_MARKER}   <context>      — accumulate context for next fire/Q&A
 
-Equivalent in Python: # mewrite! / # mewrite? / # mewrite
-Equivalent in Rust:   // mewrite! / // mewrite? / // mewrite
-Block comments:       /* mewrite! */ works in C-style languages.
+Equivalent in Python: # ${WATCH_FIRE_MARKER} / # ${WATCH_QA_MARKER} / # ${WATCH_MARKER}
+Equivalent in Rust:   // ${WATCH_FIRE_MARKER} / // ${WATCH_QA_MARKER} / // ${WATCH_MARKER}
+Block comments:       /* ${WATCH_FIRE_MARKER} */ works in C-style languages.
 
 Options:
   paths...               Directories or files to watch (default: cwd)
@@ -110,9 +103,9 @@ Options:
   -h, --help             Show this help
 
 Examples:
-  mewrite watch
-  mewrite watch src/ --ext ts,py
-  mewrite watch --poll 1000 /mnt/nfs/project
+  ${APP_NAME} watch
+  ${APP_NAME} watch src/ --ext ts,py
+  ${APP_NAME} watch --poll 1000 /mnt/nfs/project
 `);
 }
 
@@ -124,18 +117,15 @@ Examples:
  * call runPrintMode. We keep watch.ts thin and testable.
  */
 function buildAgentRun(args: WatchArgs): AgentRunFn {
-	return async (prompt: string, filePath: string, isReadOnly: boolean): Promise<string> => {
-		// Dynamic import to avoid circular dependency at module load time
-		const { runWatchAgentRun } = await import("./watch-agent-run.js");
-		return runWatchAgentRun(prompt, filePath, isReadOnly, {
+	return async (prompt: string, filePath: string, isReadOnly: boolean): Promise<string> =>
+		runWatchAgentRun(prompt, filePath, isReadOnly, {
 			model: args.model,
 			noSession: args.noSession,
 		});
-	};
 }
 
 /**
- * Handle `mewrite watch` subcommand.
+ * Handle watch subcommand.
  * Returns true if the args match this subcommand (handled).
  */
 export async function handleWatchCommand(args: string[]): Promise<boolean> {
@@ -143,7 +133,7 @@ export async function handleWatchCommand(args: string[]): Promise<boolean> {
 		return false;
 	}
 
-	// Normalise: `mewrite watch [rest]` or `mewrite --watch [rest]`
+	// Normalise: `${APP_NAME} watch [rest]` or `${APP_NAME} --watch [rest]`
 	const rest = args[0] === "watch" ? args.slice(1) : args.filter((a) => a !== "--watch");
 	const parsed = parseWatchArgs(rest);
 
@@ -154,9 +144,11 @@ export async function handleWatchCommand(args: string[]): Promise<boolean> {
 
 	const pathList = parsed.paths.join(", ");
 	process.stderr.write(
-		chalk.cyan(`[mewrite watch] starting — watching: ${pathList} (debounce: ${parsed.debounceMs}ms)\n`),
+		chalk.cyan(`[${APP_NAME} watch] starting — watching: ${pathList} (debounce: ${parsed.debounceMs}ms)\n`),
 	);
-	process.stderr.write(chalk.dim(`[mewrite watch] drop // mewrite! comments to fire the agent — Ctrl+C to stop\n`));
+	process.stderr.write(
+		chalk.dim(`[${APP_NAME} watch] drop // ${WATCH_FIRE_MARKER} comments to fire the agent — Ctrl+C to stop\n`),
+	);
 
 	const agentRun = buildAgentRun(parsed);
 
@@ -178,7 +170,7 @@ export async function handleWatchCommand(args: string[]): Promise<boolean> {
 	const shutdown = (signal: NodeJS.Signals) => {
 		if (stopping) return;
 		stopping = true;
-		process.stderr.write(chalk.dim(`\n[mewrite watch] stopping (${signal})...\n`));
+		process.stderr.write(chalk.dim(`\n[${APP_NAME} watch] stopping (${signal})...\n`));
 		handle.stop();
 		process.exit(0);
 	};

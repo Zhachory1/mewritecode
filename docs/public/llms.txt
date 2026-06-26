@@ -1,73 +1,72 @@
-# Cave CLI — terminal coding agent
+# Me Write Code — terminal coding harness
 
-> Cave is the only terminal coding agent that beats Claude Code on cost,
-> Aider on context selection, Codex on provider flexibility, and opencode
-> on session UX — in a single MIT-licensed binary. Three-layer Cave Mode
-> compression gives ~85% reduction on tool output and $1.70-$6.92 of
-> Anthropic spend saved per typical session.
+> Me Write Code is a provider-agnostic terminal coding harness with token-saving
+> Caveman Mode, SDK/RPC embedding, and package-based extensions, skills, prompts,
+> and themes.
 
-This file is the LLM-friendly entry point to Cave's documentation. Each
+This file is the LLM-friendly entry point to Me Write Code documentation. Each
 linked page is plain markdown with a "Copy for LLMs" button at the top
 that strips the navigation chrome.
 
 ## Install
 
 ```
-curl -fsSL https://cave.sh/install | bash
+npm install -g @zhachory1/mewrite-code
+mewrite
 ```
 
 ## Top-level docs
 
-- [Quickstart](https://cave.sh/docs/getting-started/quickstart): zero-to-first-prompt in 30 seconds
-- [Install](https://cave.sh/docs/getting-started/installation): macOS, Linux, Windows, Docker, Homebrew, npm
-- [Auth & Providers](https://cave.sh/docs/getting-started/auth): 20+ providers, 6 OAuth flows
-- [Models](https://cave.sh/docs/getting-started/models): default models, thinking levels, architect/editor split
+- [Quickstart](https://github.com/Zhachory1/mewritecode/tree/main/docs/getting-started/quickstart.md): zero-to-first-prompt in 30 seconds
+- [Install](https://github.com/Zhachory1/mewritecode/tree/main/docs/getting-started/installation.md): macOS, Linux, Windows, Docker, Homebrew, npm
+- [Auth & Providers](https://github.com/Zhachory1/mewritecode/tree/main/docs/getting-started/auth.md): providers and OAuth flows
+- [Models](https://github.com/Zhachory1/mewritecode/tree/main/docs/getting-started/models.md): default models, thinking levels, architect/editor split
 
 ## Reference
 
-- [Tools](https://cave.sh/docs/reference/tools): built-in tools, Cave Mode compression, cost transparency
-- [Slash Commands](https://cave.sh/docs/reference/slash-commands): built-ins + authoring markdown commands
-- [Skills](https://cave.sh/docs/reference/skills): markdown skills loaded by description match (Claude Code-compatible)
-- [Subagents](https://cave.sh/docs/reference/subagents): worktree-isolated parallel agents via Task tool
-- [Memory (cavemem)](https://cave.sh/docs/reference/memory): cavemem integration, episodic-to-semantic consolidation
-- [MCP](https://cave.sh/docs/reference/mcp): client + cave-as-server, stdio/HTTP/inproc transports
-- [Hooks](https://cave.sh/docs/reference/hooks): 12-event lifecycle (Claude Code settings.json schema)
-- [Permissions](https://cave.sh/docs/reference/permissions): five modes, Seatbelt/Landlock/Restricted Tokens
-- [Plan Mode](https://cave.sh/docs/reference/plan-mode): read-only exploration, structured plan, /act to execute
-- [Daemon](https://cave.sh/docs/reference/daemon): cave serve, multi-client attach, worker mode
-- [Recipes](https://cave.sh/docs/reference/recipes): YAML pipelines, Goose-style schema
+- [Tools](https://github.com/Zhachory1/mewritecode/tree/main/docs/reference/tools.md): built-in tools, Caveman Mode compression, cost transparency
+- [Slash Commands](https://github.com/Zhachory1/mewritecode/tree/main/docs/reference/slash-commands.md): built-ins + authoring markdown commands
+- [Skills](https://github.com/Zhachory1/mewritecode/tree/main/docs/reference/skills.md): markdown skills loaded by description match
+- [Subagents](https://github.com/Zhachory1/mewritecode/tree/main/docs/reference/subagents.md): worktree-isolated parallel agents via Task tool
+- [Memory](https://github.com/Zhachory1/mewritecode/tree/main/docs/reference/memory.md): memory integration
+- [MCP](https://github.com/Zhachory1/mewritecode/tree/main/docs/reference/mcp.md): client + agent-as-server transports
+- [Hooks](https://github.com/Zhachory1/mewritecode/tree/main/docs/reference/hooks.md): lifecycle hooks
+- [Permissions](https://github.com/Zhachory1/mewritecode/tree/main/docs/reference/permissions.md): approval and sandbox surfaces
+- [Plan Mode](https://github.com/Zhachory1/mewritecode/tree/main/docs/reference/plan-mode.md): read-only exploration, structured plan, /act to execute
+- [Daemon](https://github.com/Zhachory1/mewritecode/tree/main/docs/reference/daemon.md): serve, multi-client attach, worker mode
+- [Recipes](https://github.com/Zhachory1/mewritecode/tree/main/docs/reference/recipes.md): YAML pipelines
 
 ## Migration
 
-- [From Claude Code](https://cave.sh/docs/migration/from-claude-code): paste your config, it works
-- [From Codex](https://cave.sh/docs/migration/from-codex): AGENTS.md, .mcp.json, sandbox parity
-- [From Aider](https://cave.sh/docs/migration/from-aider): repo map and edit-format-per-model
+- [From Claude Code](https://github.com/Zhachory1/mewritecode/tree/main/docs/migration/from-claude-code.md): config compatibility
+- [From Codex](https://github.com/Zhachory1/mewritecode/tree/main/docs/migration/from-codex.md): AGENTS.md and .mcp.json compatibility
+- [From Aider](https://github.com/Zhachory1/mewritecode/tree/main/docs/migration/from-aider.md): repo map and edit-format-per-model
 
 ## Cookbook & API
 
-- [Cookbook](https://cave.sh/docs/cookbook): GitHub Actions, multi-agent review, daemon pair programming
-- [Comparison](https://cave.sh/docs/comparison): Cave vs Claude Code / Codex / Aider / Crush / opencode
-- [Troubleshooting](https://cave.sh/docs/troubleshooting): install, auth, sessions, tools, hooks, MCP
-- [API](https://cave.sh/docs/api): SDK, JSON-RPC, OpenAPI, extension API
+- [Cookbook](https://github.com/Zhachory1/mewritecode/tree/main/docs/cookbook.md): GitHub Actions, multi-agent review, daemon pair programming
+- [Comparison](https://github.com/Zhachory1/mewritecode/tree/main/docs/comparison.md): Me Write Code vs other coding agents
+- [Troubleshooting](https://github.com/Zhachory1/mewritecode/tree/main/docs/troubleshooting.md): install, auth, sessions, tools, hooks, MCP
+- [API](https://github.com/Zhachory1/mewritecode/tree/main/docs/api.md): SDK, JSON-RPC, OpenAPI, extension API
 
 ## Differentiators (one-line each)
 
-1. Cave Mode compression: 3 layers, ~85% reduction on tool output
-2. 20+ providers + 6 OAuth flows (Claude Pro, ChatGPT Plus, Copilot, Gemini, Antigravity)
-3. Session branching (`/tree`, `/fork`) — no major competitor has this
-4. Plan mode + 7 parallel worktree-isolated subagents
-5. Native MCP client + Cave can serve as MCP server
-6. Native sandbox: macOS Seatbelt, Linux Landlock, Windows Restricted Tokens
-7. Aider-grade repo map (PageRank) + edit-format-per-model
-8. Daemon (`cave serve`) survives SSH drops; multi-client attach
+1. Caveman Mode compression: prompt, tool-output, and read-dedup layers
+2. Multi-provider auth and model routing
+3. Session branching (`/tree`, `/fork`)
+4. Plan mode + parallel worktree-isolated subagents
+5. MCP client plus MCP server mode
+6. Approval and sandbox surfaces
+7. Repo map + edit-format-per-model workflows
+8. Daemon mode survives SSH drops; multi-client attach
 9. Shadow-git checkpoints + `/rollback N`
-10. cavemem-backed memory with episodic-to-semantic consolidation
-11. Claude Code authoring formats (settings.json, commands, skills, agents) — paste-and-go compat
+10. Memory integration hooks
+11. Packageable extensions, skills, prompts, themes, and agents
 12. MIT licensed; no telemetry by default
 
 ## Repo
 
 - Source: https://github.com/Zhachory1/mewritecode
 - Issues: https://github.com/Zhachory1/mewritecode/issues
-- Discord: https://discord.gg/cave-cli
+- Discord: https://discord.com/invite/nKXTsAcmbT
 - Releases: https://github.com/Zhachory1/mewritecode/releases

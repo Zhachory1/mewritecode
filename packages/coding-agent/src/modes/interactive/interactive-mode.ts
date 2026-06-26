@@ -49,11 +49,13 @@ import { spawn, spawnSync } from "child_process";
 import { maybeNotifyUpdateAvailable } from "../../cli/update.js";
 import {
 	APP_NAME,
+	CHANGELOG_URL,
 	getAgentDir,
 	getAuthPath,
 	getDebugLogPath,
 	getShareViewerUrl,
 	getUpdateInstruction,
+	PACKAGE_NAME,
 	VERSION,
 } from "../../config.js";
 import {
@@ -785,9 +787,9 @@ export class InteractiveMode {
 		const cwdBasename = path.basename(this.sessionManager.getCwd());
 		const sessionName = this.sessionManager.getSessionName();
 		if (sessionName) {
-			this.ui.terminal.setTitle(`cave - ${sessionName} - ${cwdBasename}`);
+			this.ui.terminal.setTitle(`${APP_NAME} - ${sessionName} - ${cwdBasename}`);
 		} else {
-			this.ui.terminal.setTitle(`cave - ${cwdBasename}`);
+			this.ui.terminal.setTitle(`${APP_NAME} - ${cwdBasename}`);
 		}
 	}
 
@@ -902,12 +904,8 @@ export class InteractiveMode {
 	}
 
 	/**
-	 * Check the cave GitHub releases for a newer version. Throttled to once per
+	 * Check configured GitHub releases for a newer version. Throttled to once per
 	 * 24h via SettingsManager and deduped per-version so we don't nag.
-	 *
-	 * Note: do NOT query the public npm registry here — `cave` on npmjs.org is
-	 * an unrelated CSS package by another author. The GH releases API is the
-	 * canonical source of truth for the cave coding agent.
 	 */
 	private async checkForNewVersion(): Promise<string | undefined> {
 		if (process.env.PI_SKIP_VERSION_CHECK || process.env.PI_OFFLINE) return undefined;
@@ -3200,14 +3198,14 @@ export class InteractiveMode {
 					reg.end(event.subagentId);
 					this.showStatus(`✓ ${event.subagentName}: done`);
 					try {
-						notify({ title: "cave subagent", body: `${event.subagentName} done` });
+						notify({ title: `${APP_NAME} subagent`, body: `${event.subagentName} done` });
 					} catch {}
 				} else if (event.phase === "failed") {
 					reg.end(event.subagentId, { error: true });
 					this.showStatus(`✗ ${event.subagentName}: ${event.detail ?? "failed"}`);
 					try {
 						notify({
-							title: "cave subagent",
+							title: `${APP_NAME} subagent`,
 							body: `${event.subagentName} failed: ${event.detail ?? ""}`,
 						});
 					} catch {}
@@ -3879,12 +3877,9 @@ export class InteractiveMode {
 	}
 
 	showNewVersionNotification(newVersion: string): void {
-		const action = theme.fg("accent", getUpdateInstruction("cave"));
+		const action = theme.fg("accent", getUpdateInstruction(PACKAGE_NAME));
 		const updateInstruction = theme.fg("muted", `New version ${newVersion} is available. `) + action;
-		const changelogUrl = theme.fg(
-			"accent",
-			"https://github.com/Zhachory1/mewritecode/blob/main/packages/coding-agent/CHANGELOG.md",
-		);
+		const changelogUrl = theme.fg("accent", CHANGELOG_URL);
 		const changelogLine = theme.fg("muted", "Changelog: ") + changelogUrl;
 
 		this.chatContainer.addChild(new Spacer(1));
