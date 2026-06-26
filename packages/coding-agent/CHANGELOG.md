@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.66.3] - 2026-06-26
+
 ### Changed
 
 - Added downstream image-logo support via `mewriteConfig.branding.logoPath`, allowing branded wrappers to replace the startup ASCII wordmark with a package-shipped image.
