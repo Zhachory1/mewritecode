@@ -39,6 +39,7 @@ export interface McpDiscoveryOptions {
 	includeClaudeConfig?: boolean;
 	includeCodexConfig?: boolean;
 	packageConfigPath?: string;
+	packageConfigPaths?: readonly string[];
 }
 
 function unique(paths: string[]): string[] {
@@ -84,8 +85,12 @@ export function getDiscoverySources(
 	options: McpDiscoveryOptions = {},
 ): DiscoverySource[] {
 	const out: DiscoverySource[] = [];
-	if (options.packageConfigPath) {
-		out.push({ scope: "package", path: options.packageConfigPath, exists: existsSync(options.packageConfigPath) });
+	const packagePaths = unique([
+		...(options.packageConfigPath ? [options.packageConfigPath] : []),
+		...(options.packageConfigPaths ?? []),
+	]);
+	for (const packagePath of packagePaths) {
+		out.push({ scope: "package", path: packagePath, exists: existsSync(packagePath) });
 	}
 	for (const rel of projectPaths(options)) {
 		const p = resolve(cwd, rel);
@@ -132,8 +137,7 @@ export function loadMcpConfig(cwd = process.cwd(), home = homedir(), options: Mc
 	const byName = new Map<string, McpServerConfig>();
 	let settings: McpSettings = {};
 
-	const packageSource = sources.find((s) => s.scope === "package" && s.exists);
-	if (packageSource) {
+	for (const packageSource of sources.filter((s) => s.scope === "package" && s.exists)) {
 		const parsed = safeParse(packageSource.path, errors);
 		for (const c of entriesToConfigs(parsed)) byName.set(c.name, c);
 		if (parsed?.settings) settings = { ...settings, ...parsed.settings };

@@ -62,11 +62,48 @@ const SIGKILL_GRACE_MS = 5_000;
  */
 const MAX_SUBAGENT_DEPTH = 3;
 const SUBAGENT_DEPTH_ENV = "CAVE_SUBAGENT_DEPTH";
+const MAX_PARENT_RESULT_CHARS = 20_000;
+const MAX_PARALLEL_PARENT_RESULT_CHARS = 60_000;
+const MIN_PARALLEL_RESULT_CHARS = 4_000;
+let persistedResultCounter = 0;
 
 function currentSubagentDepth(): number {
 	const raw = process.env[SUBAGENT_DEPTH_ENV];
 	const n = raw ? Number.parseInt(raw, 10) : 0;
 	return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function persistFullResult(text: string): string {
+	persistedResultCounter += 1;
+	const outputPath = getTaskOutputPath(`foreground-${Date.now().toString(36)}-${persistedResultCounter}`);
+	writeFileSync(outputPath, text, { encoding: "utf8", mode: 0o600 });
+	return outputPath;
+}
+
+function truncateParentResult(text: string, maxChars = MAX_PARENT_RESULT_CHARS): string {
+	if (text.length <= maxChars) return text;
+	const headChars = Math.ceil(maxChars * 0.6);
+	const tailChars = maxChars - headChars;
+	const omitted = text.length - headChars - tailChars;
+	const outputPath = persistFullResult(text);
+	return [
+		text.slice(0, headChars),
+		`\n\n[... ${omitted} chars omitted from subagent result; full result saved at ${outputPath} ...]\n\n`,
+		text.slice(text.length - tailChars),
+	].join("");
+}
+
+function subagentResultBody(result: SubagentResult): string {
+	if (result.exitCode === 0) return result.output || "(no output)";
+	const parts: string[] = [];
+	if (result.error) parts.push(`Error: ${result.error}`);
+	if (result.output) parts.push(`Output:\n${result.output}`);
+	return parts.join("\n\n") || "(no output)";
+}
+
+function formatSubagentResultForParent(result: SubagentResult, maxChars = MAX_PARENT_RESULT_CHARS): string {
+	const status = result.exitCode === 0 ? "OK" : "FAIL";
+	return [`## ${result.agent} — ${status}`, "", truncateParentResult(subagentResultBody(result), maxChars)].join("\n");
 }
 
 // ─── Schema ───────────────────────────────────────────────────────────────
@@ -342,10 +379,11 @@ async function spawnSubagent(opts: SpawnOptions): Promise<SpawnResult> {
 				} else if (event.type === "message_end" && event.message?.role === "assistant") {
 					const content = event.message.content;
 					if (Array.isArray(content)) {
-						for (const part of content) {
-							if (part?.type === "text" && typeof part.text === "string") {
-								finalText = part.text;
-							}
+						const textParts = content
+							.filter((part) => part?.type === "text" && typeof part.text === "string")
+							.map((part) => part.text as string);
+						if (textParts.length > 0) {
+							finalText = textParts.join("\n");
 						}
 					}
 					if (typeof finalText === "string" && finalText.length > 0) {
@@ -953,8 +991,8 @@ export function createTaskToolDefinition(
 				});
 				const text =
 					r.exitCode === 0
-						? r.output || "(no output)"
-						: `Subagent failed: ${r.error || r.output || "(no output)"}`;
+						? truncateParentResult(r.output || "(no output)")
+						: `Subagent failed:\n${truncateParentResult(subagentResultBody(r))}`;
 				return {
 					content: [{ type: "text" as const, text }],
 					details: { mode: "single" as const, results: [r] },
@@ -978,14 +1016,16 @@ export function createTaskToolDefinition(
 					}),
 				);
 				const ok = results.filter((r) => r.exitCode === 0).length;
-				const summary = results.map(
-					(r) => `[${r.agent}] ${r.exitCode === 0 ? "OK" : "FAIL"}: ${r.output.slice(0, 80)}`,
+				const perResultMax = Math.max(
+					MIN_PARALLEL_RESULT_CHARS,
+					Math.floor(MAX_PARALLEL_PARENT_RESULT_CHARS / Math.max(1, results.length)),
 				);
+				const summary = results.map((r) => formatSubagentResultForParent(r, perResultMax));
 				return {
 					content: [
 						{
 							type: "text" as const,
-							text: `Parallel: ${ok}/${results.length} succeeded\n\n${summary.join("\n")}`,
+							text: `Parallel: ${ok}/${results.length} succeeded\n\n${summary.join("\n\n")}`,
 						},
 					],
 					details: { mode: "parallel" as const, results },
@@ -1017,7 +1057,7 @@ export function createTaskToolDefinition(
 						content: [
 							{
 								type: "text" as const,
-								text: `Chain stopped at step ${i + 1} (${step.agent}): ${r.error || r.output || "(no output)"}`,
+								text: `Chain stopped at step ${i + 1} (${step.agent}):\n${truncateParentResult(subagentResultBody(r))}`,
 							},
 						],
 						details: { mode: "chain" as const, results },
@@ -1027,7 +1067,7 @@ export function createTaskToolDefinition(
 			}
 			const last = results[results.length - 1];
 			return {
-				content: [{ type: "text" as const, text: last?.output || "(no output)" }],
+				content: [{ type: "text" as const, text: truncateParentResult(last?.output || "(no output)") }],
 				details: { mode: "chain" as const, results },
 			};
 		},

@@ -21,7 +21,7 @@ import { normalizeFrontmatterArray, type SubagentDef, validateSubagentDef } from
 import { existsSync, readdirSync, readFileSync, statSync } from "fs";
 import { homedir } from "os";
 import { basename, join, resolve } from "path";
-import { CONFIG_DIR_NAME, getAgentDir, getPackageDir } from "../../config.js";
+import { CONFIG_DIR_NAME, getAgentDir, getDistributionAgentPaths, getPackageDir } from "../../config.js";
 import { parseFrontmatter } from "../../utils/frontmatter.js";
 // note: from src/core/agent-defs/loader.ts → ../../ → src/ → config.ts
 import type { ResourceDiagnostic } from "../diagnostics.js";
@@ -313,10 +313,13 @@ export function loadAgentDefs(options: LoadAgentDefsOptions = {}): LoadAgentDefs
 		}
 	};
 
-	// 1. Bundled defaults — package/agents/
+	// 1. Bundled defaults — package/agents/ plus downstream wrapper agent dirs.
 	if (!options.skipBundled) {
 		const bundledDir = join(packageBase, "agents");
 		merge(scanDir(bundledDir, "builtin"));
+		for (const dir of getDistributionAgentPaths()) {
+			merge(scanDir(dir, "plugin"));
+		}
 	}
 
 	// Cross-platform agent discovery (#59 stage 2). OFF by default; opt in via

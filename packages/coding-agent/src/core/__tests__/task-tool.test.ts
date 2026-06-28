@@ -4,16 +4,17 @@
  */
 
 import { EventEmitter } from "node:events";
+import { readFileSync } from "node:fs";
 import { PassThrough, Readable } from "node:stream";
 import { afterEach, describe, expect, it } from "vitest";
 import type { LoadAgentDefsResult } from "../agent-defs/loader.js";
 import { _resetRegistry, getBackground } from "../background-task-registry.js";
 import { createTaskToolDefinition } from "../tools/task.js";
 
-function fakeChild(jsonLines: string[], exitCode = 0): any {
+function fakeChild(jsonLines: string[], exitCode = 0, stderrLines: string[] = []): any {
 	const child = new EventEmitter() as any;
 	child.stdout = Readable.from(jsonLines.map((l) => `${l}\n`));
-	child.stderr = Readable.from([]);
+	child.stderr = Readable.from(stderrLines.map((l) => `${l}\n`));
 	child.killed = false;
 	child.kill = () => {
 		child.killed = true;
@@ -71,6 +72,155 @@ describe("WS6 Task tool", () => {
 		expect(result.details?.mode).toBe("single");
 		expect(result.details?.results).toHaveLength(1);
 		expect(result.details?.results[0]?.exitCode).toBe(0);
+	});
+
+	it("single mode preserves all final assistant text blocks", async () => {
+		const mockSpawn = (() =>
+			fakeChild([
+				JSON.stringify({
+					type: "message_end",
+					message: {
+						role: "assistant",
+						content: [
+							{ type: "text", text: "FIRST_FINDING" },
+							{ type: "text", text: "SECOND_FINDING" },
+						],
+					},
+				}),
+			])) as any;
+
+		const tool = createTaskToolDefinition(process.cwd(), {
+			caveBin: "cave",
+			mockSpawn,
+			loader: () => stubLoaded,
+		});
+
+		const result = await tool.execute(
+			"call-multi-block",
+			{ agent: "tester", task: "say all" },
+			undefined,
+			undefined,
+			{} as any,
+		);
+		const text = result.content[0]?.type === "text" ? result.content[0].text : "";
+
+		expect(text).toContain("FIRST_FINDING");
+		expect(text).toContain("SECOND_FINDING");
+	});
+
+	it("parallel mode preserves actionable subagent output in parent context", async () => {
+		let calls = 0;
+		const outputs = [
+			`${"a".repeat(120)}\nACTIONABLE_FINDING_ALPHA: fix auth retry loop`,
+			`${"b".repeat(120)}\nACTIONABLE_FINDING_BETA: preserve test failure tail`,
+		];
+		const mockSpawn = (() => {
+			const text = outputs[calls++] ?? "unexpected";
+			return fakeChild([
+				JSON.stringify({
+					type: "message_end",
+					message: {
+						role: "assistant",
+						content: [{ type: "text", text }],
+					},
+				}),
+			]);
+		}) as any;
+
+		const tool = createTaskToolDefinition(process.cwd(), {
+			caveBin: "cave",
+			mockSpawn,
+			loader: () => stubLoaded,
+		});
+
+		const result = await tool.execute(
+			"call-parallel",
+			{
+				tasks: [
+					{ agent: "tester", task: "find alpha" },
+					{ agent: "tester", task: "find beta" },
+				],
+			},
+			undefined,
+			undefined,
+			{} as any,
+		);
+
+		const text = result.content[0]?.type === "text" ? result.content[0].text : "";
+		expect(text).toContain("Parallel: 2/2 succeeded");
+		expect(text).toContain("ACTIONABLE_FINDING_ALPHA");
+		expect(text).toContain("ACTIONABLE_FINDING_BETA");
+		expect(text).not.toContain("[tester] OK:");
+	});
+
+	it("single mode persists full output when parent context truncates", async () => {
+		const longOutput = `${"head".repeat(5000)}\nMIDDLE_ACTIONABLE_DETAIL\n${"tail".repeat(5000)}`;
+		const mockSpawn = (() =>
+			fakeChild([
+				JSON.stringify({
+					type: "message_end",
+					message: {
+						role: "assistant",
+						content: [{ type: "text", text: longOutput }],
+					},
+				}),
+			])) as any;
+
+		const tool = createTaskToolDefinition(process.cwd(), {
+			caveBin: "cave",
+			mockSpawn,
+			loader: () => stubLoaded,
+		});
+
+		const result = await tool.execute(
+			"call-long",
+			{ agent: "tester", task: "long output" },
+			undefined,
+			undefined,
+			{} as any,
+		);
+		const text = result.content[0]?.type === "text" ? result.content[0].text : "";
+		const match = text.match(/full result saved at (.+?) \.\.\./);
+
+		expect(text).toContain("chars omitted from subagent result");
+		expect(match?.[1]).toBeTruthy();
+		expect(readFileSync(match![1], "utf8")).toContain("MIDDLE_ACTIONABLE_DETAIL");
+	});
+
+	it("parallel mode preserves failed subagent output alongside error text", async () => {
+		const mockSpawn = (() =>
+			fakeChild(
+				[
+					JSON.stringify({
+						type: "message_end",
+						message: {
+							role: "assistant",
+							content: [{ type: "text", text: "ACTIONABLE_FAILURE_DETAIL: failing assertion line 42" }],
+						},
+					}),
+				],
+				1,
+				["stderr: test process exited 1"],
+			)) as any;
+
+		const tool = createTaskToolDefinition(process.cwd(), {
+			caveBin: "cave",
+			mockSpawn,
+			loader: () => stubLoaded,
+		});
+
+		const result = await tool.execute(
+			"call-parallel-fail",
+			{ tasks: [{ agent: "tester", task: "run failing test" }] },
+			undefined,
+			undefined,
+			{} as any,
+		);
+
+		const text = result.content[0]?.type === "text" ? result.content[0].text : "";
+		expect(text).toContain("## tester — FAIL");
+		expect(text).toContain("stderr: test process exited 1");
+		expect(text).toContain("ACTIONABLE_FAILURE_DETAIL");
 	});
 
 	it("rejects unknown agent with available list", async () => {

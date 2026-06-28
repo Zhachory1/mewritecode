@@ -25,8 +25,10 @@ import { LLMLinguaMiddleware } from "@zhachory1/mewrite-agent";
 import { applyStructuredCompressionToContentBlocks } from "./cave-structured-compression.js";
 import {
 	applyToolBudgetToContentBlocks,
+	collapseBlankLines,
 	compressCaveToolContentBlocks,
 	ReadDeduplicationCache,
+	stripAnsi,
 } from "./cave-tool-compression.js";
 import { estimateContextTokens } from "./compaction/compaction.js";
 import type { SavingsTracker } from "./savings-tracker.js";
@@ -141,7 +143,7 @@ export class CompressionPipeline {
 	async compressToolResult(toolName: string, args: unknown, content: ContentBlock[]): Promise<ContentBlock[]> {
 		let processed = content;
 
-		if (this.settings.getCaveModeMLCompression()) {
+		if (this.settings.getCaveModeMLCompression() && toolName !== "task" && toolName !== "agent") {
 			// ML compression (LLMLingua-2 ONNX) — runs INSTEAD of rule-based stages
 			// to avoid compounding and to let BERT see original text structure.
 			try {
@@ -168,10 +170,17 @@ export class CompressionPipeline {
 		// Rule-based compression (always runs: as primary when ML disabled, as
 		// safety net when ML enabled).
 		try {
-			processed = applyToolBudgetToContentBlocks(processed, toolName) as ContentBlock[];
-			const commandHint = toolName === "bash" ? (args as { command?: string }).command : undefined;
-			processed = applyStructuredCompressionToContentBlocks(processed, toolName, commandHint) as ContentBlock[];
-			processed = compressCaveToolContentBlocks(processed) as ContentBlock[];
+			if (toolName === "task" || toolName === "agent") {
+				processed = processed.map((block) => {
+					if (block.type !== "text" || typeof block.text !== "string") return block;
+					return { ...block, text: collapseBlankLines(stripAnsi(block.text)) };
+				}) as ContentBlock[];
+			} else {
+				processed = applyToolBudgetToContentBlocks(processed, toolName) as ContentBlock[];
+				const commandHint = toolName === "bash" ? (args as { command?: string }).command : undefined;
+				processed = applyStructuredCompressionToContentBlocks(processed, toolName, commandHint) as ContentBlock[];
+				processed = compressCaveToolContentBlocks(processed) as ContentBlock[];
+			}
 		} catch {
 			processed = content;
 		}
@@ -219,6 +228,7 @@ export class CompressionPipeline {
 			messages.map(async (m, idx) => {
 				if (idx >= firstProtectedIndex) return m;
 				if (m.role !== "toolResult") return m;
+				if (m.toolName === "task" || m.toolName === "agent") return m;
 				if (this._softCompressedTimestamps.has(m.timestamp)) return m;
 
 				try {

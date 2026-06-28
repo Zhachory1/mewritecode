@@ -11,10 +11,32 @@ describe("distribution config", () => {
 		for (const dir of created.splice(0)) rmSync(dir, { recursive: true, force: true });
 	});
 
+	function runRuntimeProbe(env: NodeJS.ProcessEnv): Record<string, unknown> {
+		const code = [
+			'import { DefaultResourceLoader } from "./src/core/resource-loader.ts";',
+			'import { loadAgentDefs } from "./src/core/agent-defs/loader.ts";',
+			"async function main() {",
+			"const cwd = process.env.TEST_CWD;",
+			"const agentDir = process.env.TEST_AGENT_DIR;",
+			"const loader = new DefaultResourceLoader({ cwd, agentDir });",
+			"await loader.reload();",
+			"const agents = loadAgentDefs({ cwd, userDir: agentDir }).agents.map((a) => a.def.name);",
+			"console.log(JSON.stringify({ skills: loader.getSkills().skills.map((s) => s.name), prompts: loader.getPrompts().prompts.map((p) => p.name), agents }));",
+			"}",
+			"main().catch((err) => { console.error(err); process.exit(1); });",
+		].join("\n");
+		const out = execFileSync("npx", ["tsx", "-e", code], {
+			cwd: process.cwd(),
+			env: { ...process.env, ...env },
+			encoding: "utf8",
+		});
+		return JSON.parse(out) as Record<string, unknown>;
+	}
+
 	function runConfigProbe(env: NodeJS.ProcessEnv): Record<string, unknown> {
 		const code = [
-			'import { APP_NAME, BANNER_LOGO_MAX_WIDTH_CELLS, BANNER_LOGO_PATH, BANNER_TAGLINE, CHANGELOG_URL, CONFIG_DIR_NAME, DEFAULT_THEME_NAME, DISPLAY_NAME, DOCS_URL, ENV_PACKAGE_DIR, GITHUB_URL, MCP_DISCOVERY_OPTIONS, WATCH_MARKER, getDistributionThemePaths, getPackageDir, getThemesDir } from "./src/config.ts";',
-			"console.log(JSON.stringify({ appName: APP_NAME, displayName: DISPLAY_NAME, configDirName: CONFIG_DIR_NAME, envPackageDir: ENV_PACKAGE_DIR, packageDir: getPackageDir(), themesDir: getThemesDir(), distributionThemePaths: getDistributionThemePaths(), mcp: MCP_DISCOVERY_OPTIONS, watchMarker: WATCH_MARKER, bannerLogoPath: BANNER_LOGO_PATH, bannerLogoMaxWidthCells: BANNER_LOGO_MAX_WIDTH_CELLS, bannerTagline: BANNER_TAGLINE, defaultThemeName: DEFAULT_THEME_NAME, githubUrl: GITHUB_URL, docsUrl: DOCS_URL, changelogUrl: CHANGELOG_URL }));",
+			'import { APP_NAME, BANNER_LOGO_MAX_WIDTH_CELLS, BANNER_LOGO_PATH, BANNER_TAGLINE, CHANGELOG_URL, CONFIG_DIR_NAME, DEFAULT_THEME_NAME, DISPLAY_NAME, DOCS_URL, ENV_PACKAGE_DIR, GITHUB_URL, MCP_DISCOVERY_OPTIONS, WATCH_MARKER, getDistributionAgentPaths, getDistributionExtensionPaths, getDistributionMcpConfigPaths, getDistributionPromptPaths, getDistributionSkillPaths, getDistributionThemePaths, getPackageDir, getThemesDir } from "./src/config.ts";',
+			"console.log(JSON.stringify({ appName: APP_NAME, displayName: DISPLAY_NAME, configDirName: CONFIG_DIR_NAME, envPackageDir: ENV_PACKAGE_DIR, packageDir: getPackageDir(), themesDir: getThemesDir(), distributionExtensionPaths: getDistributionExtensionPaths(), distributionSkillPaths: getDistributionSkillPaths(), distributionPromptPaths: getDistributionPromptPaths(), distributionThemePaths: getDistributionThemePaths(), distributionAgentPaths: getDistributionAgentPaths(), distributionMcpConfigPaths: getDistributionMcpConfigPaths(), mcp: MCP_DISCOVERY_OPTIONS, watchMarker: WATCH_MARKER, bannerLogoPath: BANNER_LOGO_PATH, bannerLogoMaxWidthCells: BANNER_LOGO_MAX_WIDTH_CELLS, bannerTagline: BANNER_TAGLINE, defaultThemeName: DEFAULT_THEME_NAME, githubUrl: GITHUB_URL, docsUrl: DOCS_URL, changelogUrl: CHANGELOG_URL }));",
 		].join("\n");
 		const out = execFileSync("npx", ["tsx", "-e", code], {
 			cwd: process.cwd(),
@@ -92,7 +114,95 @@ describe("distribution config", () => {
 			includeClaudeConfig: false,
 			includeCodexConfig: false,
 			packageConfigPath: join(packageDir, ".mcp.json"),
+			packageConfigPaths: [join(packageDir, ".mcp.json")],
 		});
+	});
+
+	it("exports downstream package resource paths from metadata", () => {
+		const packageDir = mkdtempSync(join(tmpdir(), "examplecode-package-"));
+		created.push(packageDir);
+		writeFileSync(
+			join(packageDir, "package.json"),
+			JSON.stringify({
+				name: "@example/examplecode",
+				version: "1.2.3",
+				mewriteConfig: {
+					name: "examplecode",
+					resources: {
+						extensions: ["./extensions"],
+						skills: ["./skills"],
+						prompts: ["./prompts"],
+						themes: ["./resource-themes"],
+						agents: ["./agents", "./extra-agents"],
+						mcp: ["./mcp/defaults.json"],
+					},
+					theme: { paths: ["./themes/example-dark.json"] },
+				},
+			}),
+		);
+
+		const result = runConfigProbe({ CODING_AGENT_PACKAGE_DIR: packageDir });
+		expect(result.distributionExtensionPaths).toEqual([join(packageDir, "extensions")]);
+		expect(result.distributionSkillPaths).toEqual([join(packageDir, "skills")]);
+		expect(result.distributionPromptPaths).toEqual([join(packageDir, "prompts")]);
+		expect(result.distributionThemePaths).toEqual([
+			join(packageDir, "themes", "example-dark.json"),
+			join(packageDir, "resource-themes"),
+		]);
+		expect(result.distributionAgentPaths).toEqual([join(packageDir, "agents"), join(packageDir, "extra-agents")]);
+		expect(result.distributionMcpConfigPaths).toEqual([
+			join(packageDir, ".mcp.json"),
+			join(packageDir, "mcp", "defaults.json"),
+		]);
+	});
+
+	it("loads downstream package skills, prompts, and agents from resource paths", () => {
+		const packageDir = mkdtempSync(join(tmpdir(), "examplecode-package-"));
+		const agentDir = mkdtempSync(join(tmpdir(), "examplecode-agent-"));
+		const cwd = mkdtempSync(join(tmpdir(), "examplecode-project-"));
+		created.push(packageDir, agentDir, cwd);
+		mkdirSync(join(packageDir, "skills", "wrapper-skill"), { recursive: true });
+		mkdirSync(join(packageDir, "prompts"), { recursive: true });
+		mkdirSync(join(packageDir, "agents"), { recursive: true });
+		writeFileSync(
+			join(packageDir, "package.json"),
+			JSON.stringify({
+				name: "@example/examplecode",
+				version: "1.2.3",
+				mewriteConfig: {
+					name: "examplecode",
+					resources: { skills: ["./skills"], prompts: ["./prompts"], agents: ["./agents"] },
+				},
+			}),
+		);
+		writeFileSync(
+			join(packageDir, "skills", "wrapper-skill", "SKILL.md"),
+			`---
+name: wrapper-skill
+description: Wrapper skill
+---
+Skill body`,
+		);
+		writeFileSync(
+			join(packageDir, "prompts", "wrapper-prompt.md"),
+			`---
+description: Wrapper prompt
+---
+Prompt body`,
+		);
+		writeFileSync(
+			join(packageDir, "agents", "wrapper-agent.md"),
+			`---
+name: wrapper-agent
+description: Wrapper agent
+---
+Agent body`,
+		);
+
+		const result = runRuntimeProbe({ CODING_AGENT_PACKAGE_DIR: packageDir, TEST_CWD: cwd, TEST_AGENT_DIR: agentDir });
+		expect(result.skills).toContain("wrapper-skill");
+		expect(result.prompts).toContain("wrapper-prompt");
+		expect(result.agents).toContain("wrapper-agent");
 	});
 
 	it("exports downstream branding, watch marker, URLs, and default theme from metadata", () => {

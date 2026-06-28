@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added support for loading multiple package-shipped MCP config files so downstream wrappers can compose MCP defaults.
+
 ## [0.66.3] - 2026-06-26
 
 ## [0.66.2] - 2026-06-26

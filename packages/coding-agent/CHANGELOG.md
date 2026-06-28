@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added `mewriteConfig.resources` support for downstream wrappers to ship default extensions, skills, prompts, themes, agents, and MCP configs from the wrapper package.
+
+### Fixed
+
+- Fixed parallel subagent results to preserve actionable agent output instead of returning 80-character summaries, while saving full oversized results to a readable task output file ([#37](https://github.com/Zhachory1/mewritecode/issues/37)).
+
 ## [0.66.3] - 2026-06-26
 
 ### Changed

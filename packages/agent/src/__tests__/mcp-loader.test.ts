@@ -137,6 +137,40 @@ describe("loadMcpConfig", () => {
 		expect(result.sources.map((s) => s.path)).toEqual([packageConfig]);
 	});
 
+	it("loads multiple package-shipped MCP configs before user and project overrides", () => {
+		const packageDir = join(tmp, "package-dir");
+		mkdirSync(packageDir, { recursive: true });
+		const first = join(packageDir, "first.json");
+		const second = join(packageDir, "second.json");
+		mkdirSync(join(home, ".brandcode"), { recursive: true });
+		mkdirSync(join(tmp, ".brandcode"), { recursive: true });
+		writeFileSync(first, JSON.stringify({ mcpServers: { first: { command: "first" }, both: { command: "pkg" } } }));
+		writeFileSync(second, JSON.stringify({ mcpServers: { second: { command: "second" } } }));
+		writeFileSync(
+			join(home, ".brandcode", "mcp.json"),
+			JSON.stringify({ mcpServers: { both: { command: "user" } } }),
+		);
+		writeFileSync(
+			join(tmp, ".brandcode", "mcp.json"),
+			JSON.stringify({ mcpServers: { both: { command: "project" } } }),
+		);
+
+		const result = loadMcpConfig(tmp, home, {
+			configDirName: ".brandcode",
+			legacyConfigDirNames: [],
+			includeRootProjectConfig: false,
+			packageConfigPaths: [first, second],
+		});
+
+		expect(result.servers.find((server) => server.name === "first")?.command).toBe("first");
+		expect(result.servers.find((server) => server.name === "second")?.command).toBe("second");
+		expect(result.servers.find((server) => server.name === "both")?.command).toBe("project");
+		expect(result.sources.filter((source) => source.scope === "package").map((source) => source.path)).toEqual([
+			first,
+			second,
+		]);
+	});
+
 	it("project config wins over user config on name collision", () => {
 		mkdirSync(join(home, ".cave"), { recursive: true });
 		writeFileSync(join(home, ".cave", "mcp.json"), JSON.stringify({ mcpServers: { both: { command: "user-cmd" } } }));

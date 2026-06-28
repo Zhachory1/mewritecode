@@ -63,6 +63,14 @@ export interface DistributionConfig {
 		default?: string;
 		paths?: string[];
 	};
+	resources?: {
+		extensions?: string[];
+		skills?: string[];
+		prompts?: string[];
+		themes?: string[];
+		agents?: string[];
+		mcp?: string[];
+	};
 	selfUpdate?: {
 		enabled?: boolean;
 		repo?: string;
@@ -338,6 +346,8 @@ export const DEFAULT_THEME_NAME: string | undefined = appConfig.theme?.default;
 export const INSTALL_DIR_NAME: string = selfUpdateConfig.installDirName || APP_NAME;
 export const INSTALL_PRODUCT_DIR_NAME: string = selfUpdateConfig.productDirName || APP_NAME;
 export const LEGACY_CONFIG_DIR_NAMES: readonly string[] = appConfig.mcp?.legacyConfigDirNames ?? [".cave"];
+const distributionMcpConfigPaths = appConfig.mcp?.includePackageConfig === false ? [] : getDistributionMcpConfigPaths();
+
 export const MCP_DISCOVERY_OPTIONS = {
 	configDirName: CONFIG_DIR_NAME,
 	legacyConfigDirNames: LEGACY_CONFIG_DIR_NAMES,
@@ -346,7 +356,8 @@ export const MCP_DISCOVERY_OPTIONS = {
 	includeUserConfigDir: appConfig.mcp?.includeUserConfigDir,
 	includeClaudeConfig: appConfig.mcp?.includeClaudeConfig,
 	includeCodexConfig: appConfig.mcp?.includeCodexConfig,
-	packageConfigPath: appConfig.mcp?.includePackageConfig === false ? undefined : join(getPackageDir(), ".mcp.json"),
+	packageConfigPath: distributionMcpConfigPaths[0],
+	packageConfigPaths: distributionMcpConfigPaths,
 } as const;
 
 // e.g., MEWRITE_CODING_AGENT_DIR
@@ -372,8 +383,42 @@ export function getDistributionConfig(): DistributionConfig {
 	return structuredClone(appConfig);
 }
 
+function resolvePackageResourcePaths(paths: readonly string[] | undefined): string[] {
+	return (paths ?? []).map((resourcePath) => resolve(getPackageDir(), resourcePath));
+}
+
+function uniquePaths(paths: string[]): string[] {
+	return [...new Set(paths)];
+}
+
+export function getDistributionExtensionPaths(): string[] {
+	return resolvePackageResourcePaths(appConfig.resources?.extensions);
+}
+
+export function getDistributionSkillPaths(): string[] {
+	return resolvePackageResourcePaths(appConfig.resources?.skills);
+}
+
+export function getDistributionPromptPaths(): string[] {
+	return resolvePackageResourcePaths(appConfig.resources?.prompts);
+}
+
 export function getDistributionThemePaths(): string[] {
-	return (appConfig.theme?.paths ?? []).map((themePath) => resolve(getPackageDir(), themePath));
+	return uniquePaths([
+		...resolvePackageResourcePaths(appConfig.theme?.paths),
+		...resolvePackageResourcePaths(appConfig.resources?.themes),
+	]);
+}
+
+export function getDistributionAgentPaths(): string[] {
+	return resolvePackageResourcePaths(appConfig.resources?.agents);
+}
+
+export function getDistributionMcpConfigPaths(): string[] {
+	return uniquePaths([
+		resolve(getPackageDir(), ".mcp.json"),
+		...resolvePackageResourcePaths(appConfig.resources?.mcp),
+	]);
 }
 
 export function getAgentDir(): string {

@@ -89,6 +89,30 @@ Paths are relative to package root. Arrays support glob patterns and `!` exclusi
 
 Legacy `pi` package metadata may still be read for compatibility, but new packages should use `mewrite`.
 
+## Downstream wrapper resources
+
+Branded wrapper packages can also declare default resources through `mewriteConfig.resources`:
+
+```json
+{
+  "name": "@example/examplecode",
+  "mewriteConfig": {
+    "name": "examplecode",
+    "displayName": "Example Code",
+    "resources": {
+      "extensions": ["./extensions"],
+      "skills": ["./skills"],
+      "prompts": ["./prompts"],
+      "themes": ["./themes"],
+      "agents": ["./agents"],
+      "mcp": ["./mcp/defaults.json"]
+    }
+  }
+}
+```
+
+Paths resolve relative to the wrapper package. User and project resources override wrapper defaults. Package-root `.mcp.json` is still read by default unless `mewriteConfig.mcp.includePackageConfig` is `false`.
+
 ## Conventional directories
 
 If no manifest is present, Me Write Code discovers:

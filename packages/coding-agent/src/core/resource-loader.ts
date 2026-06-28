@@ -2,7 +2,16 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve, sep } from "node:path";
 import chalk from "chalk";
-import { CONFIG_DIR_NAME, getAgentDir, getBundledPromptsDir, getDistributionThemePaths } from "../config.js";
+import {
+	CONFIG_DIR_NAME,
+	getAgentDir,
+	getBundledPromptsDir,
+	getDistributionExtensionPaths,
+	getDistributionPromptPaths,
+	getDistributionSkillPaths,
+	getDistributionThemePaths,
+	getPackageDir,
+} from "../config.js";
 import { loadThemeFromPath, type Theme } from "../modes/interactive/theme/theme.js";
 import type { ResourceDiagnostic } from "./diagnostics.js";
 
@@ -407,9 +416,28 @@ export class DefaultResourceLoader implements ResourceLoader {
 		const cliEnabledPrompts = getEnabledPaths(cliExtensionPaths.prompts);
 		const cliEnabledThemes = getEnabledPaths(cliExtensionPaths.themes);
 
+		const distributionMetadata: PathMetadata = {
+			source: "distribution",
+			scope: "temporary",
+			origin: "package",
+			baseDir: getPackageDir(),
+		};
+		const distributionExtensionPaths = getDistributionExtensionPaths();
+		const distributionSkillPaths = getDistributionSkillPaths();
+		const distributionPromptPaths = getDistributionPromptPaths();
+		const distributionThemePaths = getDistributionThemePaths();
+		for (const p of [
+			...distributionExtensionPaths,
+			...distributionSkillPaths,
+			...distributionPromptPaths,
+			...distributionThemePaths,
+		]) {
+			metadataByPath.set(p, distributionMetadata);
+		}
+
 		const extensionPaths = this.noExtensions
 			? cliEnabledExtensions
-			: this.mergePaths(cliEnabledExtensions, enabledExtensions);
+			: this.mergePaths([...cliEnabledExtensions, ...enabledExtensions], distributionExtensionPaths);
 
 		const extensionsResult = await loadExtensions(extensionPaths, this.cwd, this.eventBus);
 		const inlineExtensions = await this.loadExtensionFactories(extensionsResult.runtime);
@@ -433,7 +461,10 @@ export class DefaultResourceLoader implements ResourceLoader {
 
 		const skillPaths = this.noSkills
 			? this.mergePaths(cliEnabledSkills, this.additionalSkillPaths)
-			: this.mergePaths([...cliEnabledSkills, ...enabledSkills], this.additionalSkillPaths);
+			: this.mergePaths(
+					[...cliEnabledSkills, ...enabledSkills, ...distributionSkillPaths],
+					this.additionalSkillPaths,
+				);
 
 		this.lastSkillPaths = skillPaths;
 		this.updateSkillsFromPaths(skillPaths, metadataByPath);
@@ -452,7 +483,7 @@ export class DefaultResourceLoader implements ResourceLoader {
 		const promptPaths = this.noPromptTemplates
 			? this.mergePaths(cliEnabledPrompts, this.additionalPromptTemplatePaths)
 			: this.mergePaths(
-					[...cliEnabledPrompts, ...enabledPrompts, ...bundledPromptPaths],
+					[...cliEnabledPrompts, ...enabledPrompts, ...distributionPromptPaths, ...bundledPromptPaths],
 					this.additionalPromptTemplatePaths,
 				);
 
@@ -464,7 +495,6 @@ export class DefaultResourceLoader implements ResourceLoader {
 			}
 		}
 
-		const distributionThemePaths = getDistributionThemePaths();
 		const themePaths = this.noThemes
 			? this.mergePaths(cliEnabledThemes, this.additionalThemePaths)
 			: this.mergePaths(
