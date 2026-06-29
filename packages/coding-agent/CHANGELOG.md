@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.66.5] - 2026-06-29
+
 ### Added
 
 - Added SDK `systemPromptBranding` and `appendSystemPrompt` options so downstream packages can brand default prompt identity/documentation lines and append extra context without replacing core upstream safety, tool-use, task-execution, prompt-injection, or destructive-action guidance ([#39](https://github.com/Zhachory1/mewritecode/issues/39)).
