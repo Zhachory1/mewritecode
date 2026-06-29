@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.67.2] - 2026-06-29
+
 ### Fixed
 
 - Fixed runtime theme switching to recolor the startup banner and theme editor input text, placeholder, and cursor styling ([#43](https://github.com/Zhachory1/mewritecode/issues/43)).
