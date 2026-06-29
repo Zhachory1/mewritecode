@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Tightened the default coding-agent prompt with explicit read-only precedence, opt-in durable-memory guardrails, scoped validation guidance, and clearer large-file/tooling exceptions.
+
 ## [0.66.9] - 2026-06-29
 
 ### Fixed

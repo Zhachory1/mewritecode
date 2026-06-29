@@ -146,6 +146,44 @@ describe("buildSystemPrompt", () => {
 		});
 	});
 
+	describe("safety and scope guardrails", () => {
+		test("includes durable memory consent boundaries", () => {
+			const prompt = buildSystemPrompt({
+				contextFiles: [],
+				skills: [],
+			});
+
+			expect(prompt).toContain("# Durable memory and data boundaries");
+			expect(prompt).toContain("unless the user explicitly requests it or approves a preview");
+			expect(prompt).toContain("default to no durable capture");
+		});
+
+		test("scopes read-only reviews away from mutation workflows", () => {
+			const prompt = buildSystemPrompt({
+				contextFiles: [],
+				skills: [],
+			});
+
+			expect(prompt).toContain("# Instruction precedence and scope");
+			expect(prompt).toContain("For read-only reviews and investigations");
+			expect(prompt).toContain(
+				"do not run git/worktree, validation, release, commit/push, deploy, or durable-memory workflows",
+			);
+		});
+
+		test("includes validation decision tree and scoped file-reading guidance", () => {
+			const prompt = buildSystemPrompt({
+				contextFiles: [],
+				skills: [],
+			});
+
+			expect(prompt).toContain("# Validation");
+			expect(prompt).toContain("Read-only or documentation-only tasks do not require validation commands");
+			expect(prompt).toContain("Before modifying human-authored source or docs");
+			expect(prompt).toContain("For large, generated, lock, or binary-adjacent files");
+		});
+	});
+
 	describe("prompt guidelines", () => {
 		test("appends promptGuidelines to default guidelines", () => {
 			const prompt = buildSystemPrompt({
