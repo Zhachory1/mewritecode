@@ -15,7 +15,7 @@
 import { spawn } from "node:child_process";
 import { createWriteStream, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { type Static, Type } from "@sinclair/typebox";
 import {
 	autoCleanupWorktree,
@@ -47,6 +47,7 @@ import {
 import type { ToolDefinition } from "../extensions/types.js";
 
 const MAX_CONCURRENCY = 4;
+const RESULT_PREVIEW_CHARS = 80;
 
 /**
  * Grace period between SIGTERM and the forced SIGKILL escalation when killing a
@@ -103,7 +104,13 @@ function subagentResultBody(result: SubagentResult): string {
 
 function formatSubagentResultForParent(result: SubagentResult, maxChars = MAX_PARENT_RESULT_CHARS): string {
 	const status = result.exitCode === 0 ? "OK" : "FAIL";
-	return [`## ${result.agent} — ${status}`, "", truncateParentResult(subagentResultBody(result), maxChars)].join("\n");
+	const artifact = result.fullOutputPath ? ["", `fullOutputPath: ${result.fullOutputPath}`] : [];
+	return [
+		`## ${result.agent} — ${status}`,
+		...artifact,
+		"",
+		truncateParentResult(subagentResultBody(result), maxChars),
+	].join("\n");
 }
 
 // ─── Schema ───────────────────────────────────────────────────────────────
@@ -188,6 +195,8 @@ interface SpawnOptions {
 	mockSpawn?: typeof spawn;
 	/** Subagent invocation id (parent → TUI correlation). Defaults to agent name. */
 	subagentId?: string;
+	/** Durable artifact id for full foreground output. Defaults to subagentId/agent name. */
+	artifactId?: string;
 	/** Per-JSON-event progress sink. */
 	onProgress?: SubagentProgressCallback;
 	/**
@@ -213,6 +222,10 @@ interface SpawnResult {
 	stdout: string;
 	stderr: string;
 	finalText: string;
+	fullOutputPath?: string;
+	stdoutPath?: string;
+	stderrPath?: string;
+	outputBytes: number;
 }
 
 /**
@@ -245,6 +258,26 @@ function resolveCaveInvocation(args: string[], caveBin?: string): { command: str
  */
 // Thinking levels that map directly from agent.md `effort:`. Anything else is dropped.
 const VALID_EFFORT_LEVELS = new Set(["off", "minimal", "low", "medium", "high", "xhigh"]);
+
+function writeForegroundOutputArtifacts(
+	artifactId: string,
+	finalText: string,
+	stdout: string,
+	stderr: string,
+): Pick<SpawnResult, "fullOutputPath" | "stdoutPath" | "stderrPath"> {
+	try {
+		const stdoutPath = getTaskOutputPath(sanitizeId(artifactId));
+		const taskDir = dirname(stdoutPath);
+		const fullOutputPath = join(taskDir, "final.txt");
+		const stderrPath = join(taskDir, "stderr.txt");
+		writeFileSync(fullOutputPath, finalText, "utf-8");
+		writeFileSync(stdoutPath, stdout, "utf-8");
+		writeFileSync(stderrPath, stderr, "utf-8");
+		return { fullOutputPath, stdoutPath, stderrPath };
+	} catch {
+		return {};
+	}
+}
 
 /**
  * Default tool allow-list a child cave starts with when no `--tools` flag is
@@ -449,7 +482,13 @@ async function spawnSubagent(opts: SpawnOptions): Promise<SpawnResult> {
 		}
 	}
 
-	return { exitCode, stdout, stderr, finalText };
+	const artifacts = writeForegroundOutputArtifacts(
+		opts.artifactId ?? opts.subagentId ?? opts.agent.name,
+		finalText,
+		stdout,
+		stderr,
+	);
+	return { exitCode, stdout, stderr, finalText, outputBytes: Buffer.byteLength(finalText, "utf-8"), ...artifacts };
 }
 
 // ─── Background (async) subagent dispatch ────────────────────────────────
@@ -724,6 +763,7 @@ async function runOne(
 			resolveModel: options.resolveModel,
 			envOverrides: childEnvForMode,
 			subagentId: options.subagentId ?? id,
+			artifactId: id,
 			onProgress: options.onProgress,
 		});
 	} catch (err) {
@@ -768,6 +808,11 @@ async function runOne(
 		source: found.def.source,
 		task,
 		output: spawnRes.finalText,
+		truncated: spawnRes.finalText.length > RESULT_PREVIEW_CHARS,
+		fullOutputPath: spawnRes.fullOutputPath,
+		stdoutPath: spawnRes.stdoutPath,
+		stderrPath: spawnRes.stderrPath,
+		outputBytes: spawnRes.outputBytes,
 		exitCode: validationError ? 2 : spawnRes.exitCode,
 		error:
 			validationError ??
@@ -989,10 +1034,11 @@ export function createTaskToolDefinition(
 					modelOverride: params.model,
 					modeOverride: params.mode,
 				});
+				const artifactHint = r.fullOutputPath ? `fullOutputPath: ${r.fullOutputPath}\n` : "";
 				const text =
 					r.exitCode === 0
-						? truncateParentResult(r.output || "(no output)")
-						: `Subagent failed:\n${truncateParentResult(subagentResultBody(r))}`;
+						? `${artifactHint}${truncateParentResult(r.output || "(no output)")}`
+						: `${artifactHint}Subagent failed:\n${truncateParentResult(subagentResultBody(r))}`;
 				return {
 					content: [{ type: "text" as const, text }],
 					details: { mode: "single" as const, results: [r] },
@@ -1066,8 +1112,11 @@ export function createTaskToolDefinition(
 				prev = r.output;
 			}
 			const last = results[results.length - 1];
+			const artifactHint = last?.fullOutputPath ? `fullOutputPath: ${last.fullOutputPath}\n` : "";
 			return {
-				content: [{ type: "text" as const, text: truncateParentResult(last?.output || "(no output)") }],
+				content: [
+					{ type: "text" as const, text: `${artifactHint}${truncateParentResult(last?.output || "(no output)")}` },
+				],
 				details: { mode: "chain" as const, results },
 			};
 		},
@@ -1099,7 +1148,8 @@ export function createTaskToolDefinition(
 			)}`;
 			const lines = details.results.map((r) => {
 				const icon = r.exitCode === 0 ? theme.fg("success", "✓") : theme.fg("error", "✗");
-				return `${icon} ${theme.fg("accent", r.agent)} ${theme.fg("dim", r.output.slice(0, 80))}`;
+				const suffix = r.truncated && r.fullOutputPath ? ` … ${r.fullOutputPath}` : "";
+				return `${icon} ${theme.fg("accent", r.agent)} ${theme.fg("dim", r.output.slice(0, RESULT_PREVIEW_CHARS) + suffix)}`;
 			});
 			return new Text([head, ...lines].join("\n"), 0, 0);
 		},

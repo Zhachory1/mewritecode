@@ -9,7 +9,7 @@
 
 import type { ChildProcess } from "node:child_process";
 import { EventEmitter } from "node:events";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MAX_PARALLEL_SUBAGENTS } from "@zhachory1/mewrite-agent";
@@ -123,6 +123,7 @@ let tmpRoot: string;
 let cwd: string;
 let userDir: string;
 let packageDir: string;
+const agentDirEnv = "MEWRITE_CODING_AGENT_DIR";
 
 beforeEach(() => {
 	tmpRoot = mkdtempSync(join(tmpdir(), "cave-task-test-"));
@@ -198,6 +199,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	delete process.env[agentDirEnv];
 	if (existsSync(tmpRoot)) rmSync(tmpRoot, { recursive: true, force: true });
 });
 
@@ -265,6 +267,7 @@ describe("Task tool — parallel cap (plan §6: max 7)", () => {
 
 describe("Task tool — single-mode happy path (mocked LLM)", () => {
 	it("invokes the agent and returns the final text", async () => {
+		process.env[agentDirEnv] = join(tmpRoot, "agent-dir-single");
 		const mock = makeMockSpawn({ "explore me": { finalText: "## Files\n- foo.ts:1-10", exitCode: 0 } });
 		const tool = makeTool(mock);
 		const r = await tool.execute(
@@ -281,6 +284,33 @@ describe("Task tool — single-mode happy path (mocked LLM)", () => {
 		expect(details.results).toHaveLength(1);
 		expect(details.results[0].agent).toBe("explore");
 		expect(details.results[0].exitCode).toBe(0);
+		expect(details.results[0].fullOutputPath).toBeTruthy();
+		expect(text).toContain(`fullOutputPath: ${details.results[0].fullOutputPath}`);
+		expect(readFileSync(details.results[0].fullOutputPath!, "utf-8")).toBe("## Files\n- foo.ts:1-10");
+		expect(details.results[0].stdoutPath).toBeTruthy();
+		expect(readFileSync(details.results[0].stdoutPath!, "utf-8")).toContain("message_end");
+		expect(details.results[0].outputBytes).toBe(Buffer.byteLength("## Files\n- foo.ts:1-10", "utf-8"));
+	});
+
+	it("puts fullOutputPath in parallel previews when output is truncated", async () => {
+		process.env[agentDirEnv] = join(tmpRoot, "agent-dir-parallel");
+		const longOutput = `BLOCKER ${"x".repeat(140)}`;
+		const mock = makeMockSpawn({ alpha: { finalText: longOutput, exitCode: 0 } });
+		const tool = makeTool(mock);
+		const r = await tool.execute(
+			"id-parallel-artifacts",
+			{ tasks: [{ agent: "explore", task: "alpha" }] } as any,
+			undefined,
+			undefined,
+			undefined as any,
+		);
+		const text = (r.content[0] as any).text;
+		const details = r.details as TaskToolDetails;
+		expect(details.results[0].truncated).toBe(true);
+		expect(details.results[0].fullOutputPath).toBeTruthy();
+		expect(text).toContain("fullOutputPath:");
+		expect(text).toContain(details.results[0].fullOutputPath);
+		expect(readFileSync(details.results[0].fullOutputPath!, "utf-8")).toBe(longOutput);
 	});
 
 	it("returns a structured error for unknown agent", async () => {
