@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.66.7] - 2026-06-29
+
 ### Fixed
 
 - Fixed first-run onboarding defaults so pressing Enter consumes the final continue prompt and proceeds cleanly to the configured next step.
