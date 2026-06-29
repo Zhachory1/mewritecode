@@ -809,7 +809,7 @@ export class TUI extends Container {
 		const mainWidth = Math.max(1, termWidth - panelWidth - 1); // 1 for separator
 		const isRight = (panel.options.side ?? "right") === "right";
 
-		const mainLines = this.render(isRight ? mainWidth : panelWidth);
+		const mainLines = this.renderWithBottomPin(isRight ? mainWidth : panelWidth, termHeight);
 		const panelLines = panel.component.render(isRight ? panelWidth : mainWidth);
 		const maxRows = Math.max(mainLines.length, panelLines.length, termHeight);
 

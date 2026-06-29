@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added `/resume <id-or-path>` for switching directly to a session by partial UUID or file path from inside the TUI ([#33](https://github.com/Zhachory1/mewritecode/issues/33)).
+- Fixed activity side-panel rendering to preserve bottom-pinned input/status layout while the activity monitor is open ([#38](https://github.com/Zhachory1/mewritecode/issues/38)).
+
 ## [0.67.2] - 2026-06-29
 
 ### Fixed

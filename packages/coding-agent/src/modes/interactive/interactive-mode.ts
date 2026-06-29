@@ -175,6 +175,7 @@ import {
 	evaluateFireStarter,
 	evaluateTribalSignal,
 } from "./context-drift-widgets.js";
+import { resolveSessionReference } from "./session-reference.js";
 import {
 	AUTO_THEME_NAME,
 	getAvailableThemes,
@@ -2566,9 +2567,14 @@ export class InteractiveMode {
 				this.editor.setText("");
 				return;
 			}
-			if (text === "/resume") {
-				this.showSessionSelector();
+			if (text === "/resume" || text.startsWith("/resume ")) {
+				const target = text.startsWith("/resume ") ? text.slice(8).trim() : undefined;
 				this.editor.setText("");
+				if (target) {
+					await this.handleResumeCommand(target);
+				} else {
+					this.showSessionSelector();
+				}
 				return;
 			}
 			if (text === "/quit") {
@@ -4668,6 +4674,24 @@ export class InteractiveMode {
 			);
 			return { component: selector, focus: selector };
 		});
+	}
+
+	private async handleResumeCommand(target: string): Promise<void> {
+		const resolved = await resolveSessionReference(
+			target,
+			this.sessionManager.getCwd(),
+			this.sessionManager.getSessionDir(),
+		);
+		switch (resolved.type) {
+			case "path":
+			case "local":
+			case "global":
+				await this.handleResumeSession(resolved.path);
+				return;
+			case "not_found":
+				this.showError(`No session found matching '${resolved.arg}'`);
+				return;
+		}
 	}
 
 	private async handleResumeSession(sessionPath: string): Promise<void> {
