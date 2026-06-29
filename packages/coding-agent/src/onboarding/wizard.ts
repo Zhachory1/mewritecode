@@ -119,7 +119,7 @@ async function askChoice<T>(
 	const def = choices.find((c) => c.default);
 	const hint = def ? chalk.dim(`[default: ${def.key}]`) : "";
 	while (true) {
-		const a = (await ask(ctx, `> ${hint} `)).toLowerCase();
+		const a = (await ask(ctx, `> ${hint} `)).trim().toLowerCase();
 		if (a === "" && def) return def.value;
 		const match = choices.find((c) => c.key.toLowerCase() === a);
 		if (match) return match.value;
@@ -289,13 +289,15 @@ export async function runOnboarding(settings: SettingsManager, io: WizardIO = DE
 		persistAnswers(settings, answers);
 
 		write(out, "\n");
-		write(out, chalk.green("  All set. Press Enter to continue to the prompt.\n"));
+		const nextStep = auth.type === "launch-login" ? "choose a login provider" : "continue to the prompt";
+		write(out, chalk.green(`  All set. Press Enter to ${nextStep}.\n`));
 		write(
 			out,
 			chalk.dim(
 				`  Saved to ${settings.constructor.name === "SettingsManager" ? formatHomePath(getSettingsPath()) : "settings"}.\n`,
 			),
 		);
+		await ask(ctx, "> ");
 
 		return answers;
 	} finally {

@@ -36,13 +36,13 @@ describe("WS11 onboarding wizard — auth gate (F3)", () => {
 	}
 
 	it("no env key + 'y' to 'Configure auth now?' returns launch-login", async () => {
-		// answers: theme(default ""), auth-gate "y", telemetry "N"
-		const answers = await runOnboarding(makeSettings(), makeIO(["", "y", ""]));
+		// answers: theme(default ""), auth-gate "y", telemetry "N", final continue
+		const answers = await runOnboarding(makeSettings(), makeIO(["", "y", "", ""]));
 		expect(answers.auth).toEqual({ type: "launch-login" });
 	});
 
 	it("no env key + 'n' to 'Configure auth now?' returns skip", async () => {
-		const answers = await runOnboarding(makeSettings(), makeIO(["", "n", ""]));
+		const answers = await runOnboarding(makeSettings(), makeIO(["", "n", "", ""]));
 		expect(answers.auth).toEqual({ type: "skip" });
 	});
 

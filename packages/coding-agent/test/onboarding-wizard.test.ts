@@ -165,20 +165,22 @@ describe("WS11 onboarding wizard", () => {
 	});
 
 	describe("runOnboarding", () => {
-		it("completes the happy path with auto theme + skip auth + telemetry off", async () => {
+		it("completes the default no-env path and consumes the final Enter", async () => {
 			const settings = makeSettings();
-			// 2-question path on no-env-keys: theme + telemetry. Empty -> defaults.
-			const io = makeIO(["", ""], {});
+			// No-env path: theme, auth launch-login, telemetry, final continue prompt. Empty -> defaults.
+			const io = makeIO(["", "", "", ""], {});
 			const result = await runOnboarding(settings, io);
 			expect(result.theme).toBe("auto");
+			expect(result.auth).toEqual({ type: "launch-login" });
 			expect(result.telemetry).toBe(false);
+			expect(io.remaining()).toEqual([]);
 			expect(settings.getHasCompletedOnboarding()).toBe(true);
 		});
 
 		it("uses detected env keys when present", async () => {
 			const settings = makeSettings();
 			// 4-question path (env key present): theme=default, auth=1, default model=1, telemetry=default
-			const io = makeIO(["", "1", "1", ""], { anthropic: "sk-ant-test" });
+			const io = makeIO(["", "1", "1", "", ""], { anthropic: "sk-ant-test" });
 			const result = await runOnboarding(settings, io);
 			expect(result.auth.type).toBe("use-env");
 			expect(result.defaultProvider).toBe("anthropic");
@@ -189,7 +191,7 @@ describe("WS11 onboarding wizard", () => {
 		it("re-prompts on invalid answer", async () => {
 			const settings = makeSettings();
 			// theme: invalid 'q' first, then '2' (dark)
-			const io = makeIO(["q", "2", ""]);
+			const io = makeIO(["q", "2", "", "", ""]);
 			const result = await runOnboarding(settings, io);
 			expect(result.theme).toBe("dark");
 		});
