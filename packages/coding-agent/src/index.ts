@@ -225,6 +225,7 @@ export {
 	type PromptTemplate,
 	// Pre-built tools (use process.cwd())
 	readOnlyTools,
+	type SystemPromptBranding,
 } from "./core/sdk.js";
 export {
 	type BranchSummaryEntry,

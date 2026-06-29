@@ -106,7 +106,7 @@ import { RepomapInjector } from "./session-repomap.js";
 import type { SettingsManager } from "./settings-manager.js";
 import type { SlashCommandInfo } from "./slash-commands.js";
 import { createSyntheticSourceInfo, type SourceInfo } from "./source-info.js";
-import { buildSystemPrompt } from "./system-prompt.js";
+import { buildSystemPrompt, type SystemPromptBranding } from "./system-prompt.js";
 import { type BashOperations, createLocalBashOperations } from "./tools/bash.js";
 import { createAllToolDefinitions } from "./tools/index.js";
 import { createMemorySaveToolDefinition, createMemorySearchToolDefinition } from "./tools/memory.js";
@@ -214,6 +214,10 @@ export interface AgentSessionConfig {
 	extensionRunnerRef?: { current?: ExtensionRunner };
 	/** Session start event metadata emitted when extensions bind to this runtime. */
 	sessionStartEvent?: SessionStartEvent;
+	/** Product/brand labels for default system prompt identity and documentation lines. */
+	systemPromptBranding?: SystemPromptBranding;
+	/** Downstream system prompt text appended after resource-loader additions. */
+	appendSystemPrompt?: string;
 }
 
 export interface ExtensionBindings {
@@ -406,6 +410,8 @@ export class AgentSession {
 	// receives the read/grep/find/ls tool defs on turn 1.
 	private _initialRuntimeReady!: Promise<void>;
 	private _sessionStartEvent: SessionStartEvent;
+	private _systemPromptBranding?: SystemPromptBranding;
+	private _appendSystemPrompt?: string;
 	private _extensionUIContext?: ExtensionUIContext;
 	private _extensionCommandContextActions?: ExtensionCommandContextActions;
 	private _extensionShutdownHandler?: ShutdownHandler;
@@ -499,6 +505,8 @@ export class AgentSession {
 		this._initialActiveToolNames = config.initialActiveToolNames;
 		this._baseToolsOverride = config.baseToolsOverride;
 		this._sessionStartEvent = config.sessionStartEvent ?? { type: "session_start", reason: "startup" };
+		this._systemPromptBranding = config.systemPromptBranding;
+		this._appendSystemPrompt = config.appendSystemPrompt;
 		this._compression = new CompressionPipeline(
 			{
 				getCaveModeMLCompression: () => this.settingsManager.getCaveModeMLCompression(),
@@ -1615,8 +1623,11 @@ export class AgentSession {
 
 		const loaderSystemPrompt = this._resourceLoader.getSystemPrompt();
 		const loaderAppendSystemPrompt = this._resourceLoader.getAppendSystemPrompt();
+		const appendSystemPromptSources = [...loaderAppendSystemPrompt, this._appendSystemPrompt].filter(
+			(text): text is string => text !== undefined && text.trim().length > 0,
+		);
 		const appendSystemPrompt =
-			loaderAppendSystemPrompt.length > 0 ? loaderAppendSystemPrompt.join("\n\n") : undefined;
+			appendSystemPromptSources.length > 0 ? appendSystemPromptSources.join("\n\n") : undefined;
 		const loadedSkills = this._resourceLoader.getSkills().skills;
 		const loadedContextFiles = this._resourceLoader.getAgentsFiles().agentsFiles;
 
@@ -1627,6 +1638,7 @@ export class AgentSession {
 			skills: loadedSkills,
 			contextFiles: loadedContextFiles,
 			customPrompt: loaderSystemPrompt,
+			branding: this._systemPromptBranding,
 			appendSystemPrompt,
 			selectedTools: validToolNames,
 			toolSnippets,

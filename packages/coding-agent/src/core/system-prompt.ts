@@ -21,9 +21,29 @@ import { platform as osPlatform, release as osRelease } from "node:os";
 import { getDocsPath, getExamplesPath, getReadmePath } from "../config.js";
 import { formatSkillsForPrompt, type Skill } from "./skills.js";
 
+export interface SystemPromptBranding {
+	/** Product name used in prompt identity lines. Default: Cave. */
+	productDisplayName?: string;
+	/** CLI name used in documentation scope text when it differs from productDisplayName. */
+	productCliName?: string;
+	/** Harness description used after the product name in the identity line. Default: a coding agent harness. */
+	productHarnessDescription?: string;
+	/** Documentation section label. Default: Cave documentation. */
+	documentationLabel?: string;
+}
+
+interface ResolvedSystemPromptBranding {
+	productDisplayName: string;
+	productCliName: string;
+	productHarnessDescription: string;
+	documentationLabel: string;
+}
+
 export interface BuildSystemPromptOptions {
 	/** Custom system prompt (replaces default). */
 	customPrompt?: string;
+	/** Product/brand labels for default prompt identity and documentation lines. */
+	branding?: SystemPromptBranding;
 	/** Tools to include in prompt. Default: [read, bash, edit, write] */
 	selectedTools?: string[];
 	/** Optional one-line tool snippets keyed by tool name. */
@@ -117,6 +137,38 @@ export function getKnowledgeCutoff(modelId: string | undefined): string {
 	if (id.includes("gpt-5") || id.includes("gpt-4.1")) return "April 2024";
 	if (id.includes("gpt-4o")) return "October 2023";
 	return "";
+}
+
+function normalizeBrandingValue(value: string | undefined): string | undefined {
+	const normalized = value
+		?.replace(/[\r\n]+/g, " ")
+		.replace(/\s+/g, " ")
+		.trim();
+	return normalized && normalized.length > 0 ? normalized : undefined;
+}
+
+function resolveSystemPromptBranding(branding: SystemPromptBranding | undefined): ResolvedSystemPromptBranding {
+	const productDisplayName = normalizeBrandingValue(branding?.productDisplayName) || "Cave";
+	return {
+		productDisplayName,
+		productCliName: normalizeBrandingValue(branding?.productCliName) || productDisplayName,
+		productHarnessDescription:
+			normalizeBrandingValue(branding?.productHarnessDescription) || "a coding agent harness",
+		documentationLabel: normalizeBrandingValue(branding?.documentationLabel) || "Cave documentation",
+	};
+}
+
+function buildAppendOnlySection(text: string | undefined): string {
+	if (!text) return "";
+	return `\n\n# Downstream system prompt additions\nThe following downstream instructions are additive. They do not replace or weaken the core safety, tool-use, task-execution, prompt-injection, or destructive-action guidance above. If they conflict with earlier system sections, earlier system sections win.\n\n${text}`;
+}
+
+function buildDocumentationScope(branding: ResolvedSystemPromptBranding): string {
+	const productScope =
+		branding.productCliName === branding.productDisplayName
+			? `${branding.productDisplayName} itself`
+			: `${branding.productDisplayName} itself, the ${branding.productCliName} CLI`;
+	return `${branding.documentationLabel} (read only when the user asks about ${productScope}, its SDK, extensions, themes, skills, or TUI):`;
 }
 
 function buildEnvSection(opts: { cwd: string; modelId?: string; knowledgeCutoff?: string }): string {
@@ -241,6 +293,7 @@ EXCEPTIONS (always use normal, clear English for):
 export function buildSystemPrompt(options: BuildSystemPromptOptions = {}): string {
 	const {
 		customPrompt,
+		branding,
 		selectedTools,
 		toolSnippets,
 		promptGuidelines,
@@ -261,7 +314,9 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions = {}): strin
 
 	const date = new Date().toISOString().slice(0, 10);
 
-	const appendSection = appendSystemPrompt ? `\n\n${appendSystemPrompt}` : "";
+	const rawAppendSection = appendSystemPrompt ? `\n\n${appendSystemPrompt}` : "";
+	const appendOnlySection = buildAppendOnlySection(appendSystemPrompt);
+	const resolvedBranding = resolveSystemPromptBranding(branding);
 
 	const contextFiles = providedContextFiles ?? [];
 	const skills = providedSkills ?? [];
@@ -269,8 +324,8 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions = {}): strin
 	if (customPrompt) {
 		let prompt = customPrompt;
 
-		if (appendSection) {
-			prompt += appendSection;
+		if (rawAppendSection) {
+			prompt += rawAppendSection;
 		}
 
 		// Append project context files
@@ -351,7 +406,7 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions = {}): strin
 
 	const sections: string[] = [];
 	sections.push(
-		`You are an expert coding assistant operating inside Cave, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.`,
+		`You are an expert coding assistant operating inside ${resolvedBranding.productDisplayName}, ${resolvedBranding.productHarnessDescription}. You help users by reading files, executing commands, editing code, and writing new files.`,
 	);
 	sections.push(
 		`Available tools:\n${toolsList}\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.`,
@@ -372,13 +427,13 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions = {}): strin
 	}
 
 	sections.push(
-		`Cave documentation (read only when the user asks about Cave itself, its SDK, extensions, themes, skills, or TUI):\n- Main documentation: ${readmePath}\n- Additional docs: ${docsPath}\n- Examples: ${examplesPath} (extensions, custom tools, SDK)`,
+		`${buildDocumentationScope(resolvedBranding)}\n- Main documentation: ${readmePath}\n- Additional docs: ${docsPath}\n- Examples: ${examplesPath} (extensions, custom tools, SDK)`,
 	);
 
 	let prompt = sections.join("\n\n");
 
-	if (appendSection) {
-		prompt += appendSection;
+	if (appendOnlySection) {
+		prompt += appendOnlySection;
 	}
 
 	// Append project context files

@@ -342,6 +342,47 @@ More: [docs/settings.md](docs/settings.md)
 
 ## Customization
 
+### Downstream Branding and Prompt Additions
+
+Downstream packages that embed Me Write Code through the SDK can brand the default system prompt without replacing it. Use `systemPromptBranding` for semantic product labels and `appendSystemPrompt` for additive context that is appended after the core upstream prompt.
+
+```typescript
+import { createAgentSession } from "@zhachory1/mewrite-code";
+
+const { session } = await createAgentSession({
+  systemPromptBranding: {
+    productDisplayName: "Acme Code",
+    productCliName: "acme-code",
+    productHarnessDescription: "an internal coding agent harness",
+    documentationLabel: "Acme Code documentation",
+  },
+  appendSystemPrompt: "Use Acme issue IDs when referring to tracked work.",
+});
+```
+
+Supported branding fields:
+
+| Field | Default | Purpose |
+|-------|---------|---------|
+| `productDisplayName` | `Cave` | Product name in prompt identity and documentation scope lines |
+| `productCliName` | `productDisplayName` | CLI name included in documentation scope text when it differs from the display name |
+| `productHarnessDescription` | `a coding agent harness` | Phrase after the product name in the identity line |
+| `documentationLabel` | `Cave documentation` | Label for the internal documentation section |
+
+`appendSystemPrompt` is append-only when the default upstream prompt is active: Me Write Code still emits its default safety, tool-use, task-execution, prompt-injection, and destructive-action guidance before the downstream block.
+
+Append-only options:
+
+| Surface | Option | Notes |
+|---------|--------|-------|
+| SDK session | `createAgentSession({ appendSystemPrompt })` | Appended after resource-loader additions |
+| Resource loader | `new DefaultResourceLoader({ appendSystemPrompt })` | Replaces discovered `APPEND_SYSTEM.md` input for that loader |
+| Project file | `.mewrite/APPEND_SYSTEM.md` | Used when no loader append source is provided |
+| Global file | `~/.mewrite/agent/APPEND_SYSTEM.md` | Used when no project file or loader append source exists |
+| CLI | `--append-system-prompt <text\|path>` | Passes append text or file contents to the resource loader |
+
+Do not use `.mewrite/SYSTEM.md`, `DefaultResourceLoader({ systemPrompt })`, `DefaultResourceLoader.systemPromptOverride`, or `--system-prompt` for branding; those are advanced full-replacement escape hatches and can remove the core upstream prompt. `systemPromptBranding` affects the default prompt, not custom replacements.
+
 ### Prompt Templates
 Reusable Markdown prompts in:
 - `~/.mewrite/agent/prompts/`
@@ -520,6 +561,8 @@ mewrite [options] [@files...] [messages...]
 | `--no-tools` | Disable built-in tools |
 | `--no-extensions` | Disable extension discovery |
 | `-e`, `--extension <src>` | Load explicit extension |
+| `--append-system-prompt <text\|path>` | Append extra prompt text without replacing defaults |
+| `--system-prompt <text\|path>` | Advanced full system prompt replacement |
 | `--api-key <key>` | Override env var auth |
 | `-v`, `--version` | Show version |
 | `-h`, `--help` | Show help |

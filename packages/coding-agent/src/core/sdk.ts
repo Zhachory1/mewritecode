@@ -13,6 +13,7 @@ import type { ResourceLoader } from "./resource-loader.js";
 import { DefaultResourceLoader } from "./resource-loader.js";
 import { getDefaultSessionDir, SessionManager } from "./session-manager.js";
 import { SettingsManager } from "./settings-manager.js";
+import type { SystemPromptBranding } from "./system-prompt.js";
 import { time } from "./timings.js";
 import {
 	allTools,
@@ -72,6 +73,10 @@ export interface CreateAgentSessionOptions {
 	settingsManager?: SettingsManager;
 	/** Session start event metadata for extension runtime startup. */
 	sessionStartEvent?: SessionStartEvent;
+	/** Product/brand labels for default system prompt identity and documentation lines. */
+	systemPromptBranding?: SystemPromptBranding;
+	/** Downstream system prompt text appended after resource-loader additions. */
+	appendSystemPrompt?: string;
 	/** Hard cap on assistant turns within a single run (Cli flag `--max-turns`). */
 	maxTurns?: number;
 	/**
@@ -127,6 +132,7 @@ export type {
 } from "./extensions/index.js";
 export type { PromptTemplate } from "./prompt-templates.js";
 export type { Skill } from "./skills.js";
+export type { SystemPromptBranding } from "./system-prompt.js";
 export type { Tool } from "./tools/index.js";
 
 export {
@@ -423,6 +429,8 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		initialActiveToolNames,
 		extensionRunnerRef,
 		sessionStartEvent: options.sessionStartEvent,
+		systemPromptBranding: options.systemPromptBranding,
+		appendSystemPrompt: options.appendSystemPrompt,
 	});
 	// Wait for the constructor's async runtime build (tool wiring, base
 	// system prompt, extension runner setup) before handing the session out.

@@ -427,18 +427,58 @@ const simpleRegistry = ModelRegistry.inMemory(authStorage);
 
 ### System Prompt
 
-Use a `ResourceLoader` to override the system prompt:
+For downstream product branding, keep the upstream prompt and configure semantic labels plus append-only additions through `createAgentSession()`:
+
+```typescript
+import { createAgentSession } from "@zhachory1/mewrite-code";
+
+const { session } = await createAgentSession({
+  systemPromptBranding: {
+    productDisplayName: "Acme Code",
+    productCliName: "acme-code",
+    productHarnessDescription: "an internal coding agent harness",
+    documentationLabel: "Acme Code documentation",
+  },
+  appendSystemPrompt: "Use Acme issue IDs when referring to tracked work.",
+});
+```
+
+Branding options:
+
+| Field | Default | Purpose |
+|-------|---------|---------|
+| `productDisplayName` | `Cave` | Product name in prompt identity and documentation scope lines |
+| `productCliName` | `productDisplayName` | CLI name included in documentation scope text when it differs from the display name |
+| `productHarnessDescription` | `a coding agent harness` | Phrase after the product name in the identity line |
+| `documentationLabel` | `Cave documentation` | Label for the internal documentation section |
+
+`appendSystemPrompt` is appended after the default upstream system prompt and after resource-loader append input. The generated block states that downstream additions are additive and cannot override core safety, tool-use, task-execution, prompt-injection, or destructive-action guidance.
+
+Append-only options:
+
+| Surface | Option | Notes |
+|---------|--------|-------|
+| SDK session | `createAgentSession({ appendSystemPrompt })` | Appended after resource-loader additions |
+| Resource loader | `new DefaultResourceLoader({ appendSystemPrompt })` | Replaces discovered `APPEND_SYSTEM.md` input for that loader |
+| Project file | `.mewrite/APPEND_SYSTEM.md` | Used when no loader append source is provided |
+| Global file | `~/.mewrite/agent/APPEND_SYSTEM.md` | Used when no project file or loader append source exists |
+| CLI | `--append-system-prompt <text\|path>` | Passes append text or file contents to the resource loader |
+
+Use a `ResourceLoader` only when you intentionally need to replace the system prompt:
 
 ```typescript
 import { createAgentSession, DefaultResourceLoader } from "@zhachory1/mewrite-code";
 
 const loader = new DefaultResourceLoader({
   systemPromptOverride: () => "You are a helpful assistant.",
+  appendSystemPromptOverride: () => [],
 });
 await loader.reload();
 
 const { session } = await createAgentSession({ resourceLoader: loader });
 ```
+
+`.mewrite/SYSTEM.md`, `DefaultResourceLoader({ systemPrompt })`, `systemPromptOverride`, and `--system-prompt` are full-replacement escape hatches. They are not the recommended downstream branding path because they can remove Me Write Code's default safety and tool guidance. `systemPromptBranding` affects the default prompt, not custom replacements. If you intentionally need a pure replacement, clear discovered append files with `appendSystemPromptOverride: () => []`.
 
 > See [examples/sdk/03-custom-prompt.ts](../examples/sdk/03-custom-prompt.ts)
 
@@ -906,7 +946,6 @@ const loader = new DefaultResourceLoader({
   cwd: process.cwd(),
   agentDir: "/custom/agent",
   settingsManager,
-  systemPromptOverride: () => "You are a minimal assistant. Be concise.",
 });
 await loader.reload();
 
@@ -922,6 +961,12 @@ const { session } = await createAgentSession({
   tools: [readTool, bashTool],
   customTools: [statusTool],
   resourceLoader: loader,
+  systemPromptBranding: {
+    productDisplayName: "Acme Code",
+    productHarnessDescription: "an internal coding agent harness",
+    documentationLabel: "Acme Code documentation",
+  },
+  appendSystemPrompt: "Use Acme issue IDs when referring to tracked work.",
 
   sessionManager: SessionManager.inMemory(),
   settingsManager,
@@ -1113,6 +1158,7 @@ createGrepTool, createFindTool, createLsTool
 // Types
 type CreateAgentSessionOptions
 type CreateAgentSessionResult
+type SystemPromptBranding
 type ExtensionFactory
 type ExtensionAPI
 type ToolDefinition
