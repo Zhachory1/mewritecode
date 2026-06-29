@@ -35,8 +35,8 @@ describe("distribution config", () => {
 
 	function runConfigProbe(env: NodeJS.ProcessEnv): Record<string, unknown> {
 		const code = [
-			'import { APP_NAME, BANNER_LOGO_MAX_WIDTH_CELLS, BANNER_LOGO_PATH, BANNER_TAGLINE, CHANGELOG_URL, COMPRESSION_MODE_NAME, CONFIG_DIR_NAME, DEFAULT_THEME_NAME, DISPLAY_NAME, DOCS_URL, ENV_PACKAGE_DIR, GITHUB_URL, MCP_DISCOVERY_OPTIONS, SAVINGS_NAME, SYSTEM_PROMPT_BRANDING, WATCH_MARKER, getDistributionAgentPaths, getDistributionExtensionPaths, getDistributionMcpConfigPaths, getDistributionPromptPaths, getDistributionSkillPaths, getDistributionThemePaths, getPackageDir, getThemesDir } from "./src/config.ts";',
-			"console.log(JSON.stringify({ appName: APP_NAME, displayName: DISPLAY_NAME, configDirName: CONFIG_DIR_NAME, envPackageDir: ENV_PACKAGE_DIR, packageDir: getPackageDir(), themesDir: getThemesDir(), distributionExtensionPaths: getDistributionExtensionPaths(), distributionSkillPaths: getDistributionSkillPaths(), distributionPromptPaths: getDistributionPromptPaths(), distributionThemePaths: getDistributionThemePaths(), distributionAgentPaths: getDistributionAgentPaths(), distributionMcpConfigPaths: getDistributionMcpConfigPaths(), mcp: MCP_DISCOVERY_OPTIONS, watchMarker: WATCH_MARKER, bannerLogoPath: BANNER_LOGO_PATH, bannerLogoMaxWidthCells: BANNER_LOGO_MAX_WIDTH_CELLS, bannerTagline: BANNER_TAGLINE, defaultThemeName: DEFAULT_THEME_NAME, githubUrl: GITHUB_URL, docsUrl: DOCS_URL, changelogUrl: CHANGELOG_URL, systemPromptBranding: SYSTEM_PROMPT_BRANDING, compressionModeName: COMPRESSION_MODE_NAME, savingsName: SAVINGS_NAME }));",
+			'import { APP_NAME, BANNER_LOGO_MAX_WIDTH_CELLS, BANNER_LOGO_PATH, BANNER_TAGLINE, CHANGELOG_URL, COMPRESSION_MODE_NAME, CONFIG_DIR_NAME, DEFAULT_THEME_NAME, DISPLAY_NAME, DISTRIBUTION_APPEND_SYSTEM_PROMPT, DISTRIBUTION_SYSTEM_PROMPT_BRANDING, DOCS_URL, ENV_PACKAGE_DIR, GITHUB_URL, MCP_DISCOVERY_OPTIONS, SAVINGS_NAME, SYSTEM_PROMPT_BRANDING, WATCH_MARKER, getDistributionAgentPaths, getDistributionExtensionPaths, getDistributionMcpConfigPaths, getDistributionPromptPaths, getDistributionSkillPaths, getDistributionThemePaths, getPackageDir, getThemesDir } from "./src/config.ts";',
+			"console.log(JSON.stringify({ appName: APP_NAME, displayName: DISPLAY_NAME, configDirName: CONFIG_DIR_NAME, envPackageDir: ENV_PACKAGE_DIR, packageDir: getPackageDir(), themesDir: getThemesDir(), distributionExtensionPaths: getDistributionExtensionPaths(), distributionSkillPaths: getDistributionSkillPaths(), distributionPromptPaths: getDistributionPromptPaths(), distributionThemePaths: getDistributionThemePaths(), distributionAgentPaths: getDistributionAgentPaths(), distributionMcpConfigPaths: getDistributionMcpConfigPaths(), mcp: MCP_DISCOVERY_OPTIONS, watchMarker: WATCH_MARKER, bannerLogoPath: BANNER_LOGO_PATH, bannerLogoMaxWidthCells: BANNER_LOGO_MAX_WIDTH_CELLS, bannerTagline: BANNER_TAGLINE, defaultThemeName: DEFAULT_THEME_NAME, githubUrl: GITHUB_URL, docsUrl: DOCS_URL, changelogUrl: CHANGELOG_URL, systemPromptBranding: SYSTEM_PROMPT_BRANDING, distributionSystemPromptBranding: DISTRIBUTION_SYSTEM_PROMPT_BRANDING, distributionAppendSystemPrompt: DISTRIBUTION_APPEND_SYSTEM_PROMPT, compressionModeName: COMPRESSION_MODE_NAME, savingsName: SAVINGS_NAME }));",
 		].join("\n");
 		const out = execFileSync("npx", ["tsx", "-e", code], {
 			cwd: process.cwd(),
@@ -267,6 +267,37 @@ Agent body`,
 		});
 		expect(result.compressionModeName).toBe("Example compression");
 		expect(result.savingsName).toBe("Example Agent");
+	});
+
+	it("exports downstream system prompt options from metadata", () => {
+		const packageDir = mkdtempSync(join(tmpdir(), "roktcode-package-"));
+		created.push(packageDir);
+		writeFileSync(
+			join(packageDir, "package.json"),
+			JSON.stringify({
+				name: "@example/roktcode",
+				version: "1.2.3",
+				mewriteConfig: {
+					name: "roktcode",
+					systemPromptBranding: {
+						productDisplayName: "Roktcode",
+						productCliName: "roktcode",
+						productHarnessDescription: "a Rokt-specific coding agent harness",
+						documentationLabel: "Roktcode documentation",
+					},
+					appendSystemPrompt: "# Rokt context\n\nYou are a Rokt-specific coding agent.",
+				},
+			}),
+		);
+
+		const result = runConfigProbe({ CODING_AGENT_PACKAGE_DIR: packageDir });
+		expect(result.distributionSystemPromptBranding).toEqual({
+			productDisplayName: "Roktcode",
+			productCliName: "roktcode",
+			productHarnessDescription: "a Rokt-specific coding agent harness",
+			documentationLabel: "Roktcode documentation",
+		});
+		expect(result.distributionAppendSystemPrompt).toBe("# Rokt context\n\nYou are a Rokt-specific coding agent.");
 	});
 
 	it("uses downstream branding in the default system prompt", () => {

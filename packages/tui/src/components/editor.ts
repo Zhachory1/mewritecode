@@ -200,6 +200,9 @@ interface LayoutLine {
 export interface EditorTheme {
 	borderColor: (str: string) => string;
 	selectList: SelectListTheme;
+	text?: (str: string) => string;
+	placeholder?: (str: string) => string;
+	cursor?: (str: string) => string;
 }
 
 export interface EditorOptions {
@@ -299,6 +302,18 @@ export class Editor implements Component, Focusable {
 			this.placeholder = placeholder;
 			this.tui.requestRender();
 		}
+	}
+
+	private styleText(text: string): string {
+		return this.theme.text ? this.theme.text(text) : text;
+	}
+
+	private stylePlaceholder(text: string): string {
+		return this.theme.placeholder ? this.theme.placeholder(text) : `\x1b[2m${text}\x1b[0m`;
+	}
+
+	private styleCursor(text: string): string {
+		return this.theme.cursor ? this.theme.cursor(text) : `\x1b[7m${text}\x1b[0m`;
 	}
 
 	/** Set of currently valid paste IDs, for marker-aware segmentation. */
@@ -473,8 +488,9 @@ export class Editor implements Component, Focusable {
 		const emitCursorMarker = this.focused && !this.autocompleteState;
 
 		for (const layoutLine of visibleLines) {
-			let displayText = layoutLine.text;
-			let lineVisibleWidth = visibleWidth(layoutLine.text);
+			const rawText = layoutLine.text;
+			let displayText = this.styleText(rawText);
+			let lineVisibleWidth = visibleWidth(rawText);
 			let cursorInPadding = false;
 
 			// Show ghost placeholder text on the (empty) cursor line.
@@ -496,12 +512,12 @@ export class Editor implements Component, Focusable {
 				const rest = clipped.slice(first.length);
 				const marker = emitCursorMarker ? CURSOR_MARKER : "";
 				if (this.focused) {
-					// Inverse-cursor the first grapheme, dim the remainder.
-					const head = `\x1b[7m${first}\x1b[0m`;
-					displayText = marker + head + (rest.length > 0 ? `\x1b[2m${rest}\x1b[0m` : "");
+					// Cursor the first grapheme, style the remainder as placeholder text.
+					const head = this.styleCursor(first);
+					displayText = marker + head + (rest.length > 0 ? this.stylePlaceholder(rest) : "");
 				} else {
-					// No cursor when unfocused; whole placeholder is dimmed.
-					displayText = `\x1b[2m${clipped}\x1b[0m`;
+					// No cursor when unfocused; whole placeholder uses placeholder style.
+					displayText = this.stylePlaceholder(clipped);
 				}
 				lineVisibleWidth = visibleWidth(clipped);
 				const padding = " ".repeat(Math.max(0, contentWidth - lineVisibleWidth));
@@ -513,8 +529,8 @@ export class Editor implements Component, Focusable {
 
 			// Add cursor if this line has it
 			if (layoutLine.hasCursor && layoutLine.cursorPos !== undefined) {
-				const before = displayText.slice(0, layoutLine.cursorPos);
-				const after = displayText.slice(layoutLine.cursorPos);
+				const before = rawText.slice(0, layoutLine.cursorPos);
+				const after = rawText.slice(layoutLine.cursorPos);
 
 				// Hardware cursor marker (zero-width, emitted before fake cursor for IME positioning)
 				const marker = emitCursorMarker ? CURSOR_MARKER : "";
@@ -525,13 +541,13 @@ export class Editor implements Component, Focusable {
 					const afterGraphemes = [...this.segment(after)];
 					const firstGrapheme = afterGraphemes[0]?.segment || "";
 					const restAfter = after.slice(firstGrapheme.length);
-					const cursor = `\x1b[7m${firstGrapheme}\x1b[0m`;
-					displayText = before + marker + cursor + restAfter;
+					const cursor = this.styleCursor(firstGrapheme);
+					displayText = this.styleText(before) + marker + cursor + this.styleText(restAfter);
 					// lineVisibleWidth stays the same - we're replacing, not adding
 				} else {
 					// Cursor is at the end - add highlighted space
-					const cursor = "\x1b[7m \x1b[0m";
-					displayText = before + marker + cursor;
+					const cursor = this.styleCursor(" ");
+					displayText = this.styleText(before) + marker + cursor;
 					lineVisibleWidth = lineVisibleWidth + 1;
 					// If cursor overflows content width into the padding, flag it
 					if (lineVisibleWidth > contentWidth && paddingX > 0) {

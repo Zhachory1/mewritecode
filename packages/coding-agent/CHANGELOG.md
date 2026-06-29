@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed runtime theme switching to recolor the startup banner and theme editor input text, placeholder, and cursor styling ([#43](https://github.com/Zhachory1/mewritecode/issues/43)).
+- Fixed CLI session creation to apply package `mewriteConfig.systemPromptBranding` and compose package `appendSystemPrompt` with explicit CLI prompt appends ([#41](https://github.com/Zhachory1/mewritecode/issues/41)).
+
 ## [0.67.1] - 2026-06-29
 
 ### Added

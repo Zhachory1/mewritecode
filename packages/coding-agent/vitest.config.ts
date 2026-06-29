@@ -1,6 +1,15 @@
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
+const packageDir = dirname(fileURLToPath(import.meta.url));
+
 export default defineConfig({
+	resolve: {
+		alias: {
+			"@zhachory1/mewrite-tui": resolve(packageDir, "../tui/src/index.ts"),
+		},
+	},
 	test: {
 		globals: true,
 		environment: "node",

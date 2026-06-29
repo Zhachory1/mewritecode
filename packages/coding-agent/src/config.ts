@@ -39,6 +39,13 @@ const DEFAULT_BANNER_SECONDARY_WORDMARK: readonly string[] = [
 	"          ░                 ░",
 ];
 
+export interface DistributionSystemPromptBranding {
+	productDisplayName?: string;
+	productCliName?: string;
+	productHarnessDescription?: string;
+	documentationLabel?: string;
+}
+
 export interface DistributionConfig {
 	name?: string;
 	appName?: string;
@@ -47,6 +54,8 @@ export interface DistributionConfig {
 	configDirName?: string;
 	packageDirEnv?: string;
 	packageDir?: string;
+	systemPromptBranding?: DistributionSystemPromptBranding;
+	appendSystemPrompt?: string;
 	branding?: {
 		logoPath?: string;
 		logoMaxWidthCells?: number;
@@ -354,6 +363,9 @@ export const SYSTEM_PROMPT_BRANDING = {
 	productHarnessDescription: brandingConfig.systemPromptHarnessDescription || "a coding agent harness",
 	documentationLabel: brandingConfig.documentationLabel || `${DISPLAY_NAME} documentation`,
 } as const;
+export const DISTRIBUTION_SYSTEM_PROMPT_BRANDING: DistributionSystemPromptBranding | undefined =
+	appConfig.systemPromptBranding;
+export const DISTRIBUTION_APPEND_SYSTEM_PROMPT: string | undefined = appConfig.appendSystemPrompt;
 export const COMPRESSION_MODE_NAME: string = brandingConfig.compressionModeName || `${DISPLAY_NAME} compression`;
 export const SAVINGS_NAME: string = brandingConfig.savingsName || DISPLAY_NAME;
 export const DEFAULT_THEME_NAME: string | undefined = appConfig.theme?.default;

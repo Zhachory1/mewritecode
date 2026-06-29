@@ -32,7 +32,14 @@ import { handleSubagentsCommand } from "./cli/subagents-cli.js";
 import { runSelfUpdate } from "./cli/update.js";
 import { handleWatchCommand } from "./cli/watch.js";
 import { handleWorkerCommand } from "./cli/worker.js";
-import { APP_NAME, getAgentDir, getModelsPath, VERSION } from "./config.js";
+import {
+	APP_NAME,
+	DISTRIBUTION_APPEND_SYSTEM_PROMPT,
+	DISTRIBUTION_SYSTEM_PROMPT_BRANDING,
+	getAgentDir,
+	getModelsPath,
+	VERSION,
+} from "./config.js";
 import { type CreateAgentSessionRuntimeFactory, createAgentSessionRuntime } from "./core/agent-session-runtime.js";
 import {
 	type AgentSessionRuntimeDiagnostic,
@@ -143,6 +150,11 @@ async function primeAutoThemeDetection(settingsManager: SettingsManager): Promis
 	} catch {
 		// Probe is best-effort; theme.ts falls back to COLORFGBG/CAVE_TERM_BG/dark.
 	}
+}
+
+function normalizeDistributionAppendSystemPrompt(): string | undefined {
+	const value = DISTRIBUTION_APPEND_SYSTEM_PROMPT?.trim();
+	return value && value.length > 0 ? value : undefined;
 }
 
 function toPrintOutputMode(appMode: AppMode): Exclude<Mode, "rpc"> {
@@ -743,6 +755,7 @@ export async function main(args: string[]) {
 	const resolvedSkillPaths = resolveCliPaths(cwd, parsed.skills);
 	const resolvedPromptTemplatePaths = resolveCliPaths(cwd, parsed.promptTemplates);
 	const resolvedThemePaths = resolveCliPaths(cwd, parsed.themes);
+	const distributionAppendSystemPrompt = normalizeDistributionAppendSystemPrompt();
 	const authStorage = AuthStorage.create();
 	const createRuntime: CreateAgentSessionRuntimeFactory = async ({
 		cwd,
@@ -814,6 +827,8 @@ export async function main(args: string[]) {
 			scopedModels: sessionOptions.scopedModels,
 			tools: sessionOptions.tools,
 			customTools: sessionOptions.customTools,
+			systemPromptBranding: DISTRIBUTION_SYSTEM_PROMPT_BRANDING,
+			appendSystemPrompt: distributionAppendSystemPrompt,
 		});
 		const cliThinkingOverride = parsed.thinking !== undefined || cliThinkingFromModel;
 		if (created.session.model && cliThinkingOverride) {

@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { Container, Image, Text, truncateToWidth } from "@zhachory1/mewrite-tui";
+import { Container, Image, truncateToWidth } from "@zhachory1/mewrite-tui";
 import {
 	BANNER_LOGO_MAX_WIDTH_CELLS,
 	BANNER_LOGO_PATH,
@@ -51,8 +51,11 @@ export async function loadBannerLogo(): Promise<BannerLogo | undefined> {
 }
 
 export class BannerComponent extends Container {
+	private options: BannerOptions;
+
 	constructor(options: BannerOptions) {
 		super();
+		this.options = options;
 		if (options.logo) {
 			this.addChild(
 				new Image(
@@ -62,20 +65,27 @@ export class BannerComponent extends Container {
 					{ maxWidthCells: options.logo.maxWidthCells, filename: options.logo.filename },
 				),
 			);
-		} else {
-			const rows = options.showSecondaryWordmark
-				? [...BANNER_PRIMARY_WORDMARK, ...BANNER_SECONDARY_WORDMARK]
-				: BANNER_PRIMARY_WORDMARK;
-			for (const [index, row] of rows.entries()) {
-				const color = index < WORDMARK_PRIMARY_ROWS ? "accent" : "mdHeading";
-				this.addChild(new Text(row ? theme.fg(color, row) : row, 1, 0));
-			}
 		}
-		this.addChild(new Text(theme.fg("dim", BANNER_TAGLINE), 1, 0));
-		const info = composeInfoLine(options);
+	}
+
+	render(width: number): string[] {
+		const lines = this.options.logo ? super.render(width) : this.renderWordmark();
+		lines.push(` ${theme.fg("dim", BANNER_TAGLINE)}`);
+		const info = composeInfoLine(this.options);
 		if (info) {
-			this.addChild(new Text(info, 1, 0));
+			lines.push(` ${info}`);
 		}
+		return lines;
+	}
+
+	private renderWordmark(): string[] {
+		const rows = this.options.showSecondaryWordmark
+			? [...BANNER_PRIMARY_WORDMARK, ...BANNER_SECONDARY_WORDMARK]
+			: BANNER_PRIMARY_WORDMARK;
+		return rows.map((row, index) => {
+			const color = index < WORDMARK_PRIMARY_ROWS ? "accent" : "mdHeading";
+			return row ? ` ${theme.fg(color, row)}` : " ";
+		});
 	}
 }
 
