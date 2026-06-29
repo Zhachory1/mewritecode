@@ -1,6 +1,6 @@
 {
 	"name": "@zhachory1/mewrite-code",
-	"version": "0.66.5",
+	"version": "0.66.6",
 	"description": "Me Write Code — a terminal coding agent",
 	"type": "module",
 	"mewriteConfig": {
@@ -53,9 +53,9 @@
 		"prepublishOnly": "npm run clean && npm run build"
 	},
 	"dependencies": {
-		"@zhachory1/mewrite-agent": "^0.66.5",
-		"@zhachory1/mewrite-ai": "^0.66.5",
-		"@zhachory1/mewrite-tui": "^0.66.5",
+		"@zhachory1/mewrite-agent": "^0.66.6",
+		"@zhachory1/mewrite-ai": "^0.66.6",
+		"@zhachory1/mewrite-tui": "^0.66.6",
 		"@mariozechner/jiti": "^2.6.2",
 		"@sinclair/typebox": "^0.34.49",
 		"@silvia-odwyer/photon-node": "^0.3.4",

@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.66.6] - 2026-06-29
+
 ### Fixed
 
 - Fixed downstream package branding so `mewriteConfig` controls default system prompt identity, documentation labels, compression-mode wording, and savings-meter wording instead of leaking Cave/Caveman labels.
