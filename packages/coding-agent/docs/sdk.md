@@ -447,10 +447,10 @@ Branding options:
 
 | Field | Default | Purpose |
 |-------|---------|---------|
-| `productDisplayName` | `Cave` | Product name in prompt identity and documentation scope lines |
-| `productCliName` | `productDisplayName` | CLI name included in documentation scope text when it differs from the display name |
+| `productDisplayName` | distribution `displayName` | Product name in prompt identity and documentation scope lines |
+| `productCliName` | distribution `name` | CLI name included in documentation scope text when it differs from the display name |
 | `productHarnessDescription` | `a coding agent harness` | Phrase after the product name in the identity line |
-| `documentationLabel` | `Cave documentation` | Label for the internal documentation section |
+| `documentationLabel` | `${displayName} documentation` | Label for the internal documentation section |
 
 `appendSystemPrompt` is appended after the default upstream system prompt and after resource-loader append input. The generated block states that downstream additions are additive and cannot override core safety, tool-use, task-execution, prompt-injection, or destructive-action guidance.
 

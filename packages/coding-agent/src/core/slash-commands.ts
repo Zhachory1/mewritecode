@@ -34,7 +34,7 @@
 import { type Dirent, existsSync, type FSWatcher, readdirSync, readFileSync, statSync, watch } from "fs";
 import { homedir } from "os";
 import { basename, isAbsolute, join, resolve } from "path";
-import { APP_NAME, CONFIG_DIR_NAME, getAgentDir } from "../config.js";
+import { APP_NAME, COMPRESSION_MODE_NAME, CONFIG_DIR_NAME, getAgentDir, SAVINGS_NAME } from "../config.js";
 import { parseFrontmatter } from "../utils/frontmatter.js";
 import type { ResourceDiagnostic } from "./diagnostics.js";
 import { applyInlineShellPreprocessing, type SkillExpandContext, substituteSkillVariables } from "./skills.js";
@@ -85,9 +85,9 @@ export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 		wired: true,
 	},
 	{ name: "compact", description: "Manually compact the session context", wired: true },
-	{ name: "freeze", description: "Cave-optimized compaction checkpoint (optional label)", wired: true },
+	{ name: "freeze", description: "Compression-optimized compaction checkpoint (optional label)", wired: true },
 	{ name: "checkpoints", description: "List manual freeze checkpoints in this session", wired: true },
-	{ name: "cave", description: "Control cave mode (on/off/lite/full/ultra/stats)", wired: true },
+	{ name: "mode", description: `Control ${COMPRESSION_MODE_NAME} (on/off/lite/full/ultra/stats)`, wired: true },
 	{ name: "resume", description: "Resume a different session", wired: true },
 	{ name: "reload", description: "Reload keybindings, extensions, skills, prompts, and themes", wired: true },
 	{
@@ -135,8 +135,7 @@ export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 	},
 	{
 		name: "savings",
-		description:
-			"Show context bytes Caveman eliminated this session (dedup + compression + compaction) + cumulative. /savings --report for a cumulative all-time readout, /savings --share for a one-liner.",
+		description: `Show context bytes ${SAVINGS_NAME} eliminated this session (dedup + compression + compaction) + cumulative. /savings --report for a cumulative all-time readout, /savings --share for a one-liner.`,
 		wired: true,
 	},
 	{

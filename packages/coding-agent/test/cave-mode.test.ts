@@ -8,6 +8,7 @@
  */
 
 import { describe, expect, it } from "vitest";
+import { COMPRESSION_MODE_NAME } from "../src/config.js";
 import {
 	collapseBlankLines,
 	compressCaveToolContentBlocks,
@@ -188,26 +189,26 @@ describe("compressCaveToolContentBlocks", () => {
 // AC-1: Disabled cave mode produces identical upstream behavior in system prompt
 // ============================================================================
 
-describe("buildSystemPrompt — cave mode disabled (AC-1)", () => {
-	it("includes no cave mode section when enabled=false", () => {
+describe("buildSystemPrompt — compression style disabled (AC-1)", () => {
+	it("includes no compression style section when enabled=false", () => {
 		const prompt = buildSystemPrompt({
 			caveMode: { enabled: false, intensity: "full" },
 		});
-		expect(prompt).not.toContain("Cave Mode");
+		expect(prompt).not.toContain(COMPRESSION_MODE_NAME);
 		expect(prompt).not.toContain("Communication Style");
 	});
 
-	it("includes no cave mode section when caveMode is undefined", () => {
+	it("includes no compression style section when caveMode is undefined", () => {
 		const prompt = buildSystemPrompt({});
-		expect(prompt).not.toContain("Cave Mode");
+		expect(prompt).not.toContain(COMPRESSION_MODE_NAME);
 		expect(prompt).not.toContain("Communication Style");
 	});
 
-	it("includes cave mode section only when enabled=true", () => {
+	it("includes compression style section only when enabled=true", () => {
 		const prompt = buildSystemPrompt({
 			caveMode: { enabled: true, intensity: "full" },
 		});
-		expect(prompt).toContain("Cave Mode");
+		expect(prompt).toContain(COMPRESSION_MODE_NAME);
 	});
 });
 

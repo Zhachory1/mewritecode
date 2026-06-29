@@ -58,6 +58,12 @@ export interface DistributionConfig {
 		githubUrl?: string;
 		discordUrl?: string;
 		changelogUrl?: string;
+		systemPromptName?: string;
+		systemPromptCliName?: string;
+		systemPromptHarnessDescription?: string;
+		documentationLabel?: string;
+		compressionModeName?: string;
+		savingsName?: string;
 	};
 	theme?: {
 		default?: string;
@@ -342,6 +348,14 @@ export const BANNER_PRIMARY_WORDMARK: readonly string[] =
 export const BANNER_SECONDARY_WORDMARK: readonly string[] =
 	brandingConfig.secondaryWordmark ?? DEFAULT_BANNER_SECONDARY_WORDMARK;
 export const BANNER_TAGLINE: string = brandingConfig.tagline || "Any Model, Less Tokens, Code Good";
+export const SYSTEM_PROMPT_BRANDING = {
+	productDisplayName: brandingConfig.systemPromptName || DISPLAY_NAME,
+	productCliName: brandingConfig.systemPromptCliName || APP_NAME,
+	productHarnessDescription: brandingConfig.systemPromptHarnessDescription || "a coding agent harness",
+	documentationLabel: brandingConfig.documentationLabel || `${DISPLAY_NAME} documentation`,
+} as const;
+export const COMPRESSION_MODE_NAME: string = brandingConfig.compressionModeName || `${DISPLAY_NAME} compression`;
+export const SAVINGS_NAME: string = brandingConfig.savingsName || DISPLAY_NAME;
 export const DEFAULT_THEME_NAME: string | undefined = appConfig.theme?.default;
 export const INSTALL_DIR_NAME: string = selfUpdateConfig.installDirName || APP_NAME;
 export const INSTALL_PRODUCT_DIR_NAME: string = selfUpdateConfig.productDirName || APP_NAME;

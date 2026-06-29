@@ -364,10 +364,10 @@ Supported branding fields:
 
 | Field | Default | Purpose |
 |-------|---------|---------|
-| `productDisplayName` | `Cave` | Product name in prompt identity and documentation scope lines |
-| `productCliName` | `productDisplayName` | CLI name included in documentation scope text when it differs from the display name |
+| `productDisplayName` | distribution `displayName` | Product name in prompt identity and documentation scope lines |
+| `productCliName` | distribution `name` | CLI name included in documentation scope text when it differs from the display name |
 | `productHarnessDescription` | `a coding agent harness` | Phrase after the product name in the identity line |
-| `documentationLabel` | `Cave documentation` | Label for the internal documentation section |
+| `documentationLabel` | `${displayName} documentation` | Label for the internal documentation section |
 
 `appendSystemPrompt` is append-only when the default upstream prompt is active: Me Write Code still emits its default safety, tool-use, task-execution, prompt-injection, and destructive-action guidance before the downstream block.
 
@@ -489,7 +489,13 @@ Thin downstream packages can depend on `@zhachory1/mewrite-code` and set package
       "discordUrl": "https://discord.gg/examplecode",
       "changelogUrl": "https://github.com/example/examplecode/blob/main/CHANGELOG.md",
       "primaryWordmark": ["EXAMPLE CODE"],
-      "secondaryWordmark": []
+      "secondaryWordmark": [],
+      "systemPromptName": "Example Code",
+      "systemPromptCliName": "examplecode",
+      "systemPromptHarnessDescription": "an Example coding agent harness",
+      "documentationLabel": "Example Code docs",
+      "compressionModeName": "Example Code compression",
+      "savingsName": "Example Code"
     },
     "theme": {
       "default": "example-dark",
@@ -516,7 +522,7 @@ Thin downstream packages can depend on `@zhachory1/mewrite-code` and set package
 }
 ```
 
-`CODING_AGENT_PACKAGE_DIR` is the bootstrap override used before package metadata is loaded. Once metadata is loaded, the package-specific env named by `packageDirEnv` is honored for asset lookup. User config then defaults to `~/.examplecode/agent`, project config to `.examplecode/`, and lower-level storage paths can derive from the same config dir. The `branding` block controls startup image logo or wordmark, tagline, watch comment marker (`// examplecode!`, `// examplecode?`), docs/community links, and update changelog links. `logoPath` resolves relative to the wrapper package and supports PNG, JPEG, GIF, and WebP; when set and loadable, it replaces the ASCII wordmark. The `theme.default` value selects a theme by name when the user has not chosen one; `theme.paths` loads wrapper-shipped theme files relative to the wrapper package. The `resources` block loads wrapper-shipped extensions, skills, prompts, themes, agents, and MCP config files relative to the wrapper package, so a branded distribution can ship its default behavior without copying files into user config. Wrapper resources load below user/project resources, so users can override them. The `mcp` block reads `PACKAGE_DIR/.mcp.json` plus any `resources.mcp` files by default and can disable project, user, legacy `.cave`, Claude Code, and Codex compatibility paths when a downstream distribution needs isolated MCP configuration.
+`CODING_AGENT_PACKAGE_DIR` is the bootstrap override used before package metadata is loaded. Once metadata is loaded, the package-specific env named by `packageDirEnv` is honored for asset lookup. User config then defaults to `~/.examplecode/agent`, project config to `.examplecode/`, and lower-level storage paths can derive from the same config dir. The `branding` block controls startup image logo or wordmark, tagline, watch comment marker (`// examplecode!`, `// examplecode?`), docs/community links, update changelog links, system-prompt identity/documentation labels, compression-mode wording, and savings-meter wording. `logoPath` resolves relative to the wrapper package and supports PNG, JPEG, GIF, and WebP; when set and loadable, it replaces the ASCII wordmark. `systemPromptName`, `systemPromptCliName`, `systemPromptHarnessDescription`, and `documentationLabel` default to `displayName`, `name`, `"a coding agent harness"`, and `${displayName} documentation`. `compressionModeName` and `savingsName` default to `${displayName} compression` and `displayName`. The `theme.default` value selects a theme by name when the user has not chosen one; `theme.paths` loads wrapper-shipped theme files relative to the wrapper package. The `resources` block loads wrapper-shipped extensions, skills, prompts, themes, agents, and MCP config files relative to the wrapper package, so a branded distribution can ship its default behavior without copying files into user config. Wrapper resources load below user/project resources, so users can override them. The `mcp` block reads `PACKAGE_DIR/.mcp.json` plus any `resources.mcp` files by default and can disable project, user, legacy `.cave`, Claude Code, and Codex compatibility paths when a downstream distribution needs isolated MCP configuration.
 
 For non-upstream distributions, self-update is disabled unless the wrapper explicitly provides a complete `selfUpdate` configuration.
 

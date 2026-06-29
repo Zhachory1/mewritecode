@@ -284,12 +284,12 @@ describe("formatByteCount", () => {
 describe("formatSavingsLine (DD §10.8)", () => {
 	it("leads with bytes + % + all-time when bytes were saved", () => {
 		const line = formatSavingsLine({ bytesSaved: 5427, percentCompressed: 0.31, cumulativeAllTimeBytes: 1_992_294 });
-		expect(line).toBe("Caveman eliminated 5.3 KB of context (31% of tool output) · 1.9 MB all-time");
+		expect(line).toBe("Me Write Code eliminated 5.3 KB of context (31% of tool output) · 1.9 MB all-time");
 	});
 
 	it("omits the all-time suffix when cumulative is 0", () => {
 		const line = formatSavingsLine({ bytesSaved: 5427, percentCompressed: 0.31, cumulativeAllTimeBytes: 0 });
-		expect(line).toBe("Caveman eliminated 5.3 KB of context (31% of tool output)");
+		expect(line).toBe("Me Write Code eliminated 5.3 KB of context (31% of tool output)");
 	});
 
 	it("returns undefined when nothing was saved (line omitted on exit)", () => {

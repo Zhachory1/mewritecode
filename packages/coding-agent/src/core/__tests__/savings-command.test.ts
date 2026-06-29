@@ -2,7 +2,7 @@
  * Savings Meter (DD §10) — `/savings` formatter tests.
  *
  * Bytes-led headline; tokens/$ as `≈` riders; cache-reuse on its OWN line and
- * NEVER summed into the caveman total nor present in `--share`; honest %; zero-state.
+ * NEVER summed into product savings nor present in `--share`; honest %; zero-state.
  */
 
 import { describe, expect, it } from "vitest";
@@ -47,7 +47,7 @@ describe("runSavingsCommand", () => {
 		});
 		const text = result.lines.join("\n");
 		// Bytes lead.
-		expect(result.lines[0]).toContain("Caveman eliminated 12.0 KB of context");
+		expect(result.lines[0]).toContain("Me Write Code eliminated 12.0 KB of context");
 		expect(result.lines[0]).toContain("(30% of tool output)");
 		// Riders.
 		expect(text).toContain("≈ 3.1k tok");
@@ -59,7 +59,7 @@ describe("runSavingsCommand", () => {
 		expect(text).toContain("Excludes output terseness");
 	});
 
-	it("shows cache-reuse on its OWN line, never summed into the caveman total", () => {
+	it("shows cache-reuse on its OWN line, never summed into product savings", () => {
 		const result = runSavingsCommand({
 			pricingKnown: true,
 			totals: totals({
@@ -99,7 +99,7 @@ describe("runSavingsCommand", () => {
 	it("renders an honest zero-state", () => {
 		const result = runSavingsCommand({ pricingKnown: true, totals: totals() });
 		const text = result.lines.join("\n");
-		expect(text).toContain("Caveman eliminated 0 B of context");
+		expect(text).toContain("Me Write Code eliminated 0 B of context");
 		expect(text).toContain("Measured context elimination");
 	});
 
@@ -256,6 +256,7 @@ describe("formatSavingsShare", () => {
 		);
 		expect(share).toContain("30%");
 		expect(share).toContain("12.0 KB");
+		expect(share).toContain("Me Write Code compressed");
 		expect(share).not.toContain("$");
 		expect(share).not.toContain("9.99");
 	});

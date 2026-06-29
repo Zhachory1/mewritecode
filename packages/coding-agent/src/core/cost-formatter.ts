@@ -14,6 +14,8 @@
  *   - If pricing is unknown (dollarsTotal === 0 and model unknown), omit $ entirely.
  */
 
+import { SAVINGS_NAME } from "../config.js";
+
 export interface InlineCostOptions {
 	/** Estimated total $ for this message. 0 means unknown/not priced. */
 	dollarsTotal: number;
@@ -220,7 +222,7 @@ export function formatSessionEndSummary(opts: {
  * honest % of tool output and the cumulative all-time bytes. Returns undefined
  * when nothing was saved (the line is omitted on exit).
  *
- * Example: "Caveman eliminated 5.3 KB of context (31% of tool output) · 1.9 MB all-time"
+ * Example: "Me Write Code eliminated 5.3 KB of context (31% of tool output) · 1.9 MB all-time"
  */
 export function formatSavingsLine(opts: {
 	bytesSaved: number;
@@ -230,7 +232,7 @@ export function formatSavingsLine(opts: {
 	if (opts.bytesSaved <= 0) return undefined;
 	const pct = Math.round(opts.percentCompressed * 100);
 	const allTime = opts.cumulativeAllTimeBytes > 0 ? ` · ${formatByteCount(opts.cumulativeAllTimeBytes)} all-time` : "";
-	return `Caveman eliminated ${formatByteCount(opts.bytesSaved)} of context (${pct}% of tool output)${allTime}`;
+	return `${SAVINGS_NAME} eliminated ${formatByteCount(opts.bytesSaved)} of context (${pct}% of tool output)${allTime}`;
 }
 
 /** Compact byte count: 940 → "940 B", 4200 → "4.1 KB", 1_500_000 → "1.4 MB". */

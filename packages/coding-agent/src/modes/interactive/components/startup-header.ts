@@ -1,4 +1,5 @@
 import { Container, Text } from "@zhachory1/mewrite-tui";
+import { COMPRESSION_MODE_NAME } from "../../../config.js";
 import { theme } from "../theme/theme.js";
 import { BannerComponent, type BannerLogo, type BannerSprite } from "./banner.js";
 import { SessionPanelComponent } from "./session-panel.js";
@@ -60,7 +61,9 @@ export class StartupHeaderComponent extends Container {
 
 		if (caveModeEnabled) {
 			const compression = caveModeIntensity ?? "enabled";
-			this.addChild(new Text(theme.fg("accent", `cave mode: active | compression: ${compression}`), 1, 0));
+			this.addChild(
+				new Text(theme.fg("accent", `${COMPRESSION_MODE_NAME}: active | compression: ${compression}`), 1, 0),
+			);
 		}
 	}
 }

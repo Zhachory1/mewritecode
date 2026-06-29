@@ -9,6 +9,7 @@ import { DefaultResourceLoader, type DefaultResourceLoaderOptions, type Resource
 import { type CreateAgentSessionResult, createAgentSession } from "./sdk.js";
 import type { SessionManager } from "./session-manager.js";
 import { SettingsManager } from "./settings-manager.js";
+import type { SystemPromptBranding } from "./system-prompt.js";
 import type { Tool } from "./tools/index.js";
 
 /**
@@ -55,6 +56,8 @@ export interface CreateAgentSessionFromServicesOptions {
 	scopedModels?: Array<{ model: Model<any>; thinkingLevel?: ThinkingLevel }>;
 	tools?: Tool[];
 	customTools?: ToolDefinition[];
+	systemPromptBranding?: SystemPromptBranding;
+	appendSystemPrompt?: string;
 }
 
 /**
@@ -195,5 +198,7 @@ export async function createAgentSessionFromServices(
 		tools: options.tools,
 		customTools: options.customTools,
 		sessionStartEvent: options.sessionStartEvent,
+		systemPromptBranding: options.systemPromptBranding,
+		appendSystemPrompt: options.appendSystemPrompt,
 	});
 }

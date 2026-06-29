@@ -50,6 +50,7 @@ import { maybeNotifyUpdateAvailable } from "../../cli/update.js";
 import {
 	APP_NAME,
 	CHANGELOG_URL,
+	COMPRESSION_MODE_NAME,
 	getAgentDir,
 	getAuthPath,
 	getDebugLogPath,
@@ -607,9 +608,9 @@ export class InteractiveMode {
 			};
 		}
 
-		const caveCommand = slashCommands.find((command) => command.name === "cave");
-		if (caveCommand) {
-			caveCommand.getArgumentCompletions = (prefix: string): AutocompleteItem[] | null => {
+		const modeCommand = slashCommands.find((command) => command.name === "mode");
+		if (modeCommand) {
+			modeCommand.getArgumentCompletions = (prefix: string): AutocompleteItem[] | null => {
 				const options = ["on", "off", "lite", "full", "ultra", "stats"];
 				const filtered = prefix ? options.filter((o) => o.startsWith(prefix.toLowerCase())) : options;
 				if (filtered.length === 0) return null;
@@ -2523,7 +2524,7 @@ export class InteractiveMode {
 				this.handleCheckpointsCommand();
 				return;
 			}
-			if (text === "/cave" || text.startsWith("/cave ")) {
+			if (text === "/mode" || text.startsWith("/mode ") || text === "/cave" || text.startsWith("/cave ")) {
 				this.editor.setText("");
 				this.handleCaveCommand(text);
 				return;
@@ -6023,14 +6024,17 @@ export class InteractiveMode {
 	}
 
 	private handleCaveCommand(text: string): void {
-		const arg = text.startsWith("/cave ") ? text.slice(6).trim().toLowerCase() : "";
+		const arg = text
+			.replace(/^\/(?:cave|mode)\s*/, "")
+			.trim()
+			.toLowerCase();
 
 		if (!arg) {
 			// No argument: show current cave mode state
 			const state = this.session.getCaveModeSessionState();
 			const status = state.enabled ? `on (intensity: ${state.intensity})` : "off";
 			this.chatContainer.addChild(new Spacer(1));
-			this.chatContainer.addChild(new Text(theme.fg("muted", `Cave mode: ${status}`), 1, 0));
+			this.chatContainer.addChild(new Text(theme.fg("muted", `${COMPRESSION_MODE_NAME}: ${status}`), 1, 0));
 			this.ui.requestRender();
 			return;
 		}
@@ -6038,7 +6042,7 @@ export class InteractiveMode {
 		if (arg === "on") {
 			this.session.setCaveModeSessionIntensity(this.settingsManager.getCaveModeIntensity());
 			this.chatContainer.addChild(new Spacer(1));
-			this.chatContainer.addChild(new Text(theme.fg("muted", "Cave mode: on (session)"), 1, 0));
+			this.chatContainer.addChild(new Text(theme.fg("muted", `${COMPRESSION_MODE_NAME}: on (session)`), 1, 0));
 			this.ui.requestRender();
 			return;
 		}
@@ -6046,7 +6050,7 @@ export class InteractiveMode {
 		if (arg === "off") {
 			this.session.setCaveModeSessionDisabled();
 			this.chatContainer.addChild(new Spacer(1));
-			this.chatContainer.addChild(new Text(theme.fg("muted", "Cave mode: off (session)"), 1, 0));
+			this.chatContainer.addChild(new Text(theme.fg("muted", `${COMPRESSION_MODE_NAME}: off (session)`), 1, 0));
 			this.ui.requestRender();
 			return;
 		}
@@ -6055,7 +6059,7 @@ export class InteractiveMode {
 			this.session.setCaveModeSessionIntensity(arg);
 			this.chatContainer.addChild(new Spacer(1));
 			this.chatContainer.addChild(
-				new Text(theme.fg("muted", `Cave mode: on, intensity set to ${arg} (session)`), 1, 0),
+				new Text(theme.fg("muted", `${COMPRESSION_MODE_NAME}: on, intensity set to ${arg} (session)`), 1, 0),
 			);
 			this.ui.requestRender();
 			return;
@@ -6066,7 +6070,7 @@ export class InteractiveMode {
 			return;
 		}
 
-		this.showWarning(`/cave: unknown argument '${arg}'. Usage: /cave [on|off|lite|full|ultra|stats]`);
+		this.showWarning(`/mode: unknown argument '${arg}'. Usage: /mode [on|off|lite|full|ultra|stats]`);
 	}
 
 	private handleCaveStatsCommand(): void {
@@ -6075,7 +6079,7 @@ export class InteractiveMode {
 		const contextUsage = stats.contextUsage;
 
 		const lines: string[] = [];
-		lines.push(theme.fg("accent", "Cave Mode Stats"));
+		lines.push(theme.fg("accent", `${COMPRESSION_MODE_NAME} Stats`));
 		lines.push(`  Mode: ${state.enabled ? "on" : "off"}`);
 		lines.push(`  Intensity: ${state.intensity}`);
 		lines.push(`  Tool compression: ${this.settingsManager.getCaveModeToolCompression() ? "on" : "off"}`);
@@ -6136,7 +6140,7 @@ export class InteractiveMode {
 		this.ui.requestRender();
 	}
 
-	// Savings Meter (DD §10): /savings — context bytes Caveman eliminated this
+	// Savings Meter (DD §10): /savings — context bytes eliminated this
 	// session (dedup + compression + compaction) + cumulative. `--report` prints a
 	// cumulative all-time readout from ~/.cave/cost-totals.json (bytes durable; $
 	// estimated). `--share` copies a bytes+% one-liner (no $, no cache-reuse).

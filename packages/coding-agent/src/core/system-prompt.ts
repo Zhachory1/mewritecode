@@ -18,17 +18,23 @@
 
 import { execSync } from "node:child_process";
 import { platform as osPlatform, release as osRelease } from "node:os";
-import { getDocsPath, getExamplesPath, getReadmePath } from "../config.js";
+import {
+	COMPRESSION_MODE_NAME,
+	getDocsPath,
+	getExamplesPath,
+	getReadmePath,
+	SYSTEM_PROMPT_BRANDING,
+} from "../config.js";
 import { formatSkillsForPrompt, type Skill } from "./skills.js";
 
 export interface SystemPromptBranding {
-	/** Product name used in prompt identity lines. Default: Cave. */
+	/** Product name used in prompt identity lines. Default: distribution display name. */
 	productDisplayName?: string;
 	/** CLI name used in documentation scope text when it differs from productDisplayName. */
 	productCliName?: string;
 	/** Harness description used after the product name in the identity line. Default: a coding agent harness. */
 	productHarnessDescription?: string;
-	/** Documentation section label. Default: Cave documentation. */
+	/** Documentation section label. Default: distribution display name + documentation. */
 	documentationLabel?: string;
 }
 
@@ -148,13 +154,16 @@ function normalizeBrandingValue(value: string | undefined): string | undefined {
 }
 
 function resolveSystemPromptBranding(branding: SystemPromptBranding | undefined): ResolvedSystemPromptBranding {
-	const productDisplayName = normalizeBrandingValue(branding?.productDisplayName) || "Cave";
+	const productDisplayName =
+		normalizeBrandingValue(branding?.productDisplayName) || SYSTEM_PROMPT_BRANDING.productDisplayName;
 	return {
 		productDisplayName,
-		productCliName: normalizeBrandingValue(branding?.productCliName) || productDisplayName,
+		productCliName: normalizeBrandingValue(branding?.productCliName) || SYSTEM_PROMPT_BRANDING.productCliName,
 		productHarnessDescription:
-			normalizeBrandingValue(branding?.productHarnessDescription) || "a coding agent harness",
-		documentationLabel: normalizeBrandingValue(branding?.documentationLabel) || "Cave documentation",
+			normalizeBrandingValue(branding?.productHarnessDescription) ||
+			SYSTEM_PROMPT_BRANDING.productHarnessDescription,
+		documentationLabel:
+			normalizeBrandingValue(branding?.documentationLabel) || SYSTEM_PROMPT_BRANDING.documentationLabel,
 	};
 }
 
@@ -222,16 +231,16 @@ const SUBAGENT_ENV_HINTS = `## Subagent guidance
 - No emojis. No colons before tool calls. Be terse.`;
 
 // ============================================================================
-// Cave Mode System Prompt
+// Compression Style System Prompt
 // ============================================================================
 
 /**
- * Build the cave mode communication rules block based on intensity level.
- * Returns empty string when cave mode is disabled.
+ * Build the compression-style communication rules block based on intensity level.
+ * Returns empty string when compression style is disabled.
  */
 export function buildCaveModePrompt(intensity: "lite" | "full" | "ultra"): string {
 	const lite = `
-## Communication Style (Cave Mode: lite)
+## Communication Style (${COMPRESSION_MODE_NAME}: lite)
 Communicate in terse, compressed style. Drop unnecessary articles (a, an, the) and filler words where meaning is clear.
 
 Intensity: light compression — preserve most natural language, just trim obvious filler.
@@ -242,7 +251,7 @@ EXCEPTIONS (always use normal English for):
 - Security warnings and destructive operation confirmations (e.g., deleting files, force-push, overwriting data)`;
 
 	const full = `
-## Communication Style (Cave Mode: full)
+## Communication Style (${COMPRESSION_MODE_NAME}: full)
 Compressed, terse. Lead with the answer. No preamble, no restating the question, no summary/wrap-up paragraph.
 
 Rules:
@@ -260,7 +269,7 @@ EXCEPTIONS (always use normal English for):
 - Genuine ambiguity where dropped articles/conjunctions could be misread`;
 
 	const ultra = `
-## Communication Style (Cave Mode: ultra)
+## Communication Style (${COMPRESSION_MODE_NAME}: ultra)
 Like \`full\`, but tighter. Terse technical documentation. No articles, no pleasantries, no preamble. Lead with the answer.
 
 Rules:

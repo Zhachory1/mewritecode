@@ -6,11 +6,12 @@
  *
  * The honest denominator is `bytesSaved / totalToolOutputBytes` (ALL tool
  * results, not just compressed). Prompt-cache reuse is shown on its OWN line,
- * labeled "(provider feature)", and is NEVER summed into the caveman total nor
+ * labeled "(provider feature)", and is NEVER summed into the product savings total nor
  * emitted in `--share`. Dedup is labeled "re-read avoided" (its fingerprint is
  * heuristic — we do not claim absolute elimination-certainty).
  */
 
+import { APP_NAME, SAVINGS_NAME } from "../../config.js";
 import { formatByteCount } from "../cost-formatter.js";
 import type { SavingsAggregate } from "../cost-persistence.js";
 import type { SavingsTotals } from "../savings-tracker.js";
@@ -64,13 +65,13 @@ export function runSavingsCommand(ctx: SavingsCommandContext): SavingsCommandRes
 	const pct = Math.round(totals.percentCompressed * 100);
 
 	if (totals.bytesSaved <= 0) {
-		lines.push("Caveman eliminated 0 B of context this session.");
+		lines.push(`${SAVINGS_NAME} eliminated 0 B of context this session.`);
 	} else {
 		// Headline: bytes (exact) + honest % of ALL tool output.
 		const tokRider = `≈ ${formatApproxTokens(totals.tokensSavedApprox)} tok`;
 		const dollarRider =
 			pricingKnown && totals.dollarsSavedApprox > 0 ? ` · ~${formatDollars(totals.dollarsSavedApprox)}` : "";
-		lines.push(`Caveman eliminated ${formatBytes(totals.bytesSaved)} of context (${pct}% of tool output)`);
+		lines.push(`${SAVINGS_NAME} eliminated ${formatBytes(totals.bytesSaved)} of context (${pct}% of tool output)`);
 		lines.push(`  ${tokRider}${dollarRider}`);
 
 		// Per-source breakdown (bytes-led).
@@ -144,7 +145,7 @@ export function formatSavingsReport(savings: SavingsAggregate | undefined, opts:
 	if (!savings || allTimeBytes <= 0) {
 		return [
 			"No cumulative savings recorded yet.",
-			"  The meter records context Caveman eliminated across real sessions;",
+			`  The meter records context ${SAVINGS_NAME} eliminated across real sessions;`,
 			"  run some work and the all-time bytes will accrue here.",
 		];
 	}
@@ -197,7 +198,7 @@ export function formatSavingsReport(savings: SavingsAggregate | undefined, opts:
  */
 export function formatSavingsShare(totals: SavingsTotals): string {
 	const pct = Math.round(totals.percentCompressed * 100);
-	return `🪨 Caveman compressed ${pct}% of my tool context this session (${formatBytes(
+	return `${SAVINGS_NAME} compressed ${pct}% of my tool context this session (${formatBytes(
 		totals.bytesSaved,
-	)} eliminated). mewrite-code`;
+	)} eliminated). ${APP_NAME}`;
 }

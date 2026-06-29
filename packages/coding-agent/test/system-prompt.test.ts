@@ -3,17 +3,20 @@ import { buildSystemPrompt } from "../src/core/system-prompt.js";
 
 describe("buildSystemPrompt", () => {
 	describe("branding", () => {
-		test("keeps default product identity and documentation wording", () => {
+		test("uses distribution product identity and documentation wording by default", () => {
 			const prompt = buildSystemPrompt({
 				selectedTools: [],
 				contextFiles: [],
 				skills: [],
 			});
 
-			expect(prompt).toContain("You are an expert coding assistant operating inside Cave, a coding agent harness.");
 			expect(prompt).toContain(
-				"Cave documentation (read only when the user asks about Cave itself, its SDK, extensions, themes, skills, or TUI):",
+				"You are an expert coding assistant operating inside Me Write Code, a coding agent harness.",
 			);
+			expect(prompt).toContain(
+				"Me Write Code documentation (read only when the user asks about Me Write Code itself, the mewrite CLI, its SDK, extensions, themes, skills, or TUI):",
+			);
+			expect(prompt).not.toContain("operating inside Cave");
 		});
 
 		test("uses custom product identity and documentation labels", () => {
@@ -35,7 +38,7 @@ describe("buildSystemPrompt", () => {
 			expect(prompt).toContain(
 				"Acme Code documentation (read only when the user asks about Acme Code itself, the acme-code CLI, its SDK, extensions, themes, skills, or TUI):",
 			);
-			expect(prompt).not.toContain("operating inside Cave, a coding agent harness");
+			expect(prompt).not.toContain("operating inside Me Write Code, a coding agent harness");
 		});
 
 		test("keeps branding fields single-line", () => {
@@ -69,7 +72,7 @@ describe("buildSystemPrompt", () => {
 			expect(prompt).toContain("# Executing actions with care");
 			expect(prompt).toContain("# Using your tools");
 			expect(prompt.indexOf("# Downstream system prompt additions")).toBeGreaterThan(
-				prompt.indexOf("Cave documentation"),
+				prompt.indexOf("Me Write Code documentation"),
 			);
 			expect(prompt).toContain("Downstream context: use Acme issue IDs.");
 			expect(prompt).toContain("If they conflict with earlier system sections, earlier system sections win.");

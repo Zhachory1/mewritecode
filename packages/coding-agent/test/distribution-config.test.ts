@@ -35,8 +35,8 @@ describe("distribution config", () => {
 
 	function runConfigProbe(env: NodeJS.ProcessEnv): Record<string, unknown> {
 		const code = [
-			'import { APP_NAME, BANNER_LOGO_MAX_WIDTH_CELLS, BANNER_LOGO_PATH, BANNER_TAGLINE, CHANGELOG_URL, CONFIG_DIR_NAME, DEFAULT_THEME_NAME, DISPLAY_NAME, DOCS_URL, ENV_PACKAGE_DIR, GITHUB_URL, MCP_DISCOVERY_OPTIONS, WATCH_MARKER, getDistributionAgentPaths, getDistributionExtensionPaths, getDistributionMcpConfigPaths, getDistributionPromptPaths, getDistributionSkillPaths, getDistributionThemePaths, getPackageDir, getThemesDir } from "./src/config.ts";',
-			"console.log(JSON.stringify({ appName: APP_NAME, displayName: DISPLAY_NAME, configDirName: CONFIG_DIR_NAME, envPackageDir: ENV_PACKAGE_DIR, packageDir: getPackageDir(), themesDir: getThemesDir(), distributionExtensionPaths: getDistributionExtensionPaths(), distributionSkillPaths: getDistributionSkillPaths(), distributionPromptPaths: getDistributionPromptPaths(), distributionThemePaths: getDistributionThemePaths(), distributionAgentPaths: getDistributionAgentPaths(), distributionMcpConfigPaths: getDistributionMcpConfigPaths(), mcp: MCP_DISCOVERY_OPTIONS, watchMarker: WATCH_MARKER, bannerLogoPath: BANNER_LOGO_PATH, bannerLogoMaxWidthCells: BANNER_LOGO_MAX_WIDTH_CELLS, bannerTagline: BANNER_TAGLINE, defaultThemeName: DEFAULT_THEME_NAME, githubUrl: GITHUB_URL, docsUrl: DOCS_URL, changelogUrl: CHANGELOG_URL }));",
+			'import { APP_NAME, BANNER_LOGO_MAX_WIDTH_CELLS, BANNER_LOGO_PATH, BANNER_TAGLINE, CHANGELOG_URL, COMPRESSION_MODE_NAME, CONFIG_DIR_NAME, DEFAULT_THEME_NAME, DISPLAY_NAME, DOCS_URL, ENV_PACKAGE_DIR, GITHUB_URL, MCP_DISCOVERY_OPTIONS, SAVINGS_NAME, SYSTEM_PROMPT_BRANDING, WATCH_MARKER, getDistributionAgentPaths, getDistributionExtensionPaths, getDistributionMcpConfigPaths, getDistributionPromptPaths, getDistributionSkillPaths, getDistributionThemePaths, getPackageDir, getThemesDir } from "./src/config.ts";',
+			"console.log(JSON.stringify({ appName: APP_NAME, displayName: DISPLAY_NAME, configDirName: CONFIG_DIR_NAME, envPackageDir: ENV_PACKAGE_DIR, packageDir: getPackageDir(), themesDir: getThemesDir(), distributionExtensionPaths: getDistributionExtensionPaths(), distributionSkillPaths: getDistributionSkillPaths(), distributionPromptPaths: getDistributionPromptPaths(), distributionThemePaths: getDistributionThemePaths(), distributionAgentPaths: getDistributionAgentPaths(), distributionMcpConfigPaths: getDistributionMcpConfigPaths(), mcp: MCP_DISCOVERY_OPTIONS, watchMarker: WATCH_MARKER, bannerLogoPath: BANNER_LOGO_PATH, bannerLogoMaxWidthCells: BANNER_LOGO_MAX_WIDTH_CELLS, bannerTagline: BANNER_TAGLINE, defaultThemeName: DEFAULT_THEME_NAME, githubUrl: GITHUB_URL, docsUrl: DOCS_URL, changelogUrl: CHANGELOG_URL, systemPromptBranding: SYSTEM_PROMPT_BRANDING, compressionModeName: COMPRESSION_MODE_NAME, savingsName: SAVINGS_NAME }));",
 		].join("\n");
 		const out = execFileSync("npx", ["tsx", "-e", code], {
 			cwd: process.cwd(),
@@ -44,6 +44,18 @@ describe("distribution config", () => {
 			encoding: "utf8",
 		});
 		return JSON.parse(out) as Record<string, unknown>;
+	}
+
+	function runPromptProbe(env: NodeJS.ProcessEnv): string {
+		const code = [
+			'import { buildSystemPrompt } from "./src/core/system-prompt.ts";',
+			"console.log(buildSystemPrompt({ selectedTools: [], contextFiles: [], skills: [] }));",
+		].join("\n");
+		return execFileSync("npx", ["tsx", "-e", code], {
+			cwd: process.cwd(),
+			env: { ...process.env, ...env },
+			encoding: "utf8",
+		});
 	}
 
 	it("uses the generic package-dir bootstrap env before package metadata is loaded", () => {
@@ -224,6 +236,12 @@ Agent body`,
 						githubUrl: "https://github.example.com/example/code",
 						docsUrl: "https://docs.example.com/code",
 						changelogUrl: "https://docs.example.com/code/changelog",
+						systemPromptName: "Example Agent",
+						systemPromptCliName: "example",
+						systemPromptHarnessDescription: "an Example coding harness",
+						documentationLabel: "Example Agent docs",
+						compressionModeName: "Example compression",
+						savingsName: "Example Agent",
 					},
 					theme: { default: "example-dark", paths: ["./themes/example-dark.json"] },
 				},
@@ -241,5 +259,41 @@ Agent body`,
 		expect(result.githubUrl).toBe("https://github.example.com/example/code");
 		expect(result.docsUrl).toBe("https://docs.example.com/code");
 		expect(result.changelogUrl).toBe("https://docs.example.com/code/changelog");
+		expect(result.systemPromptBranding).toEqual({
+			productDisplayName: "Example Agent",
+			productCliName: "example",
+			productHarnessDescription: "an Example coding harness",
+			documentationLabel: "Example Agent docs",
+		});
+		expect(result.compressionModeName).toBe("Example compression");
+		expect(result.savingsName).toBe("Example Agent");
+	});
+
+	it("uses downstream branding in the default system prompt", () => {
+		const packageDir = mkdtempSync(join(tmpdir(), "roktcode-package-"));
+		created.push(packageDir);
+		writeFileSync(
+			join(packageDir, "package.json"),
+			JSON.stringify({
+				name: "@example/roktcode",
+				version: "1.2.3",
+				mewriteConfig: {
+					name: "roktcode",
+					displayName: "Roktcode",
+					configDir: ".roktcode",
+					branding: {
+						documentationLabel: "Roktcode docs",
+						compressionModeName: "Roktcode compression",
+						savingsName: "Roktcode",
+					},
+				},
+			}),
+		);
+
+		const prompt = runPromptProbe({ CODING_AGENT_PACKAGE_DIR: packageDir });
+		expect(prompt).toContain("operating inside Roktcode, a coding agent harness");
+		expect(prompt).toContain("Roktcode docs (read only when the user asks about Roktcode itself, the roktcode CLI");
+		expect(prompt).not.toContain("operating inside Cave");
+		expect(prompt).not.toContain("Cave documentation");
 	});
 });
