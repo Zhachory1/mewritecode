@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.67.1] - 2026-06-29
+
 ### Added
 
 - Added an `auto` theme option that uses terminal background detection to choose the built-in dark or light theme without overriding explicit concrete theme choices.
