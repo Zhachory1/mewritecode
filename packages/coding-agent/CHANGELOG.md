@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.66.9] - 2026-06-29
+
 ### Fixed
 
 - Replaced the context usage barcode with a solid progress bar so the token usage meter renders cleanly across terminals.
