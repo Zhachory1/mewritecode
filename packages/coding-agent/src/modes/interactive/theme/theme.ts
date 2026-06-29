@@ -154,6 +154,8 @@ export type ThemeBg =
 
 type ColorMode = "truecolor" | "256color";
 
+export const AUTO_THEME_NAME = "auto";
+
 // ============================================================================
 // Color Utilities
 // ============================================================================
@@ -469,7 +471,7 @@ function getBuiltinThemes(): Record<string, ThemeJson> {
 }
 
 export function getAvailableThemes(): string[] {
-	const themes = new Set<string>(Object.keys(getBuiltinThemes()));
+	const themes = new Set<string>([AUTO_THEME_NAME, ...Object.keys(getBuiltinThemes())]);
 	const customThemesDir = getCustomThemesDir();
 	if (fs.existsSync(customThemesDir)) {
 		const files = fs.readdirSync(customThemesDir);
@@ -494,6 +496,8 @@ export function getAvailableThemesWithPaths(): ThemeInfo[] {
 	const themesDir = getThemesDir();
 	const customThemesDir = getCustomThemesDir();
 	const result: ThemeInfo[] = [];
+
+	result.push({ name: AUTO_THEME_NAME, path: undefined });
 
 	// Built-in themes
 	for (const name of Object.keys(getBuiltinThemes())) {
@@ -565,20 +569,21 @@ function parseThemeJsonContent(label: string, content: string): ThemeJson {
 }
 
 function loadThemeJson(name: string): ThemeJson {
+	const resolvedName = resolveThemeName(name);
 	const builtinThemes = getBuiltinThemes();
-	if (name in builtinThemes) {
-		return builtinThemes[name];
+	if (resolvedName in builtinThemes) {
+		return builtinThemes[resolvedName];
 	}
-	const registeredTheme = registeredThemes.get(name);
+	const registeredTheme = registeredThemes.get(resolvedName);
 	if (registeredTheme?.sourcePath) {
 		const content = fs.readFileSync(registeredTheme.sourcePath, "utf-8");
 		return parseThemeJsonContent(registeredTheme.sourcePath, content);
 	}
 	if (registeredTheme) {
-		throw new Error(`Theme "${name}" does not have a source path for export`);
+		throw new Error(`Theme "${resolvedName}" does not have a source path for export`);
 	}
 	const customThemesDir = getCustomThemesDir();
-	const themePath = path.join(customThemesDir, `${name}.json`);
+	const themePath = path.join(customThemesDir, `${resolvedName}.json`);
 	if (!fs.existsSync(themePath)) {
 		throw new Error(`Theme not found: ${name}`);
 	}
@@ -627,11 +632,12 @@ export function loadThemeFromPath(themePath: string, mode?: ColorMode): Theme {
 }
 
 function loadTheme(name: string, mode?: ColorMode): Theme {
-	const registeredTheme = registeredThemes.get(name);
+	const resolvedName = resolveThemeName(name);
+	const registeredTheme = registeredThemes.get(resolvedName);
 	if (registeredTheme) {
 		return registeredTheme;
 	}
-	const themeJson = loadThemeJson(name);
+	const themeJson = loadThemeJson(resolvedName);
 	return createTheme(themeJson, mode);
 }
 
@@ -687,8 +693,17 @@ function detectTerminalBackground(): "dark" | "light" {
 	return "dark";
 }
 
+function getAutoTheme(): string {
+	return detectTerminalBackground();
+}
+
 function getDefaultTheme(): string {
-	return DEFAULT_THEME_NAME ?? detectTerminalBackground();
+	return DEFAULT_THEME_NAME ?? getAutoTheme();
+}
+
+export function resolveThemeName(themeName?: string): string {
+	if (themeName === AUTO_THEME_NAME) return getAutoTheme();
+	return themeName ?? getDefaultTheme();
 }
 
 // ============================================================================
@@ -728,7 +743,7 @@ export function setRegisteredThemes(themes: Theme[]): void {
 }
 
 export function initTheme(themeName?: string, enableWatcher: boolean = false): void {
-	const name = themeName ?? getDefaultTheme();
+	const name = resolveThemeName(themeName);
 	currentThemeName = name;
 	try {
 		setGlobalTheme(loadTheme(name));
@@ -744,9 +759,10 @@ export function initTheme(themeName?: string, enableWatcher: boolean = false): v
 }
 
 export function setTheme(name: string, enableWatcher: boolean = false): { success: boolean; error?: string } {
-	currentThemeName = name;
+	const resolvedName = resolveThemeName(name);
+	currentThemeName = resolvedName;
 	try {
-		setGlobalTheme(loadTheme(name));
+		setGlobalTheme(loadTheme(resolvedName));
 		if (enableWatcher) {
 			startThemeWatcher();
 		}
@@ -923,7 +939,7 @@ function ansi256ToHex(index: number): string {
  * Used by HTML export to generate CSS custom properties.
  */
 export function getResolvedThemeColors(themeName?: string): Record<string, string> {
-	const name = themeName ?? currentThemeName ?? getDefaultTheme();
+	const name = resolveThemeName(themeName ?? currentThemeName);
 	const isLight = name === "light";
 	const themeJson = loadThemeJson(name);
 	const resolved = resolveThemeColors(themeJson.colors, themeJson.vars);
@@ -949,8 +965,8 @@ export function getResolvedThemeColors(themeName?: string): Record<string, strin
  * Check if a theme is a "light" theme (for CSS that needs light/dark variants).
  */
 export function isLightTheme(themeName?: string): boolean {
-	// Currently just check the name - could be extended to analyze colors
-	return themeName === "light";
+	// Currently just check the resolved name - could be extended to analyze colors
+	return resolveThemeName(themeName) === "light";
 }
 
 /**
@@ -962,7 +978,7 @@ export function getThemeExportColors(themeName?: string): {
 	cardBg?: string;
 	infoBg?: string;
 } {
-	const name = themeName ?? currentThemeName ?? getDefaultTheme();
+	const name = resolveThemeName(themeName ?? currentThemeName);
 	try {
 		const themeJson = loadThemeJson(name);
 		const exportSection = themeJson.export;

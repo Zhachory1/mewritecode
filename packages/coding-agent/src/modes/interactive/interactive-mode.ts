@@ -176,6 +176,7 @@ import {
 	evaluateTribalSignal,
 } from "./context-drift-widgets.js";
 import {
+	AUTO_THEME_NAME,
 	getAvailableThemes,
 	getAvailableThemesWithPaths,
 	getEditorTheme,
@@ -4148,7 +4149,7 @@ export class InteractiveMode {
 					transport: this.settingsManager.getTransport(),
 					thinkingLevel: this.session.thinkingLevel,
 					availableThinkingLevels: this.session.getAvailableThinkingLevels(),
-					currentTheme: this.settingsManager.getTheme() || "dark",
+					currentTheme: this.settingsManager.getTheme() || AUTO_THEME_NAME,
 					availableThemes: getAvailableThemes(),
 					hideThinkingBlock: this.hideThinkingBlock,
 					showChangelogOnStartup: this.settingsManager.getShowChangelogOnStartup(),
@@ -5227,8 +5228,8 @@ export class InteractiveMode {
 			this.keybindings.reload();
 			setRegisteredThemes(this.session.resourceLoader.getThemes().themes);
 			this.hideThinkingBlock = this.settingsManager.getHideThinkingBlock();
-			const themeName = this.settingsManager.getTheme();
-			const themeResult = themeName ? setTheme(themeName, true) : { success: true };
+			const themeName = this.settingsManager.getTheme() || AUTO_THEME_NAME;
+			const themeResult = setTheme(themeName, true);
 			if (!themeResult.success) {
 				this.showError(`Failed to load theme "${themeName}": ${themeResult.error}\nFell back to dark theme.`);
 			}

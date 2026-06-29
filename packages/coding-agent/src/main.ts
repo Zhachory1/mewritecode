@@ -130,6 +130,21 @@ function resolveAppMode(parsed: Args, stdinIsTTY: boolean): AppMode {
 	return "interactive";
 }
 
+function shouldAutoDetectTheme(settingsManager: SettingsManager): boolean {
+	const configuredTheme = settingsManager.getTheme();
+	return configuredTheme === undefined || configuredTheme === "auto";
+}
+
+async function primeAutoThemeDetection(settingsManager: SettingsManager): Promise<void> {
+	if (!shouldAutoDetectTheme(settingsManager)) return;
+	try {
+		const probe = await probeTerminal({ timeoutMs: 150 });
+		setDetectedBackground(probe.classification);
+	} catch {
+		// Probe is best-effort; theme.ts falls back to COLORFGBG/CAVE_TERM_BG/dark.
+	}
+}
+
 function toPrintOutputMode(appMode: AppMode): Exclude<Mode, "rpc"> {
 	return appMode === "json" ? "json" : "text";
 }
@@ -283,6 +298,7 @@ async function createSessionManager(
 	}
 
 	if (parsed.resume) {
+		await primeAutoThemeDetection(settingsManager);
 		initTheme(settingsManager.getTheme(), true);
 		try {
 			const selectedPath = await selectSession(
@@ -415,6 +431,7 @@ async function promptForMissingSessionCwd(
 	issue: SessionCwdIssue,
 	settingsManager: SettingsManager,
 ): Promise<string | undefined> {
+	await primeAutoThemeDetection(settingsManager);
 	initTheme(settingsManager.getTheme());
 	setKeybindings(KeybindingsManager.create());
 
@@ -857,16 +874,10 @@ export async function main(args: string[]) {
 	);
 	time("prepareInitialMessage");
 	// Probe host terminal so theme auto-selects dark/light (terminal-blend R1, R3).
-	// User-configured theme (settingsManager.getTheme()) still wins — the probe
-	// only informs the default when no theme is set. One-shot at startup, never
-	// swaps mid-session per R3 AC4. Capped at 150ms per R1 AC5.
-	if (appMode === "interactive" && !settingsManager.getTheme()) {
-		try {
-			const probe = await probeTerminal({ timeoutMs: 150 });
-			setDetectedBackground(probe.classification);
-		} catch {
-			// Probe is best-effort; theme.ts falls back to COLORFGBG/CAVE_TERM_BG/dark.
-		}
+	// Explicit concrete themes still win; unset or "auto" themes use the probe.
+	// One-shot at startup, never swaps mid-session per R3 AC4. Capped at 150ms per R1 AC5.
+	if (appMode === "interactive") {
+		await primeAutoThemeDetection(settingsManager);
 	}
 	setRegisteredThemes(resourceLoader.getThemes().themes);
 	initTheme(settingsManager.getTheme(), appMode === "interactive");
