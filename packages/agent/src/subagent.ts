@@ -120,6 +120,16 @@ export interface SubagentResult {
 	task: string;
 	/** Final assistant text from the subagent loop. */
 	output: string;
+	/** True when the inline tool response is a preview and callers should read fullOutputPath. */
+	truncated?: boolean;
+	/** Durable file containing the full final assistant text. */
+	fullOutputPath?: string;
+	/** Durable JSONL stdout stream from the child process. */
+	stdoutPath?: string;
+	/** Durable stderr stream from the child process. */
+	stderrPath?: string;
+	/** UTF-8 byte length of output. */
+	outputBytes?: number;
 	/** Exit code: 0 = success, >0 = failure, -1 = still running. */
 	exitCode: number;
 	/** Optional structured payload (free-form for now; schema-validated in P1). */
