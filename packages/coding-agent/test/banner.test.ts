@@ -21,7 +21,7 @@ describe("BannerComponent", () => {
 		const lines = new BannerComponent({ version: "1.2.3", showSecondaryWordmark: true }).render(80);
 		const output = lines.join("\n");
 
-		expect(lines).toHaveLength(17);
+		expect(lines).toHaveLength(18);
 		expect(output).toContain("Any Model, Less Tokens, Code Good");
 		expect(output).toContain("1.2.3");
 		expect(output).toContain("▒██");

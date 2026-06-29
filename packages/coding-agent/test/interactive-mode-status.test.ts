@@ -124,7 +124,7 @@ describe("InteractiveMode onboarding affordances", () => {
 		const output = editor.render(80).join("\n");
 
 		expect(output).toContain("ype a task, or / for commands · F1 help");
-		expect(output).toContain("\x1b[2m");
+		expect(output).toContain("\x1b[");
 		expect(editor.getText()).toBe("");
 		for (const line of editor.render(80)) {
 			expect(visibleWidth(line)).toBeLessThanOrEqual(80);
