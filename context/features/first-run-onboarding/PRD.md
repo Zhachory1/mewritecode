@@ -1,6 +1,6 @@
 # PRD — First-Run Onboarding Fixes (issue #11)
 
-**Priority:** P0 · **Effort:** S · **Owner:** caveman-code · **Status:** draft → council
+**Priority:** P0 · **Effort:** S · **Owner:** mewrite-code · **Status:** draft → council
 
 ## 1. Problem
 

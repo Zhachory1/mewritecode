@@ -1,7 +1,7 @@
 # VHS recordings
 
 Each `*.tape` file in this directory compiles to a GIF used in the
-[README](../README.md) and the [docs site](https://getcaveman.dev/docs/).
+[README](../README.md) and the docs site.
 
 ## Prerequisite
 

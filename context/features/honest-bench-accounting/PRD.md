@@ -1,6 +1,6 @@
 # PRD — Honest-Bench Token Accounting (issue #8)
 
-**Priority:** P0 (BLOCKER) · **Effort:** M · **Owner:** caveman-code · **Status:** draft → council
+**Priority:** P0 (BLOCKER) · **Effort:** M · **Owner:** mewrite-code · **Status:** draft → council
 
 **Scope note:** This delivers the corrected **harness + reproducible-run infrastructure**. Executing the paid multi-seed run that fills in the published numbers is deferred to the maintainer/CI (per session decision "harness now, you run it"). The harness must be trustworthy enough that the run, once executed, is defensible.
 

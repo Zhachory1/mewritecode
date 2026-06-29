@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Updated package metadata to use Me Write Code ownership.
+
 ## [0.66.4] - 2026-06-28
 
 ## [0.66.3] - 2026-06-26

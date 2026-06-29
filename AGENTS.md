@@ -67,9 +67,9 @@ When closing issues via commit:
 - GitHub CLI for issues/PRs
 - Add package labels to issues/PRs: pkg:agent, pkg:ai, pkg:coding-agent, pkg:mom, pkg:pods, pkg:tui, pkg:web-ui
 
-## Testing cave Interactive Mode with tmux
+## Testing Me Write Code Interactive Mode with tmux
 
-To test caveman-code's TUI in a controlled terminal environment:
+To test Me Write Code's TUI in a controlled terminal environment:
 
 ```bash
 # Create tmux session with specific dimensions

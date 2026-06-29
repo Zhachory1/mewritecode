@@ -76,7 +76,7 @@ Extend the `~/.cave/cost-totals.json` record (atomic-rename already there) with 
 Extend `StatusLineContext.cave` with `savedTokens?/savedDollars?`; render `· saved ≈Xk` in `renderDetailed` when > 0; populate from `session.getSavings()` in `resolveStatusLine`. Implement if time permits this cycle; otherwise defer (does not block F1/F4/F6/F7).
 
 ### S-share (Should) `/savings --share`
-Copyable one-liner: `🪨 Caveman compressed N% of my tool context this session (~Xk tokens saved). caveman-code` — percentages travel.
+Copyable one-liner: `Me Write Code compressed N% of my tool context this session (~Xk tokens saved). mewrite-code` — percentages travel.
 
 ## 5. Edge cases
 | Case | Handling |
@@ -159,7 +159,7 @@ Compression/dedup/compaction = event-accumulated bytes; cache-reuse = derived on
 Persist all-time/weekly savings in `cost-totals.json` keyed/idempotent by **session id** (an add is applied at most once per session id — store last-persisted session id or a small ring of applied ids), and guard the read-modify-write against concurrent sessions (best-effort file lock or atomic compare-and-set; at minimum don't double-apply on resume/replay). Persist BYTES (exact) as the durable figure; $ derived.
 
 ### 10.8 Surfaces (unchanged from §4 except numbers)
-`/savings` (copy the WIRED `handleTokensCommand` pattern — architect M5; `/tokens` is fine, only its bucket math is heuristic). Lead line: `Caveman eliminated ≈X KB of context (N% of tool output)`; then `≈ Y tok · ~$Z` rider; then separate `prompt cache reuse (provider): ~$W`; then `cumulative: X MB / ~$ this week · all-time`. Session-end line + cumulative. StatusLine `· saved NkB` (Should/fast-follow). `--share` = bytes + % only.
+`/savings` (copy the WIRED `handleTokensCommand` pattern — architect M5; `/tokens` is fine, only its bucket math is heuristic). Lead line: `Me Write Code eliminated ≈X KB of context (N% of tool output)`; then `≈ Y tok · ~$Z` rider; then separate `prompt cache reuse (provider): ~$W`; then `cumulative: X MB / ~$ this week · all-time`. Session-end line + cumulative. StatusLine `· saved NkB` (Should/fast-follow). `--share` = bytes + % only.
 
 ### 10.9 Verdict
 GO. v1 = bytes-led, 3 clean sources (dedup + net-compression + compaction), honest all-tool-output denominator, cache-reuse separate+recomputed, hardened idempotent cumulative. Removes the per-stage/ML mis-attribution, the cherry-picked %, the chars/4 headline, and the cumulative drift.

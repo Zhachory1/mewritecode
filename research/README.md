@@ -91,7 +91,7 @@ npm run bench:eval                           # evaluate patches with Docker harn
 
 ### Cross-System Comparison
 
-Compare caveman-code's token efficiency against Codex and Claude Code using published baseline data.
+Compare Me Write Code's token efficiency against Codex and Claude Code using published baseline data.
 
 ```bash
 npm run bench:compare -- --cave-results research/results/microbench-2026-04-16.json
@@ -104,7 +104,7 @@ npm run bench:compare -- --format json --output report.json
 | Tool | Resolved | Fresh tokens (in+out) | Cost |
 |------|----------|----------------------|------|
 | Codex CLI | 15/25 (60%) | 1,010,185 | $0 (codex sub) |
-| **Caveman Code** | **14/25 (56%)** | **524,703** | **$1.78** |
+| **Me Write Code** | **14/25 (56%)** | **524,703** | **$1.78** |
 
 **1.93× fewer fresh tokens than Codex CLI on identical tasks, same model, same reasoning effort.** Pass rate within 1 task.
 
@@ -113,7 +113,7 @@ Raw artifacts: `research/results/honest-bench-2026-05-18.csv` + `.json` + per-ta
 Reproduce in one command:
 
 ```bash
-npx tsx research/evals/run-honest-bench.ts --tools caveman,codex
+npx tsx research/evals/run-honest-bench.ts --tools mewrite,codex
 ```
 
 Methodology: each tool is spawned as a real child process (no SDK shortcuts), each task is verified with the task-specific `verify.sh`. Token counts come from each tool's own JSONL / stdout summary.

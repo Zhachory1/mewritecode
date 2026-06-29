@@ -1,13 +1,13 @@
 /**
- * MemoryProvider — pluggable backend for cave's memory subsystem (WS7).
+ * MemoryProvider — pluggable backend for Me Write Code's memory subsystem (WS7).
  *
  * Two implementations:
  *   - CavememProvider (default — wraps cavemem stdio MCP + `cavemem hook run`)
- *   - FilesProvider   (fallback — CLAUDE.md + plain `.cave/memory/*.md`)
+ *   - FilesProvider   (fallback — CLAUDE.md + plain `.mewrite/memory/*.md`)
  *
- * Cave never reimplements embeddings, FTS, or compression: those are the
- * canonical responsibility of the cavemem backend (github.com/JuliusBrussee/cavemem).
- * Cave's value-add lives one layer up:
+ * Me Write Code never reimplements embeddings, FTS, or compression: those are the
+ * canonical responsibility of the cavemem backend.
+ * Me Write Code's value-add lives one layer up:
  *   - The `consolidate()` pass clusters episodic observations and asks an LLM
  *     to extract semantic facts that are written back with provenance ids.
  *   - The MEMORY.md bridge (handled in coding-agent) imports/exports between
@@ -81,7 +81,7 @@ export interface ConsolidationCluster {
 }
 
 /**
- * Read/write memory backend. All operations are best-effort — cave callers
+ * Read/write memory backend. All operations are best-effort — callers
  * MUST tolerate `false`/empty returns gracefully (cavemem may not be
  * installed; the daemon may be offline; the user may have run `/memory off`).
  */
@@ -96,7 +96,7 @@ export interface MemoryProvider {
 	/** Fire one of the 5 lifecycle hooks. Cavemem does the writing. */
 	dispatchHook(event: MemoryHookEvent, payload: MemoryHookPayload): Promise<void>;
 
-	/** Read tools — these become surfaced as native cave tools. */
+	/** Read tools — these become surfaced as native Me Write Code tools. */
 	search(query: string, opts?: { limit?: number }): Promise<MemoryHit[]>;
 	timeline(sessionId: string, opts?: { around?: number; limit?: number }): Promise<MemoryHit[]>;
 	getObservations(ids: number[], opts?: { expand?: boolean }): Promise<MemoryObservation[]>;

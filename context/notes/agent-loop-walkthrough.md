@@ -10,7 +10,7 @@ an LLM request, tool calls, and a stream of typed events that drive the UI.
 ## The path at a glance
 
 ```
-caveman (bin)
+mewrite (bin)
   → main.ts                              boot, arg parse, mode dispatch
     → InteractiveMode (modes/interactive/interactive-mode.ts)
         subscribeToAgent()  → session.subscribe(handleEvent)
@@ -25,9 +25,9 @@ caveman (bin)
                                       → session listeners (UI, CAVE_TRACE sink)
 ```
 
-## 1. Boot — `caveman` → `main.ts`
+## 1. Boot — `mewrite` → `main.ts`
 
-The `caveman` / `caveman-code` bin lands in
+The `mewrite` / `mewritecode` bin lands in
 `packages/coding-agent/src/main.ts`. `main()` parses argv (`cli/args.ts`),
 resolves an `AppMode` (`interactive` | `print` | `json` | `rpc`), handles
 fast-path subcommands (`doctor`, `login`, `models`, `mcp`, `migrate`, `exec`,
@@ -165,14 +165,14 @@ subscribes a trace sink and there is zero overhead (verified by the unit test
 ### Enable it
 
 ```bash
-# Default path: ~/.cave/trace/<sessionId>-<ts>.jsonl
-CAVE_TRACE=1 caveman
+# Default path: ~/.mewrite/trace/<sessionId>-<ts>.jsonl
+CAVE_TRACE=1 mewrite
 
 # Or an explicit file path
-CAVE_TRACE=/tmp/loop.jsonl caveman
+CAVE_TRACE=/tmp/loop.jsonl mewrite
 ```
 
-`1` / `true` / empty resolve to the default `~/.cave/trace/...` path
+`1` / `true` / empty resolve to the default `~/.mewrite/trace/...` path
 (`resolveTracePath` in `trace.ts`); anything else is treated as a literal file
 path. The sink is attached in the `AgentSession` constructor
 (`agent-session.ts`, gated on `process.env.CAVE_TRACE`) by subscribing to the
@@ -209,7 +209,7 @@ The sink swallows its own I/O errors: a broken trace file never breaks the loop.
 
 ```bash
 # Per-turn latency
-jq 'select(.type=="turn_end") | {turnDurationMs, tokenDelta}' ~/.cave/trace/*.jsonl
+jq 'select(.type=="turn_end") | {turnDurationMs, tokenDelta}' ~/.mewrite/trace/*.jsonl
 
 # Which tools ran, and which errored
 jq 'select(.type=="tool_execution_end") | {toolName, isError}' /tmp/loop.jsonl

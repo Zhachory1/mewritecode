@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Updated package metadata and active docs to use Me Write Code ownership and branding.
+
 ## [0.66.4] - 2026-06-28
 
 ### Added

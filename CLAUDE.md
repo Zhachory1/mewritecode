@@ -1,4 +1,4 @@
-# CAVE CLI — caveman-cli
+# Me Write Code CLI
 
 Minimal terminal coding agent + multi-provider LLM toolkit. TypeScript monorepo.
 
@@ -11,7 +11,7 @@ Minimal terminal coding agent + multi-provider LLM toolkit. TypeScript monorepo.
 | `packages/ai` | `pi-ai` | Unified LLM API: OpenAI, Anthropic, Google, more |
 | `packages/agent` | — | Agent runtime: tool calling, loop, state, system-prompt/toolFilter/maxTurns |
 | `packages/tui` | — | Terminal UI: differential rendering, chord input, notifications |
-| `packages/sdk` | — | `@zhachory1/mewrite-sdk` — TS client for caveman-code daemon HTTP+WS API (openapi-generated) |
+| `packages/sdk` | — | `@zhachory1/mewrite-sdk` — TS client for the mewrite-code daemon HTTP+WS API (openapi-generated) |
 | `packages/markdown-preview` | — | Markdown renderer used by TUI |
 
 **Off-core (relocated to `contrib/`, unsupported — not in core install/build):**
@@ -22,7 +22,7 @@ Minimal terminal coding agent + multi-provider LLM toolkit. TypeScript monorepo.
 These three were moved out of the core monorepo: they dilute the terminal
 coding-agent story and expand the threat model for zero core-adoption upside.
 They live in `contrib/`, are not part of the `packages/*` workspace glob, and
-are not built by `npm run build`. The published `caveman-code` package is
+are not built by `npm run build`. The published `mewrite-code` package is
 unaffected.
 
 ## Key Commands
@@ -43,7 +43,7 @@ Legacy CaveKit kits/plans/impl have been moved to `context/archive/`.
 
 - Biome for lint/format (not ESLint/Prettier). Config: `biome.json`.
 - TypeScript strict. Shared tsconfig: `tsconfig.base.json`.
-- Package scope: `@zhachory1/mewrite-*` (all packages on npm). Main CLI package: `@zhachory1/mewrite-code`. Bin registers `caveman` AND `caveman-code` aliases.
+- Package scope: `@zhachory1/mewrite-*` (all packages on npm). Main CLI package: `@zhachory1/mewrite-code`. Bin registers `mewrite`, `mewritecode`, and `mewrite-code` aliases.
 - Node.js 20+.
 
 ## Current State (2026-05-01)
@@ -64,7 +64,7 @@ Legacy CaveKit kits/plans/impl have been moved to `context/archive/`.
   `packages/coding-agent/src/core/goal-loop/` — `goal-runner`, `goal-state`,
   `goal-prompts`. Not yet committed; dev work on `strip/permissions`.
 - **Walkthrough doc:** `context/notes/agent-loop-walkthrough.md` traces the
-  full path from `caveman` boot → `interactive-mode` dispatch → `session.prompt`
+  full path from `mewrite` boot → `interactive-mode` dispatch → `session.prompt`
   → `agent-loop.runLoop`. Read this first when touching the loop.
 
 ## Agent Guidance

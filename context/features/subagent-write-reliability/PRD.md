@@ -1,6 +1,6 @@
 # PRD — Reliable Subagent Write Capability (issue #30)
 
-**Priority:** P2 · **Effort:** S · **Owner:** caveman-code · **Status:** draft → council
+**Priority:** P2 · **Effort:** S · **Owner:** mewrite-code · **Status:** draft → council
 
 ## 1. Problem
 

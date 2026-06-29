@@ -5,7 +5,7 @@ description: Native cavemem integration. Episodic, semantic, and procedural memo
 
 # Memory (cavemem)
 
-Me Write Code delegates persistent memory to **cavemem** — the user's existing MIT-licensed memory system at [github.com/JuliusBrussee/cavemem](https://github.com/JuliusBrussee/cavemem). Me Write Code's value-add is **policy**: when to write, what to inject, and the episodic→semantic consolidation pass.
+Me Write Code delegates persistent memory to **cavemem**. Me Write Code's value-add is **policy**: when to write, what to inject, and the episodic→semantic consolidation pass.
 
 <CopyForLlms />
 
