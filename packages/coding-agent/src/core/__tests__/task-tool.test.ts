@@ -4,9 +4,11 @@
  */
 
 import { EventEmitter } from "node:events";
-import { readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { PassThrough, Readable } from "node:stream";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { LoadAgentDefsResult } from "../agent-defs/loader.js";
 import { _resetRegistry, getBackground } from "../background-task-registry.js";
 import { createTaskToolDefinition } from "../tools/task.js";
@@ -47,7 +49,20 @@ const stubLoaded: LoadAgentDefsResult = {
 	diagnostics: [],
 };
 
+const agentDirEnv = "MEWRITE_CODING_AGENT_DIR";
+let tmpAgentDir: string;
+
 describe("WS6 Task tool", () => {
+	beforeEach(() => {
+		tmpAgentDir = mkdtempSync(join(tmpdir(), "cave-task-core-test-"));
+		process.env[agentDirEnv] = tmpAgentDir;
+	});
+
+	afterEach(() => {
+		delete process.env[agentDirEnv];
+		if (tmpAgentDir && existsSync(tmpAgentDir)) rmSync(tmpAgentDir, { recursive: true, force: true });
+	});
+
 	it("single mode: spawns subagent, captures final assistant text, returns it", async () => {
 		const mockSpawn = (() =>
 			fakeChild([
@@ -68,7 +83,9 @@ describe("WS6 Task tool", () => {
 
 		const result = await tool.execute("call-1", { agent: "tester", task: "say hi" }, undefined, undefined, {} as any);
 
-		expect(result.content[0]).toMatchObject({ type: "text", text: "hello from subagent" });
+		const text = result.content[0]?.type === "text" ? result.content[0].text : "";
+		expect(text).toContain("fullOutputPath:");
+		expect(text).toContain("hello from subagent");
 		expect(result.details?.mode).toBe("single");
 		expect(result.details?.results).toHaveLength(1);
 		expect(result.details?.results[0]?.exitCode).toBe(0);
