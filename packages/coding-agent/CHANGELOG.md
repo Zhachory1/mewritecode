@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.66.8] - 2026-06-29
+
+### Fixed
+
+- Updated `better-sqlite3` to `^12.11.1` so global installs work on Node.js 26.
+
 ## [0.66.7] - 2026-06-29
 
 ### Fixed

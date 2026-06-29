@@ -62,10 +62,10 @@
 	"engines": {
 		"node": ">=20.0.0"
 	},
-	"version": "0.66.7",
+	"version": "0.66.8",
 	"dependencies": {
 		"@mariozechner/jiti": "^2.6.5",
-		"@zhachory1/mewrite-code": "^0.66.7",
+		"@zhachory1/mewrite-code": "^0.66.8",
 		"get-east-asian-width": "^1.4.0"
 	},
 	"overrides": {
