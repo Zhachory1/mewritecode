@@ -2,8 +2,8 @@ import { type Component, truncateToWidth, visibleWidth } from "@zhachory1/mewrit
 import type { AgentSession } from "../../../core/agent-session.js";
 import { theme } from "../theme/theme.js";
 
-const BARCODE_FILLED = ["█", "▌", "█", "│", "█", "▊", "▌", "█", "▏", "▋", "█", "▌", "│", "█"];
-const BARCODE_EMPTY = "░";
+const BAR_FILLED = "█";
+const BAR_EMPTY = "░";
 const SIDE_PADDING = 1;
 const MIN_BAR_CELLS = 8;
 const MAX_BAR_CELLS = 16;
@@ -24,7 +24,7 @@ function severity(pct: number): "dim" | "success" | "warning" | "error" {
 }
 
 /**
- * Single-line barcode-style context meter rendered just under the editor.
+ * Single-line context meter rendered just under the editor.
  *
  * Reads context usage fresh from the session on each render — there is no
  * cached state, so callers do not need to invalidate it. The TUI already
@@ -60,11 +60,8 @@ export class ContextMeterComponent implements Component {
 		const barCells = Math.min(MAX_BAR_CELLS, Math.max(MIN_BAR_CELLS, available));
 		const filledCells = Math.min(barCells, Math.max(0, Math.round((pctValue / 100) * barCells)));
 
-		let bar = "";
-		for (let i = 0; i < filledCells; i++) {
-			bar += BARCODE_FILLED[i % BARCODE_FILLED.length];
-		}
-		const empty = BARCODE_EMPTY.repeat(Math.max(0, barCells - filledCells));
+		const bar = BAR_FILLED.repeat(filledCells);
+		const empty = BAR_EMPTY.repeat(Math.max(0, barCells - filledCells));
 
 		const styledBar = theme.fg(colorKey, bar);
 		const styledEmpty = theme.fg("dim", empty);
