@@ -7,23 +7,16 @@
  * Steps:
  * 1. Check for uncommitted changes
  * 2. Bump version via npm run version:xxx
- * 3. Update CHANGELOG.md files: [Unreleased] -> [version] - date
+ * 3. Update CHANGELOG.md files: keep [Unreleased], add [version] - date below it
  * 4. Commit and tag
  * 5. Publish to npm
- * 6. Add new [Unreleased] section to changelogs
- * 7. Commit
+ * 6. Push main and tag
  */
 
 import { execSync } from "child_process";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "fs";
-import { join } from "path";
-
-const BUMP_TYPE = process.argv[2];
-
-if (!["major", "minor", "patch"].includes(BUMP_TYPE)) {
-	console.error("Usage: node scripts/release.mjs <major|minor|patch>");
-	process.exit(1);
-}
+import { join, resolve } from "path";
+import { fileURLToPath } from "url";
 
 function run(cmd, options = {}) {
 	console.log(`$ ${cmd}`);
@@ -49,94 +42,87 @@ function getChangelogs() {
 	return packages.map((pkg) => join(packagesDir, pkg, "CHANGELOG.md")).filter((path) => existsSync(path));
 }
 
+export function finalizeChangelogContent(content, version, date) {
+	if (!content.includes("## [Unreleased]")) {
+		return { updated: false, content };
+	}
+	return {
+		updated: true,
+		content: content.replace("## [Unreleased]", `## [Unreleased]\n\n## [${version}] - ${date}`),
+	};
+}
+
 function updateChangelogsForRelease(version) {
 	const date = new Date().toISOString().split("T")[0];
 	const changelogs = getChangelogs();
 
 	for (const changelog of changelogs) {
 		const content = readFileSync(changelog, "utf-8");
-
-		if (!content.includes("## [Unreleased]")) {
+		const result = finalizeChangelogContent(content, version, date);
+		if (!result.updated) {
 			console.log(`  Skipping ${changelog}: no [Unreleased] section`);
 			continue;
 		}
-
-		const updated = content.replace("## [Unreleased]", `## [${version}] - ${date}`);
-		writeFileSync(changelog, updated);
+		writeFileSync(changelog, result.content);
 		console.log(`  Updated ${changelog}`);
 	}
 }
 
-function addUnreleasedSection() {
-	const changelogs = getChangelogs();
-	const unreleasedSection = "## [Unreleased]\n\n";
-
-	for (const changelog of changelogs) {
-		const content = readFileSync(changelog, "utf-8");
-
-		// Insert after "# Changelog\n\n"
-		const updated = content.replace(/^(# Changelog\n\n)/, `$1${unreleasedSection}`);
-		writeFileSync(changelog, updated);
-		console.log(`  Added [Unreleased] to ${changelog}`);
+function main() {
+	const bumpType = process.argv[2];
+	if (!["major", "minor", "patch"].includes(bumpType)) {
+		console.error("Usage: node scripts/release.mjs <major|minor|patch>");
+		process.exit(1);
 	}
+
+	console.log("\n=== Release Script ===\n");
+
+	// 1. Check for uncommitted changes
+	console.log("Checking for uncommitted changes...");
+	const status = run("git status --porcelain", { silent: true });
+	if (status && status.trim()) {
+		console.error("Error: Uncommitted changes detected. Commit or stash first.");
+		console.error(status);
+		process.exit(1);
+	}
+	console.log("  Working directory clean\n");
+
+	// 2. Bump version
+	console.log(`Bumping version (${bumpType})...`);
+	run(`npm run version:${bumpType}`);
+	const version = getVersion();
+	console.log(`  New version: ${version}\n`);
+
+	// 3. Verify release consistency before changelog/tag/publish
+	console.log("Checking release consistency...");
+	run("npm run check:release-consistency");
+	console.log();
+
+	// 4. Update changelogs while preserving fresh [Unreleased] sections for publish-time checks.
+	console.log("Updating CHANGELOG.md files...");
+	updateChangelogsForRelease(version);
+	console.log();
+
+	// 5. Commit and tag
+	console.log("Committing and tagging...");
+	run("git add .");
+	run(`git commit -m "Release v${version}"`);
+	run(`git tag -a v${version} -m "v${version}"`);
+	console.log();
+
+	// 6. Publish
+	console.log("Publishing to npm...");
+	run("npm run publish");
+	console.log();
+
+	// 7. Push
+	console.log("Pushing to remote...");
+	run("git push origin main");
+	run(`git push origin v${version}`);
+	console.log();
+
+	console.log(`=== Released v${version} ===`);
 }
 
-// Main flow
-console.log("\n=== Release Script ===\n");
-
-// 1. Check for uncommitted changes
-console.log("Checking for uncommitted changes...");
-const status = run("git status --porcelain", { silent: true });
-if (status && status.trim()) {
-	console.error("Error: Uncommitted changes detected. Commit or stash first.");
-	console.error(status);
-	process.exit(1);
-}
-console.log("  Working directory clean\n");
-
-// 2. Bump version
-console.log(`Bumping version (${BUMP_TYPE})...`);
-run(`npm run version:${BUMP_TYPE}`);
-const version = getVersion();
-console.log(`  New version: ${version}\n`);
-
-// 3. Verify release consistency before changelog/tag/publish
-console.log("Checking release consistency...");
-run("npm run check:release-consistency");
-console.log();
-
-// 4. Update changelogs
-console.log("Updating CHANGELOG.md files...");
-updateChangelogsForRelease(version);
-console.log();
-
-// 5. Commit and tag
-console.log("Committing and tagging...");
-run("git add .");
-run(`git commit -m "Release v${version}"`);
-run(`git tag -a v${version} -m "v${version}"`);
-console.log();
-
-// 6. Publish
-console.log("Publishing to npm...");
-run("npm run publish");
-console.log();
-
-// 7. Add new [Unreleased] sections
-console.log("Adding [Unreleased] sections for next cycle...");
-addUnreleasedSection();
-console.log();
-
-// 8. Commit
-console.log("Committing changelog updates...");
-run("git add .");
-run(`git commit -m "Add [Unreleased] section for next cycle"`);
-console.log();
-
-// 9. Push
-console.log("Pushing to remote...");
-run("git push origin main");
-run(`git push origin v${version}`);
-console.log();
-
-console.log(`=== Released v${version} ===`);
+const isDirect = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isDirect) main();
