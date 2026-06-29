@@ -22,7 +22,7 @@ describe("TUI side panel layout", () => {
 		tui.showSidePanel(new Lines(["activity"]), { width: 10 });
 
 		tui.start();
-		await new Promise((resolve) => setImmediate(resolve));
+		await new Promise((resolve) => setTimeout(resolve, 25));
 		const viewport = await terminal.flushAndGetViewport();
 		tui.stop();
 
