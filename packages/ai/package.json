@@ -1,6 +1,6 @@
 {
 	"name": "@zhachory1/mewrite-ai",
-	"version": "0.66.9",
+	"version": "0.67.0",
 	"description": "Unified LLM API with automatic model discovery and provider configuration",
 	"type": "module",
 	"main": "./dist/index.js",
