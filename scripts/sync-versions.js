@@ -46,39 +46,37 @@ if (versions.size > 1) {
 
 console.log("\n✅ All packages at same version (lockstep)");
 
+const rootPkgPath = join(process.cwd(), "package.json");
+let rootPackage;
+try {
+	rootPackage = { path: rootPkgPath, data: JSON.parse(readFileSync(rootPkgPath, "utf8")) };
+} catch (e) {
+	console.error(`Failed to read ${rootPkgPath}:`, e.message);
+}
+
+const dependencyFields = ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"];
+const syncTargets = [...Object.values(packages), ...(rootPackage ? [rootPackage] : [])];
+
 // Update all inter-package dependencies
 let totalUpdates = 0;
-for (const [dir, pkg] of Object.entries(packages)) {
+for (const pkg of syncTargets) {
 	let updated = false;
+	const packageName = pkg.data.name ?? "root package";
 
-	// Check dependencies
-	if (pkg.data.dependencies) {
-		for (const [depName, currentVersion] of Object.entries(pkg.data.dependencies)) {
-			if (versionMap[depName]) {
-				const newVersion = `^${versionMap[depName]}`;
-				if (currentVersion !== newVersion) {
-					console.log(`\n${pkg.data.name}:`);
-					console.log(`  ${depName}: ${currentVersion} → ${newVersion}`);
-					pkg.data.dependencies[depName] = newVersion;
-					updated = true;
-					totalUpdates++;
-				}
-			}
-		}
-	}
-
-	// Check devDependencies
-	if (pkg.data.devDependencies) {
-		for (const [depName, currentVersion] of Object.entries(pkg.data.devDependencies)) {
-			if (versionMap[depName]) {
-				const newVersion = `^${versionMap[depName]}`;
-				if (currentVersion !== newVersion) {
-					console.log(`\n${pkg.data.name}:`);
-					console.log(`  ${depName}: ${currentVersion} → ${newVersion} (devDependencies)`);
-					pkg.data.devDependencies[depName] = newVersion;
-					updated = true;
-					totalUpdates++;
-				}
+	for (const field of dependencyFields) {
+		const deps = pkg.data[field];
+		if (!deps) continue;
+		for (const [depName, currentVersion] of Object.entries(deps)) {
+			if (!versionMap[depName]) continue;
+			if (field === "peerDependencies" && currentVersion === "*") continue;
+			const newVersion = `^${versionMap[depName]}`;
+			if (currentVersion !== newVersion) {
+				console.log(`\n${packageName}:`);
+				const suffix = field === "dependencies" ? "" : ` (${field})`;
+				console.log(`  ${depName}: ${currentVersion} → ${newVersion}${suffix}`);
+				deps[depName] = newVersion;
+				updated = true;
+				totalUpdates++;
 			}
 		}
 	}

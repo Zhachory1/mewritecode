@@ -22,7 +22,7 @@
 		"check:release-consistency": "node scripts/check-release-consistency.mjs",
 		"check:docs-links": "node scripts/check-doc-links.mjs",
 		"test:release-consistency": "node --test scripts/check-release-consistency.test.mjs",
-		"test:release": "node --test scripts/check-release-consistency.test.mjs scripts/release.test.mjs",
+		"test:release": "node --test scripts/check-release-consistency.test.mjs scripts/release.test.mjs scripts/sync-versions.test.mjs",
 		"profile:tui": "node scripts/profile-coding-agent-node.mjs --mode tui",
 		"profile:rpc": "node scripts/profile-coding-agent-node.mjs --mode rpc",
 		"test": "npm run test --workspaces --if-present",

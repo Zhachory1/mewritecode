@@ -9,7 +9,7 @@
 
 ### Fixed
 
-- Fixed the release script to keep a fresh `[Unreleased]` section in changelogs before publish-time checks run.
+- Fixed the release script to keep a fresh `[Unreleased]` section in changelogs before publish-time checks run and sync root internal dependency ranges.
 
 ## [0.67.2] - 2026-06-29
 
