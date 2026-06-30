@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-30
+
 ### Added
 
 - Added `/resume <id-or-path>` for switching directly to a session by partial UUID or file path from inside the TUI ([#33](https://github.com/Zhachory1/mewritecode/issues/33)).
