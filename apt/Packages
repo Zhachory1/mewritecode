@@ -1,12 +1,12 @@
 Package: mewrite-code
-Version: 0.67.2
+Version: 1.0.0
 Architecture: amd64
 Maintainer: Zhachory Volker
-Filename: ./mewrite-code_0.67.2_amd64.deb
-Size: 34404556
-MD5sum: 57d5fe5667ee451512f43f1f36ffbf0c
-SHA1: 62bb20e5bcadce62929f20d592b9e2db9409703f
-SHA256: e788671933ee85e5e292903902ffa8213aec08e8751c708857c324b07bd99071
+Filename: ./mewrite-code_1.0.0_amd64.deb
+Size: 34401310
+MD5sum: 933792bc82c2f7864d2b2ebbd318f4e3
+SHA1: 226e9045ad31643fd94c13331c04f7d24f5ef473
+SHA256: dcfc191f17531cb13c408906a636bb3a2098b3f14a740a4ca205f43d06036b1a
 Section: devel
 Priority: optional
 Homepage: https://github.com/Zhachory1/mewritecode
