@@ -41,6 +41,7 @@ todo.md
 collect.sh
 /logs
 /research/results/traces
+/research/results/compression-quality/latest.*
 .forge/
 packages/*/.forge/
 
