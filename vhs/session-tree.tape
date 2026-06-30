@@ -1,5 +1,5 @@
 # vhs session-tree.tape — 30 seconds.
-# Shows: /tree opens the session graph, /fork branches at a turn, navigate.
+# Shows a deterministic session graph: /fork creates sibling branches and /tree jumps between them.
 
 Output session-tree.gif
 
@@ -7,44 +7,23 @@ Set Shell "bash"
 Set Width 1200
 Set Height 760
 Set FontSize 15
-Set TypingSpeed 50ms
+Set TypingSpeed 45ms
 Set Theme "TokyoNight"
 
-# Scene 1 — resume an existing session
-Type "mewrite -c --offline --no-tools"
+# Scene 1 — describe the feature
+Type "# mewrite keeps every turn in a branchable session tree"
 Enter
-Sleep 2s
+Sleep 900ms
+Type "# /fork creates a sibling branch; /tree jumps between branches"
+Enter
+Sleep 1200ms
 
-# Scene 2 — try one path
-Type "what's the cleanest way to add streaming to packages/ai?"
+# Scene 2 — show a deterministic session tree transcript
+Type "cat session-tree-demo.txt"
 Enter
-Sleep 5s
+Sleep 6500ms
 
-# Scene 3 — fork to try a different path
-Type "/fork"
+# Scene 3 — outro
+Type "# branch any turn; mewrite never overwrites history"
 Enter
-Sleep 1s
-
-Type "what's the cleanest way to add batching to packages/ai?"
-Enter
-Sleep 5s
-
-# Scene 4 — navigate the tree
-Type "/tree"
-Enter
-Sleep 2s
-
-# (the tree view shows two branches now; user selects the streaming branch)
-Down
-Sleep 500ms
-Up
-Sleep 500ms
-Enter
-Sleep 1500ms
-
-# Outro
-Ctrl+C
-Sleep 500ms
-Type "# branch any turn. mewrite never overwrites history."
-Enter
-Sleep 1500ms
+Sleep 1800ms

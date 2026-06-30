@@ -1,0 +1,24 @@
+$ mewrite -c
+Loaded session 9d12 in packages/ai
+
+> what's the cleanest way to add streaming to packages/ai?
+assistant: Path A explores provider adapters and backpressure tests.
+
+$ /fork
+Branched from turn 9d12 into sibling session b77a
+
+> what's the cleanest way to add batching to packages/ai?
+assistant: Path B explores batched provider calls.
+
+$ /tree
+
+Session tree
+
+  ● 9d12 start: packages/ai provider work
+  ├─● a81c path A: streaming adapters
+  │ └─● e44f current: add backpressure tests
+  └─○ b77a path B: batched provider calls
+
+Selected: path A / streaming adapters
+
+/fork creates a sibling branch. /tree jumps between branches.

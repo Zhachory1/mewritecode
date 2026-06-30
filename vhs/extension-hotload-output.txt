@@ -1,0 +1,5 @@
+
+[mewrite] resource watcher: reloaded project resources
+[Skills]
+  project  secure-review  OWASP Top-10 audit of a diff or file.
+
