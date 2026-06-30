@@ -1,5 +1,5 @@
 # vhs extension-hotload.tape — 25 seconds.
-# Shows: drop a SKILL.md into .cave/skills/, watch cave hot-reload.
+# Shows: drop a SKILL.md into .mewrite/skills/, watch mewrite hot-reload.
 
 Output extension-hotload.gif
 
@@ -8,10 +8,10 @@ Set Width 1200
 Set Height 760
 Set FontSize 15
 Set TypingSpeed 50ms
-Set Theme "Tokyo Night"
+Set Theme "TokyoNight"
 
 # Scene 1 — running session
-Type "cave"
+Type "mewrite --offline --no-session --no-tools"
 Enter
 Sleep 1500ms
 
@@ -24,11 +24,11 @@ Escape
 Sleep 500ms
 
 # Scene 3 — drop a skill from an external editor (simulate via shell)
-Type "!mkdir -p .cave/skills/secure-review"
+Type "!mkdir -p .mewrite/skills/secure-review"
 Enter
 Sleep 500ms
 
-Type "!cat > .cave/skills/secure-review/SKILL.md <<'EOF'"
+Type "!cat > .mewrite/skills/secure-review/SKILL.md <<'EOF'"
 Enter
 Type "---"
 Enter

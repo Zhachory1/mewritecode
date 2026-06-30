@@ -8,10 +8,10 @@ Set Width 1200
 Set Height 760
 Set FontSize 15
 Set TypingSpeed 50ms
-Set Theme "Tokyo Night"
+Set Theme "TokyoNight"
 
 # Scene 1 — resume an existing session
-Type "cave -c"
+Type "mewrite -c --offline --no-tools"
 Enter
 Sleep 2s
 
@@ -45,6 +45,6 @@ Sleep 1500ms
 # Outro
 Ctrl+C
 Sleep 500ms
-Type "# branch any turn. cave never overwrites history."
+Type "# branch any turn. mewrite never overwrites history."
 Enter
 Sleep 1500ms

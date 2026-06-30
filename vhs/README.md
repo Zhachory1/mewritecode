@@ -43,7 +43,7 @@ artifacts, and bumps the references in `README.md` and the docs site.
 | `cave-mode-ab.tape` | Caveman Mode vs Claude Code with token counter | 45s |
 | `plan-act.tape` | `/plan` → review → `/act` flow | 40s |
 | `session-tree.tape` | `/tree` and `/fork` session branching | 30s |
-| `extension-hotload.tape` | Drop a skill into `.cave/skills/` and watch it load | 25s |
+| `extension-hotload.tape` | Drop a skill into `.mewrite/skills/` and watch it load | 25s |
 
 ## Notes for tape authors
 

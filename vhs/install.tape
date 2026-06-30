@@ -1,5 +1,5 @@
 # vhs install.tape — 30 seconds, README hero GIF.
-# Shows: curl-bash install, version check, first interactive prompt.
+# Shows: npm install, version check, first interactive prompt.
 
 Output install.gif
 
@@ -8,28 +8,28 @@ Set Width 1200
 Set Height 700
 Set FontSize 16
 Set TypingSpeed 50ms
-Set Theme "Tokyo Night"
+Set Theme "TokyoNight"
 
 # Scene 1 — show empty terminal
-Type "# install cave from one line"
+Type "# install Me Write Code from npm"
 Sleep 700ms
 Enter
 Sleep 500ms
 
 # Scene 2 — install
-Type "curl -fsSL https://cave.sh/install | bash"
+Type "npm install -g @zhachory1/mewrite-code"
 Sleep 500ms
 Enter
 Sleep 5s
 
 # Scene 3 — verify
-Type "cave --version"
+Type "mewrite --version"
 Sleep 500ms
 Enter
 Sleep 1500ms
 
 # Scene 4 — first interactive prompt
-Type "cave"
+Type "mewrite --offline --no-session --no-tools"
 Sleep 500ms
 Enter
 Sleep 2s

@@ -8,15 +8,15 @@ Set Width 1200
 Set Height 760
 Set FontSize 15
 Set TypingSpeed 50ms
-Set Theme "Tokyo Night"
+Set Theme "TokyoNight"
 
 # Scene 1 — boot in plan mode
-Type "cave --plan"
+Type "mewrite --offline --no-session --no-tools"
 Enter
 Sleep 1500ms
 
 # Scene 2 — ask for a plan
-Type "refactor packages/agent/src/sandbox to use the policy IR"
+Type "/plan refactor packages/agent/src/sandbox to use the policy IR"
 Enter
 Sleep 6s
 
@@ -27,7 +27,7 @@ Type "/act"
 Enter
 Sleep 2s
 
-# Scene 4 — cave walks each step
+# Scene 4 — mewrite walks each step
 Sleep 8s
 
 # Scene 5 — diff preview
@@ -38,6 +38,6 @@ Sleep 3s
 # Outro
 Ctrl+C
 Sleep 500ms
-Type "# plan, review, then act. https://cave.sh/docs/reference/plan-mode"
+Type "# plan, review, then act. https://github.com/Zhachory1/mewritecode/tree/main/docs/reference/plan-mode.md"
 Enter
 Sleep 1500ms
