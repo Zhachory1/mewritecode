@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-07-01
+
 ### Added
 
 - Added an internal ContextEngine compression contract that keeps bundles exact by default and only compresses explicitly marked `lossy-ok` bundles through an injected test compressor, preserving provenance and marking rendered bundles as compressed/lossy.
