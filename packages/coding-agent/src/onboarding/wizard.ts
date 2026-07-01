@@ -1,7 +1,7 @@
 /**
  * First-run onboarding wizard (WS11).
  *
- * Four questions max. Designed to clear in ≤5s on the happy path:
+ * Four questions max plus local diagnostics notice. Designed to clear in ≤5s on the happy path:
  * 1. Theme        — auto-detect bg, offer dark/light/auto.
  * 2. Auth         — detect existing env keys, surface them; otherwise skip.
  * 3. Default model — pick a sensible default given which provider has a key.
@@ -197,6 +197,20 @@ export async function runOnboarding(settings: SettingsManager, io: WizardIO = DE
 	try {
 		write(out, chalk.bold.cyan(`\n  Welcome to ${DISPLAY_NAME}\n`));
 		write(out, chalk.dim("  Four quick questions. You can change anything later via /settings.\n"));
+		write(out, chalk.bold("\nLocal diagnostics\n"));
+		write(
+			out,
+			chalk.dim(
+				`  ${DISPLAY_NAME} records usage and diagnostic metadata locally by default. It never uploads this data.\n`,
+			),
+		);
+		write(
+			out,
+			chalk.dim(
+				"  Prompts, responses, transcripts, file contents, tool arguments, env values, and API keys are not captured.\n",
+			),
+		);
+		write(out, chalk.dim("  Export manually with the diagnostics export command; opt out in settings.\n"));
 
 		// 1. Theme — auto-detect background.
 		const detectedDark = io.terminalIsDark?.();
@@ -318,5 +332,7 @@ export function persistAnswers(settings: SettingsManager, a: WizardAnswers): voi
 	}
 
 	settings.setTelemetryEnabled(a.telemetry);
+	settings.setDiagnosticsEnabled(true);
+	settings.markDiagnosticsNoticeShown(VERSION);
 	settings.markOnboardingCompleted(VERSION);
 }

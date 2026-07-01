@@ -248,6 +248,7 @@ ${chalk.bold("Usage:")}
   ${APP_NAME} doctor                          Report system health (Node, terminal, auth, providers)
   ${APP_NAME} login [<provider>]              OAuth authentication
   ${APP_NAME} self-update                     Check and install updates
+  ${APP_NAME} diagnostics <subcommand>        Local diagnostics (status, export, enable, disable)
   ${APP_NAME} package <subcommand>            Package manager (install, remove, list, update, config)
   ${APP_NAME} plugin <subcommand>             Plugin marketplace (search, install, list, upgrade)
   ${APP_NAME} run-recipe <name>               Run YAML recipes

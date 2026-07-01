@@ -95,6 +95,20 @@ export interface TelemetrySettings {
 	enabled?: boolean; // default: false (off-by-default)
 }
 
+export interface DiagnosticsSettings {
+	enabled?: boolean; // default: true after first-run notice
+	noticeShown?: boolean;
+	noticeShownAt?: string;
+	noticeShownVersion?: string;
+	lastExportPath?: string;
+	lastExportedAt?: string;
+	wrapperMetadata?: Record<string, string | number | boolean>;
+	redaction?: {
+		additionalSecretKeys?: string[];
+		additionalPatterns?: string[];
+	};
+}
+
 /** Self-update channel. */
 export type UpdateChannel = "stable" | "beta" | "canary";
 
@@ -194,6 +208,7 @@ export interface Settings {
 	contextEngine?: ContextEngineSettings;
 	onboarding?: OnboardingSettings;
 	telemetry?: TelemetrySettings;
+	diagnostics?: DiagnosticsSettings;
 	update?: UpdateSettings;
 	/** Claude Code-compatible lifecycle hooks. See `core/hooks/events.ts` for shape. */
 	hooks?: HooksSettings;
@@ -1335,6 +1350,72 @@ export class SettingsManager {
 		this.globalSettings.telemetry.enabled = enabled;
 		this.markModified("telemetry", "enabled");
 		this.save();
+	}
+
+	getDiagnosticsEnabled(): boolean {
+		return this.settings.diagnostics?.enabled ?? true;
+	}
+
+	setDiagnosticsEnabled(enabled: boolean): void {
+		if (!this.globalSettings.diagnostics) {
+			this.globalSettings.diagnostics = {};
+		}
+		this.globalSettings.diagnostics.enabled = enabled;
+		this.markModified("diagnostics", "enabled");
+		this.save();
+	}
+
+	getDiagnosticsNoticeShown(): boolean {
+		return this.settings.diagnostics?.noticeShown ?? false;
+	}
+
+	markDiagnosticsNoticeShown(version: string): void {
+		if (!this.globalSettings.diagnostics) {
+			this.globalSettings.diagnostics = {};
+		}
+		this.globalSettings.diagnostics.noticeShown = true;
+		this.globalSettings.diagnostics.noticeShownAt = new Date().toISOString();
+		this.globalSettings.diagnostics.noticeShownVersion = version;
+		this.markModified("diagnostics", "noticeShown");
+		this.markModified("diagnostics", "noticeShownAt");
+		this.markModified("diagnostics", "noticeShownVersion");
+		this.save();
+	}
+
+	setDiagnosticsLastExport(path: string, exportedAt: string): void {
+		if (!this.globalSettings.diagnostics) {
+			this.globalSettings.diagnostics = {};
+		}
+		this.globalSettings.diagnostics.lastExportPath = path;
+		this.globalSettings.diagnostics.lastExportedAt = exportedAt;
+		this.markModified("diagnostics", "lastExportPath");
+		this.markModified("diagnostics", "lastExportedAt");
+		this.save();
+	}
+
+	getDiagnosticsSettings(): {
+		enabled: boolean;
+		noticeShown: boolean;
+		lastExportPath?: string;
+		lastExportedAt?: string;
+	} {
+		return {
+			enabled: this.getDiagnosticsEnabled(),
+			noticeShown: this.getDiagnosticsNoticeShown(),
+			lastExportPath: this.settings.diagnostics?.lastExportPath,
+			lastExportedAt: this.settings.diagnostics?.lastExportedAt,
+		};
+	}
+
+	getDiagnosticsWrapperMetadata(): Record<string, string | number | boolean> {
+		return { ...(this.settings.diagnostics?.wrapperMetadata ?? {}) };
+	}
+
+	getDiagnosticsRedactionConfig(): { additionalSecretKeys?: string[]; additionalPatterns?: string[] } {
+		return {
+			additionalSecretKeys: [...(this.settings.diagnostics?.redaction?.additionalSecretKeys ?? [])],
+			additionalPatterns: [...(this.settings.diagnostics?.redaction?.additionalPatterns ?? [])],
+		};
 	}
 
 	getUpdateChannel(): UpdateChannel {

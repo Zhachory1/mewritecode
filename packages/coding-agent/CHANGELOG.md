@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added local offline diagnostics with first-run notice, opt-out settings, typed usage events, and `diagnostics status/export/enable/disable` commands for manually shared support and analytics bundles ([#49](https://github.com/Zhachory1/mewritecode/issues/49)).
+
 ## [1.0.3] - 2026-07-01
 
 ### Added

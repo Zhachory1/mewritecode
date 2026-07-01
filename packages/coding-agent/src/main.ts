@@ -5,13 +5,14 @@
  * createAgentSession() options. The SDK does the heavy lifting.
  */
 
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { type ImageContent, modelsAreEqual, supportsXhigh } from "@zhachory1/mewrite-ai";
 import { detectTerminalIdentity, ProcessTerminal, probeTerminal, setKeybindings, TUI } from "@zhachory1/mewrite-tui";
 import chalk from "chalk";
 import { type Args, type Mode, parseArgs, printHelp } from "./cli/args.js";
 import { handleAttachCommand } from "./cli/attach.js";
+import { handleDiagnosticsCommand } from "./cli/diagnostics-cli.js";
 import { runDoctor } from "./cli/doctor.js";
 import { handleExecCommand } from "./cli/exec.js";
 import { processFileArguments } from "./cli/file-processor.js";
@@ -63,6 +64,8 @@ import { SessionManager } from "./core/session-manager.js";
 import { SettingsManager } from "./core/settings-manager.js";
 import { printTimings, resetTimings, time } from "./core/timings.js";
 import { allTools } from "./core/tools/index.js";
+import { createDiagnosticsRecorder } from "./diagnostics/recorder.js";
+import { attachDiagnosticsSessionListener } from "./diagnostics/session-listener.js";
 import { runMigrations, showDeprecationWarnings } from "./migrations.js";
 import { InteractiveMode, runPrintMode, runRpcMode } from "./modes/index.js";
 import { ExtensionSelectorComponent } from "./modes/interactive/components/extension-selector.js";
@@ -553,6 +556,9 @@ export async function main(args: string[]) {
 		const code = await runLogin(args.slice(1));
 		process.exit(code);
 	}
+	if (await handleDiagnosticsCommand(args)) {
+		return;
+	}
 
 	if (await handlePackageCommand(args)) {
 		return;
@@ -830,6 +836,24 @@ export async function main(args: string[]) {
 			systemPromptBranding: DISTRIBUTION_SYSTEM_PROMPT_BRANDING,
 			appendSystemPrompt: distributionAppendSystemPrompt,
 		});
+		const diagnosticsRecorder = createDiagnosticsRecorder({
+			agentDir: services.agentDir,
+			settingsManager,
+			sessionId: created.session.sessionId,
+		});
+		diagnosticsRecorder.sessionStarted({
+			appVersion: VERSION,
+			packageEntryPoint: appMode,
+		});
+		diagnosticsRecorder.environmentReported({
+			os: process.platform,
+			arch: process.arch,
+			nodeVersion: process.version,
+			terminalColumns: process.stdout.columns,
+			terminalRows: process.stdout.rows,
+			shellName: basename(process.env.SHELL ?? process.env.ComSpec ?? ""),
+		});
+		attachDiagnosticsSessionListener(created.session, diagnosticsRecorder);
 		const cliThinkingOverride = parsed.thinking !== undefined || cliThinkingFromModel;
 		if (created.session.model && cliThinkingOverride) {
 			let effectiveThinking = created.session.thinkingLevel;
