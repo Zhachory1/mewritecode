@@ -11,6 +11,7 @@ import type { FauxModelDefinition, FauxProviderRegistration, FauxResponseStep, M
 import { registerFauxProvider } from "@zhachory1/mewrite-ai";
 import { AgentSession, type AgentSessionEvent } from "../../src/core/agent-session.js";
 import { AuthStorage } from "../../src/core/auth-storage.js";
+import type { ContextCompressor } from "../../src/core/context-compression.js";
 import type { ContextEngine } from "../../src/core/context-engine.js";
 import type { ExtensionRunner } from "../../src/core/extensions/index.js";
 import { convertToLlm } from "../../src/core/messages.js";
@@ -65,6 +66,7 @@ export interface HarnessOptions {
 	extensionFactories?: Array<ExtensionFactory | CreateTestExtensionsResultInput>;
 	withConfiguredAuth?: boolean;
 	contextEngine?: ContextEngine;
+	contextCompressor?: ContextCompressor;
 }
 
 export interface Harness {
@@ -166,6 +168,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
 		baseToolsOverride: toolMap,
 		extensionRunnerRef,
 		contextEngine: options.contextEngine,
+		contextCompressor: options.contextCompressor,
 	});
 
 	const events: AgentSessionEvent[] = [];

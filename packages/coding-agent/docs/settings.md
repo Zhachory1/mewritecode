@@ -146,6 +146,7 @@ The Context Engine is disabled by default. It can inject transient, lower-priori
 | `contextEngine.provider` | string | `"none"` | Context provider: `"none"`, `"codescry"`, legacy `"repo-index"`, or `"gbrain"` |
 | `contextEngine.budgetTokens` | number | `4000` | Approximate context budget for retrieved bundles |
 | `contextEngine.timeoutMs` | number | `1000` | Retrieval timeout; failures continue without context |
+| `contextEngine.compression.enabled` | boolean | `false` | Enable experimental compression contract. M4a has no real Headroom adapter; all real provider bundles remain exact-preserve unless explicitly marked `lossy-ok` by internal code/tests. |
 
 #### contextEngine.repoIndex / codescry
 

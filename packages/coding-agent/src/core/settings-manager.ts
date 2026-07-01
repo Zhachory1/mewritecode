@@ -69,11 +69,16 @@ export interface GbrainContextSettings {
 	allowAllMemory?: boolean;
 }
 
+export interface ContextCompressionSettings {
+	enabled?: boolean; // default: false
+}
+
 export interface ContextEngineSettings {
 	enabled?: boolean; // default: false
 	provider?: string; // default: "none"
 	budgetTokens?: number; // default: 4000
 	timeoutMs?: number; // default: 1000
+	compression?: ContextCompressionSettings;
 	repoIndex?: RepoIndexContextSettings;
 	gbrain?: GbrainContextSettings;
 }
@@ -1264,6 +1269,7 @@ export class SettingsManager {
 		provider: string;
 		budgetTokens: number;
 		timeoutMs: number;
+		compression: { enabled: boolean };
 		repoIndex: { command: string; dbPath?: string; k: number };
 		gbrain: {
 			command: string;
@@ -1279,6 +1285,9 @@ export class SettingsManager {
 			provider: this.settings.contextEngine?.provider ?? "none",
 			budgetTokens: this.settings.contextEngine?.budgetTokens ?? 4000,
 			timeoutMs: this.settings.contextEngine?.timeoutMs ?? 1000,
+			compression: {
+				enabled: this.settings.contextEngine?.compression?.enabled ?? false,
+			},
 			repoIndex: {
 				command: this.settings.contextEngine?.repoIndex?.command ?? "codescry",
 				dbPath: this.settings.contextEngine?.repoIndex?.dbPath,

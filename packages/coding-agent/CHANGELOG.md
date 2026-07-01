@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added an internal ContextEngine compression contract that keeps bundles exact by default and only compresses explicitly marked `lossy-ok` bundles through an injected test compressor, preserving provenance and marking rendered bundles as compressed/lossy.
+
 ### Changed
 
 - Renamed the code-context provider surface to Codescry, including the default binary command and bundle provenance, while keeping `provider: "repo-index"` as a legacy alias.

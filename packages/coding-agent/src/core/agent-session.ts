@@ -28,6 +28,12 @@ import type {
 import { checkpoints, type memory as memoryNs } from "@zhachory1/mewrite-agent";
 import { CompressionPipeline, sumTextLen } from "./compression-pipeline.js";
 import {
+	type ContextCompressionStats,
+	type ContextCompressor,
+	compressContextPack,
+	EMPTY_CONTEXT_COMPRESSION_STATS,
+} from "./context-compression.js";
+import {
 	type ContextEngine,
 	type ContextEngineLastRun,
 	formatContextPackEvidence,
@@ -231,6 +237,8 @@ export interface AgentSessionConfig {
 	appendSystemPrompt?: string;
 	/** Experimental internal context engine seam (M1). */
 	contextEngine?: ContextEngine;
+	/** Experimental internal context compression seam (M4a). */
+	contextCompressor?: ContextCompressor;
 }
 
 export interface ExtensionBindings {
@@ -431,7 +439,9 @@ export class AgentSession {
 	private _extensionErrorListener?: ExtensionErrorListener;
 	private _extensionErrorUnsubscriber?: () => void;
 	private _contextEngine: ContextEngine;
+	private _contextCompressor: ContextCompressor | undefined;
 	private _pendingContextEvidence: AgentMessage | undefined;
+	private _contextCompressionLastRun: ContextCompressionStats = EMPTY_CONTEXT_COMPRESSION_STATS;
 	private _contextLastRun: ContextEngineLastRun = {
 		enabled: false,
 		provider: "none",
@@ -531,6 +541,7 @@ export class AgentSession {
 		this._systemPromptBranding = config.systemPromptBranding;
 		this._appendSystemPrompt = config.appendSystemPrompt;
 		this._contextEngine = config.contextEngine ?? this._createContextEngine();
+		this._contextCompressor = config.contextCompressor;
 		this._compression = new CompressionPipeline(
 			{
 				getCaveModeMLCompression: () => this.settingsManager.getCaveModeMLCompression(),
@@ -1114,6 +1125,7 @@ export class AgentSession {
 	private async _buildContextEvidence(prompt: string, signal?: AbortSignal): Promise<AgentMessage | undefined> {
 		const settings = this.settingsManager.getContextEngineSettings();
 		if (!settings.enabled || settings.provider === "none") {
+			this._contextCompressionLastRun = EMPTY_CONTEXT_COMPRESSION_STATS;
 			this._contextLastRun = {
 				enabled: false,
 				provider: settings.provider,
@@ -1141,6 +1153,9 @@ export class AgentSession {
 		);
 
 		if (!result.pack) {
+			this._contextCompressionLastRun = settings.compression.enabled
+				? { ...EMPTY_CONTEXT_COMPRESSION_STATS, enabled: true, fallbackReason: "no-context-pack" }
+				: EMPTY_CONTEXT_COMPRESSION_STATS;
 			const state =
 				result.error instanceof RepoIndexContextError || result.error instanceof GbrainContextError
 					? result.error.state
@@ -1162,8 +1177,13 @@ export class AgentSession {
 			return undefined;
 		}
 
-		const formatted = formatContextPackEvidence(result.pack);
-		const sourceDetail = Object.entries(result.pack.sources)
+		const compression = await compressContextPack(result.pack, this._contextCompressor, {
+			enabled: settings.compression.enabled,
+			signal,
+		});
+		this._contextCompressionLastRun = compression.stats;
+		const formatted = formatContextPackEvidence(compression.pack);
+		const sourceDetail = Object.entries(compression.pack.sources)
 			.map(([name, source]) => `${name}: ${source.ok ? "ok" : "error"}${source.detail ? ` ${source.detail}` : ""}`)
 			.join("; ");
 		this._contextLastRun = {
@@ -1192,6 +1212,14 @@ export class AgentSession {
 			...(last.dropped !== undefined && last.dropped > 0 ? [`Dropped bundles: ${last.dropped}`] : []),
 			...(last.detail ? [`Detail: ${last.detail}`] : []),
 		];
+		const compression = this._contextCompressionLastRun;
+		lines.push(`Compression: ${settings.compression.enabled ? "enabled" : "disabled"}`);
+		if (settings.compression.enabled) {
+			lines.push(
+				`Compression last turn: attempted=${compression.attempted} compressed=${compression.compressed} skippedExact=${compression.skippedExact} failed=${compression.failed}`,
+			);
+			if (compression.fallbackReason) lines.push(`Compression fallback: ${compression.fallbackReason}`);
+		}
 		if (settings.provider === "gbrain") {
 			const allow =
 				settings.gbrain.allowedPrefixes.length > 0

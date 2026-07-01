@@ -20,6 +20,17 @@ export interface ContextBundle {
 	content: string;
 	score?: number;
 	tokenEstimate?: number;
+	compression?: {
+		mode: "exact-preserve" | "lossy-ok";
+		reason?: string;
+		result?: {
+			compressed: boolean;
+			lossy: boolean;
+			provider: string;
+			originalBytes: number;
+			outputBytes: number;
+		};
+	};
 	provenance: {
 		path?: string;
 		startLine?: number;
@@ -150,6 +161,9 @@ function provenanceAttrs(bundle: ContextBundle): string {
 	add("commit", bundle.freshness?.commit);
 	add("stale", bundle.freshness?.stale);
 	add("dirty", bundle.freshness?.dirty);
+	add("compressed", bundle.compression?.result?.compressed);
+	add("lossy", bundle.compression?.result?.lossy);
+	add("compressionProvider", bundle.compression?.result?.provider);
 	return attrs.join(" ");
 }
 
