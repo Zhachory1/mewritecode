@@ -8,6 +8,7 @@
 
 - Added an internal experimental ContextEngine seam with transient, non-persisted context evidence injection and `/context status` for future retrieval providers.
 - Added an opt-in repo-index ContextEngine provider that retrieves clean, read-only code snippets from `repo-index` with provenance while failing open on unavailable, stale, dirty, or malformed results.
+- Added a read-only gbrain ContextEngine provider contract for durable-memory bundles, including `allowAllMemory`, allow/disallow prefix filters, and `notes` denied by default, using a future `gbrain context-query --json` read path and failing open instead of calling current gbrain read commands that perform `last_retrieved_at` write-backs.
 
 ## [1.0.0] - 2026-06-30
 

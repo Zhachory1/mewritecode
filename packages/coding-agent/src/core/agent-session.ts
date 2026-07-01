@@ -35,6 +35,7 @@ import {
 	redactContextDetail,
 	retrieveContextWithTimeout,
 } from "./context-engine.js";
+import { GbrainContextEngine, GbrainContextError } from "./context-providers/gbrain.js";
 import { RepoIndexContextEngine, RepoIndexContextError } from "./context-providers/repo-index.js";
 
 const { CheckpointManager } = checkpoints;
@@ -1086,6 +1087,16 @@ export class AgentSession {
 				k: settings.repoIndex.k,
 			});
 		}
+		if (settings.provider === "gbrain") {
+			return new GbrainContextEngine({
+				command: settings.gbrain.command,
+				maxResults: settings.gbrain.maxResults,
+				project: settings.gbrain.project,
+				allowedPrefixes: settings.gbrain.allowedPrefixes,
+				disallowPrefixes: settings.gbrain.disallowPrefixes,
+				allowAllMemory: settings.gbrain.allowAllMemory,
+			});
+		}
 		return new NoopContextEngine();
 	}
 
@@ -1130,7 +1141,10 @@ export class AgentSession {
 		);
 
 		if (!result.pack) {
-			const state = result.error instanceof RepoIndexContextError ? result.error.state : result.reason;
+			const state =
+				result.error instanceof RepoIndexContextError || result.error instanceof GbrainContextError
+					? result.error.state
+					: result.reason;
 			const detail = redactContextDetail(result.error?.message ?? state ?? "context unavailable");
 			this._contextLastRun = {
 				enabled: true,
@@ -1168,7 +1182,7 @@ export class AgentSession {
 	getContextEngineStatusLines(): string[] {
 		const settings = this.settingsManager.getContextEngineSettings();
 		const last = this._contextLastRun;
-		return [
+		const lines = [
 			`Context engine: ${settings.enabled ? "enabled" : "disabled"}`,
 			`Provider: ${settings.provider}`,
 			`Last run: ${last.failOpenReason ?? (last.ok ? "ok" : "error")}`,
@@ -1178,6 +1192,22 @@ export class AgentSession {
 			...(last.dropped !== undefined && last.dropped > 0 ? [`Dropped bundles: ${last.dropped}`] : []),
 			...(last.detail ? [`Detail: ${last.detail}`] : []),
 		];
+		if (settings.provider === "gbrain") {
+			const allow =
+				settings.gbrain.allowedPrefixes.length > 0
+					? settings.gbrain.allowedPrefixes.join(",")
+					: settings.gbrain.allowAllMemory
+						? "<all>"
+						: "<none>";
+			const deny =
+				settings.gbrain.disallowPrefixes.length > 0 ? settings.gbrain.disallowPrefixes.join(",") : "<none>";
+			lines.push(
+				`Gbrain scope: allowAllMemory=${settings.gbrain.allowAllMemory}; allow=${allow}; deny=${deny}; project=${settings.gbrain.project ?? "<none>"}`,
+			);
+			lines.push("Gbrain memory channel: contextEngine (separate from /memory recall)");
+			lines.push("Gbrain snippets are transient context and may be sent to the configured model provider.");
+		}
+		return lines;
 	}
 
 	private _mergeRetrievalInjections(

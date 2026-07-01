@@ -60,12 +60,22 @@ export interface RepoIndexContextSettings {
 	k?: number; // default: 8
 }
 
+export interface GbrainContextSettings {
+	command?: string; // default: gbrain
+	maxResults?: number; // default: 5
+	project?: string;
+	allowedPrefixes?: string[];
+	disallowPrefixes?: string[];
+	allowAllMemory?: boolean;
+}
+
 export interface ContextEngineSettings {
 	enabled?: boolean; // default: false
 	provider?: string; // default: "none"
 	budgetTokens?: number; // default: 4000
 	timeoutMs?: number; // default: 1000
 	repoIndex?: RepoIndexContextSettings;
+	gbrain?: GbrainContextSettings;
 }
 
 /** First-run onboarding state (WS11). Persisted in the global settings file. */
@@ -1255,6 +1265,14 @@ export class SettingsManager {
 		budgetTokens: number;
 		timeoutMs: number;
 		repoIndex: { command: string; dbPath?: string; k: number };
+		gbrain: {
+			command: string;
+			maxResults: number;
+			project?: string;
+			allowedPrefixes: string[];
+			disallowPrefixes: string[];
+			allowAllMemory: boolean;
+		};
 	} {
 		return {
 			enabled: this.settings.contextEngine?.enabled ?? false,
@@ -1265,6 +1283,14 @@ export class SettingsManager {
 				command: this.settings.contextEngine?.repoIndex?.command ?? "repo-index",
 				dbPath: this.settings.contextEngine?.repoIndex?.dbPath,
 				k: this.settings.contextEngine?.repoIndex?.k ?? 8,
+			},
+			gbrain: {
+				command: this.settings.contextEngine?.gbrain?.command ?? "gbrain",
+				maxResults: this.settings.contextEngine?.gbrain?.maxResults ?? 5,
+				project: this.settings.contextEngine?.gbrain?.project,
+				allowedPrefixes: [...(this.settings.contextEngine?.gbrain?.allowedPrefixes ?? [])],
+				disallowPrefixes: [...(this.settings.contextEngine?.gbrain?.disallowPrefixes ?? ["notes"])],
+				allowAllMemory: this.settings.contextEngine?.gbrain?.allowAllMemory ?? true,
 			},
 		};
 	}
