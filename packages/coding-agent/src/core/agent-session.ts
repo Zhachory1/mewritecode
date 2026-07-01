@@ -35,6 +35,7 @@ import {
 	redactContextDetail,
 	retrieveContextWithTimeout,
 } from "./context-engine.js";
+import { RepoIndexContextEngine, RepoIndexContextError } from "./context-providers/repo-index.js";
 
 const { CheckpointManager } = checkpoints;
 type CheckpointManagerInstance = InstanceType<typeof CheckpointManager>;
@@ -528,7 +529,7 @@ export class AgentSession {
 		this._sessionStartEvent = config.sessionStartEvent ?? { type: "session_start", reason: "startup" };
 		this._systemPromptBranding = config.systemPromptBranding;
 		this._appendSystemPrompt = config.appendSystemPrompt;
-		this._contextEngine = config.contextEngine ?? new NoopContextEngine();
+		this._contextEngine = config.contextEngine ?? this._createContextEngine();
 		this._compression = new CompressionPipeline(
 			{
 				getCaveModeMLCompression: () => this.settingsManager.getCaveModeMLCompression(),
@@ -1074,6 +1075,20 @@ export class AgentSession {
 	 * 25 % of the model context window, then re-insert in order
 	 * (memory first, then repomap, both before the user message).
 	 */
+	private _createContextEngine(): ContextEngine {
+		const settings = this.settingsManager.getContextEngineSettings();
+		if (!settings.enabled || settings.provider === "none") return new NoopContextEngine();
+		if (settings.provider === "repo-index") {
+			return new RepoIndexContextEngine({
+				cwd: this._cwd,
+				command: settings.repoIndex.command,
+				dbPath: settings.repoIndex.dbPath,
+				k: settings.repoIndex.k,
+			});
+		}
+		return new NoopContextEngine();
+	}
+
 	private _insertContextEvidence(messages: AgentMessage[]): AgentMessage[] {
 		const evidence = this._pendingContextEvidence;
 		if (!evidence) return messages;
@@ -1115,7 +1130,8 @@ export class AgentSession {
 		);
 
 		if (!result.pack) {
-			const detail = redactContextDetail(result.error?.message ?? result.reason ?? "context unavailable");
+			const state = result.error instanceof RepoIndexContextError ? result.error.state : result.reason;
+			const detail = redactContextDetail(result.error?.message ?? state ?? "context unavailable");
 			this._contextLastRun = {
 				enabled: true,
 				provider: settings.provider,
@@ -1123,7 +1139,7 @@ export class AgentSession {
 				bundles: 0,
 				durationMs: result.durationMs,
 				failOpenReason: result.reason ?? "error",
-				detail,
+				detail: state ? `${state}${detail ? `: ${detail}` : ""}` : detail,
 			};
 			this._emit({
 				type: "context_engine_status",
@@ -1133,6 +1149,9 @@ export class AgentSession {
 		}
 
 		const formatted = formatContextPackEvidence(result.pack);
+		const sourceDetail = Object.entries(result.pack.sources)
+			.map(([name, source]) => `${name}: ${source.ok ? "ok" : "error"}${source.detail ? ` ${source.detail}` : ""}`)
+			.join("; ");
 		this._contextLastRun = {
 			enabled: true,
 			provider: settings.provider,
@@ -1141,6 +1160,7 @@ export class AgentSession {
 			durationMs: result.durationMs,
 			truncated: formatted.truncated,
 			dropped: formatted.dropped,
+			detail: redactContextDetail(sourceDetail),
 		};
 		return formatted.message;
 	}

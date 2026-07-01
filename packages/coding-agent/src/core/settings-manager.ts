@@ -54,11 +54,18 @@ export interface RtkSettings {
 	enabled?: boolean; // default: true
 }
 
+export interface RepoIndexContextSettings {
+	command?: string; // default: repo-index
+	dbPath?: string;
+	k?: number; // default: 8
+}
+
 export interface ContextEngineSettings {
 	enabled?: boolean; // default: false
 	provider?: string; // default: "none"
 	budgetTokens?: number; // default: 4000
 	timeoutMs?: number; // default: 1000
+	repoIndex?: RepoIndexContextSettings;
 }
 
 /** First-run onboarding state (WS11). Persisted in the global settings file. */
@@ -1242,12 +1249,23 @@ export class SettingsManager {
 		this.save();
 	}
 
-	getContextEngineSettings(): { enabled: boolean; provider: string; budgetTokens: number; timeoutMs: number } {
+	getContextEngineSettings(): {
+		enabled: boolean;
+		provider: string;
+		budgetTokens: number;
+		timeoutMs: number;
+		repoIndex: { command: string; dbPath?: string; k: number };
+	} {
 		return {
 			enabled: this.settings.contextEngine?.enabled ?? false,
 			provider: this.settings.contextEngine?.provider ?? "none",
 			budgetTokens: this.settings.contextEngine?.budgetTokens ?? 4000,
 			timeoutMs: this.settings.contextEngine?.timeoutMs ?? 1000,
+			repoIndex: {
+				command: this.settings.contextEngine?.repoIndex?.command ?? "repo-index",
+				dbPath: this.settings.contextEngine?.repoIndex?.dbPath,
+				k: this.settings.contextEngine?.repoIndex?.k ?? 8,
+			},
 		};
 	}
 

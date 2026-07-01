@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added an internal experimental ContextEngine seam with transient, non-persisted context evidence injection and `/context status` for future retrieval providers.
+- Added an opt-in repo-index ContextEngine provider that retrieves clean, read-only code snippets from `repo-index` with provenance while failing open on unavailable, stale, dirty, or malformed results.
+
 ## [1.0.0] - 2026-06-30
 
 ### Added
