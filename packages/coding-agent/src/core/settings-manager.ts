@@ -54,6 +54,13 @@ export interface RtkSettings {
 	enabled?: boolean; // default: true
 }
 
+export interface ContextEngineSettings {
+	enabled?: boolean; // default: false
+	provider?: string; // default: "none"
+	budgetTokens?: number; // default: 4000
+	timeoutMs?: number; // default: 1000
+}
+
 /** First-run onboarding state (WS11). Persisted in the global settings file. */
 export interface OnboardingSettings {
 	hasCompletedOnboarding?: boolean; // default: false
@@ -162,6 +169,7 @@ export interface Settings {
 	sessionDir?: string; // Custom session storage directory (same format as --session-dir CLI flag)
 	caveMode?: CaveModeSettings;
 	rtk?: RtkSettings;
+	contextEngine?: ContextEngineSettings;
 	onboarding?: OnboardingSettings;
 	telemetry?: TelemetrySettings;
 	update?: UpdateSettings;
@@ -1232,6 +1240,15 @@ export class SettingsManager {
 		this.globalSettings.rtk.enabled = enabled;
 		this.markModified("rtk", "enabled");
 		this.save();
+	}
+
+	getContextEngineSettings(): { enabled: boolean; provider: string; budgetTokens: number; timeoutMs: number } {
+		return {
+			enabled: this.settings.contextEngine?.enabled ?? false,
+			provider: this.settings.contextEngine?.provider ?? "none",
+			budgetTokens: this.settings.contextEngine?.budgetTokens ?? 4000,
+			timeoutMs: this.settings.contextEngine?.timeoutMs ?? 1000,
+		};
 	}
 
 	// --- WS11: onboarding / telemetry / update settings ---

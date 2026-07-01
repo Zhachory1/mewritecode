@@ -172,6 +172,11 @@ export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 		wired: true,
 	},
 	{
+		name: "context",
+		description: "Show experimental context-engine status. Usage: /context status.",
+		wired: true,
+	},
+	{
 		name: "btw",
 		description:
 			"Ask a quick side question without interrupting the running turn. Usage: /btw <question>. Fires a separate completion; answer is shown dimmed inline and does not modify the agent's working memory.",

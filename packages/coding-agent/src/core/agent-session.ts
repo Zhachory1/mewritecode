@@ -27,6 +27,14 @@ import type {
 } from "@zhachory1/mewrite-agent";
 import { checkpoints, type memory as memoryNs } from "@zhachory1/mewrite-agent";
 import { CompressionPipeline, sumTextLen } from "./compression-pipeline.js";
+import {
+	type ContextEngine,
+	type ContextEngineLastRun,
+	formatContextPackEvidence,
+	NoopContextEngine,
+	redactContextDetail,
+	retrieveContextWithTimeout,
+} from "./context-engine.js";
 
 const { CheckpointManager } = checkpoints;
 type CheckpointManagerInstance = InstanceType<typeof CheckpointManager>;
@@ -158,7 +166,8 @@ export type AgentSessionEvent =
 			errorMessage?: string;
 	  }
 	| { type: "auto_retry_start"; attempt: number; maxAttempts: number; delayMs: number; errorMessage: string }
-	| { type: "auto_retry_end"; success: boolean; attempt: number; finalError?: string };
+	| { type: "auto_retry_end"; success: boolean; attempt: number; finalError?: string }
+	| { type: "context_engine_status"; message: string };
 
 /** Listener function for agent session events */
 export type AgentSessionEventListener = (event: AgentSessionEvent) => void;
@@ -218,6 +227,8 @@ export interface AgentSessionConfig {
 	systemPromptBranding?: SystemPromptBranding;
 	/** Downstream system prompt text appended after resource-loader additions. */
 	appendSystemPrompt?: string;
+	/** Experimental internal context engine seam (M1). */
+	contextEngine?: ContextEngine;
 }
 
 export interface ExtensionBindings {
@@ -417,6 +428,16 @@ export class AgentSession {
 	private _extensionShutdownHandler?: ShutdownHandler;
 	private _extensionErrorListener?: ExtensionErrorListener;
 	private _extensionErrorUnsubscriber?: () => void;
+	private _contextEngine: ContextEngine;
+	private _pendingContextEvidence: AgentMessage | undefined;
+	private _contextLastRun: ContextEngineLastRun = {
+		enabled: false,
+		provider: "none",
+		ok: true,
+		bundles: 0,
+		failOpenReason: "disabled",
+		detail: "disabled",
+	};
 
 	// Model registry for API key resolution
 	private _modelRegistry: ModelRegistry;
@@ -507,6 +528,7 @@ export class AgentSession {
 		this._sessionStartEvent = config.sessionStartEvent ?? { type: "session_start", reason: "startup" };
 		this._systemPromptBranding = config.systemPromptBranding;
 		this._appendSystemPrompt = config.appendSystemPrompt;
+		this._contextEngine = config.contextEngine ?? new NoopContextEngine();
 		this._compression = new CompressionPipeline(
 			{
 				getCaveModeMLCompression: () => this.settingsManager.getCaveModeMLCompression(),
@@ -818,12 +840,13 @@ export class AgentSession {
 				this._repomapInjector.buildTransform(base),
 			]);
 			const merged = this._mergeRetrievalInjections(base, afterMemory, afterRepomap);
+			const withContextEvidence = this._insertContextEvidence(merged);
 			// Soft long-context compaction (Gap 7): proactive LLMLingua compression of
 			// OLDEST tool-result blocks once context usage crosses the soft threshold.
 			// Runs INSIDE transformContext so the LLM sees a smaller payload but the
 			// session keeps the original messages on disk. Implementation in
 			// CompressionPipeline.softCompactTransform (#16 stage 4).
-			return this._compression.softCompactTransform(merged, this.model?.contextWindow ?? 0);
+			return this._compression.softCompactTransform(withContextEvidence, this.model?.contextWindow ?? 0);
 		};
 
 		// Gap 2 + Gap 8: chat-mode tool gating + plan-mode system-prompt banner.
@@ -1051,6 +1074,92 @@ export class AgentSession {
 	 * 25 % of the model context window, then re-insert in order
 	 * (memory first, then repomap, both before the user message).
 	 */
+	private _insertContextEvidence(messages: AgentMessage[]): AgentMessage[] {
+		const evidence = this._pendingContextEvidence;
+		if (!evidence) return messages;
+		for (let i = messages.length - 1; i >= 0; i--) {
+			if (messages[i].role === "user") {
+				return [...messages.slice(0, i), evidence, ...messages.slice(i)];
+			}
+		}
+		return [...messages, evidence];
+	}
+
+	private async _buildContextEvidence(prompt: string, signal?: AbortSignal): Promise<AgentMessage | undefined> {
+		const settings = this.settingsManager.getContextEngineSettings();
+		if (!settings.enabled || settings.provider === "none") {
+			this._contextLastRun = {
+				enabled: false,
+				provider: settings.provider,
+				ok: true,
+				bundles: 0,
+				failOpenReason: "disabled",
+				detail: "disabled",
+			};
+			return undefined;
+		}
+
+		const result = await retrieveContextWithTimeout(
+			this._contextEngine,
+			{
+				rawUserPrompt: prompt,
+				normalizedUserPrompt: prompt.trim(),
+				cwd: this._cwd,
+				sessionId: this.sessionId,
+				budgetTokens: settings.budgetTokens,
+				includeCode: true,
+				includeMemory: true,
+				signal,
+			},
+			settings.timeoutMs,
+		);
+
+		if (!result.pack) {
+			const detail = redactContextDetail(result.error?.message ?? result.reason ?? "context unavailable");
+			this._contextLastRun = {
+				enabled: true,
+				provider: settings.provider,
+				ok: false,
+				bundles: 0,
+				durationMs: result.durationMs,
+				failOpenReason: result.reason ?? "error",
+				detail,
+			};
+			this._emit({
+				type: "context_engine_status",
+				message: `Context unavailable; continuing without retrieved context${detail ? ` (${detail})` : ""}`,
+			});
+			return undefined;
+		}
+
+		const formatted = formatContextPackEvidence(result.pack);
+		this._contextLastRun = {
+			enabled: true,
+			provider: settings.provider,
+			ok: true,
+			bundles: formatted.bundles,
+			durationMs: result.durationMs,
+			truncated: formatted.truncated,
+			dropped: formatted.dropped,
+		};
+		return formatted.message;
+	}
+
+	getContextEngineStatusLines(): string[] {
+		const settings = this.settingsManager.getContextEngineSettings();
+		const last = this._contextLastRun;
+		return [
+			`Context engine: ${settings.enabled ? "enabled" : "disabled"}`,
+			`Provider: ${settings.provider}`,
+			`Last run: ${last.failOpenReason ?? (last.ok ? "ok" : "error")}`,
+			`Bundles last turn: ${last.bundles}`,
+			...(last.durationMs !== undefined ? [`Duration: ${last.durationMs}ms`] : []),
+			...(last.truncated !== undefined ? [`Truncated: ${last.truncated ? "yes" : "no"}`] : []),
+			...(last.dropped !== undefined && last.dropped > 0 ? [`Dropped bundles: ${last.dropped}`] : []),
+			...(last.detail ? [`Detail: ${last.detail}`] : []),
+		];
+	}
+
 	private _mergeRetrievalInjections(
 		original: AgentMessage[],
 		afterMemory: AgentMessage[],
@@ -1756,6 +1865,8 @@ export class AgentSession {
 			);
 		}
 
+		const contextEvidence = await this._buildContextEvidence(expandedText, this.agent.signal);
+
 		// Check if we need to compact before sending (catches aborted responses)
 		const lastAssistant = this._findLastAssistantMessage();
 		if (lastAssistant) {
@@ -1815,7 +1926,12 @@ export class AgentSession {
 		}
 
 		promptTimingMark("session.prompt:agent.prompt:begin");
-		await this.agent.prompt(messages);
+		this._pendingContextEvidence = contextEvidence;
+		try {
+			await this.agent.prompt(messages);
+		} finally {
+			this._pendingContextEvidence = undefined;
+		}
 		promptTimingMark("session.prompt:agent.prompt:end");
 		await this.waitForRetry();
 	}

@@ -7,6 +7,9 @@ const packageDir = dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
 	resolve: {
 		alias: {
+			"@zhachory1/mewrite-agent": resolve(packageDir, "../agent/src/index.ts"),
+			"@zhachory1/mewrite-ai/oauth": resolve(packageDir, "../ai/src/oauth.ts"),
+			"@zhachory1/mewrite-ai": resolve(packageDir, "../ai/src/index.ts"),
 			"@zhachory1/mewrite-tui": resolve(packageDir, "../tui/src/index.ts"),
 		},
 	},

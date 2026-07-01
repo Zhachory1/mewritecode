@@ -2651,6 +2651,11 @@ export class InteractiveMode {
 				this.handleQueueSlashCommand(args);
 				return;
 			}
+			if (text === "/context" || text === "/context status") {
+				this.editor.setText("");
+				this.handleContextSlashCommand();
+				return;
+			}
 			// /btw <question> — side-question (#61). Dispatched BEFORE the
 			// isStreaming guard so it works mid-turn without disturbing the running
 			// agent. The handler fires its own completion against the current
@@ -5127,6 +5132,10 @@ export class InteractiveMode {
 		});
 		this.appendSlashOutput(result.output, result.exitCode !== 0);
 		this._refreshApprovalFooter();
+	}
+
+	private handleContextSlashCommand(): void {
+		this.appendSlashOutput(this.session.getContextEngineStatusLines().join("\n"), false);
 	}
 
 	/** Issue #5: show or clear the /then-chained command queue. */
