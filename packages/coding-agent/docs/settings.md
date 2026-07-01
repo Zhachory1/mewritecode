@@ -121,7 +121,7 @@ RTK is detected automatically at startup. If the `rtk` binary is not installed, 
 
 ### Experimental Context Engine
 
-The Context Engine is disabled by default. It can inject transient, lower-priority context bundles before a prompt. Context bundles are not saved into session history, exports, or compaction input, but bundle text may be sent to the configured model provider for that turn.
+The Context Engine is disabled by default. It can inject transient, lower-priority context bundles before a prompt. Context bundles are not saved into Me Write session history, exports, or compaction input, but bundle text may be sent to the configured model provider for that turn.
 
 ```json
 {
@@ -149,7 +149,7 @@ The Context Engine is disabled by default. It can inject transient, lower-priori
 
 #### contextEngine.gbrain
 
-The gbrain provider is a read-only adapter contract for a future `gbrain context-query --json` command. It intentionally does not call current `gbrain query`, `search`, or `get` commands because those can update durable `last_retrieved_at` state.
+The gbrain provider calls `gbrain call query` and lets gbrain update its own local diagnostics/read-tracking state, such as `last_retrieved_at`. gbrain does not send telemetry to a remote service; these local writes are expected. Me Write still treats returned snippets as transient context for the active model request.
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|

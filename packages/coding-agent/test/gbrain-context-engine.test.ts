@@ -44,16 +44,19 @@ describe("GbrainContextEngine", () => {
 		expect(bundle.freshness?.indexedAt).toBe("2026-07-01");
 	});
 
-	it("uses read-only context-query command and never write commands", async () => {
+	it("uses gbrain call query and never mutating commands", async () => {
 		const command = fakeGbrainScript(`
 const argv = process.argv.slice(2);
 if (argv.some((arg) => ['put', 'capture', 'import', 'sync', 'embed', 'delete'].includes(arg))) process.exit(9);
-if (argv[0] !== 'context-query' || !argv.includes('--json')) process.exit(8);
+if (argv[0] !== 'call' || argv[1] !== 'query') process.exit(8);
+const params = JSON.parse(argv[2]);
+if (params.query !== 'where is M3' || params.limit !== 2 || params.detail !== 'low' || params.expand !== false) process.exit(7);
 process.stdout.write(JSON.stringify([${JSON.stringify(result())}]));
 `);
 		const engine = new GbrainContextEngine({ command, maxResults: 2, project: "mewritecode" });
 		const pack = await engine.retrieve({
 			rawUserPrompt: "what was M3",
+			normalizedUserPrompt: "where is M3",
 			cwd: process.cwd(),
 			budgetTokens: 100,
 			includeCode: false,
@@ -91,10 +94,7 @@ ${JSON.stringify(result({ slug: "people/someone" }))}
 	});
 
 	it("supports disallow-prefix scopes for all-but-private retrieval", async () => {
-		const command = fakeGbrainScript(`
-const argv = process.argv.slice(2);
-if (!argv.includes('--exclude-prefix') || !argv.includes('personal-notes')) process.exit(8);
-process.stdout.write(JSON.stringify([
+		const command = fakeGbrainScript(`process.stdout.write(JSON.stringify([
 ${JSON.stringify(result({ slug: "projects/mewritecode/plans/context-roadmap" }))},
 ${JSON.stringify(result({ slug: "concepts/context-engine" }))},
 ${JSON.stringify(result({ slug: "personal-notes/journal/private" }))}
@@ -116,10 +116,7 @@ ${JSON.stringify(result({ slug: "personal-notes/journal/private" }))}
 	});
 
 	it("defaults disallow-prefix scope to notes", async () => {
-		const command = fakeGbrainScript(`
-const argv = process.argv.slice(2);
-if (!argv.includes('--exclude-prefix') || !argv.includes('notes')) process.exit(8);
-process.stdout.write(JSON.stringify([
+		const command = fakeGbrainScript(`process.stdout.write(JSON.stringify([
 ${JSON.stringify(result({ slug: "projects/mewritecode/plans/context-roadmap" }))},
 ${JSON.stringify(result({ slug: "notes/private" }))}
 ]));`);
@@ -196,8 +193,8 @@ ${JSON.stringify(result({ slug: "concepts/context-engine" }))}
 		expect(pack.sources.gbrain.detail).toContain("skipped_scope=1");
 	});
 
-	it("fails open with typed state on current gbrain without read-only context-query", async () => {
-		const command = fakeGbrainScript("process.stderr.write('Unknown command: context-query'); process.exit(1);");
+	it("fails open with typed state when gbrain lacks call query support", async () => {
+		const command = fakeGbrainScript("process.stderr.write('Unknown command: call'); process.exit(1);");
 		const engine = new GbrainContextEngine({ command, project: "mewritecode" });
 
 		await expect(

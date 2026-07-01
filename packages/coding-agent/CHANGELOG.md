@@ -4,7 +4,7 @@
 
 ### Added
 
-- Added a read-only gbrain ContextEngine provider contract for durable-memory bundles, including `allowAllMemory`, allow/disallow prefix filters, `notes` denied by default, `/context memory status`, and settings docs, using a future `gbrain context-query --json` read path and failing open instead of calling current gbrain read commands that perform `last_retrieved_at` write-backs.
+- Added a gbrain ContextEngine provider for durable-memory bundles, including `allowAllMemory`, allow/disallow prefix filters, `notes` denied by default, `/context memory status`, and settings docs. The provider uses `gbrain call query`, so gbrain may update its own local diagnostic/read-tracking state while Me Write keeps injected snippets transient.
 
 ## [1.0.1] - 2026-07-01
 

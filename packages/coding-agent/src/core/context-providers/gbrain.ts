@@ -123,7 +123,7 @@ function runJsonCommand(command: string, args: string[], signal: AbortSignal | u
 		};
 		const onAbort = () => {
 			child.kill();
-			finish(() => reject(new GbrainContextError("timeout", "gbrain context query aborted")));
+			finish(() => reject(new GbrainContextError("timeout", "gbrain query aborted")));
 		};
 		signal?.addEventListener("abort", onAbort, { once: true });
 		child.stdout.on("data", (chunk) => {
@@ -149,7 +149,7 @@ function runJsonCommand(command: string, args: string[], signal: AbortSignal | u
 			finish(() => {
 				if (code !== 0) {
 					const detail = stderr.trim() || `gbrain exited ${code}`;
-					const state: GbrainState = /unknown command|context-query|unrecognized/i.test(detail)
+					const state: GbrainState = /unknown command|unknown tool|unrecognized/i.test(detail)
 						? "unsupported-version"
 						: "adapter-error";
 					reject(new GbrainContextError(state, detail));
@@ -247,22 +247,20 @@ export class GbrainContextEngine implements ContextEngine {
 		if (!this.allowAllMemory && this.allowedPrefixes.length === 0) {
 			throw new GbrainContextError("scope-required", "configure gbrain allowedPrefixes or set allowAllMemory=true");
 		}
-		const args = [
-			"context-query",
-			"--json",
-			query.normalizedUserPrompt ?? query.rawUserPrompt,
-			"--limit",
-			String(this.maxResults),
-		];
-		if (this.project) args.push("--project", this.project);
-		for (const prefix of this.allowedPrefixes) {
-			args.push("--prefix", prefix);
-		}
-		for (const prefix of this.disallowPrefixes) {
-			args.push("--exclude-prefix", prefix);
-		}
-
-		const raw = await runJsonCommand(this.command, args, query.signal);
+		const raw = await runJsonCommand(
+			this.command,
+			[
+				"call",
+				"query",
+				JSON.stringify({
+					query: query.normalizedUserPrompt ?? query.rawUserPrompt,
+					limit: this.maxResults,
+					detail: "low",
+					expand: false,
+				}),
+			],
+			query.signal,
+		);
 		if (!Array.isArray(raw)) {
 			throw new GbrainContextError("schema-mismatch", "gbrain context query did not return an array");
 		}
