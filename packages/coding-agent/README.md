@@ -585,6 +585,7 @@ mewrite [options] [@files...] [messages...]
 | `/settings` | Configure settings |
 | `/resume` | Browse sessions |
 | `/tree` | Navigate session history |
+| `/context status` | Show experimental Context Engine state and effective scope |
 
 Built-in tools: `read`, `bash`, `edit`, `write`, `grep`, `find`, `ls`
 

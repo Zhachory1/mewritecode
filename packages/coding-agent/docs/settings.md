@@ -119,6 +119,65 @@ RTK is an optional external binary that rewrites bash commands to produce more c
 
 RTK is detected automatically at startup. If the `rtk` binary is not installed, the setting has no effect.
 
+### Experimental Context Engine
+
+The Context Engine is disabled by default. It can inject transient, lower-priority context bundles before a prompt. Context bundles are not saved into session history, exports, or compaction input, but bundle text may be sent to the configured model provider for that turn.
+
+```json
+{
+  "contextEngine": {
+    "enabled": true,
+    "provider": "gbrain",
+    "timeoutMs": 1000,
+    "budgetTokens": 4000,
+    "gbrain": {
+      "allowAllMemory": true,
+      "disallowPrefixes": ["notes"]
+    }
+  }
+}
+```
+
+#### contextEngine
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `contextEngine.enabled` | boolean | `false` | Enable experimental context retrieval |
+| `contextEngine.provider` | string | `"none"` | Context provider: `"none"`, `"repo-index"`, or `"gbrain"` |
+| `contextEngine.budgetTokens` | number | `4000` | Approximate context budget for retrieved bundles |
+| `contextEngine.timeoutMs` | number | `1000` | Retrieval timeout; failures continue without context |
+
+#### contextEngine.gbrain
+
+The gbrain provider is a read-only adapter contract for a future `gbrain context-query --json` command. It intentionally does not call current `gbrain query`, `search`, or `get` commands because those can update durable `last_retrieved_at` state.
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `contextEngine.gbrain.command` | string | `"gbrain"` | gbrain executable |
+| `contextEngine.gbrain.maxResults` | number | `5` | Maximum raw gbrain results to request |
+| `contextEngine.gbrain.allowAllMemory` | boolean | `true` | Allow all gbrain slugs except denied prefixes |
+| `contextEngine.gbrain.allowedPrefixes` | string[] | `[]` | Allowed slug prefixes when scoped mode is used |
+| `contextEngine.gbrain.disallowPrefixes` | string[] | `["notes"]` | Denied slug prefixes; applied before allowed-prefix filtering |
+| `contextEngine.gbrain.project` | string | - | Optional project slug; currently restricts to `projects/<slug>` |
+
+Default gbrain behavior is broad memory retrieval with `notes/...` excluded. To require explicit scopes, set `allowAllMemory` to `false` and provide `allowedPrefixes`:
+
+```json
+{
+  "contextEngine": {
+    "enabled": true,
+    "provider": "gbrain",
+    "gbrain": {
+      "allowAllMemory": false,
+      "allowedPrefixes": ["projects/mewritecode", "concepts/context-engine"],
+      "disallowPrefixes": ["notes"]
+    }
+  }
+}
+```
+
+Use `/context status` or `/context memory status` to inspect current state and effective gbrain scope.
+
 ### Branch Summary
 
 | Setting | Type | Default | Description |

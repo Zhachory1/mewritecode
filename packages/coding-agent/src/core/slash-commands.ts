@@ -173,7 +173,7 @@ export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 	},
 	{
 		name: "context",
-		description: "Show experimental context-engine status. Usage: /context status.",
+		description: "Show experimental context-engine status. Usage: /context status or /context memory status.",
 		wired: true,
 	},
 	{

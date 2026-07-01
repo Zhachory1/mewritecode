@@ -2651,7 +2651,7 @@ export class InteractiveMode {
 				this.handleQueueSlashCommand(args);
 				return;
 			}
-			if (text === "/context" || text === "/context status") {
+			if (text === "/context" || text === "/context status" || text === "/context memory status") {
 				this.editor.setText("");
 				this.handleContextSlashCommand();
 				return;
