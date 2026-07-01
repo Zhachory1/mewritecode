@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-07-01
+
 ### Added
 
 - Added an internal experimental ContextEngine seam with transient, non-persisted context evidence injection and `/context status` for future retrieval providers.
