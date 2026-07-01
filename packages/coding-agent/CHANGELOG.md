@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Renamed the code-context provider surface to Codescry, including the default binary command and bundle provenance, while keeping `provider: "repo-index"` as a legacy alias.
+
 ## [1.0.2] - 2026-07-01
 
 ### Added

@@ -1079,7 +1079,7 @@ export class AgentSession {
 	private _createContextEngine(): ContextEngine {
 		const settings = this.settingsManager.getContextEngineSettings();
 		if (!settings.enabled || settings.provider === "none") return new NoopContextEngine();
-		if (settings.provider === "repo-index") {
+		if (settings.provider === "codescry" || settings.provider === "repo-index") {
 			return new RepoIndexContextEngine({
 				cwd: this._cwd,
 				command: settings.repoIndex.command,

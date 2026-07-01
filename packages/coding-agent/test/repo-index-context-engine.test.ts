@@ -6,10 +6,10 @@ import { describe, expect, it } from "vitest";
 import { mapRepoIndexResult, RepoIndexContextEngine } from "../src/core/context-providers/repo-index.js";
 import { createHarness } from "./suite/harness.js";
 
-function fakeRepoIndexScript(body: string): string {
-	const dir = join(tmpdir(), `repo-index-fake-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+function fakeCodescryScript(body: string): string {
+	const dir = join(tmpdir(), `codescry-fake-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 	mkdirSync(dir, { recursive: true });
-	const path = join(dir, "repo-index");
+	const path = join(dir, "codescry");
 	writeFileSync(path, `#!/usr/bin/env node\n${body}\n`);
 	chmodSync(path, 0o755);
 	return path;
@@ -38,7 +38,7 @@ describe("RepoIndexContextEngine", () => {
 	it("maps clean search results to context bundles", () => {
 		const bundle = mapRepoIndexResult(result());
 
-		expect(bundle?.source).toBe("repo-index");
+		expect(bundle?.source).toBe("codescry");
 		expect(bundle?.entityType).toBe("symbol");
 		expect(bundle?.provenance.path).toBe("src/auth.ts");
 		expect(bundle?.provenance.startLine).toBe(10);
@@ -53,7 +53,7 @@ describe("RepoIndexContextEngine", () => {
 	});
 
 	it("uses only read-only query command", async () => {
-		const command = fakeRepoIndexScript(`
+		const command = fakeCodescryScript(`
 argv = process.argv.slice(2);
 if (argv.includes('reindex') || argv.includes('index') || argv.includes('index-root')) process.exit(9);
 process.stdout.write(JSON.stringify([${JSON.stringify(result())}]));
@@ -68,11 +68,11 @@ process.stdout.write(JSON.stringify([${JSON.stringify(result())}]));
 		});
 
 		expect(pack.bundles).toHaveLength(1);
-		expect(pack.sources["repo-index"].detail).toContain("bundles=1");
+		expect(pack.sources.codescry.detail).toContain("bundles=1");
 	});
 
 	it("fails open with typed state on malformed output", async () => {
-		const command = fakeRepoIndexScript("process.stdout.write('[]\\nRun repo-index status')");
+		const command = fakeCodescryScript("process.stdout.write('[]\\nRun codescry status')");
 		const engine = new RepoIndexContextEngine({ cwd: process.cwd(), command });
 
 		await expect(
@@ -87,13 +87,13 @@ process.stdout.write(JSON.stringify([${JSON.stringify(result())}]));
 	});
 
 	it("integrates through AgentSession without persisting snippets", async () => {
-		const command = fakeRepoIndexScript(`process.stdout.write(JSON.stringify([${JSON.stringify(result())}]))`);
+		const command = fakeCodescryScript(`process.stdout.write(JSON.stringify([${JSON.stringify(result())}]))`);
 		let payloadText = "";
 		const harness = await createHarness({
 			settings: {
 				contextEngine: {
 					enabled: true,
-					provider: "repo-index",
+					provider: "codescry",
 					timeoutMs: 1000,
 					repoIndex: { command, k: 1 },
 				},

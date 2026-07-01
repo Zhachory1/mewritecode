@@ -55,7 +55,7 @@ export interface RtkSettings {
 }
 
 export interface RepoIndexContextSettings {
-	command?: string; // default: repo-index
+	command?: string; // default: codescry
 	dbPath?: string;
 	k?: number; // default: 8
 }
@@ -1280,7 +1280,7 @@ export class SettingsManager {
 			budgetTokens: this.settings.contextEngine?.budgetTokens ?? 4000,
 			timeoutMs: this.settings.contextEngine?.timeoutMs ?? 1000,
 			repoIndex: {
-				command: this.settings.contextEngine?.repoIndex?.command ?? "repo-index",
+				command: this.settings.contextEngine?.repoIndex?.command ?? "codescry",
 				dbPath: this.settings.contextEngine?.repoIndex?.dbPath,
 				k: this.settings.contextEngine?.repoIndex?.k ?? 8,
 			},

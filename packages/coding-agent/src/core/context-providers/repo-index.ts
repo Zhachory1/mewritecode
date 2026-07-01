@@ -93,14 +93,14 @@ function runJsonCommand(command: string, args: string[], signal: AbortSignal | u
 		};
 		const onAbort = () => {
 			child.kill();
-			finish(() => reject(new RepoIndexContextError("timeout", "repo-index query aborted")));
+			finish(() => reject(new RepoIndexContextError("timeout", "codescry query aborted")));
 		};
 		signal?.addEventListener("abort", onAbort, { once: true });
 		child.stdout.on("data", (chunk) => {
 			stdout += String(chunk);
 			if (stdout.length > 2_000_000) {
 				child.kill();
-				finish(() => reject(new RepoIndexContextError("malformed-result", "repo-index output exceeded cap")));
+				finish(() => reject(new RepoIndexContextError("malformed-result", "codescry output exceeded cap")));
 			}
 		});
 		child.stderr.on("data", (chunk) => {
@@ -118,13 +118,13 @@ function runJsonCommand(command: string, args: string[], signal: AbortSignal | u
 		child.on("close", (code) => {
 			finish(() => {
 				if (code !== 0) {
-					reject(new RepoIndexContextError("adapter-error", stderr.trim() || `repo-index exited ${code}`));
+					reject(new RepoIndexContextError("adapter-error", stderr.trim() || `codescry exited ${code}`));
 					return;
 				}
 				try {
 					resolvePromise(JSON.parse(stdout));
 				} catch {
-					reject(new RepoIndexContextError("schema-mismatch", "repo-index returned non-JSON output"));
+					reject(new RepoIndexContextError("schema-mismatch", "codescry returned non-JSON output"));
 				}
 			});
 		});
@@ -133,10 +133,10 @@ function runJsonCommand(command: string, args: string[], signal: AbortSignal | u
 
 export function mapRepoIndexResult(result: RepoIndexSearchResult): ContextBundle | undefined {
 	if (result.is_stale || result.has_dirty_tracked_files) return undefined;
-	const id = `repo-index:${result.repo}:${result.path}:${result.start_line}-${result.end_line}`;
+	const id = `codescry:${result.repo}:${result.path}:${result.start_line}-${result.end_line}`;
 	return {
 		id,
-		source: "repo-index",
+		source: "codescry",
 		entityType: result.symbol_name ? "symbol" : "code-chunk",
 		title: result.symbol_name ? `${result.symbol_kind ?? "symbol"} ${result.symbol_name}` : result.path,
 		content: result.snippet,
@@ -147,7 +147,7 @@ export function mapRepoIndexResult(result: RepoIndexSearchResult): ContextBundle
 			endLine: result.end_line,
 		},
 		retrievalHandle: {
-			type: "repo-index",
+			type: "codescry",
 			id,
 		},
 		freshness: {
@@ -158,26 +158,25 @@ export function mapRepoIndexResult(result: RepoIndexSearchResult): ContextBundle
 }
 
 export class RepoIndexContextEngine implements ContextEngine {
-	readonly name = "repo-index";
+	readonly name = "codescry";
 	private readonly command: string;
 	private readonly dbPath: string | undefined;
 	private readonly k: number;
 	private readonly cwd: string;
 
 	constructor(options: RepoIndexContextEngineOptions) {
-		this.command = options.command ?? "repo-index";
+		this.command = options.command ?? "codescry";
 		this.dbPath = expandHome(options.dbPath);
 		this.k = options.k ?? 8;
 		this.cwd = options.cwd;
 	}
 
 	async health(): Promise<ContextHealth> {
-		return { enabled: true, provider: "repo-index", ok: true, detail: `command=${this.command}` };
+		return { enabled: true, provider: "codescry", ok: true, detail: `command=${this.command}` };
 	}
 
 	async retrieve(query: ContextQuery): Promise<ContextPack> {
-		if (!query.includeCode)
-			return { bundles: [], sources: { "repo-index": { ok: true, detail: "includeCode=false" } } };
+		if (!query.includeCode) return { bundles: [], sources: { codescry: { ok: true, detail: "includeCode=false" } } };
 		const args: string[] = [];
 		if (this.dbPath) args.push("--db", this.dbPath);
 		args.push(
@@ -190,7 +189,7 @@ export class RepoIndexContextEngine implements ContextEngine {
 		);
 		const raw = await runJsonCommand(this.command, args, query.signal);
 		if (!Array.isArray(raw)) {
-			throw new RepoIndexContextError("schema-mismatch", "repo-index query did not return an array");
+			throw new RepoIndexContextError("schema-mismatch", "codescry query did not return an array");
 		}
 		const valid: RepoIndexSearchResult[] = [];
 		let malformed = 0;
@@ -207,7 +206,7 @@ export class RepoIndexContextEngine implements ContextEngine {
 			valid.push(result);
 		}
 		if (malformed > 0 && valid.length === 0) {
-			throw new RepoIndexContextError("malformed-result", "all repo-index results were malformed");
+			throw new RepoIndexContextError("malformed-result", "all codescry results were malformed");
 		}
 		const bundles = valid.map(mapRepoIndexResult).filter((bundle): bundle is ContextBundle => bundle !== undefined);
 		if (bundles.length === 0 && valid.length > 0) {
@@ -216,7 +215,7 @@ export class RepoIndexContextEngine implements ContextEngine {
 		return {
 			bundles,
 			sources: {
-				"repo-index": {
+				codescry: {
 					ok: true,
 					detail: `results=${raw.length} bundles=${bundles.length} stale=${stale} dirty=${dirty} malformed=${malformed}`,
 				},

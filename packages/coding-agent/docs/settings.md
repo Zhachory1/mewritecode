@@ -143,9 +143,32 @@ The Context Engine is disabled by default. It can inject transient, lower-priori
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `contextEngine.enabled` | boolean | `false` | Enable experimental context retrieval |
-| `contextEngine.provider` | string | `"none"` | Context provider: `"none"`, `"repo-index"`, or `"gbrain"` |
+| `contextEngine.provider` | string | `"none"` | Context provider: `"none"`, `"codescry"`, legacy `"repo-index"`, or `"gbrain"` |
 | `contextEngine.budgetTokens` | number | `4000` | Approximate context budget for retrieved bundles |
 | `contextEngine.timeoutMs` | number | `1000` | Retrieval timeout; failures continue without context |
+
+#### contextEngine.repoIndex / codescry
+
+The code context provider is powered by Codescry (formerly `repo-index-mcp`). Use `contextEngine.provider: "codescry"`. The settings key remains `repoIndex` for now.
+
+```json
+{
+  "contextEngine": {
+    "enabled": true,
+    "provider": "codescry",
+    "repoIndex": {
+      "command": "codescry",
+      "k": 8
+    }
+  }
+}
+```
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `contextEngine.repoIndex.command` | string | `"codescry"` | Codescry executable |
+| `contextEngine.repoIndex.dbPath` | string | - | Optional index database path |
+| `contextEngine.repoIndex.k` | number | `8` | Maximum code results to request |
 
 #### contextEngine.gbrain
 
