@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-07-01
+
 ### Added
 
 - Added a gbrain ContextEngine provider for durable-memory bundles, including `allowAllMemory`, allow/disallow prefix filters, `notes` denied by default, `/context memory status`, and settings docs. The provider uses `gbrain call query`, so gbrain may update its own local diagnostic/read-tracking state while Me Write keeps injected snippets transient.
