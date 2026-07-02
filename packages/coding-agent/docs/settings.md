@@ -173,7 +173,7 @@ The code context provider is powered by Codescry (formerly `repo-index-mcp`). Us
 
 #### contextEngine.qmd
 
-QMD is an experimental local durable-memory provider. QMD searches a local SQLite index, but retrieved snippets may still be sent to the configured model provider as transient Me Write context.
+QMD is the recommended local durable-memory provider. QMD searches a local SQLite index, but retrieved snippets may still be sent to the configured model provider as transient Me Write context.
 
 Before enabling it, install/configure QMD and verify it returns JSON:
 
@@ -206,7 +206,7 @@ M3b uses `qmd query --json --no-rerank` for predictable latency and maps snippet
 
 #### contextEngine.gbrain
 
-The gbrain provider calls `gbrain call query` and lets gbrain update its own local diagnostics/read-tracking state, such as `last_retrieved_at`. gbrain remains supported. Me Write still treats returned snippets as transient context for the active model request.
+The gbrain provider calls `gbrain call query` and lets gbrain update its own local diagnostics/read-tracking state, such as `last_retrieved_at`. gbrain remains supported for existing users, but QMD is the recommended durable-memory provider going forward. Me Write still treats returned snippets as transient context for the active model request.
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
