@@ -143,7 +143,7 @@ The Context Engine is disabled by default. It can inject transient, lower-priori
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `contextEngine.enabled` | boolean | `false` | Enable experimental context retrieval |
-| `contextEngine.provider` | string | `"none"` | Context provider: `"none"`, `"codescry"`, legacy `"repo-index"`, or `"gbrain"` |
+| `contextEngine.provider` | string | `"none"` | Context provider: `"none"`, `"codescry"`, legacy `"repo-index"`, `"gbrain"`, or `"qmd"` |
 | `contextEngine.budgetTokens` | number | `4000` | Approximate context budget for retrieved bundles |
 | `contextEngine.timeoutMs` | number | `1000` | Retrieval timeout; failures continue without context |
 | `contextEngine.compression.enabled` | boolean | `false` | Enable experimental compression contract. M4a has no real Headroom adapter; all real provider bundles remain exact-preserve unless explicitly marked `lossy-ok` by internal code/tests. |
@@ -171,9 +171,42 @@ The code context provider is powered by Codescry (formerly `repo-index-mcp`). Us
 | `contextEngine.repoIndex.dbPath` | string | - | Optional index database path |
 | `contextEngine.repoIndex.k` | number | `8` | Maximum code results to request |
 
+#### contextEngine.qmd
+
+QMD is an experimental local durable-memory provider. QMD searches a local SQLite index, but retrieved snippets may still be sent to the configured model provider as transient Me Write context.
+
+Before enabling it, install/configure QMD and verify it returns JSON:
+
+```bash
+qmd collection list
+qmd query "test" --json -n 1 --no-rerank
+```
+
+```json
+{
+  "contextEngine": {
+    "enabled": true,
+    "provider": "qmd",
+    "qmd": {
+      "command": "qmd",
+      "maxResults": 5,
+      "collections": ["notes", "docs"]
+    }
+  }
+}
+```
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `contextEngine.qmd.command` | string | `"qmd"` | QMD executable |
+| `contextEngine.qmd.maxResults` | number | `5` | Maximum QMD results to request |
+| `contextEngine.qmd.collections` | string[] | `[]` | Optional QMD collection names; passed as repeated `-c` filters |
+
+M3b uses `qmd query --json --no-rerank` for predictable latency and maps snippets only. Use `/context status` or `/context memory status` to inspect current state.
+
 #### contextEngine.gbrain
 
-The gbrain provider calls `gbrain call query` and lets gbrain update its own local diagnostics/read-tracking state, such as `last_retrieved_at`. gbrain does not send telemetry to a remote service; these local writes are expected. Me Write still treats returned snippets as transient context for the active model request.
+The gbrain provider calls `gbrain call query` and lets gbrain update its own local diagnostics/read-tracking state, such as `last_retrieved_at`. gbrain remains supported. Me Write still treats returned snippets as transient context for the active model request.
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|

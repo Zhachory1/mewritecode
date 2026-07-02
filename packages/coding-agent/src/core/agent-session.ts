@@ -42,6 +42,7 @@ import {
 	retrieveContextWithTimeout,
 } from "./context-engine.js";
 import { GbrainContextEngine, GbrainContextError } from "./context-providers/gbrain.js";
+import { QmdContextEngine, QmdContextError } from "./context-providers/qmd.js";
 import { RepoIndexContextEngine, RepoIndexContextError } from "./context-providers/repo-index.js";
 
 const { CheckpointManager } = checkpoints;
@@ -1108,6 +1109,13 @@ export class AgentSession {
 				allowAllMemory: settings.gbrain.allowAllMemory,
 			});
 		}
+		if (settings.provider === "qmd") {
+			return new QmdContextEngine({
+				command: settings.qmd.command,
+				maxResults: settings.qmd.maxResults,
+				collections: settings.qmd.collections,
+			});
+		}
 		return new NoopContextEngine();
 	}
 
@@ -1157,7 +1165,9 @@ export class AgentSession {
 				? { ...EMPTY_CONTEXT_COMPRESSION_STATS, enabled: true, fallbackReason: "no-context-pack" }
 				: EMPTY_CONTEXT_COMPRESSION_STATS;
 			const state =
-				result.error instanceof RepoIndexContextError || result.error instanceof GbrainContextError
+				result.error instanceof RepoIndexContextError ||
+				result.error instanceof GbrainContextError ||
+				result.error instanceof QmdContextError
 					? result.error.state
 					: result.reason;
 			const detail = redactContextDetail(result.error?.message ?? state ?? "context unavailable");
@@ -1219,6 +1229,13 @@ export class AgentSession {
 				`Compression last turn: attempted=${compression.attempted} compressed=${compression.compressed} skippedExact=${compression.skippedExact} failed=${compression.failed}`,
 			);
 			if (compression.fallbackReason) lines.push(`Compression fallback: ${compression.fallbackReason}`);
+		}
+		if (settings.provider === "qmd") {
+			const collections = settings.qmd.collections.length > 0 ? settings.qmd.collections.join(",") : "<default>";
+			lines.push(`QMD command: ${settings.qmd.command}`);
+			lines.push(`QMD collections: ${collections}`);
+			lines.push("QMD mode: query --no-rerank");
+			lines.push("QMD snippets are transient context and may be sent to the configured model provider.");
 		}
 		if (settings.provider === "gbrain") {
 			const allow =

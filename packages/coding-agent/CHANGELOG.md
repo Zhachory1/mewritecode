@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added an experimental QMD ContextEngine provider for local durable-memory snippets, using `qmd query --json --no-rerank` with collection filters and transient Me Write context injection.
+
 ## [1.0.4] - 2026-07-01
 
 ### Added

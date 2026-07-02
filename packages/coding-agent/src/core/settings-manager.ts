@@ -69,6 +69,12 @@ export interface GbrainContextSettings {
 	allowAllMemory?: boolean;
 }
 
+export interface QmdContextSettings {
+	command?: string; // default: qmd
+	maxResults?: number; // default: 5
+	collections?: string[];
+}
+
 export interface ContextCompressionSettings {
 	enabled?: boolean; // default: false
 }
@@ -81,6 +87,7 @@ export interface ContextEngineSettings {
 	compression?: ContextCompressionSettings;
 	repoIndex?: RepoIndexContextSettings;
 	gbrain?: GbrainContextSettings;
+	qmd?: QmdContextSettings;
 }
 
 /** First-run onboarding state (WS11). Persisted in the global settings file. */
@@ -1294,6 +1301,7 @@ export class SettingsManager {
 			disallowPrefixes: string[];
 			allowAllMemory: boolean;
 		};
+		qmd: { command: string; maxResults: number; collections: string[] };
 	} {
 		return {
 			enabled: this.settings.contextEngine?.enabled ?? false,
@@ -1315,6 +1323,11 @@ export class SettingsManager {
 				allowedPrefixes: [...(this.settings.contextEngine?.gbrain?.allowedPrefixes ?? [])],
 				disallowPrefixes: [...(this.settings.contextEngine?.gbrain?.disallowPrefixes ?? ["notes"])],
 				allowAllMemory: this.settings.contextEngine?.gbrain?.allowAllMemory ?? true,
+			},
+			qmd: {
+				command: this.settings.contextEngine?.qmd?.command ?? "qmd",
+				maxResults: this.settings.contextEngine?.qmd?.maxResults ?? 5,
+				collections: [...(this.settings.contextEngine?.qmd?.collections ?? [])],
 			},
 		};
 	}
