@@ -68,6 +68,13 @@ import {
 import type { AgentSessionRuntime } from "../../core/agent-session-runtime.js";
 import { type ArchitectModeState, defaultArchitectState } from "../../core/chat-modes/architect.js";
 import { splitOnThen } from "../../core/command-queue.js";
+import {
+	formatContextSetupHelp,
+	formatContextSetupNotice,
+	formatContextSetupStatus,
+	shouldShowContextSetupNotice,
+	validateSetupDir,
+} from "../../core/context-setup.js";
 import { formatSavingsLine, formatSessionEndSummary } from "../../core/cost-formatter.js";
 import {
 	getAllTimeSavingsBytes,
@@ -845,6 +852,12 @@ export class InteractiveMode {
 
 		if (modelFallbackMessage) {
 			this.showWarning(modelFallbackMessage);
+		}
+
+		const setupState = this.settingsManager.getContextSetupSettings();
+		if (shouldShowContextSetupNotice(setupState)) {
+			this.showWarning(formatContextSetupNotice());
+			this.settingsManager.setContextSetupSettings({ hasSeenSetupPrompt: true });
 		}
 
 		// Keyless-activation gate (F1/F3). Runs BEFORE initial messages so a keyless
@@ -2654,6 +2667,12 @@ export class InteractiveMode {
 			if (text === "/context" || text === "/context status" || text === "/context memory status") {
 				this.editor.setText("");
 				this.handleContextSlashCommand();
+				return;
+			}
+			if (text === "/context setup" || text.startsWith("/context setup ")) {
+				const args = text.startsWith("/context setup ") ? text.slice(15).trim() : "";
+				this.editor.setText("");
+				this.handleContextSetupSlashCommand(args);
 				return;
 			}
 			// /btw <question> — side-question (#61). Dispatched BEFORE the
@@ -5135,7 +5154,45 @@ export class InteractiveMode {
 	}
 
 	private handleContextSlashCommand(): void {
-		this.appendSlashOutput(this.session.getContextEngineStatusLines().join("\n"), false);
+		const setupLines = formatContextSetupStatus(this.settingsManager.getContextSetupSettings());
+		this.appendSlashOutput([...setupLines, "", ...this.session.getContextEngineStatusLines()].join("\n"), false);
+	}
+
+	private handleContextSetupSlashCommand(args: string): void {
+		const [subcommand, ...rest] = args.split(/\s+/).filter(Boolean);
+		if (!subcommand) {
+			this.appendSlashOutput(formatContextSetupHelp(this.sessionManager.getCwd()), false);
+			return;
+		}
+		if (subcommand === "skip") {
+			this.settingsManager.setContextSetupSettings({
+				hasSeenSetupPrompt: true,
+				skippedAt: new Date().toISOString(),
+			});
+			this.appendSlashOutput("Context setup skipped. Run /context setup anytime.", false);
+			return;
+		}
+		if (subcommand === "code-dir" || subcommand === "docs-dir") {
+			const value = rest.join(" ");
+			if (!value) {
+				this.appendSlashOutput(`Usage: /context setup ${subcommand} <path>`, true);
+				return;
+			}
+			const validated = validateSetupDir(value, this.sessionManager.getCwd());
+			if (!validated.ok) {
+				this.appendSlashOutput(validated.error, true);
+				return;
+			}
+			if (subcommand === "code-dir") {
+				this.settingsManager.setContextSetupSettings({ hasSeenSetupPrompt: true, mainCodeDir: validated.path });
+				this.appendSlashOutput(`Saved main code directory: ${validated.path}`, false);
+				return;
+			}
+			this.settingsManager.setContextSetupSettings({ hasSeenSetupPrompt: true, mainDocsDir: validated.path });
+			this.appendSlashOutput(`Saved main docs directory: ${validated.path}`, false);
+			return;
+		}
+		this.appendSlashOutput(`Unknown /context setup subcommand: ${subcommand}. Try /context setup.`, true);
 	}
 
 	/** Issue #5: show or clear the /then-chained command queue. */

@@ -88,11 +88,19 @@ export interface ContextCompressionSettings {
 	headroom?: HeadroomCompressionSettings;
 }
 
+export interface ContextSetupSettings {
+	hasSeenSetupPrompt?: boolean;
+	skippedAt?: string;
+	mainCodeDir?: string;
+	mainDocsDir?: string;
+}
+
 export interface ContextEngineSettings {
 	enabled?: boolean; // default: false
 	provider?: string; // default: "none"
 	budgetTokens?: number; // default: 4000
 	timeoutMs?: number; // default: 1000
+	setup?: ContextSetupSettings;
 	compression?: ContextCompressionSettings;
 	repoIndex?: RepoIndexContextSettings;
 	gbrain?: GbrainContextSettings;
@@ -1292,6 +1300,30 @@ export class SettingsManager {
 		}
 		this.globalSettings.rtk.enabled = enabled;
 		this.markModified("rtk", "enabled");
+		this.save();
+	}
+
+	getContextSetupSettings(): {
+		hasSeenSetupPrompt: boolean;
+		skippedAt?: string;
+		mainCodeDir?: string;
+		mainDocsDir?: string;
+	} {
+		return {
+			hasSeenSetupPrompt: this.settings.contextEngine?.setup?.hasSeenSetupPrompt ?? false,
+			skippedAt: this.settings.contextEngine?.setup?.skippedAt,
+			mainCodeDir: this.settings.contextEngine?.setup?.mainCodeDir,
+			mainDocsDir: this.settings.contextEngine?.setup?.mainDocsDir,
+		};
+	}
+
+	setContextSetupSettings(setup: Partial<ContextSetupSettings>): void {
+		if (!this.globalSettings.contextEngine) this.globalSettings.contextEngine = {};
+		this.globalSettings.contextEngine.setup = {
+			...this.settings.contextEngine?.setup,
+			...setup,
+		};
+		this.markModified("contextEngine", "setup");
 		this.save();
 	}
 

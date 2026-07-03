@@ -144,6 +144,9 @@ The Context Engine is disabled by default. It can inject transient, lower-priori
 |---------|------|---------|-------------|
 | `contextEngine.enabled` | boolean | `false` | Enable experimental context retrieval |
 | `contextEngine.provider` | string | `"none"` | Context provider: `"none"`, `"codescry"`, legacy `"repo-index"`, `"gbrain"`, or `"qmd"` |
+| `contextEngine.setup.hasSeenSetupPrompt` | boolean | `false` | Whether the one-time optional context setup notice has been shown or skipped |
+| `contextEngine.setup.mainCodeDir` | string | - | Main code folder for Codescry/code context setup |
+| `contextEngine.setup.mainDocsDir` | string | - | Main docs folder for QMD/durable-memory setup |
 | `contextEngine.budgetTokens` | number | `4000` | Approximate context budget for retrieved bundles |
 | `contextEngine.timeoutMs` | number | `1000` | Retrieval timeout; failures continue without context |
 | `contextEngine.compression.enabled` | boolean | `false` | Enable experimental compression contract. All real provider bundles remain exact-preserve unless explicitly marked `lossy-ok`. |

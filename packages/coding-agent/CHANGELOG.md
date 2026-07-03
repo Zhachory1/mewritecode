@@ -10,6 +10,7 @@
 
 - Added a QMD ContextEngine provider as the recommended local durable-memory path, using `qmd query --json --no-rerank` with collection filters and transient Me Write context injection.
 - Added an experimental local Headroom compressor behind the ContextEngine compression contract for explicitly `lossy-ok` bundles, configured via a local Python executable and disabled by default.
+- Added optional context setup state and `/context setup` commands for saving main code/docs directories used by Codescry and QMD setup.
 
 ## [1.0.4] - 2026-07-01
 
