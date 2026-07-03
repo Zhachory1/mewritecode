@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import type { ContextBundle, ContextEngine, ContextPack } from "../src/core/context-engine.js";
 import { ContextStackEngine, mergeAndBudgetBundles } from "../src/core/context-providers/stack.js";
 
-function bundle(id: string, source: string, score: number | undefined, content = "content"): ContextBundle {
+function bundle(
+	id: string,
+	source: string,
+	score: number | undefined,
+	content = "content",
+	overrides: Partial<ContextBundle> = {},
+): ContextBundle {
 	return {
 		id,
 		source,
@@ -11,6 +17,7 @@ function bundle(id: string, source: string, score: number | undefined, content =
 		content,
 		score,
 		provenance: { path: `${source}/${id}` },
+		...overrides,
 	};
 }
 
@@ -83,6 +90,34 @@ describe("ContextStackEngine", () => {
 		expect(result.bundles.map((b) => b.id)).toEqual(["code", "qmd-scored", "qmd-missing"]);
 	});
 
+	it("dedupes by retrieval handle and drops lower-ranked duplicate", () => {
+		const result = mergeAndBudgetBundles(
+			[
+				bundle("low", "qmd", 0.1, "x".repeat(100), { retrievalHandle: { type: "qmd", id: "same" } }),
+				bundle("high", "qmd", 0.9, "x".repeat(100), { retrievalHandle: { type: "qmd", id: "same" } }),
+			],
+			1000,
+		);
+
+		expect(result.bundles.map((b) => b.id)).toEqual(["high"]);
+		expect(result.deduped).toBe(1);
+		expect(result.droppedByReason).toEqual({ duplicate: 1 });
+	});
+
+	it("dedupes by path and line range", () => {
+		const shared = { path: "src/auth.ts", startLine: 1, endLine: 10 };
+		const result = mergeAndBudgetBundles(
+			[
+				bundle("a", "codescry", 0.2, "x".repeat(100), { provenance: shared }),
+				bundle("b", "codescry", 0.8, "x".repeat(100), { provenance: shared }),
+			],
+			1000,
+		);
+
+		expect(result.bundles.map((b) => b.id)).toEqual(["b"]);
+		expect(result.droppedByReason).toEqual({ duplicate: 1 });
+	});
+
 	it("returns both provider bundles when both succeed", async () => {
 		const stack = new ContextStackEngine({
 			childTimeoutMs: 100,
@@ -139,6 +174,7 @@ describe("ContextStackEngine", () => {
 		expect(result.sources.codescry.ok).toBe(true);
 		expect(result.sources.qmd.ok).toBe(false);
 		expect(result.sources.qmd.detail).toContain("state=timeout");
+		expect(result.sources.stack.detail).toContain("droppedReasons=none");
 	});
 
 	it("slow codescry does not suppress fast qmd", async () => {

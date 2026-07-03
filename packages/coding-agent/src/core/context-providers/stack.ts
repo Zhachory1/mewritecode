@@ -42,19 +42,45 @@ export interface BudgetedContextResult {
 	bundles: ContextBundle[];
 	usedTokens: number;
 	returned: number;
+	deduped: number;
 	includedBySource: Record<string, number>;
 	droppedBySource: Record<string, number>;
+	droppedByReason: Record<string, number>;
+}
+
+function dedupeKey(bundle: ContextBundle): string {
+	if (bundle.retrievalHandle) return `handle:${bundle.retrievalHandle.type}:${bundle.retrievalHandle.id}`;
+	const path = bundle.provenance.path;
+	if (path) return `path:${path}:${bundle.provenance.startLine ?? ""}:${bundle.provenance.endLine ?? ""}`;
+	return `id:${bundle.source}:${bundle.id}`;
+}
+
+function dedupeBundles(bundles: ContextBundle[]): { bundles: ContextBundle[]; dropped: ContextBundle[] } {
+	const byKey = new Map<string, ContextBundle>();
+	const dropped: ContextBundle[] = [];
+	for (const bundle of [...bundles].sort(compareBundles)) {
+		const key = dedupeKey(bundle);
+		if (byKey.has(key)) {
+			dropped.push(bundle);
+			continue;
+		}
+		byKey.set(key, bundle);
+	}
+	return { bundles: Array.from(byKey.values()), dropped };
 }
 
 export function mergeAndBudgetBundles(bundles: ContextBundle[], budgetTokens: number): BudgetedContextResult {
 	const returned = bundles.length;
+	const deduped = dedupeBundles(bundles);
+	const candidateBundles = deduped.bundles;
 	const included: ContextBundle[] = [];
 	const includedIds = new Set<string>();
 	let usedTokens = 0;
 	const includedBySource: Record<string, number> = {};
 	const droppedBySource: Record<string, number> = {};
+	const droppedByReason: Record<string, number> = {};
 	const sortedBySource = new Map<string, ContextBundle[]>();
-	for (const bundle of bundles) {
+	for (const bundle of candidateBundles) {
 		const group = sortedBySource.get(bundle.source) ?? [];
 		group.push(bundle);
 		sortedBySource.set(bundle.source, group);
@@ -62,6 +88,12 @@ export function mergeAndBudgetBundles(bundles: ContextBundle[], budgetTokens: nu
 	for (const group of sortedBySource.values()) {
 		group.sort(compareBundles);
 	}
+
+	const markDrop = (bundle: ContextBundle, reason: string) => {
+		droppedBySource[bundle.source] = (droppedBySource[bundle.source] ?? 0) + 1;
+		droppedByReason[reason] = (droppedByReason[reason] ?? 0) + 1;
+	};
+	for (const bundle of deduped.dropped) markDrop(bundle, "duplicate");
 
 	const tryInclude = (bundle: ContextBundle, force = false) => {
 		if (includedIds.has(bundle.id)) return false;
@@ -79,19 +111,27 @@ export function mergeAndBudgetBundles(bundles: ContextBundle[], budgetTokens: nu
 			const first = sortedBySource.get(source)?.[0];
 			if (first) tryInclude(first);
 		}
-		const remaining = bundles.filter((bundle) => !includedIds.has(bundle.id)).sort(compareBundles);
+		const remaining = candidateBundles.filter((bundle) => !includedIds.has(bundle.id)).sort(compareBundles);
 		for (const bundle of remaining) {
 			tryInclude(bundle);
 		}
-		if (included.length === 0 && bundles.length > 0) {
-			tryInclude([...bundles].sort(compareBundles)[0], true);
+		if (included.length === 0 && candidateBundles.length > 0) {
+			tryInclude([...candidateBundles].sort(compareBundles)[0], true);
 		}
 	}
 
-	for (const bundle of bundles) {
-		if (!includedIds.has(bundle.id)) droppedBySource[bundle.source] = (droppedBySource[bundle.source] ?? 0) + 1;
+	for (const bundle of candidateBundles) {
+		if (!includedIds.has(bundle.id)) markDrop(bundle, "budget");
 	}
-	return { bundles: included, usedTokens, returned, includedBySource, droppedBySource };
+	return {
+		bundles: included,
+		usedTokens,
+		returned,
+		deduped: deduped.dropped.length,
+		includedBySource,
+		droppedBySource,
+		droppedByReason,
+	};
 }
 
 export class ContextStackEngine implements ContextEngine {
@@ -121,7 +161,11 @@ export class ContextStackEngine implements ContextEngine {
 		}
 		sources.stack = {
 			ok: true,
-			detail: `providers=${this.options.children.length} returned=${budgeted.returned} included=${budgeted.bundles.length} dropped=${Object.values(budgeted.droppedBySource).reduce((sum, n) => sum + n, 0)} budgetTokens=${query.budgetTokens} usedTokens=${budgeted.usedTokens}`,
+			detail: `providers=${this.options.children.length} returned=${budgeted.returned} included=${budgeted.bundles.length} dropped=${Object.values(budgeted.droppedBySource).reduce((sum, n) => sum + n, 0)} deduped=${budgeted.deduped} droppedReasons=${
+				Object.entries(budgeted.droppedByReason)
+					.map(([reason, count]) => `${reason}:${count}`)
+					.join(",") || "none"
+			} budgetTokens=${query.budgetTokens} usedTokens=${budgeted.usedTokens}`,
 		};
 		return { bundles: budgeted.bundles, sources };
 	}

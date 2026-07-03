@@ -13,7 +13,7 @@
 - Added a QMD ContextEngine provider as the recommended local durable-memory path, using `qmd query --json --no-rerank` with collection filters and transient Me Write context injection.
 - Added an experimental local Headroom compressor behind the ContextEngine compression contract for explicitly `lossy-ok` bundles, configured via a local Python executable and disabled by default.
 - Added optional context setup state and `/context setup` commands for saving main code/docs directories used by Codescry and QMD setup.
-- Added experimental `provider: "stack"` mode that fans out to Codescry and QMD with per-child deadlines and source-aware budget merging.
+- Added experimental `provider: "stack"` mode that fans out to Codescry and QMD with per-child deadlines, source-aware budget merging, deterministic duplicate removal, and included/dropped reason counts.
 
 ## [1.0.4] - 2026-07-01
 
