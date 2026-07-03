@@ -143,7 +143,7 @@ The Context Engine is disabled by default. It can inject transient, lower-priori
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `contextEngine.enabled` | boolean | `false` | Enable experimental context retrieval |
-| `contextEngine.provider` | string | `"none"` | Context provider: `"none"`, `"codescry"`, legacy `"repo-index"`, `"gbrain"`, or `"qmd"` |
+| `contextEngine.provider` | string | `"none"` | Context provider: `"none"`, `"codescry"`, legacy `"repo-index"`, `"gbrain"`, `"qmd"`, or experimental `"stack"` |
 | `contextEngine.setup.hasSeenSetupPrompt` | boolean | `false` | Whether the one-time optional context setup notice has been shown or skipped |
 | `contextEngine.setup.mainCodeDir` | string | - | Main code folder for Codescry/code context setup |
 | `contextEngine.setup.mainDocsDir` | string | - | Main docs folder for QMD/durable-memory setup |
@@ -176,6 +176,24 @@ Headroom compression is experimental and disabled by default. It shells out to l
 ```
 
 M4b only sends bundles explicitly marked `lossy-ok`; current real providers keep exact-preserve defaults.
+
+#### contextEngine.provider: stack
+
+`provider: "stack"` is an experimental fanout mode. It runs Codescry and QMD in parallel, applies per-provider deadlines, and merges results under `contextEngine.budgetTokens`.
+
+```json
+{
+  "contextEngine": {
+    "enabled": true,
+    "provider": "stack",
+    "budgetTokens": 4000,
+    "repoIndex": { "command": "codescry", "k": 8 },
+    "qmd": { "command": "qmd", "maxResults": 5, "collections": ["docs"] }
+  }
+}
+```
+
+M6a has no generic provider registry. `stack` means exactly Codescry + QMD.
 
 #### contextEngine.repoIndex / codescry
 

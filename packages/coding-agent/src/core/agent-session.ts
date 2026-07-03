@@ -44,6 +44,7 @@ import {
 import { GbrainContextEngine, GbrainContextError } from "./context-providers/gbrain.js";
 import { QmdContextEngine, QmdContextError } from "./context-providers/qmd.js";
 import { RepoIndexContextEngine, RepoIndexContextError } from "./context-providers/repo-index.js";
+import { ContextStackEngine } from "./context-providers/stack.js";
 
 const { CheckpointManager } = checkpoints;
 type CheckpointManagerInstance = InstanceType<typeof CheckpointManager>;
@@ -1115,6 +1116,34 @@ export class AgentSession {
 				command: settings.qmd.command,
 				maxResults: settings.qmd.maxResults,
 				collections: settings.qmd.collections,
+			});
+		}
+		if (settings.provider === "stack") {
+			return new ContextStackEngine({
+				childTimeoutMs: Math.max(100, Math.floor(settings.timeoutMs / 2)),
+				children: [
+					{
+						name: "codescry",
+						engine: new RepoIndexContextEngine({
+							cwd: this._cwd,
+							command: settings.repoIndex.command,
+							dbPath: settings.repoIndex.dbPath,
+							k: settings.repoIndex.k,
+						}),
+						includeCode: true,
+						includeMemory: false,
+					},
+					{
+						name: "qmd",
+						engine: new QmdContextEngine({
+							command: settings.qmd.command,
+							maxResults: settings.qmd.maxResults,
+							collections: settings.qmd.collections,
+						}),
+						includeCode: false,
+						includeMemory: true,
+					},
+				],
 			});
 		}
 		return new NoopContextEngine();
