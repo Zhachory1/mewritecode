@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-07-03
+
 ### Added
 
 - Added a QMD ContextEngine provider as the recommended local durable-memory path, using `qmd query --json --no-rerank` with collection filters and transient Me Write context injection.
