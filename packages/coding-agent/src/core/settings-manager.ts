@@ -75,8 +75,17 @@ export interface QmdContextSettings {
 	collections?: string[];
 }
 
+export interface HeadroomCompressionSettings {
+	enabled?: boolean; // default: false
+	python?: string;
+	timeoutMs?: number; // default: 500
+	maxInputBytes?: number; // default: 65536
+	maxOutputBytes?: number; // default: 131072
+}
+
 export interface ContextCompressionSettings {
 	enabled?: boolean; // default: false
+	headroom?: HeadroomCompressionSettings;
 }
 
 export interface ContextEngineSettings {
@@ -1291,7 +1300,16 @@ export class SettingsManager {
 		provider: string;
 		budgetTokens: number;
 		timeoutMs: number;
-		compression: { enabled: boolean };
+		compression: {
+			enabled: boolean;
+			headroom: {
+				enabled: boolean;
+				python?: string;
+				timeoutMs: number;
+				maxInputBytes: number;
+				maxOutputBytes: number;
+			};
+		};
 		repoIndex: { command: string; dbPath?: string; k: number };
 		gbrain: {
 			command: string;
@@ -1310,6 +1328,13 @@ export class SettingsManager {
 			timeoutMs: this.settings.contextEngine?.timeoutMs ?? 1000,
 			compression: {
 				enabled: this.settings.contextEngine?.compression?.enabled ?? false,
+				headroom: {
+					enabled: this.settings.contextEngine?.compression?.headroom?.enabled ?? false,
+					python: this.settings.contextEngine?.compression?.headroom?.python,
+					timeoutMs: this.settings.contextEngine?.compression?.headroom?.timeoutMs ?? 500,
+					maxInputBytes: this.settings.contextEngine?.compression?.headroom?.maxInputBytes ?? 64 * 1024,
+					maxOutputBytes: this.settings.contextEngine?.compression?.headroom?.maxOutputBytes ?? 128 * 1024,
+				},
 			},
 			repoIndex: {
 				command: this.settings.contextEngine?.repoIndex?.command ?? "codescry",

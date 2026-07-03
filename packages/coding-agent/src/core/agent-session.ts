@@ -77,6 +77,7 @@ import {
 	prepareCompaction,
 	shouldCompact,
 } from "./compaction/index.js";
+import { createHeadroomCompressor } from "./context-headroom.js";
 import { DEFAULT_THINKING_LEVEL } from "./defaults.js";
 import { NoUsableAuthError } from "./errors.js";
 import { exportSessionToHtml, type ToolHtmlRenderer } from "./export-html/index.js";
@@ -542,7 +543,7 @@ export class AgentSession {
 		this._systemPromptBranding = config.systemPromptBranding;
 		this._appendSystemPrompt = config.appendSystemPrompt;
 		this._contextEngine = config.contextEngine ?? this._createContextEngine();
-		this._contextCompressor = config.contextCompressor;
+		this._contextCompressor = config.contextCompressor ?? this._createContextCompressor();
 		this._compression = new CompressionPipeline(
 			{
 				getCaveModeMLCompression: () => this.settingsManager.getCaveModeMLCompression(),
@@ -1119,6 +1120,11 @@ export class AgentSession {
 		return new NoopContextEngine();
 	}
 
+	private _createContextCompressor(): ContextCompressor | undefined {
+		const settings = this.settingsManager.getContextEngineSettings();
+		return createHeadroomCompressor(settings.compression.headroom);
+	}
+
 	private _insertContextEvidence(messages: AgentMessage[]): AgentMessage[] {
 		const evidence = this._pendingContextEvidence;
 		if (!evidence) return messages;
@@ -1224,6 +1230,14 @@ export class AgentSession {
 		];
 		const compression = this._contextCompressionLastRun;
 		lines.push(`Compression: ${settings.compression.enabled ? "enabled" : "disabled"}`);
+		if (settings.compression.enabled) {
+			lines.push(
+				`Compression provider: ${settings.compression.headroom.enabled ? "headroom-local" : (this._contextCompressor?.name ?? "none")}`,
+			);
+		}
+		if (settings.compression.headroom.enabled) {
+			lines.push(`Headroom python: ${settings.compression.headroom.python ?? "<unset>"}`);
+		}
 		if (settings.compression.enabled) {
 			lines.push(
 				`Compression last turn: attempted=${compression.attempted} compressed=${compression.compressed} skippedExact=${compression.skippedExact} failed=${compression.failed}`,

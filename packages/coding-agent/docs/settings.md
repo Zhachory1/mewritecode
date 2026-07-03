@@ -146,7 +146,33 @@ The Context Engine is disabled by default. It can inject transient, lower-priori
 | `contextEngine.provider` | string | `"none"` | Context provider: `"none"`, `"codescry"`, legacy `"repo-index"`, `"gbrain"`, or `"qmd"` |
 | `contextEngine.budgetTokens` | number | `4000` | Approximate context budget for retrieved bundles |
 | `contextEngine.timeoutMs` | number | `1000` | Retrieval timeout; failures continue without context |
-| `contextEngine.compression.enabled` | boolean | `false` | Enable experimental compression contract. M4a has no real Headroom adapter; all real provider bundles remain exact-preserve unless explicitly marked `lossy-ok` by internal code/tests. |
+| `contextEngine.compression.enabled` | boolean | `false` | Enable experimental compression contract. All real provider bundles remain exact-preserve unless explicitly marked `lossy-ok`. |
+| `contextEngine.compression.headroom.enabled` | boolean | `false` | Enable experimental local Headroom compressor |
+| `contextEngine.compression.headroom.python` | string | - | Python executable with `headroom` installed |
+| `contextEngine.compression.headroom.timeoutMs` | number | `500` | Per-bundle Headroom timeout |
+| `contextEngine.compression.headroom.maxInputBytes` | number | `65536` | Max bytes sent to Headroom per bundle |
+| `contextEngine.compression.headroom.maxOutputBytes` | number | `131072` | Max Headroom stdout bytes |
+
+#### contextEngine.compression.headroom
+
+Headroom compression is experimental and disabled by default. It shells out to local Python code that you configure. Use only trusted local Headroom installs. Me Write does not use the Headroom proxy or MCP server.
+
+```json
+{
+  "contextEngine": {
+    "compression": {
+      "enabled": true,
+      "headroom": {
+        "enabled": true,
+        "python": "/tmp/headroom-phase1/bin/python",
+        "timeoutMs": 500
+      }
+    }
+  }
+}
+```
+
+M4b only sends bundles explicitly marked `lossy-ok`; current real providers keep exact-preserve defaults.
 
 #### contextEngine.repoIndex / codescry
 
