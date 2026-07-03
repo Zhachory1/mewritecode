@@ -249,7 +249,7 @@ qmd query "test" --json -n 1 --no-rerank
 | `contextEngine.qmd.maxResults` | number | `5` | Maximum QMD results to request |
 | `contextEngine.qmd.collections` | string[] | `[]` | Optional QMD collection names; passed as repeated `-c` filters |
 
-M3b uses `qmd query --json --no-rerank` for predictable latency and maps snippets only. Use `/context status` or `/context memory status` to inspect current state.
+M3b uses `qmd query --json --no-rerank` for predictable latency and maps snippets only. Use `/context status`, `/context doctor`, or `/context memory status` to inspect current state. Use `/context learn --preview` to preview learnable session context; save durable facts explicitly with `/memory save <fact>`.
 
 #### contextEngine.gbrain
 

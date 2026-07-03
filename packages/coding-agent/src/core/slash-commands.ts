@@ -174,7 +174,7 @@ export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 	{
 		name: "context",
 		description:
-			"Show and configure optional context setup. Usage: /context status, /context setup, or /context memory status.",
+			"Show/configure optional context. Usage: /context status, /context doctor, /context setup, /context learn --preview.",
 		wired: true,
 	},
 	{

@@ -68,6 +68,7 @@ import {
 import type { AgentSessionRuntime } from "../../core/agent-session-runtime.js";
 import { type ArchitectModeState, defaultArchitectState } from "../../core/chat-modes/architect.js";
 import { splitOnThen } from "../../core/command-queue.js";
+import { buildContextLearnPreview } from "../../core/context-learn.js";
 import {
 	formatContextSetupHelp,
 	formatContextSetupNotice,
@@ -2664,9 +2665,19 @@ export class InteractiveMode {
 				this.handleQueueSlashCommand(args);
 				return;
 			}
-			if (text === "/context" || text === "/context status" || text === "/context memory status") {
+			if (
+				text === "/context" ||
+				text === "/context status" ||
+				text === "/context memory status" ||
+				text === "/context doctor"
+			) {
 				this.editor.setText("");
 				this.handleContextSlashCommand();
+				return;
+			}
+			if (text === "/context learn" || text === "/context learn --preview") {
+				this.editor.setText("");
+				this.handleContextLearnSlashCommand();
 				return;
 			}
 			if (text === "/context setup" || text.startsWith("/context setup ")) {
@@ -5156,6 +5167,17 @@ export class InteractiveMode {
 	private handleContextSlashCommand(): void {
 		const setupLines = formatContextSetupStatus(this.settingsManager.getContextSetupSettings());
 		this.appendSlashOutput([...setupLines, "", ...this.session.getContextEngineStatusLines()].join("\n"), false);
+	}
+
+	private handleContextLearnSlashCommand(): void {
+		this.appendSlashOutput(
+			buildContextLearnPreview({
+				lastAssistantText: this.session.getLastAssistantText(),
+				sessionId: this.session.sessionId,
+				cwd: this.sessionManager.getCwd(),
+			}),
+			false,
+		);
 	}
 
 	private handleContextSetupSlashCommand(args: string): void {

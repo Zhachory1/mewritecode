@@ -16,6 +16,7 @@
 - Added an experimental local Headroom compressor behind the ContextEngine compression contract for explicitly `lossy-ok` bundles, configured via a local Python executable and disabled by default.
 - Added optional context setup state and `/context setup` commands for saving main code/docs directories used by Codescry and QMD setup.
 - Added experimental `provider: "stack"` mode that fans out to Codescry and QMD with per-child deadlines, source-aware budget merging, deterministic duplicate removal, and included/dropped reason counts.
+- Added `/context doctor` as a status alias and `/context learn --preview` for preview-only durable-memory guidance that points users to explicit `/memory save`.
 
 ## [1.0.4] - 2026-07-01
 
