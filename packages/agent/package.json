@@ -1,6 +1,6 @@
 {
 	"name": "@zhachory1/mewrite-agent",
-	"version": "1.0.9",
+	"version": "1.0.10",
 	"description": "General-purpose agent with transport abstraction, state management, and attachment support",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -17,7 +17,7 @@
 		"prepublishOnly": "npm run clean && npm run build"
 	},
 	"dependencies": {
-		"@zhachory1/mewrite-ai": "^1.0.9"
+		"@zhachory1/mewrite-ai": "^1.0.10"
 	},
 	"optionalDependencies": {
 		"onnxruntime-node": "^1.20.0",
