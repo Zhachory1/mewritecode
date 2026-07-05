@@ -1,28 +1,28 @@
 class Mewrite < Formula
   desc "Me Write Code terminal coding agent"
   homepage "https://github.com/Zhachory1/mewritecode"
-  version "1.0.9"
+  version "1.0.10"
   license "MIT"
 
   on_macos do
     on_arm do
       url "https://github.com/Zhachory1/mewritecode/releases/download/v#{version}/mewrite-darwin-arm64.tar.gz"
-      sha256 "737bb91fdac61a478821763b5c75aa4bf227f86ac538f34b46ff66e252e088ac"
+      sha256 "fd3e868321474b53897a5826ad79706ef530b3c46652267790e7dc6925f941f9"
     end
     on_intel do
       url "https://github.com/Zhachory1/mewritecode/releases/download/v#{version}/mewrite-darwin-x64.tar.gz"
-      sha256 "9fe0ab1e1a3ab518dc5d8a8e87013b453330cb168ac3f0f7240f12fd66574d1a"
+      sha256 "fe35d040dd553efcb111e16b2011047ea3495a1b30c6b44fe43491bdf997d1a9"
     end
   end
 
   on_linux do
     on_arm do
       url "https://github.com/Zhachory1/mewritecode/releases/download/v#{version}/mewrite-linux-arm64.tar.gz"
-      sha256 "8cfcad65288c03699886be0ca22a93a80218d9d3b4d65e6c3e0cd256e0cf65c1"
+      sha256 "cb08443a946630ba4c1dc47c3cda7c74eb0245b9d249dbf18741f35aa15df26d"
     end
     on_intel do
       url "https://github.com/Zhachory1/mewritecode/releases/download/v#{version}/mewrite-linux-x64.tar.gz"
-      sha256 "92f0335c95b441244494a38a0f874db3ce2e628b72c907392a825814547c0f59"
+      sha256 "f3661cbc628ea66002d837678af0382a5518d3de5b36fa0df14030a30d8bbe06"
     end
   end
 
