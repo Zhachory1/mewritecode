@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added advanced opt-in `contextEngine.provider: "remote"` support for read-only team context endpoints, with HTTPS/token checks, constrained/redacted query payloads, advisory requested scopes, schema/cap validation, fail-open status, and circuit-open skipping after repeated failures.
+
 ## [1.0.9] - 2026-07-03
 
 ## [1.0.8] - 2026-07-03
