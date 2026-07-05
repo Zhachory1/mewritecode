@@ -143,7 +143,7 @@ The Context Engine is disabled by default. It can inject transient, lower-priori
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `contextEngine.enabled` | boolean | `false` | Enable experimental context retrieval |
-| `contextEngine.provider` | string | `"none"` | Context provider: `"none"`, `"codescry"`, legacy `"repo-index"`, `"gbrain"`, `"qmd"`, or experimental `"stack"` |
+| `contextEngine.provider` | string | `"none"` | Context provider: `"none"`, `"codescry"`, legacy `"repo-index"`, `"gbrain"`, `"qmd"`, experimental `"stack"`, or advanced `"remote"` |
 | `contextEngine.setup.hasSeenSetupPrompt` | boolean | `false` | Whether the one-time optional context setup notice has been shown or skipped |
 | `contextEngine.setup.mainCodeDir` | string | - | Main code folder for Codescry/code context setup |
 | `contextEngine.setup.mainDocsDir` | string | - | Main docs folder for QMD/durable-memory setup |
@@ -194,6 +194,107 @@ M4b only sends bundles explicitly marked `lossy-ok`; current real providers keep
 ```
 
 M6a has no generic provider registry. `stack` means exactly Codescry + QMD.
+
+#### contextEngine.provider: remote
+
+`provider: "remote"` is an advanced, opt-in team context mode. It calls a team-managed endpoint for read-only context bundles. Remote activation and endpoint/token settings are honored only from the global settings file (`~/.mewrite/agent/settings.json`), not repo-local project settings. Local context providers are not composed with remote mode in M10a: if the remote endpoint fails, Me Write continues without remote context and does not silently fall back to the local stack.
+
+Remote mode sends constrained, best-effort-redacted query text plus selected metadata to the configured endpoint. It does not send hidden/system prompts, full transcripts, tool outputs, environment variables, prompt-template expansions, skill bodies, or full session content. Returned snippets are injected as transient untrusted evidence and may be sent to the configured model provider for that turn.
+
+```json
+{
+  "contextEngine": {
+    "enabled": true,
+    "provider": "remote",
+    "timeoutMs": 1000,
+    "remote": {
+      "endpoint": "https://context.example.com",
+      "tokenEnv": "MEWRITE_CONTEXT_REMOTE_TOKEN",
+      "requestedScope": {
+        "org": "example",
+        "project": "mewritecode"
+      }
+    }
+  }
+}
+```
+
+Set the token in your shell or secret manager, not in settings:
+
+```bash
+export MEWRITE_CONTEXT_REMOTE_TOKEN=...
+```
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `contextEngine.remote.endpoint` | string | - | Team context endpoint base URL. Non-localhost endpoints must use HTTPS. |
+| `contextEngine.remote.tokenEnv` | string | `"MEWRITE_CONTEXT_REMOTE_TOKEN"` | Environment variable containing the bearer token. |
+| `contextEngine.remote.requestedScope` | object | `{}` | Advisory routing scope sent to the server. Server token identity/claims must remain authoritative. |
+| `contextEngine.remote.allowInsecureLocalhost` | boolean | `true` | Allow `http://localhost` or `http://127.0.0.1` for local testing only. |
+| `contextEngine.remote.maxRequestBytes` | number | `65536` | Max JSON request bytes. |
+| `contextEngine.remote.maxResponseBytes` | number | `524288` | Max JSON response bytes. |
+| `contextEngine.remote.maxBundleBytes` | number | `16384` | Max bytes kept from each returned bundle. |
+| `contextEngine.remote.maxBundles` | number | `12` | Max bundles accepted from the endpoint. |
+| `contextEngine.remote.failureThreshold` | number | `2` | Consecutive failures before the endpoint is skipped temporarily. |
+| `contextEngine.remote.failureTtlMs` | number | `30000` | Skip window after repeated failures. |
+
+M10a requires one server endpoint: `POST /v1/context/query`. Health endpoints, production reference server, remote writes, and local+remote composition are deferred.
+
+Request shape:
+
+```json
+{
+  "protocolVersion": 1,
+  "query": {
+    "text": "redacted current request text",
+    "redacted": true,
+    "cwdBasename": "repo",
+    "explicitRefs": ["src/foo.ts"]
+  },
+  "requestedScope": { "org": "example", "project": "repo" },
+  "budget": { "maxBundles": 12, "maxChars": 196608, "timeoutMs": 1000 },
+  "client": { "name": "mewrite-code", "version": "m10a" }
+}
+```
+
+Response shape:
+
+```json
+{
+  "protocolVersion": 1,
+  "requestId": "req-123",
+  "pack": {
+    "bundles": [
+      {
+        "id": "bundle-1",
+        "source": "team-index",
+        "entity": "code-chunk",
+        "title": "auth.ts",
+        "content": "snippet text",
+        "score": 0.9,
+        "provenance": {
+          "provider": "team-index",
+          "path": "src/auth.ts",
+          "lineStart": 10,
+          "lineEnd": 20
+        }
+      }
+    ]
+  }
+}
+```
+
+Server contract:
+
+- Treat remote paths, URIs, commits, and line numbers as server-asserted provenance; Me Write displays them as remote evidence, not verified local files.
+- Treat bearer token identity/claims as authoritative.
+- Treat `requestedScope` as advisory routing metadata only.
+- Return `401`/`403` for unauthorized scopes.
+- Do not log bearer tokens or snippet content.
+- Honor `budget.timeoutMs`, `budget.maxBundles`, and `budget.maxChars`.
+- Return no hidden instructions; Me Write will still treat bundle content as untrusted evidence.
+
+Redacted status categories include `missing-token`, `insecure-endpoint`, `auth-failed`, `rate-limited`, `remote-unavailable`, `schema-mismatch`, `oversize-response`, `timeout`, and `circuit-open`.
 
 #### contextEngine.repoIndex / codescry
 

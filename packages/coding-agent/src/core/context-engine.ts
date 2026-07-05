@@ -7,6 +7,7 @@ export interface ContextQuery {
 	cwd: string;
 	sessionId?: string;
 	budgetTokens: number;
+	timeoutMs?: number;
 	includeCode: boolean;
 	includeMemory: boolean;
 	signal?: AbortSignal;
@@ -233,7 +234,7 @@ export async function retrieveContextWithTimeout(
 }> {
 	const start = Date.now();
 	const controller = new AbortController();
-	const onAbort = () => controller.abort();
+	const onAbort = () => controller.abort("abort");
 	query.signal?.addEventListener("abort", onAbort, { once: true });
 	let settled = false;
 	let timer: ReturnType<typeof setTimeout> | undefined;
@@ -241,7 +242,7 @@ export async function retrieveContextWithTimeout(
 		const timeout = new Promise<never>((_, reject) => {
 			timer = setTimeout(
 				() => {
-					controller.abort();
+					controller.abort("timeout");
 					reject(new Error("context engine timed out"));
 				},
 				Math.max(1, timeoutMs),

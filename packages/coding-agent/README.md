@@ -173,6 +173,7 @@ Main UI regions:
 | `/login`, `/logout` | OAuth auth |
 | `/model` | Switch models |
 | `/settings` | Theme, thinking, delivery, transport, compaction |
+| `/context` | Show optional context status, including advanced remote context when configured |
 | `/resume` | Pick prior session |
 | `/new` | New session |
 | `/tree` | Browse + branch session history |

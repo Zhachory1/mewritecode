@@ -75,6 +75,26 @@ export interface QmdContextSettings {
 	collections?: string[];
 }
 
+export interface RemoteContextRequestedScopeSettings {
+	org?: string;
+	team?: string;
+	project?: string;
+	user?: string;
+}
+
+export interface RemoteContextSettings {
+	endpoint?: string;
+	tokenEnv?: string; // default: MEWRITE_CONTEXT_REMOTE_TOKEN
+	requestedScope?: RemoteContextRequestedScopeSettings;
+	allowInsecureLocalhost?: boolean; // default: true
+	maxRequestBytes?: number; // default: 65536
+	maxResponseBytes?: number; // default: 524288
+	maxBundleBytes?: number; // default: 16384
+	maxBundles?: number; // default: 12
+	failureThreshold?: number; // default: 2
+	failureTtlMs?: number; // default: 30000
+}
+
 export interface HeadroomCompressionSettings {
 	enabled?: boolean; // default: false
 	python?: string;
@@ -105,6 +125,7 @@ export interface ContextEngineSettings {
 	repoIndex?: RepoIndexContextSettings;
 	gbrain?: GbrainContextSettings;
 	qmd?: QmdContextSettings;
+	remote?: RemoteContextSettings;
 }
 
 /** First-run onboarding state (WS11). Persisted in the global settings file. */
@@ -1352,20 +1373,38 @@ export class SettingsManager {
 			allowAllMemory: boolean;
 		};
 		qmd: { command: string; maxResults: number; collections: string[] };
+		remote: {
+			endpoint?: string;
+			tokenEnv: string;
+			requestedScope: RemoteContextRequestedScopeSettings;
+			allowInsecureLocalhost: boolean;
+			maxRequestBytes: number;
+			maxResponseBytes: number;
+			maxBundleBytes: number;
+			maxBundles: number;
+			failureThreshold: number;
+			failureTtlMs: number;
+		};
 	} {
+		const remoteFromGlobal =
+			this.globalSettings.contextEngine?.enabled === true &&
+			this.globalSettings.contextEngine?.provider === "remote";
+		const provider = remoteFromGlobal ? "remote" : (this.settings.contextEngine?.provider ?? "none");
+		const effectiveContextEngine = remoteFromGlobal ? this.globalSettings.contextEngine : this.settings.contextEngine;
+		const remoteSettings = this.globalSettings.contextEngine?.remote;
 		return {
-			enabled: this.settings.contextEngine?.enabled ?? false,
-			provider: this.settings.contextEngine?.provider ?? "none",
-			budgetTokens: this.settings.contextEngine?.budgetTokens ?? 4000,
-			timeoutMs: this.settings.contextEngine?.timeoutMs ?? 1000,
+			enabled: provider === "remote" ? remoteFromGlobal : (this.settings.contextEngine?.enabled ?? false),
+			provider,
+			budgetTokens: effectiveContextEngine?.budgetTokens ?? 4000,
+			timeoutMs: effectiveContextEngine?.timeoutMs ?? 1000,
 			compression: {
-				enabled: this.settings.contextEngine?.compression?.enabled ?? false,
+				enabled: effectiveContextEngine?.compression?.enabled ?? false,
 				headroom: {
-					enabled: this.settings.contextEngine?.compression?.headroom?.enabled ?? false,
-					python: this.settings.contextEngine?.compression?.headroom?.python,
-					timeoutMs: this.settings.contextEngine?.compression?.headroom?.timeoutMs ?? 500,
-					maxInputBytes: this.settings.contextEngine?.compression?.headroom?.maxInputBytes ?? 64 * 1024,
-					maxOutputBytes: this.settings.contextEngine?.compression?.headroom?.maxOutputBytes ?? 128 * 1024,
+					enabled: effectiveContextEngine?.compression?.headroom?.enabled ?? false,
+					python: effectiveContextEngine?.compression?.headroom?.python,
+					timeoutMs: effectiveContextEngine?.compression?.headroom?.timeoutMs ?? 500,
+					maxInputBytes: effectiveContextEngine?.compression?.headroom?.maxInputBytes ?? 64 * 1024,
+					maxOutputBytes: effectiveContextEngine?.compression?.headroom?.maxOutputBytes ?? 128 * 1024,
 				},
 			},
 			repoIndex: {
@@ -1385,6 +1424,18 @@ export class SettingsManager {
 				command: this.settings.contextEngine?.qmd?.command ?? "qmd",
 				maxResults: this.settings.contextEngine?.qmd?.maxResults ?? 5,
 				collections: [...(this.settings.contextEngine?.qmd?.collections ?? [])],
+			},
+			remote: {
+				endpoint: remoteSettings?.endpoint,
+				tokenEnv: remoteSettings?.tokenEnv ?? "MEWRITE_CONTEXT_REMOTE_TOKEN",
+				requestedScope: { ...(remoteSettings?.requestedScope ?? {}) },
+				allowInsecureLocalhost: remoteSettings?.allowInsecureLocalhost ?? true,
+				maxRequestBytes: remoteSettings?.maxRequestBytes ?? 64 * 1024,
+				maxResponseBytes: remoteSettings?.maxResponseBytes ?? 512 * 1024,
+				maxBundleBytes: remoteSettings?.maxBundleBytes ?? 16 * 1024,
+				maxBundles: remoteSettings?.maxBundles ?? 12,
+				failureThreshold: remoteSettings?.failureThreshold ?? 2,
+				failureTtlMs: remoteSettings?.failureTtlMs ?? 30_000,
 			},
 		};
 	}

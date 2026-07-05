@@ -43,6 +43,7 @@ import {
 } from "./context-engine.js";
 import { GbrainContextEngine, GbrainContextError } from "./context-providers/gbrain.js";
 import { QmdContextEngine, QmdContextError } from "./context-providers/qmd.js";
+import { RemoteContextEngine, RemoteContextError, remoteEndpointHost } from "./context-providers/remote.js";
 import { RepoIndexContextEngine, RepoIndexContextError } from "./context-providers/repo-index.js";
 import { ContextStackEngine } from "./context-providers/stack.js";
 
@@ -1118,6 +1119,21 @@ export class AgentSession {
 				collections: settings.qmd.collections,
 			});
 		}
+		if (settings.provider === "remote") {
+			return new RemoteContextEngine({
+				cwd: this._cwd,
+				endpoint: settings.remote.endpoint,
+				tokenEnv: settings.remote.tokenEnv,
+				requestedScope: settings.remote.requestedScope,
+				allowInsecureLocalhost: settings.remote.allowInsecureLocalhost,
+				maxRequestBytes: settings.remote.maxRequestBytes,
+				maxResponseBytes: settings.remote.maxResponseBytes,
+				maxBundleBytes: settings.remote.maxBundleBytes,
+				maxBundles: settings.remote.maxBundles,
+				failureThreshold: settings.remote.failureThreshold,
+				failureTtlMs: settings.remote.failureTtlMs,
+			});
+		}
 		if (settings.provider === "stack") {
 			return new ContextStackEngine({
 				childTimeoutMs: Math.max(100, Math.floor(settings.timeoutMs / 2)),
@@ -1165,7 +1181,11 @@ export class AgentSession {
 		return [...messages, evidence];
 	}
 
-	private async _buildContextEvidence(prompt: string, signal?: AbortSignal): Promise<AgentMessage | undefined> {
+	private async _buildContextEvidence(
+		prompt: string,
+		signal?: AbortSignal,
+		remotePrompt?: string,
+	): Promise<AgentMessage | undefined> {
 		const settings = this.settingsManager.getContextEngineSettings();
 		if (!settings.enabled || settings.provider === "none") {
 			this._contextCompressionLastRun = EMPTY_CONTEXT_COMPRESSION_STATS;
@@ -1183,11 +1203,12 @@ export class AgentSession {
 		const result = await retrieveContextWithTimeout(
 			this._contextEngine,
 			{
-				rawUserPrompt: prompt,
+				rawUserPrompt: settings.provider === "remote" ? (remotePrompt ?? prompt) : prompt,
 				normalizedUserPrompt: prompt.trim(),
 				cwd: this._cwd,
 				sessionId: this.sessionId,
 				budgetTokens: settings.budgetTokens,
+				timeoutMs: settings.timeoutMs,
 				includeCode: true,
 				includeMemory: true,
 				signal,
@@ -1202,7 +1223,8 @@ export class AgentSession {
 			const state =
 				result.error instanceof RepoIndexContextError ||
 				result.error instanceof GbrainContextError ||
-				result.error instanceof QmdContextError
+				result.error instanceof QmdContextError ||
+				result.error instanceof RemoteContextError
 					? result.error.state
 					: result.reason;
 			const detail = redactContextDetail(result.error?.message ?? state ?? "context unavailable");
@@ -1272,6 +1294,20 @@ export class AgentSession {
 				`Compression last turn: attempted=${compression.attempted} compressed=${compression.compressed} skippedExact=${compression.skippedExact} failed=${compression.failed}`,
 			);
 			if (compression.fallbackReason) lines.push(`Compression fallback: ${compression.fallbackReason}`);
+		}
+		if (settings.provider === "remote") {
+			if (!settings.enabled) {
+				lines.push("Remote config ignored: configure provider=remote in ~/.mewrite/agent/settings.json.");
+			}
+			lines.push(`Remote endpoint: ${remoteEndpointHost(settings.remote.endpoint)}`);
+			lines.push(`Remote token env: ${settings.remote.tokenEnv}`);
+			lines.push(`Remote token: ${process.env[settings.remote.tokenEnv] ? "set" : "missing"}`);
+			lines.push(`Remote max bundles: ${settings.remote.maxBundles}`);
+			lines.push(`Remote failure TTL: ${settings.remote.failureTtlMs}ms`);
+			lines.push("Remote mode: remote-only; local stack is not used when provider=remote.");
+			lines.push(
+				"Remote query: constrained/redacted current request text plus selected metadata; no transcripts, tool outputs, env vars, or hidden/system prompts.",
+			);
 		}
 		if (settings.provider === "qmd") {
 			const collections = settings.qmd.collections.length > 0 ? settings.qmd.collections.join(",") : "<default>";
@@ -2003,7 +2039,7 @@ export class AgentSession {
 			);
 		}
 
-		const contextEvidence = await this._buildContextEvidence(expandedText, this.agent.signal);
+		const contextEvidence = await this._buildContextEvidence(expandedText, this.agent.signal, text);
 
 		// Check if we need to compact before sending (catches aborted responses)
 		const lastAssistant = this._findLastAssistantMessage();
