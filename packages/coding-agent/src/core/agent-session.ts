@@ -80,6 +80,7 @@ import {
 	shouldCompact,
 } from "./compaction/index.js";
 import { createHeadroomCompressor } from "./context-headroom.js";
+import { persistAssistantMessageCost } from "./cost-persistence.js";
 import { DEFAULT_THINKING_LEVEL } from "./defaults.js";
 import { NoUsableAuthError } from "./errors.js";
 import { exportSessionToHtml, type ToolHtmlRenderer } from "./export-html/index.js";
@@ -467,6 +468,7 @@ export class AgentSession {
 	// cache-reuse is derived-on-read in getSavings(). Fresh per session (reset =
 	// dispose + recreate, like the activity registry).
 	private _savings = new SavingsTracker();
+	private _costLedgerWarningShown = false;
 
 	// Tool registry for extension getTools/setTools
 	private _toolRegistry: Map<string, AgentTool> = new Map();
@@ -1505,7 +1507,10 @@ export class AgentSession {
 				event.message.role === "toolResult"
 			) {
 				// Regular LLM message - persist as SessionMessageEntry
-				this.sessionManager.appendMessage(event.message);
+				const entryId = this.sessionManager.appendMessage(event.message);
+				if (event.message.role === "assistant") {
+					this._persistAssistantMessageCost(entryId, event.message as AssistantMessage);
+				}
 			}
 			// Other message types (bashExecution, compactionSummary, branchSummary) are persisted elsewhere
 
@@ -1557,6 +1562,30 @@ export class AgentSession {
 
 			this._resolveRetry();
 			await this._checkCompaction(msg);
+		}
+	}
+
+	private _persistAssistantMessageCost(entryId: string, message: AssistantMessage): void {
+		try {
+			persistAssistantMessageCost({
+				id: `${this.sessionId}:${entryId}`,
+				sessionId: this.sessionId,
+				timestampMs: Date.now(),
+				inputTokens: message.usage.input,
+				outputTokens: message.usage.output,
+				cacheCreateTokens: message.usage.cacheWrite,
+				cacheReadTokens: message.usage.cacheRead,
+				dollars: message.usage.cost.total,
+			});
+		} catch (err) {
+			// Cost tracking is advisory; never fail an agent turn because persistence failed.
+			if (!this._costLedgerWarningShown) {
+				this._costLedgerWarningShown = true;
+				const message = err instanceof Error ? err.message : String(err);
+				console.warn(
+					`[mewrite/cost] failed to persist ~/.cave/cost-ledger.jsonl; check disk/permissions. /cost may under-report active sessions: ${message}`,
+				);
+			}
 		}
 	}
 

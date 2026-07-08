@@ -99,7 +99,7 @@ Inside the TUI, `/model` lists available models and `Ctrl+L` cycles your favouri
 
 ## Cost tracking
 
-Me Write Code reports per-message cost inline (e.g. `$0.0042 (cached: $0.0001)`) and writes daily/weekly totals under `~/.mewrite/agent/`. See [Cost Transparency](/reference/tools#cost-transparency).
+Me Write Code reports per-message cost inline (e.g. `$0.0042 (cached: $0.0001)`). `/cost` daily/weekly totals include completed assistant messages from active, unclosed sessions; local cost files live under `~/.cave/`, and existing closed-session totals remain compatible. See [Cost Transparency](/reference/tools#cost-transparency).
 
 ## Troubleshooting
 

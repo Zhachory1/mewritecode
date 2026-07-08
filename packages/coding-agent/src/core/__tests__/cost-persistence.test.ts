@@ -9,12 +9,15 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { todayDateString, weekKeyForDate } from "../cost-formatter.js";
 import {
 	getAllTimeSavingsBytes,
+	getCostLedgerPath,
 	getCostTotalsPath,
 	getThisWeekSavingsBytes,
 	getThisWeekTotal,
 	getTodayTotal,
+	persistAssistantMessageCost,
 	persistSessionCost,
 	persistSessionSavings,
+	readCostLedgerRecords,
 	readCostTotals,
 	type SessionCostDelta,
 } from "../cost-persistence.js";
@@ -39,6 +42,14 @@ describe("getCostTotalsPath", () => {
 	it("includes cost-totals.json filename", () => {
 		const p = getCostTotalsPath("/tmp/test-cave");
 		expect(p).toContain("cost-totals.json");
+		expect(p).toContain("test-cave");
+	});
+});
+
+describe("getCostLedgerPath", () => {
+	it("includes cost-ledger.jsonl filename", () => {
+		const p = getCostLedgerPath("/tmp/test-cave");
+		expect(p).toContain("cost-ledger.jsonl");
 		expect(p).toContain("test-cave");
 	});
 });
@@ -156,6 +167,69 @@ describe("persistSessionCost", () => {
 	});
 });
 
+describe("assistant message cost ledger", () => {
+	it("persists one assistant message record", () => {
+		const ledgerPath = join(tmpDir, "cost-ledger.jsonl");
+		persistAssistantMessageCost(
+			{
+				id: "s1:m1",
+				sessionId: "s1",
+				timestampMs: Date.now(),
+				inputTokens: 1000,
+				outputTokens: 500,
+				cacheCreateTokens: 50,
+				cacheReadTokens: 100,
+				dollars: 0.02,
+			},
+			ledgerPath,
+		);
+
+		const records = readCostLedgerRecords(ledgerPath);
+		expect(records).toHaveLength(1);
+		expect(records[0]).toMatchObject({ id: "s1:m1", sessionId: "s1", input: 1000, output: 500 });
+	});
+
+	it("is idempotent by record id", () => {
+		const ledgerPath = join(tmpDir, "cost-ledger.jsonl");
+		const delta = {
+			id: "s1:m1",
+			sessionId: "s1",
+			timestampMs: Date.now(),
+			inputTokens: 1000,
+			outputTokens: 500,
+			cacheCreateTokens: 0,
+			cacheReadTokens: 0,
+			dollars: 0.02,
+		};
+		persistAssistantMessageCost(delta, ledgerPath);
+		persistAssistantMessageCost(delta, ledgerPath);
+
+		expect(readCostLedgerRecords(ledgerPath)).toHaveLength(1);
+	});
+
+	it("skips malformed ledger lines", () => {
+		const ledgerPath = join(tmpDir, "cost-ledger.jsonl");
+		writeFileSync(
+			ledgerPath,
+			`not-json\n${JSON.stringify({
+				id: "s1:m1",
+				sessionId: "s1",
+				timestamp: new Date().toISOString(),
+				input: 100,
+				output: 50,
+				cacheCreate: 0,
+				cacheRead: 0,
+				dollars: 0.001,
+			})}\n{"id":`,
+			"utf8",
+		);
+
+		const records = readCostLedgerRecords(ledgerPath);
+		expect(records).toHaveLength(1);
+		expect(records[0]?.id).toBe("s1:m1");
+	});
+});
+
 describe("getTodayTotal", () => {
 	it("returns undefined when no data for today", () => {
 		const result = getTodayTotal(totalsPath);
@@ -170,6 +244,72 @@ describe("getTodayTotal", () => {
 		const result = getTodayTotal(totalsPath);
 		expect(result?.input).toBe(500);
 		expect(result?.dollars).toBeCloseTo(0.005);
+	});
+
+	it("includes active assistant-message ledger records", () => {
+		persistAssistantMessageCost(
+			{
+				id: "active:m1",
+				sessionId: "active",
+				timestampMs: Date.now(),
+				inputTokens: 300,
+				outputTokens: 100,
+				cacheCreateTokens: 10,
+				cacheReadTokens: 20,
+				dollars: 0.003,
+			},
+			join(tmpDir, "cost-ledger.jsonl"),
+		);
+
+		const result = getTodayTotal(totalsPath);
+		expect(result?.input).toBe(300);
+		expect(result?.output).toBe(100);
+		expect(result?.cacheCreate).toBe(10);
+		expect(result?.cacheRead).toBe(20);
+		expect(result?.dollars).toBeCloseTo(0.003);
+	});
+
+	it("combines legacy totals with ledger records", () => {
+		persistSessionCost(
+			{ inputTokens: 500, outputTokens: 200, cacheCreateTokens: 0, cacheReadTokens: 0, dollars: 0.005 },
+			totalsPath,
+		);
+		persistAssistantMessageCost(
+			{
+				id: "active:m1",
+				sessionId: "active",
+				timestampMs: Date.now(),
+				inputTokens: 300,
+				outputTokens: 100,
+				cacheCreateTokens: 0,
+				cacheReadTokens: 0,
+				dollars: 0.003,
+			},
+			join(tmpDir, "cost-ledger.jsonl"),
+		);
+
+		const result = getTodayTotal(totalsPath);
+		expect(result?.input).toBe(800);
+		expect(result?.output).toBe(300);
+		expect(result?.dollars).toBeCloseTo(0.008);
+	});
+
+	it("does not attribute old ledger records to today", () => {
+		persistAssistantMessageCost(
+			{
+				id: "old:m1",
+				sessionId: "old",
+				timestampMs: new Date("2000-01-01T12:00:00.000Z").getTime(),
+				inputTokens: 300,
+				outputTokens: 100,
+				cacheCreateTokens: 0,
+				cacheReadTokens: 0,
+				dollars: 0.003,
+			},
+			join(tmpDir, "cost-ledger.jsonl"),
+		);
+
+		expect(getTodayTotal(totalsPath)).toBeUndefined();
 	});
 });
 
@@ -187,6 +327,27 @@ describe("getThisWeekTotal", () => {
 		const result = getThisWeekTotal(totalsPath);
 		expect(result?.input).toBe(3000);
 		expect(result?.cacheCreate).toBe(50);
+	});
+
+	it("includes active assistant-message ledger records", () => {
+		persistAssistantMessageCost(
+			{
+				id: "active:m1",
+				sessionId: "active",
+				timestampMs: Date.now(),
+				inputTokens: 300,
+				outputTokens: 100,
+				cacheCreateTokens: 10,
+				cacheReadTokens: 20,
+				dollars: 0.003,
+			},
+			join(tmpDir, "cost-ledger.jsonl"),
+		);
+
+		const result = getThisWeekTotal(totalsPath);
+		expect(result?.input).toBe(300);
+		expect(result?.cacheCreate).toBe(10);
+		expect(result?.dollars).toBeCloseTo(0.003);
 	});
 });
 

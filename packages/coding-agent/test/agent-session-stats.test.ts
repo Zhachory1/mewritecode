@@ -1,8 +1,12 @@
-import { Agent } from "@zhachory1/mewrite-agent";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { Agent, type AgentEvent } from "@zhachory1/mewrite-agent";
 import { type AssistantMessage, getModel, type Usage } from "@zhachory1/mewrite-ai";
 import { describe, expect, it } from "vitest";
 import { AgentSession } from "../src/core/agent-session.js";
 import { AuthStorage } from "../src/core/auth-storage.js";
+import { getCostLedgerPath, getTodayTotal, readCostLedgerRecords } from "../src/core/cost-persistence.js";
 import { ModelRegistry } from "../src/core/model-registry.js";
 import { SessionManager } from "../src/core/session-manager.js";
 import { SettingsManager } from "../src/core/settings-manager.js";
@@ -10,7 +14,7 @@ import { createTestResourceLoader } from "./utilities.js";
 
 const model = getModel("anthropic", "claude-sonnet-4-5")!;
 
-function createUsage(totalTokens: number): Usage {
+function createUsage(totalTokens: number, dollars = 0): Usage {
 	return {
 		input: totalTokens,
 		output: 0,
@@ -18,23 +22,23 @@ function createUsage(totalTokens: number): Usage {
 		cacheWrite: 0,
 		totalTokens,
 		cost: {
-			input: 0,
+			input: dollars,
 			output: 0,
 			cacheRead: 0,
 			cacheWrite: 0,
-			total: 0,
+			total: dollars,
 		},
 	};
 }
 
-function createAssistantMessage(text: string, totalTokens: number, timestamp: number): AssistantMessage {
+function createAssistantMessage(text: string, totalTokens: number, timestamp: number, dollars = 0): AssistantMessage {
 	return {
 		role: "assistant",
 		content: [{ type: "text", text }],
 		api: model.api,
 		provider: model.provider,
 		model: model.id,
-		usage: createUsage(totalTokens),
+		usage: createUsage(totalTokens, dollars),
 		stopReason: "stop",
 		timestamp,
 	};
@@ -76,6 +80,52 @@ function createSession() {
 function syncAgentMessages(session: AgentSession, sessionManager: SessionManager): void {
 	session.agent.state.messages = sessionManager.buildSessionContext().messages;
 }
+
+function setHomeForTest(home: string): () => void {
+	const previous = process.env.HOME;
+	process.env.HOME = home;
+	return () => {
+		if (previous === undefined) {
+			delete process.env.HOME;
+		} else {
+			process.env.HOME = previous;
+		}
+	};
+}
+
+async function processAgentEvent(session: AgentSession, event: AgentEvent): Promise<void> {
+	const harness = session as unknown as { _processAgentEvent(event: AgentEvent): Promise<void> };
+	await harness._processAgentEvent(event);
+}
+
+describe("AgentSession cost ledger", () => {
+	it("persists assistant message cost on message_end", async () => {
+		const tmpHome = mkdtempSync(join(tmpdir(), "cave-cost-home-"));
+		const restoreHome = setHomeForTest(tmpHome);
+		const { session, sessionManager } = createSession();
+
+		try {
+			const message = createAssistantMessage("priced", 123, Date.now(), 0.0123);
+			await processAgentEvent(session, { type: "message_end", message });
+
+			const [entry] = sessionManager.getEntries();
+			expect(entry?.type).toBe("message");
+			const records = readCostLedgerRecords(getCostLedgerPath());
+			expect(records).toHaveLength(1);
+			expect(records[0]).toMatchObject({
+				id: `${session.sessionId}:${entry?.id}`,
+				sessionId: session.sessionId,
+				input: 123,
+				dollars: 0.0123,
+			});
+			expect(getTodayTotal()?.input).toBe(123);
+		} finally {
+			session.dispose();
+			restoreHome();
+			rmSync(tmpHome, { recursive: true, force: true });
+		}
+	});
+});
 
 describe("AgentSession.getSessionStats", () => {
 	it("exposes the current context usage alongside token totals", () => {
