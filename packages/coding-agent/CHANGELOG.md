@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed `/cost` daily and weekly totals to include completed assistant messages from active, unclosed sessions using an idempotent per-message cost ledger ([#54](https://github.com/Zhachory1/mewritecode/issues/54)).
+
 ## [1.0.10] - 2026-07-05
 
 ### Added

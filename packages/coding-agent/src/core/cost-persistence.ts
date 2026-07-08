@@ -1,8 +1,9 @@
 /**
  * WS19: Cost Transparency Panel — persistence layer.
  *
- * Reads/writes `~/.cave/cost-totals.json` with daily and weekly aggregates.
- * Atomic write via rename-on-write to prevent concurrent-session corruption.
+ * Reads/writes `~/.cave/cost-totals.json` for legacy daily/weekly aggregates
+ * and `~/.cave/cost-ledger.jsonl` for live per-assistant-message records.
+ * Totals use rename-on-write; ledger writes use append-only newline framing.
  *
  * Schema:
  * {
@@ -15,6 +16,7 @@
  * }
  *
  * Older daily entries are pruned after 90 days; weekly entries after 52 weeks.
+ * Ledger records are deduped by id on read.
  */
 
 import * as fs from "node:fs";
@@ -28,6 +30,12 @@ export interface PeriodTotal {
 	cacheCreate: number;
 	cacheRead: number;
 	dollars: number;
+}
+
+export interface CostLedgerRecord extends PeriodTotal {
+	id: string;
+	sessionId: string;
+	timestamp: string;
 }
 
 /** Savings Meter (DD §10.7): cumulative caveman BYTES eliminated. */
@@ -71,7 +79,14 @@ export interface SessionCostDelta {
 	dollars: number;
 }
 
+export interface AssistantMessageCostDelta extends SessionCostDelta {
+	id: string;
+	sessionId: string;
+	timestampMs: number;
+}
+
 const COST_TOTALS_FILENAME = "cost-totals.json";
+const COST_LEDGER_FILENAME = "cost-ledger.jsonl";
 const DAILY_RETENTION_DAYS = 90;
 const WEEKLY_RETENTION_WEEKS = 52;
 
@@ -82,6 +97,15 @@ const WEEKLY_RETENTION_WEEKS = 52;
 export function getCostTotalsPath(caveDir?: string): string {
 	const dir = caveDir ?? path.join(os.homedir(), ".cave");
 	return path.join(dir, COST_TOTALS_FILENAME);
+}
+
+/**
+ * Return the path to ~/.cave/cost-ledger.jsonl.
+ * Accepts an optional override dir for testing.
+ */
+export function getCostLedgerPath(caveDir?: string): string {
+	const dir = caveDir ?? path.join(os.homedir(), ".cave");
+	return path.join(dir, COST_LEDGER_FILENAME);
 }
 
 /**
@@ -102,6 +126,29 @@ export function readCostTotals(filePath?: string): CostTotalsFile {
 	return { daily: {}, weekly: {} };
 }
 
+export function readCostLedgerRecords(filePath?: string): CostLedgerRecord[] {
+	const p = filePath ?? getCostLedgerPath();
+	const byId = new Map<string, CostLedgerRecord>();
+	try {
+		const raw = fs.readFileSync(p, "utf8");
+		for (const line of raw.split(/\r?\n/)) {
+			const trimmed = line.trim();
+			if (!trimmed) continue;
+			try {
+				const parsed = JSON.parse(trimmed) as unknown;
+				if (isValidCostLedgerRecord(parsed) && !byId.has(parsed.id)) {
+					byId.set(parsed.id, parsed);
+				}
+			} catch {
+				// Ignore malformed or torn ledger lines; later complete rows remain usable.
+			}
+		}
+	} catch {
+		// File not found or unreadable — no ledger records yet.
+	}
+	return [...byId.values()];
+}
+
 /**
  * Merge a session delta into the totals file atomically.
  * Uses rename-on-write so concurrent caveman sessions don't corrupt the file.
@@ -114,7 +161,7 @@ export function readCostTotals(filePath?: string): CostTotalsFile {
  *   5. Atomically rename temp file to destination.
  */
 export function persistSessionCost(delta: SessionCostDelta, filePath?: string): void {
-	if (delta.dollars === 0 && delta.inputTokens === 0 && delta.outputTokens === 0) {
+	if (isEmptyCostDelta(delta)) {
 		return; // Nothing meaningful to persist
 	}
 
@@ -156,6 +203,34 @@ export function persistSessionCost(delta: SessionCostDelta, filePath?: string): 
 		}
 		throw err;
 	}
+}
+
+export function persistAssistantMessageCost(delta: AssistantMessageCostDelta, filePath?: string): void {
+	if (!delta.id || !delta.sessionId || isEmptyCostDelta(delta)) {
+		return;
+	}
+
+	const p = filePath ?? getCostLedgerPath();
+	const dir = path.dirname(p);
+	try {
+		fs.mkdirSync(dir, { recursive: true });
+	} catch {
+		// Already exists or can't create — best effort
+	}
+
+	const timestampMs = Number.isFinite(delta.timestampMs) ? delta.timestampMs : Date.now();
+	const record: CostLedgerRecord = {
+		id: delta.id,
+		sessionId: delta.sessionId,
+		timestamp: new Date(timestampMs).toISOString(),
+		input: delta.inputTokens,
+		output: delta.outputTokens,
+		cacheCreate: delta.cacheCreateTokens,
+		cacheRead: delta.cacheReadTokens,
+		dollars: delta.dollars,
+	};
+
+	fs.appendFileSync(p, `${JSON.stringify(record)}\n`, { encoding: "utf8", flag: "a" });
 }
 
 /**
@@ -240,7 +315,11 @@ export function getThisWeekSavingsBytes(filePath?: string): number {
 export function getTodayTotal(filePath?: string): PeriodTotal | undefined {
 	const totals = readCostTotals(filePath);
 	const today = todayDateString();
-	return totals.daily[today];
+	const ledger = sumLedgerRecords(
+		ledgerPathForTotalsPath(filePath),
+		(record) => dateStringForTimestamp(record.timestamp) === today,
+	);
+	return combinePeriodTotals(totals.daily[today], ledger);
 }
 
 /**
@@ -250,12 +329,20 @@ export function getThisWeekTotal(filePath?: string): PeriodTotal | undefined {
 	const totals = readCostTotals(filePath);
 	const today = todayDateString();
 	const week = weekKeyForDate(today);
-	return totals.weekly[week];
+	const ledger = sumLedgerRecords(ledgerPathForTotalsPath(filePath), (record) => {
+		const date = dateStringForTimestamp(record.timestamp);
+		return date !== undefined && weekKeyForDate(date) === week;
+	});
+	return combinePeriodTotals(totals.weekly[week], ledger);
 }
 
 // =============================================================================
 // Internal helpers
 // =============================================================================
+
+function isEmptyCostDelta(delta: SessionCostDelta): boolean {
+	return delta.dollars === 0 && delta.inputTokens === 0 && delta.outputTokens === 0;
+}
 
 function addPeriodTotal(existing: PeriodTotal | undefined, delta: SessionCostDelta): PeriodTotal {
 	const base: PeriodTotal = existing ?? { input: 0, output: 0, cacheCreate: 0, cacheRead: 0, dollars: 0 };
@@ -266,6 +353,49 @@ function addPeriodTotal(existing: PeriodTotal | undefined, delta: SessionCostDel
 		cacheRead: base.cacheRead + delta.cacheReadTokens,
 		dollars: base.dollars + delta.dollars,
 	};
+}
+
+function combinePeriodTotals(a: PeriodTotal | undefined, b: PeriodTotal): PeriodTotal | undefined {
+	const combined = {
+		input: (a?.input ?? 0) + b.input,
+		output: (a?.output ?? 0) + b.output,
+		cacheCreate: (a?.cacheCreate ?? 0) + b.cacheCreate,
+		cacheRead: (a?.cacheRead ?? 0) + b.cacheRead,
+		dollars: (a?.dollars ?? 0) + b.dollars,
+	};
+	return hasPeriodTotalValue(combined) ? combined : undefined;
+}
+
+function sumLedgerRecords(filePath: string, include: (record: CostLedgerRecord) => boolean): PeriodTotal {
+	const total: PeriodTotal = { input: 0, output: 0, cacheCreate: 0, cacheRead: 0, dollars: 0 };
+	for (const record of readCostLedgerRecords(filePath)) {
+		if (!include(record)) continue;
+		total.input += record.input;
+		total.output += record.output;
+		total.cacheCreate += record.cacheCreate;
+		total.cacheRead += record.cacheRead;
+		total.dollars += record.dollars;
+	}
+	return total;
+}
+
+function hasPeriodTotalValue(total: PeriodTotal): boolean {
+	return (
+		total.input !== 0 || total.output !== 0 || total.cacheCreate !== 0 || total.cacheRead !== 0 || total.dollars !== 0
+	);
+}
+
+function ledgerPathForTotalsPath(filePath?: string): string {
+	return filePath ? path.join(path.dirname(filePath), COST_LEDGER_FILENAME) : getCostLedgerPath();
+}
+
+function dateStringForTimestamp(timestamp: string): string | undefined {
+	const d = new Date(timestamp);
+	if (Number.isNaN(d.getTime())) return undefined;
+	const y = d.getFullYear();
+	const m = String(d.getMonth() + 1).padStart(2, "0");
+	const day = String(d.getDate()).padStart(2, "0");
+	return `${y}-${m}-${day}`;
 }
 
 /**
@@ -350,4 +480,21 @@ function isValidCostTotalsFile(v: unknown): v is CostTotalsFile {
 	if (typeof v !== "object" || v === null) return false;
 	const o = v as Record<string, unknown>;
 	return typeof o.daily === "object" && o.daily !== null && typeof o.weekly === "object" && o.weekly !== null;
+}
+
+function isValidCostLedgerRecord(v: unknown): v is CostLedgerRecord {
+	if (typeof v !== "object" || v === null) return false;
+	const o = v as Record<string, unknown>;
+	return (
+		typeof o.id === "string" &&
+		o.id.length > 0 &&
+		typeof o.sessionId === "string" &&
+		o.sessionId.length > 0 &&
+		typeof o.timestamp === "string" &&
+		typeof o.input === "number" &&
+		typeof o.output === "number" &&
+		typeof o.cacheCreate === "number" &&
+		typeof o.cacheRead === "number" &&
+		typeof o.dollars === "number"
+	);
 }

@@ -73,7 +73,7 @@ breakdown:
 
 `/tokens` opens a live breakdown panel.
 
-Daily/weekly totals persist under `~/.mewrite/agent/`. See [Cost Transparency Panel](/reference/tools#cost-transparency).
+Daily/weekly totals persist locally and include completed assistant messages from active, unclosed sessions. Legacy closed-session totals live in `~/.cave/cost-totals.json`; new per-message records live in `~/.cave/cost-ledger.jsonl`. After upgrade, pre-upgrade turns in still-open sessions are not backfilled and may remain missing from `/cost`; new completed assistant messages are counted going forward.
 
 ## ToolSearch (deferred MCP schemas)
 

@@ -111,4 +111,4 @@ Aider was first to surface per-message cost inline. Me Write Code does the same:
 [$0.0042 (cached: $0.0001)] Sonnet 4 · 12,431 in / 412 out
 ```
 
-`/tokens` opens a live breakdown. Daily totals persist under `~/.mewrite/agent/`.
+`/tokens` opens a live breakdown. `/cost` daily and weekly totals include completed assistant messages from active, unclosed sessions; legacy totals are stored in `~/.cave/cost-totals.json` and new per-message records in `~/.cave/cost-ledger.jsonl`.

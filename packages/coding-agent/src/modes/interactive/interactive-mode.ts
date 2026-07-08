@@ -80,7 +80,6 @@ import { formatSavingsLine, formatSessionEndSummary } from "../../core/cost-form
 import {
 	getAllTimeSavingsBytes,
 	getThisWeekSavingsBytes,
-	persistSessionCost,
 	persistSessionSavings,
 	readCostTotals,
 } from "../../core/cost-persistence.js";
@@ -6394,7 +6393,7 @@ export class InteractiveMode {
 			this.isInitialized = false;
 		}
 
-		// WS19: print session-end cost summary and persist to ~/.cave/cost-totals.json
+		// WS19: print session-end cost summary and persist savings.
 		this.printAndPersistSessionCost();
 	}
 
@@ -6427,15 +6426,6 @@ export class InteractiveMode {
 				});
 				// Write to stderr so it appears after TUI teardown without interfering with stdout
 				process.stderr.write(`\n${summary}\n`);
-
-				// Persist to ~/.cave/cost-totals.json atomically
-				persistSessionCost({
-					inputTokens: stats.tokens.input,
-					outputTokens: stats.tokens.output,
-					cacheCreateTokens: stats.tokens.cacheWrite,
-					cacheReadTokens: stats.tokens.cacheRead,
-					dollars: stats.cost,
-				});
 			}
 
 			// Savings Meter (DD §10.8): session-end savings line (only when bytes>0).
