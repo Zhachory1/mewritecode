@@ -71,6 +71,35 @@ describe("ModelRegistry", () => {
 		writeFileSync(modelsJsonPath, JSON.stringify({ providers }));
 	}
 
+	function registryWithOpenAiPricing(version: string, inputCostPerMtok: number, outputCostPerMtok: number) {
+		return {
+			version,
+			providers: [
+				{
+					id: "openai",
+					name: "OpenAI",
+					kind: "openai",
+					auth: "api-key",
+					models: [
+						{
+							id: "gpt-4o-mini",
+							displayName: "GPT-4o Mini",
+							contextWindow: 128000,
+							maxOutputTokens: 16384,
+							inputCostPerMtok,
+							outputCostPerMtok,
+							capabilities: ["tools", "vision"],
+						},
+					],
+				},
+			],
+		};
+	}
+
+	function writeRegistryCache(registry: ReturnType<typeof registryWithOpenAiPricing>) {
+		writeFileSync(join(tempDir, "registry-cache.json"), JSON.stringify(registry));
+	}
+
 	const openAiModel: Model<Api> = {
 		id: "test-openai-model",
 		name: "Test OpenAI Model",
@@ -87,6 +116,56 @@ describe("ModelRegistry", () => {
 	const emptyContext: Context = {
 		messages: [],
 	};
+
+	describe("registry pricing", () => {
+		test("overlays registry prices onto built-in models", () => {
+			writeRegistryCache(registryWithOpenAiPricing("test-pricing", 123, 456));
+
+			const registry = ModelRegistry.create(authStorage, modelsJsonPath);
+			const model = registry.find("openai", "gpt-4o-mini");
+
+			expect(model?.cost.input).toBe(123);
+			expect(model?.cost.output).toBe(456);
+		});
+
+		test("modelOverrides win over registry prices", () => {
+			writeRegistryCache(registryWithOpenAiPricing("test-pricing", 123, 456));
+			writeRawModelsJson({
+				openai: {
+					modelOverrides: {
+						"gpt-4o-mini": {
+							cost: { input: 99 },
+						},
+					},
+				},
+			});
+
+			const registry = ModelRegistry.create(authStorage, modelsJsonPath);
+			const model = registry.find("openai", "gpt-4o-mini");
+
+			expect(model?.cost.input).toBe(99);
+			expect(model?.cost.output).toBe(456);
+		});
+
+		test("refreshPricingFromSource fetches registry and reloads costs", async () => {
+			writeRegistryCache(registryWithOpenAiPricing("old-pricing", 1, 2));
+			const registry = ModelRegistry.create(authStorage, modelsJsonPath);
+			expect(registry.find("openai", "gpt-4o-mini")?.cost.input).toBe(1);
+
+			const nextRegistry = registryWithOpenAiPricing("new-pricing", 3, 4);
+			const fetchImpl = async () =>
+				({
+					ok: true,
+					json: async () => nextRegistry,
+				}) as Response;
+
+			const result = await registry.refreshPricingFromSource("stable", fetchImpl as typeof fetch);
+
+			expect(result).toMatchObject({ ok: true, version: "new-pricing", providerCount: 1, modelCount: 1 });
+			expect(registry.find("openai", "gpt-4o-mini")?.cost.input).toBe(3);
+			expect(registry.find("openai", "gpt-4o-mini")?.cost.output).toBe(4);
+		});
+	});
 
 	describe("baseUrl override (no custom models)", () => {
 		test("overriding baseUrl keeps all built-in models", () => {

@@ -4322,6 +4322,7 @@ export class InteractiveMode {
 			return;
 		}
 
+		void this.session.modelRegistry.refreshPricingFromSource();
 		const model = await this.findExactModelMatch(searchTerm);
 		if (model) {
 			try {

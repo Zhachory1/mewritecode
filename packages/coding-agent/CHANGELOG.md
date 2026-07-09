@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Refresh the model registry pricing source when opening `/model`, and apply registry input/output prices to built-in model picker costs while preserving user `models.json` overrides.
+
 ## [1.0.12] - 2026-07-09
 
 ### Changed

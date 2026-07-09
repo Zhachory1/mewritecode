@@ -21,9 +21,16 @@ import {
 	type SimpleStreamOptions,
 } from "@zhachory1/mewrite-ai";
 import { registerOAuthProvider, resetOAuthProviders } from "@zhachory1/mewrite-ai/oauth";
+import {
+	type FetchChannel,
+	fetchAndCacheRegistry,
+	getCachePath,
+	loadRegistry,
+	type Registry,
+} from "@zhachory1/mewrite-ai/registry";
 import AjvModule from "ajv";
 import { existsSync, readFileSync } from "fs";
-import { join } from "path";
+import { dirname, join } from "path";
 import { getAgentDir } from "../config.js";
 import type { AuthStorage } from "./auth-storage.js";
 import {
@@ -183,6 +190,15 @@ interface CustomModelsResult {
 	error: string | undefined;
 }
 
+interface RegistryPrice {
+	inputCostPerMtok?: number;
+	outputCostPerMtok?: number;
+}
+
+export type ModelPricingRefreshResult =
+	| { ok: true; version: string; providerCount: number; modelCount: number }
+	| { ok: false; error: string };
+
 function emptyCustomModelsResult(error?: string): CustomModelsResult {
 	return { models: [], overrides: new Map(), modelOverrides: new Map(), error };
 }
@@ -302,11 +318,65 @@ export class ModelRegistry {
 		}
 	}
 
+	async refreshPricingFromSource(
+		channel: FetchChannel = "stable",
+		fetchImpl: typeof fetch = globalThis.fetch,
+	): Promise<ModelPricingRefreshResult> {
+		const cachePath = getCachePath(this.getRegistryConfigDir());
+		const result = await fetchAndCacheRegistry(cachePath, channel, fetchImpl);
+		if (!result.ok) return { ok: false, error: result.error };
+
+		this.refresh();
+		return {
+			ok: true,
+			version: result.registry.version,
+			providerCount: result.registry.providers.length,
+			modelCount: result.registry.providers.reduce((sum, provider) => sum + provider.models.length, 0),
+		};
+	}
+
 	/**
 	 * Get any error from loading models.json (undefined if no error).
 	 */
 	getError(): string | undefined {
 		return this.loadError;
+	}
+
+	private getRegistryConfigDir(): string {
+		return this.modelsJsonPath ? dirname(this.modelsJsonPath) : getAgentDir();
+	}
+
+	private getRegistryPrices(): Map<string, RegistryPrice> {
+		const result = loadRegistry(this.getRegistryConfigDir());
+		if (!result.ok) return new Map();
+		return this.buildRegistryPriceMap(result.registry);
+	}
+
+	private buildRegistryPriceMap(registry: Registry): Map<string, RegistryPrice> {
+		const prices = new Map<string, RegistryPrice>();
+		for (const provider of registry.providers) {
+			for (const model of provider.models) {
+				if (model.inputCostPerMtok === undefined && model.outputCostPerMtok === undefined) continue;
+				prices.set(`${provider.id}/${model.id}`, {
+					inputCostPerMtok: model.inputCostPerMtok,
+					outputCostPerMtok: model.outputCostPerMtok,
+				});
+			}
+		}
+		return prices;
+	}
+
+	private applyRegistryPricing(model: Model<Api>, prices: Map<string, RegistryPrice>): Model<Api> {
+		const price = prices.get(`${model.provider}/${model.id}`);
+		if (!price) return model;
+		return {
+			...model,
+			cost: {
+				...model.cost,
+				input: price.inputCostPerMtok ?? model.cost.input,
+				output: price.outputCostPerMtok ?? model.cost.output,
+			},
+		};
 	}
 
 	private loadModels(): void {
@@ -342,13 +412,14 @@ export class ModelRegistry {
 		overrides: Map<string, ProviderOverride>,
 		modelOverrides: Map<string, Map<string, ModelOverride>>,
 	): Model<Api>[] {
+		const registryPrices = this.getRegistryPrices();
 		return getProviders().flatMap((provider) => {
 			const models = getModels(provider as KnownProvider) as Model<Api>[];
 			const providerOverride = overrides.get(provider);
 			const perModelOverrides = modelOverrides.get(provider);
 
 			return models.map((m) => {
-				let model = m;
+				let model = this.applyRegistryPricing(m, registryPrices);
 
 				// Apply provider-level baseUrl/headers/compat override
 				if (providerOverride) {

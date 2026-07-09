@@ -103,6 +103,8 @@ export class ModelSelectorComponent extends Container implements Focusable {
 	private recentRefs: ModelRef[] = [];
 	private hideUnavailable = false;
 	private errorMessage?: string;
+	private pricingRefreshing = false;
+	private pricingMessage?: { text: string; kind: "muted" | "warning" };
 
 	constructor(
 		tui: TUI,
@@ -163,6 +165,7 @@ export class ModelSelectorComponent extends Container implements Focusable {
 
 		this.loadAndRebuild().then(() => {
 			this.tui.requestRender();
+			void this.refreshPricingFromSource();
 		});
 	}
 
@@ -192,6 +195,21 @@ export class ModelSelectorComponent extends Container implements Focusable {
 		this.recentRefs = this.settingsManager.getRecentModels();
 
 		this.rebuildGroups();
+	}
+
+	private async refreshPricingFromSource(): Promise<void> {
+		this.pricingRefreshing = true;
+		this.pricingMessage = undefined;
+		this.rebuildGroups();
+		this.tui.requestRender();
+
+		const result = await this.modelRegistry.refreshPricingFromSource();
+		this.pricingRefreshing = false;
+		this.pricingMessage = result.ok
+			? { text: `pricing v${result.version}`, kind: "muted" }
+			: { text: "pricing refresh failed", kind: "warning" };
+		await this.loadAndRebuild();
+		this.tui.requestRender();
 	}
 
 	private isAvailable(model: Model<any>): boolean {
@@ -423,8 +441,16 @@ export class ModelSelectorComponent extends Container implements Focusable {
 		const filterHint =
 			predicateCount > 0 ? theme.fg("muted", ` · ${predicateCount} filter${predicateCount === 1 ? "" : "s"}`) : "";
 		const availabilityHint = this.hideUnavailable ? theme.fg("warning", "  · only configured") : "";
+		const pricingHint = this.pricingRefreshing
+			? theme.fg("muted", " · refreshing pricing")
+			: this.pricingMessage
+				? theme.fg(this.pricingMessage.kind, ` · ${this.pricingMessage.text}`)
+				: "";
 		this.statusText.setText(
-			theme.fg("muted", `Pick a model — ${totalMatching} of ${totalAll}`) + filterHint + availabilityHint,
+			theme.fg("muted", `Pick a model — ${totalMatching} of ${totalAll}`) +
+				filterHint +
+				availabilityHint +
+				pricingHint,
 		);
 	}
 
