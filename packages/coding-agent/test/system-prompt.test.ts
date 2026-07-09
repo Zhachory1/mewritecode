@@ -147,7 +147,7 @@ describe("buildSystemPrompt", () => {
 	});
 
 	describe("safety and scope guardrails", () => {
-		test("includes durable memory consent boundaries", () => {
+		test("includes durable memory consent boundaries and zbrain routing", () => {
 			const prompt = buildSystemPrompt({
 				contextFiles: [],
 				skills: [],
@@ -156,6 +156,8 @@ describe("buildSystemPrompt", () => {
 			expect(prompt).toContain("# Durable memory and data boundaries");
 			expect(prompt).toContain("unless the user explicitly requests it or approves a preview");
 			expect(prompt).toContain("default to no durable capture");
+			expect(prompt).toContain("use the configured zbrain workspace and its filing rules");
+			expect(prompt).toContain("ask where to write before persisting");
 		});
 
 		test("scopes read-only reviews away from mutation workflows", () => {
@@ -181,6 +183,17 @@ describe("buildSystemPrompt", () => {
 			expect(prompt).toContain("Read-only or documentation-only tasks do not require validation commands");
 			expect(prompt).toContain("Before modifying human-authored source or docs");
 			expect(prompt).toContain("For large, generated, lock, or binary-adjacent files");
+		});
+
+		test("routes broad external lookup through matching MCP tools", () => {
+			const prompt = buildSystemPrompt({
+				contextFiles: [],
+				skills: [],
+			});
+
+			expect(prompt).toContain("Before broad web/data/repo/external-system lookup");
+			expect(prompt).toContain("use the most specific matching MCP tool");
+			expect(prompt).toContain("Use built-in local file tools for repo file search/editing");
 		});
 	});
 

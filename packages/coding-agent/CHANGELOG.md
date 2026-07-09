@@ -5,6 +5,7 @@
 ### Changed
 
 - Refresh the model registry pricing source when opening `/model`, and apply registry input/output prices to built-in model picker costs while preserving user `models.json` overrides.
+- Added default system prompt routing for matching MCP tools on broad external lookups and zbrain workspace filing when users explicitly request durable notes or learning capture ([#57](https://github.com/Zhachory1/mewritecode/issues/57)).
 
 ## [1.0.12] - 2026-07-09
 
