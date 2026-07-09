@@ -150,15 +150,15 @@ The Context Engine is disabled by default. It can inject transient, lower-priori
 | `contextEngine.budgetTokens` | number | `4000` | Approximate context budget for retrieved bundles |
 | `contextEngine.timeoutMs` | number | `1000` | Retrieval timeout; failures continue without context |
 | `contextEngine.compression.enabled` | boolean | `false` | Enable experimental compression contract. All real provider bundles remain exact-preserve unless explicitly marked `lossy-ok`. |
-| `contextEngine.compression.headroom.enabled` | boolean | `false` | Enable experimental local Headroom compressor |
-| `contextEngine.compression.headroom.python` | string | - | Python executable with `headroom` installed |
+| `contextEngine.compression.headroom.enabled` | boolean | `true` | Enable the built-in Headroom compressor when context compression is enabled |
+| `contextEngine.compression.headroom.python` | string | - | Advanced Python runtime override for Headroom |
 | `contextEngine.compression.headroom.timeoutMs` | number | `500` | Per-bundle Headroom timeout |
 | `contextEngine.compression.headroom.maxInputBytes` | number | `65536` | Max bytes sent to Headroom per bundle |
 | `contextEngine.compression.headroom.maxOutputBytes` | number | `131072` | Max Headroom stdout bytes |
 
 #### contextEngine.compression.headroom
 
-Headroom compression is experimental and disabled by default. It shells out to local Python code that you configure. Use only trusted local Headroom installs. Me Write does not use the Headroom proxy or MCP server.
+Headroom compression is experimental. The Headroom integration is built into Me Write and is on by default when `contextEngine.compression.enabled` is true. Set `contextEngine.compression.headroom.enabled` to `false` to turn it off. `contextEngine.compression.headroom.python` is an advanced runtime override; normal setup should not need it.
 
 ```json
 {
@@ -167,7 +167,6 @@ Headroom compression is experimental and disabled by default. It shells out to l
       "enabled": true,
       "headroom": {
         "enabled": true,
-        "python": "/tmp/headroom-phase1/bin/python",
         "timeoutMs": 500
       }
     }

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Treat Headroom as the built-in ContextEngine compression provider when context compression is enabled, with `contextEngine.compression.headroom.enabled` as the on/off toggle and `python` only as an advanced runtime override.
+
 ## [1.0.11] - 2026-07-08
 
 ### Fixed

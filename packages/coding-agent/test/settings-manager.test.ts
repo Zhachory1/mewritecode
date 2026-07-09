@@ -322,6 +322,37 @@ describe("SettingsManager", () => {
 		});
 	});
 
+	describe("context compression settings", () => {
+		it("should default Headroom on while leaving context compression off", () => {
+			const manager = SettingsManager.create(projectDir, agentDir);
+			const settings = manager.getContextEngineSettings();
+
+			expect(settings.compression.enabled).toBe(false);
+			expect(settings.compression.headroom.enabled).toBe(true);
+		});
+
+		it("should allow Headroom to be disabled explicitly", () => {
+			const settingsPath = join(agentDir, "settings.json");
+			writeFileSync(
+				settingsPath,
+				JSON.stringify({
+					contextEngine: {
+						compression: {
+							enabled: true,
+							headroom: { enabled: false },
+						},
+					},
+				}),
+			);
+
+			const manager = SettingsManager.create(projectDir, agentDir);
+			const settings = manager.getContextEngineSettings();
+
+			expect(settings.compression.enabled).toBe(true);
+			expect(settings.compression.headroom.enabled).toBe(false);
+		});
+	});
+
 	describe("rtk settings", () => {
 		it("should default rtk.enabled to true", () => {
 			const manager = SettingsManager.create(projectDir, agentDir);

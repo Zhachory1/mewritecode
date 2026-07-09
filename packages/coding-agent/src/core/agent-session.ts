@@ -1284,12 +1284,13 @@ export class AgentSession {
 		const compression = this._contextCompressionLastRun;
 		lines.push(`Compression: ${settings.compression.enabled ? "enabled" : "disabled"}`);
 		if (settings.compression.enabled) {
-			lines.push(
-				`Compression provider: ${settings.compression.headroom.enabled ? "headroom-local" : (this._contextCompressor?.name ?? "none")}`,
-			);
-		}
-		if (settings.compression.headroom.enabled) {
-			lines.push(`Headroom python: ${settings.compression.headroom.python ?? "<unset>"}`);
+			lines.push(`Compression provider: ${this._contextCompressor?.name ?? "none"}`);
+			if (this._contextCompressor?.name === "headroom-local") {
+				const runtime = settings.compression.headroom.python
+					? `python override: ${settings.compression.headroom.python}`
+					: "default runtime";
+				lines.push(`Headroom: enabled (${runtime})`);
+			}
 		}
 		if (settings.compression.enabled) {
 			lines.push(

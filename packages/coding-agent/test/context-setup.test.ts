@@ -57,6 +57,7 @@ describe("context setup", () => {
 		expect(lines.join("\n")).toContain("Main code dir:");
 		expect(lines.join("\n")).toContain("qmd collection add");
 		expect(lines.join("\n")).toContain("Codescry");
+		expect(lines.join("\n")).toContain("Headroom: built-in integration");
 	});
 
 	it("persists setup state in settings manager", () => {

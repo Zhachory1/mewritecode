@@ -40,13 +40,22 @@ export function createHeadroomCompressor(options: {
 	maxInputBytes?: number;
 	maxOutputBytes?: number;
 }): ContextCompressor | undefined {
-	if (!options.enabled || !options.python) return undefined;
+	if (!options.enabled) return undefined;
 	return new HeadroomCompressor({
-		python: options.python,
+		python: resolveHeadroomPython(options.python),
 		timeoutMs: options.timeoutMs ?? 500,
 		maxInputBytes: options.maxInputBytes ?? 64 * 1024,
 		maxOutputBytes: options.maxOutputBytes ?? 128 * 1024,
 	});
+}
+
+export function resolveHeadroomPython(configuredPython: string | undefined): string {
+	return (
+		configuredPython?.trim() ||
+		process.env.MEWRITE_HEADROOM_PYTHON?.trim() ||
+		process.env.HEADROOM_PYTHON?.trim() ||
+		"python3"
+	);
 }
 
 const HELPER = `
@@ -124,7 +133,7 @@ function runHeadroomPython(
 		child.on("close", (code) => {
 			finish(() => {
 				if (code !== 0) {
-					reject(new Error(stderr.trim() || `headroom exited ${code}`));
+					reject(new Error(stderr.trim() || stdout.trim() || `headroom exited ${code}`));
 					return;
 				}
 				try {

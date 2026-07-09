@@ -96,7 +96,7 @@ export interface RemoteContextSettings {
 }
 
 export interface HeadroomCompressionSettings {
-	enabled?: boolean; // default: false
+	enabled?: boolean; // default: true when context compression is enabled
 	python?: string;
 	timeoutMs?: number; // default: 500
 	maxInputBytes?: number; // default: 65536
@@ -1400,7 +1400,7 @@ export class SettingsManager {
 			compression: {
 				enabled: effectiveContextEngine?.compression?.enabled ?? false,
 				headroom: {
-					enabled: effectiveContextEngine?.compression?.headroom?.enabled ?? false,
+					enabled: effectiveContextEngine?.compression?.headroom?.enabled ?? true,
 					python: effectiveContextEngine?.compression?.headroom?.python,
 					timeoutMs: effectiveContextEngine?.compression?.headroom?.timeoutMs ?? 500,
 					maxInputBytes: effectiveContextEngine?.compression?.headroom?.maxInputBytes ?? 64 * 1024,

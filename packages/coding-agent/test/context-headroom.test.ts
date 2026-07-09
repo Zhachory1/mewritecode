@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { compressContextPack } from "../src/core/context-compression.js";
 import type { ContextBundle, ContextPack } from "../src/core/context-engine.js";
-import { createHeadroomCompressor } from "../src/core/context-headroom.js";
+import { createHeadroomCompressor, resolveHeadroomPython } from "../src/core/context-headroom.js";
 
 function fakePython(body: string): string {
 	const dir = join(tmpdir(), `headroom-fake-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -49,9 +49,13 @@ process.stdin.on('end', () => {
 		expect(result.stats.compressed).toBe(1);
 	});
 
-	it("returns undefined when disabled or python unset", () => {
+	it("is built in by default and can be disabled", () => {
 		expect(createHeadroomCompressor({ enabled: false, python: "/tmp/python" })).toBeUndefined();
-		expect(createHeadroomCompressor({ enabled: true })).toBeUndefined();
+		expect(createHeadroomCompressor({ enabled: true })).toBeDefined();
+	});
+
+	it("resolves python override only as an advanced escape hatch", () => {
+		expect(resolveHeadroomPython("/tmp/custom-python")).toBe("/tmp/custom-python");
 	});
 
 	it("falls back when python is missing", async () => {

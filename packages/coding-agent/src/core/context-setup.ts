@@ -70,7 +70,7 @@ export function formatContextSetupStatus(state: ContextSetupState): string[] {
 		lines.push("Codescry: not configured");
 		lines.push("  Next: /context setup code-dir <path>");
 	}
-	lines.push("Headroom: optional, configured separately via contextEngine.compression.headroom.python");
+	lines.push("Headroom: built-in integration; toggle with contextEngine.compression.headroom.enabled");
 	return lines;
 }
 
