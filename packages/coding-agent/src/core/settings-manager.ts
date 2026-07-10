@@ -54,6 +54,23 @@ export interface RtkSettings {
 	enabled?: boolean; // default: true
 }
 
+export type MemoryBackend = "zbrain" | "cavemem" | "files";
+
+export interface MemorySettings {
+	enabled?: boolean; // default: true
+	backend?: MemoryBackend; // default: zbrain
+	command?: string; // backend command; default: zbrain or cavemem
+	workspace?: string; // zbrain workspace; default: ~/.zbrain
+	capture?: {
+		requirePreview?: boolean; // default: true
+		defaultCollection?: string; // default: inbox
+	};
+	retrieval?: {
+		enabled?: boolean; // default: true
+		maxResults?: number; // default: 5
+	};
+}
+
 export interface RepoIndexContextSettings {
 	command?: string; // default: codescry
 	dbPath?: string;
@@ -250,6 +267,7 @@ export interface Settings {
 	sessionDir?: string; // Custom session storage directory (same format as --session-dir CLI flag)
 	caveMode?: CaveModeSettings;
 	rtk?: RtkSettings;
+	memory?: MemorySettings;
 	contextEngine?: ContextEngineSettings;
 	onboarding?: OnboardingSettings;
 	telemetry?: TelemetrySettings;
@@ -1322,6 +1340,31 @@ export class SettingsManager {
 		this.globalSettings.rtk.enabled = enabled;
 		this.markModified("rtk", "enabled");
 		this.save();
+	}
+
+	getMemorySettings(): {
+		enabled: boolean;
+		backend: MemoryBackend;
+		command?: string;
+		workspace: string;
+		capture: { requirePreview: boolean; defaultCollection: string };
+		retrieval: { enabled: boolean; maxResults: number };
+	} {
+		const backend = this.settings.memory?.backend ?? "zbrain";
+		return {
+			enabled: this.settings.memory?.enabled ?? true,
+			backend,
+			command: this.settings.memory?.command,
+			workspace: this.settings.memory?.workspace ?? "~/.zbrain",
+			capture: {
+				requirePreview: this.settings.memory?.capture?.requirePreview ?? true,
+				defaultCollection: this.settings.memory?.capture?.defaultCollection ?? "inbox",
+			},
+			retrieval: {
+				enabled: this.settings.memory?.retrieval?.enabled ?? true,
+				maxResults: this.settings.memory?.retrieval?.maxResults ?? 5,
+			},
+		};
 	}
 
 	getContextSetupSettings(): {

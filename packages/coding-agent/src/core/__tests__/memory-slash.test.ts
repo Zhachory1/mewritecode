@@ -16,6 +16,13 @@ function makeCtx(overrides: Partial<Parameters<typeof runMemorySlashCommand>[1]>
 	const ctx = {
 		cwd,
 		provider,
+		settings: {
+			enabled: true,
+			backend: "files" as const,
+			workspace: join(cwd, ".cave", "memory"),
+			capture: { requirePreview: true, defaultCollection: "inbox" },
+			retrieval: { enabled: true, maxResults: 5 },
+		},
 		get enabled() {
 			return enabled;
 		},
@@ -56,12 +63,14 @@ describe("/memory slash dispatcher", () => {
 		});
 	});
 
-	it("/memory show prints provider, availability, enabled state", async () => {
+	it("/memory show prints provider, backend, workspace, and enabled state", async () => {
 		const { ctx, cwd } = makeCtx();
 		cleanup.push(cwd);
 		const r = await runMemorySlashCommand("/memory show", ctx);
 		expect(r.errors).toBe(0);
 		expect(r.lines.some((l) => l.includes("provider:"))).toBe(true);
+		expect(r.lines).toContain("backend: files");
+		expect(r.lines.some((l) => l.startsWith("workspace:"))).toBe(true);
 		expect(r.lines.some((l) => l.includes("enabled: yes"))).toBe(true);
 	});
 
@@ -69,7 +78,12 @@ describe("/memory slash dispatcher", () => {
 		const { ctx, cwd, provider } = makeCtx();
 		cleanup.push(cwd);
 
-		const r1 = await runMemorySlashCommand("/memory save first fact", ctx);
+		const preview = await runMemorySlashCommand("/memory save first fact", ctx);
+		expect(preview.errors).toBe(0);
+		expect(preview.lines.join("\n")).toContain("memory save preview");
+		expect(provider.stats().entries).toBe(0);
+
+		const r1 = await runMemorySlashCommand("/memory save --yes first fact", ctx);
 		expect(r1.errors).toBe(0);
 		expect(provider.stats().entries).toBe(1);
 
@@ -92,7 +106,7 @@ describe("/memory slash dispatcher", () => {
 	it("/memory search renders hits compactly after a save", async () => {
 		const { ctx, cwd } = makeCtx();
 		cleanup.push(cwd);
-		await runMemorySlashCommand("/memory save the magic word is xyzzy", ctx);
+		await runMemorySlashCommand("/memory save --yes the magic word is xyzzy", ctx);
 		const r = await runMemorySlashCommand("/memory search xyzzy", ctx);
 		expect(r.errors).toBe(0);
 		expect(r.lines.some((l) => l.includes("xyzzy"))).toBe(true);
@@ -101,8 +115,8 @@ describe("/memory slash dispatcher", () => {
 	it("/memory forget reports the count it asked to remove", async () => {
 		const { ctx, cwd, provider } = makeCtx();
 		cleanup.push(cwd);
-		await runMemorySlashCommand("/memory save tmp", ctx);
-		await runMemorySlashCommand("/memory save tmp2", ctx);
+		await runMemorySlashCommand("/memory save --yes tmp", ctx);
+		await runMemorySlashCommand("/memory save --yes tmp2", ctx);
 		const r = await runMemorySlashCommand("/memory forget 1 2", ctx);
 		expect(r.errors).toBe(0);
 		expect(provider.stats().entries).toBe(0);
@@ -111,7 +125,7 @@ describe("/memory slash dispatcher", () => {
 	it("/memory export writes a file", async () => {
 		const { ctx, cwd } = makeCtx();
 		cleanup.push(cwd);
-		await runMemorySlashCommand("/memory save export-target", ctx);
+		await runMemorySlashCommand("/memory save --yes export-target", ctx);
 		const out = join(cwd, "out.jsonl");
 		const r = await runMemorySlashCommand(`/memory export ${out}`, ctx);
 		expect(r.errors).toBe(0);

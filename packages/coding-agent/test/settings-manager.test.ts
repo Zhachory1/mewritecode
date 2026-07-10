@@ -322,6 +322,51 @@ describe("SettingsManager", () => {
 		});
 	});
 
+	describe("memory settings", () => {
+		it("defaults durable memory to zbrain with previewed capture and retrieval enabled", () => {
+			const manager = SettingsManager.create(projectDir, agentDir);
+			const settings = manager.getMemorySettings();
+
+			expect(settings).toEqual({
+				enabled: true,
+				backend: "zbrain",
+				command: undefined,
+				workspace: "~/.zbrain",
+				capture: { requirePreview: true, defaultCollection: "inbox" },
+				retrieval: { enabled: true, maxResults: 5 },
+			});
+		});
+
+		it("loads explicit zbrain memory settings", () => {
+			const settingsPath = join(agentDir, "settings.json");
+			writeFileSync(
+				settingsPath,
+				JSON.stringify({
+					memory: {
+						enabled: false,
+						backend: "zbrain",
+						command: "/opt/bin/zbrain",
+						workspace: "~/notes",
+						capture: { requirePreview: false, defaultCollection: "learnings" },
+						retrieval: { enabled: false, maxResults: 3 },
+					},
+				}),
+			);
+
+			const manager = SettingsManager.create(projectDir, agentDir);
+			const settings = manager.getMemorySettings();
+
+			expect(settings).toMatchObject({
+				enabled: false,
+				backend: "zbrain",
+				command: "/opt/bin/zbrain",
+				workspace: "~/notes",
+				capture: { requirePreview: false, defaultCollection: "learnings" },
+				retrieval: { enabled: false, maxResults: 3 },
+			});
+		});
+	});
+
 	describe("context compression settings", () => {
 		it("should default Headroom on while leaving context compression off", () => {
 			const manager = SettingsManager.create(projectDir, agentDir);

@@ -5044,25 +5044,20 @@ export class InteractiveMode {
 			// model, and FTS handles are shared with the auto-injection transform.
 			const provider = await this.session.memoryProvider();
 			if (!provider) {
-				this.appendSlashOutput(
-					`Memory backend unavailable. Install \`cavemem\` or initialise \`.cave/memory/\`.`,
-					true,
-				);
+				this.appendSlashOutput("Memory backend unavailable. Run `/memory status` to inspect configuration.", true);
 				return;
 			}
 			const result = await runMemorySlashCommand(text, {
 				cwd: this.sessionManager.getCwd(),
 				provider,
 				enabled: this.session.memoryEnabled,
+				settings: this.settingsManager.getMemorySettings(),
 				setEnabled: (next) => this.session.setMemoryEnabled(next),
 			});
 			this.appendSlashOutput(result.lines.join("\n"), result.errors > 0);
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err);
-			this.appendSlashOutput(
-				`Memory unavailable: ${message}\nInstall cavemem or run \`cave memory help\` for setup.`,
-				true,
-			);
+			this.appendSlashOutput(`Memory unavailable: ${message}\nRun \`/memory status\` for setup details.`, true);
 		}
 	}
 

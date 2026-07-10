@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added a zbrain-backed memory provider for Me Write durable-memory search and explicit saves ([#58](https://github.com/Zhachory1/mewritecode/issues/58)).
+
 ## [1.0.12] - 2026-07-09
 
 ## [1.0.11] - 2026-07-08

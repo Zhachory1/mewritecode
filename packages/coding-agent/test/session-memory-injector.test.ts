@@ -29,6 +29,13 @@ function make(provider: MemoryProviderInstance | undefined, recent: string[] = [
 		timeoutMs: 1000,
 		tokenCap: 800,
 		recentFileNames: () => recent,
+		memorySettings: {
+			enabled: true,
+			backend: "files",
+			workspace: "~/.zbrain",
+			capture: { requirePreview: true, defaultCollection: "inbox" },
+			retrieval: { enabled: true, maxResults: 5 },
+		},
 	});
 	if (provider) m.primeProvider(provider);
 	return m;

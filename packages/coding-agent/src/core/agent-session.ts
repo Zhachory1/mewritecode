@@ -538,6 +538,7 @@ export class AgentSession {
 			timeoutMs: this._memoryRecallTimeoutMs,
 			tokenCap: this._memoryRecallTokenCap,
 			recentFileNames: () => this._repomapInjector.recentFileBasenames(5),
+			memorySettings: this.settingsManager.getMemorySettings(),
 		});
 		this._modelRegistry = config.modelRegistry;
 		this._extensionRunnerRef = config.extensionRunnerRef;
@@ -1073,8 +1074,8 @@ export class AgentSession {
 	}
 
 	/**
-	 * Resolve (and lazily build) the active memory provider. Cavemem when its
-	 * CLI is on $PATH; FilesProvider over `<cwd>/.cave/memory/` otherwise.
+	 * Resolve (and lazily build) the active memory provider. zbrain is the default;
+	 * cavemem/files remain supported when configured.
 	 *
 	 * Returns the same instance the `/memory` slash command should use so the
 	 * MCP transport, embedding model, and FTS handles are reused.
@@ -3586,12 +3587,16 @@ export class AgentSession {
 		);
 
 		// WS7: register memory_search / memory_save when a provider is reachable.
-		// Cached factory means cavemem (or FilesProvider fallback) is built once
+		// Cached factory means zbrain (or configured legacy provider) is built once
 		// and shared with the `/memory` slash command + the recall transform.
 		try {
-			const memoryProvider = await resolveMemoryProvider({ cwd: this._cwd });
+			const memorySettings = this.settingsManager.getMemorySettings();
+			const memoryProvider = await resolveMemoryProvider({
+				cwd: this._cwd,
+				settings: memorySettings,
+			});
 			this._memoryInjector.primeProvider(memoryProvider);
-			const available = await memoryProvider.isAvailable().catch(() => false);
+			const available = memorySettings.enabled ? await memoryProvider.isAvailable().catch(() => false) : false;
 			// Always register; the tools themselves short-circuit when unavailable.
 			// FilesProvider is always available, so this never strips them locally.
 			if (available || memoryProvider.id === "files") {

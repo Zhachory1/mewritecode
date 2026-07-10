@@ -3,7 +3,8 @@
  *
  * Public surface:
  *   - MemoryProvider         interface, plus types
- *   - CavememProvider        default — wraps cavemem stdio MCP + `cavemem hook run`
+ *   - ZbrainProvider         default — wraps the local zbrain CLI/index
+ *   - CavememProvider        legacy — wraps cavemem stdio MCP + `cavemem hook run`
  *   - FilesProvider          fallback — markdown under .cave/memory/
  *   - consolidate()          episodic→semantic consolidation pass (cave's value-add)
  *   - formatPrelude()        helper for the session-start prelude injection
@@ -28,3 +29,5 @@ export {
 export type { FilesProviderOptions } from "./files.js";
 export { discoverFilesProviderReadDirs, FilesProvider } from "./files.js";
 export * from "./provider.js";
+export type { ZbrainProviderOptions } from "./zbrain.js";
+export { ZbrainProvider } from "./zbrain.js";

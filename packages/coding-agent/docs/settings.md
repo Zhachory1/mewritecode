@@ -119,6 +119,43 @@ RTK is an optional external binary that rewrites bash commands to produce more c
 
 RTK is detected automatically at startup. If the `rtk` binary is not installed, the setting has no effect.
 
+### Durable Memory
+
+Me Write owns the durable-memory read/write lifecycle. zbrain is the default local backend. Memory writes still require explicit user intent; `/memory save` previews by default and `/memory save --yes` persists directly.
+
+```json
+{
+  "memory": {
+    "enabled": true,
+    "backend": "zbrain",
+    "workspace": "~/.zbrain",
+    "capture": {
+      "requirePreview": true,
+      "defaultCollection": "inbox"
+    },
+    "retrieval": {
+      "enabled": true,
+      "maxResults": 5
+    }
+  }
+}
+```
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `memory.enabled` | boolean | `true` | Enable memory recall and save tools for the session |
+| `memory.backend` | string | `"zbrain"` | Memory backend: `"zbrain"`, `"cavemem"`, or `"files"` |
+| `memory.command` | string | - | Backend command override, for example a custom `zbrain` path |
+| `memory.workspace` | string | `"~/.zbrain"` | zbrain workspace root |
+| `memory.capture.requirePreview` | boolean | `true` | Preview `/memory save` writes before persisting |
+| `memory.capture.defaultCollection` | string | `"inbox"` | zbrain subfolder for saved facts |
+| `memory.retrieval.enabled` | boolean | `true` | Enable durable-memory retrieval |
+| `memory.retrieval.maxResults` | number | `5` | Default retrieval result count |
+
+Use `/memory status` to inspect backend, workspace, capture, retrieval, and index health.
+Use `/memory search <query>` for explicit retrieval.
+Use `/memory save <text>` to preview a durable save and `/memory save --yes <text>` to persist.
+
 ### Experimental Context Engine
 
 The Context Engine is disabled by default. It can inject transient, lower-priority context bundles before a prompt. Context bundles are not saved into Me Write session history, exports, or compaction input, but bundle text may be sent to the configured model provider for that turn.

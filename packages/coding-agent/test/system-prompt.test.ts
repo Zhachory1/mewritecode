@@ -156,7 +156,9 @@ describe("buildSystemPrompt", () => {
 			expect(prompt).toContain("# Durable memory and data boundaries");
 			expect(prompt).toContain("unless the user explicitly requests it or approves a preview");
 			expect(prompt).toContain("default to no durable capture");
-			expect(prompt).toContain("use the configured zbrain workspace and its filing rules");
+			expect(prompt).toContain("search durable memory through Me Write memory tools");
+			expect(prompt).toContain("zbrain is the default source when the configured memory backend is available");
+			expect(prompt).toContain("use Me Write memory tools and the configured memory backend/filing rules");
 			expect(prompt).toContain("ask where to write before persisting");
 		});
 

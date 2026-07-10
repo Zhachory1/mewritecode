@@ -1,10 +1,11 @@
 /**
- * memory_search / memory_save — native cave tools wrapping the active
- * `MemoryProvider` (cavemem when available, FilesProvider fallback).
+ * memory_search / memory_save — native tools wrapping the active
+ * `MemoryProvider` (zbrain by default; cavemem/files when configured).
  *
  * Auto-injection of recent recall happens in `agent-session._buildMemoryTransform`
  * each turn. These tools let the LLM expand a hit, query a different topic, or
- * write a fact mid-turn without taking the user-driven `/memory` slash route.
+ * save a fact after explicit user request/approval without taking the user-driven
+ * `/memory` slash route.
  */
 
 import { type Static, Type } from "@sinclair/typebox";
@@ -16,7 +17,7 @@ import { wrapToolDefinition } from "./tool-definition-wrapper.js";
 type MemoryProvider = memoryNs.MemoryProvider;
 
 const memorySearchSchema = Type.Object({
-	query: Type.String({ description: "Free-text search query (BM25 + embedding hybrid when cavemem is available)." }),
+	query: Type.String({ description: "Free-text search query against the configured durable memory backend." }),
 	limit: Type.Optional(Type.Number({ description: "Max hits to return (default 5, hard cap 20)." })),
 });
 
@@ -61,9 +62,10 @@ export function createMemorySearchToolDefinition(
 		name: "memory_search",
 		label: "memory_search",
 		description:
-			"Search persistent memory (prior mewrite sessions + saved facts). Prefer this over re-running `grep`/`read` for topics you may have explored before. The auto-injected `<memory-recall>` block already shows top hits each turn — use this tool to expand a hit, query a different topic, or paginate.",
+			"Search persistent memory through the configured backend (zbrain by default). Prefer this over re-running `grep`/`read` for remembered knowledge or topics explored before. The auto-injected `<memory-recall>` block already shows top hits each turn — use this tool to expand a hit, query a different topic, or paginate.",
 		promptSnippet: "Search persistent memory (prior sessions + saved facts)",
 		promptGuidelines: [
+			"When the user asks what Me Write remembers, or asks to use remembered notes/knowledge, run `memory_search` with the topic before answering.",
 			"Before grepping or reading files for context the user may have already discussed in a prior session, run `memory_search` with the topic — it is far cheaper than tool I/O.",
 			"The `<memory-recall>` block above is auto-generated from the current chat-state. To explore an unrelated topic, call `memory_search` explicitly.",
 		],
@@ -75,7 +77,7 @@ export function createMemorySearchToolDefinition(
 					content: [
 						{
 							type: "text" as const,
-							text: "Memory backend unavailable; install `cavemem` or initialise `.cave/memory/`.",
+							text: "Memory backend unavailable. Run `/memory status` to check the configured backend.",
 						},
 					],
 					details: { hitCount: 0, available: false },
@@ -119,7 +121,7 @@ export function createMemorySaveToolDefinition(
 		name: "memory_save",
 		label: "memory_save",
 		description:
-			"Persist a fact to memory (kind defaults to 'fact'). Use sparingly — only for facts the user is likely to want recalled in future sessions. Don't echo conversation; cavemem hooks already capture episodic events.",
+			"Persist a fact to durable memory (kind defaults to 'fact'). Use only when the user explicitly asks to remember/capture/save, or after the user approves a preview. Don't echo full conversation or sensitive data.",
 		promptSnippet: "Save a fact to persistent memory",
 		parameters: memorySaveSchema,
 		async execute(_id, { content, kind }) {
@@ -129,7 +131,7 @@ export function createMemorySaveToolDefinition(
 					content: [
 						{
 							type: "text" as const,
-							text: "Memory backend unavailable; install `cavemem` or initialise `.cave/memory/`.",
+							text: "Memory backend unavailable. Run `/memory status` to check the configured backend.",
 						},
 					],
 					details: { available: false },

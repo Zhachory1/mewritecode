@@ -4,7 +4,7 @@
  * Subcommands (mirrors the WS7 deliverable):
  *   /memory                       Show provider, availability, and basic stats.
  *   /memory show                  Alias of the default.
- *   /memory search <query>        Run cavemem search and pretty-print hits.
+ *   /memory search <query>        Search configured durable memory and pretty-print hits.
  *   /memory save <text...>        Append a fact to memory (kind:fact).
  *   /memory forget <id> [<id>...] Soft-delete by id.
  *   /memory export <path>         Write a JSONL dump of memory.
@@ -25,10 +25,20 @@ import { composeStartupPrelude, importFromClaudeCode, locateClaudeMemory, readMe
 
 type MemoryProvider = memoryNs.MemoryProvider;
 
+export interface MemorySlashSettings {
+	enabled: boolean;
+	backend: "zbrain" | "cavemem" | "files";
+	command?: string;
+	workspace: string;
+	capture: { requirePreview: boolean; defaultCollection: string };
+	retrieval: { enabled: boolean; maxResults: number };
+}
+
 export interface MemorySlashContext {
 	cwd: string;
 	provider: MemoryProvider;
 	enabled: boolean;
+	settings?: MemorySlashSettings;
 	/** Persisted toggle setter — wired from settings-manager. */
 	setEnabled?: (next: boolean) => void;
 	/** Optional consolidation extractor (LLM call). When omitted we just cluster. */
@@ -92,11 +102,12 @@ export async function runMemorySlashCommand(line: string, ctx: MemorySlashContex
 
 function formatHelp(): string {
 	return [
-		"/memory — cavemem-backed memory layer",
+		"/memory — Me Write durable memory layer",
 		"",
 		"  /memory show                       Show provider + status",
-		"  /memory search <query>             Search memory (top-10 hits)",
-		"  /memory save <text>                Save a fact (kind=fact)",
+		"  /memory search <query>             Search memory",
+		"  /memory save <text>                Preview a fact save (kind=fact)",
+		"  /memory save --yes <text>          Save without another preview",
 		"  /memory forget <id> [<id>...]      Soft-delete by id",
 		"  /memory export <path>              Write JSONL dump",
 		"  /memory consolidate                Run episodic→semantic pass",
@@ -110,6 +121,16 @@ async function runShow(ctx: MemorySlashContext): Promise<MemorySlashResult> {
 	const lines: string[] = [];
 	const available = await ctx.provider.isAvailable().catch(() => false);
 	lines.push(`provider: ${ctx.provider.label}`);
+	if (ctx.settings) {
+		lines.push(`backend: ${ctx.settings.backend}`);
+		lines.push(`workspace: ${ctx.settings.workspace}`);
+		lines.push(
+			`capture: ${ctx.settings.capture.requirePreview ? "preview-required" : "direct"} (${ctx.settings.capture.defaultCollection})`,
+		);
+		lines.push(
+			`retrieval: ${ctx.settings.retrieval.enabled ? "enabled" : "disabled"} (max ${ctx.settings.retrieval.maxResults})`,
+		);
+	}
 	lines.push(`available: ${available ? "yes" : "no"}`);
 	lines.push(`enabled: ${ctx.enabled ? "yes" : "no (writes off)"}`);
 	if (available) {
@@ -123,6 +144,16 @@ async function runShow(ctx: MemorySlashContext): Promise<MemorySlashResult> {
 			lines.push(`note: listSessions failed — ${err instanceof Error ? err.message : String(err)}`);
 		}
 	}
+	if ("status" in ctx.provider && typeof ctx.provider.status === "function") {
+		try {
+			const status = (await ctx.provider.status()) as { documents?: number; chunks?: number; dbExists?: boolean };
+			if (status.dbExists !== undefined) lines.push(`index: ${status.dbExists ? "present" : "missing"}`);
+			if (status.documents !== undefined) lines.push(`documents: ${status.documents}`);
+			if (status.chunks !== undefined) lines.push(`chunks: ${status.chunks}`);
+		} catch (err) {
+			lines.push(`note: status failed — ${err instanceof Error ? err.message : String(err)}`);
+		}
+	}
 	const claude = locateClaudeMemory(ctx.cwd);
 	lines.push(`claude bridge: ${claude.exists ? `found ${claude.indexFile}` : "no MEMORY.md found"}`);
 	return ok(...lines);
@@ -130,7 +161,8 @@ async function runShow(ctx: MemorySlashContext): Promise<MemorySlashResult> {
 
 async function runSearch(query: string, ctx: MemorySlashContext): Promise<MemorySlashResult> {
 	if (!query) return fail("Usage: /memory search <query>");
-	const hits = await ctx.provider.search(query, { limit: 10 }).catch((err) => {
+	if (ctx.settings?.retrieval.enabled === false) return fail("memory retrieval disabled in settings");
+	const hits = await ctx.provider.search(query, { limit: ctx.settings?.retrieval.maxResults ?? 10 }).catch((err) => {
 		throw err instanceof Error ? err : new Error(String(err));
 	});
 	if (hits.length === 0) return ok(`no hits for "${query}"`);
@@ -144,9 +176,15 @@ async function runSearch(query: string, ctx: MemorySlashContext): Promise<Memory
 }
 
 async function runSave(text: string, ctx: MemorySlashContext): Promise<MemorySlashResult> {
-	if (!text) return fail("Usage: /memory save <text>");
+	if (!text) return fail("Usage: /memory save [--yes] <text>");
 	if (!ctx.enabled) return fail("memory writes disabled (run /memory on first)");
-	const id = await ctx.provider.save(text, "fact").catch((err) => {
+	const direct = text.startsWith("--yes ") || text.startsWith("--direct ");
+	const content = direct ? text.replace(/^--(?:yes|direct)\s+/, "").trim() : text;
+	if (!content) return fail("Usage: /memory save [--yes] <text>");
+	if (ctx.settings?.capture.requirePreview !== false && !direct) {
+		return ok("memory save preview:", content, "", "Run `/memory save --yes <text>` to persist this fact.");
+	}
+	const id = await ctx.provider.save(content, "fact").catch((err) => {
 		throw err instanceof Error ? err : new Error(String(err));
 	});
 	return ok(`saved${id !== undefined ? ` (id=${id})` : ""}`);
@@ -230,6 +268,14 @@ function runConfig(ctx: MemorySlashContext): MemorySlashResult {
 		`cwd: ${ctx.cwd}`,
 		`claude bridge dir: ${claude.exists ? claude.root : "(none)"}`,
 	];
+	if (ctx.settings) {
+		lines.push(`backend: ${ctx.settings.backend}`);
+		lines.push(`workspace: ${ctx.settings.workspace}`);
+		lines.push(`capture.requirePreview: ${ctx.settings.capture.requirePreview}`);
+		lines.push(`capture.defaultCollection: ${ctx.settings.capture.defaultCollection}`);
+		lines.push(`retrieval.enabled: ${ctx.settings.retrieval.enabled}`);
+		lines.push(`retrieval.maxResults: ${ctx.settings.retrieval.maxResults}`);
+	}
 	return ok(...lines);
 }
 

@@ -1,5 +1,5 @@
 /**
- * MemoryInjector — per-session cavemem-backed retrieval injection (WS7).
+ * MemoryInjector — per-session durable-memory retrieval injection (WS7).
  *
  * Extracted verbatim from `agent-session.ts` (god-file decomposition #16,
  * stage 2). Owns the memory provider lifecycle, the recall cache + single-flight
@@ -22,7 +22,7 @@ import { basename, join } from "node:path";
 import type { AgentMessage } from "@zhachory1/mewrite-agent";
 import { memory as memoryNs } from "@zhachory1/mewrite-agent";
 import { composeStartupPrelude } from "./memory-bridge.js";
-import { resolveMemoryProvider } from "./memory-factory.js";
+import { type MemoryFactorySettings, resolveMemoryProvider } from "./memory-factory.js";
 
 type MemoryProviderInstance = memoryNs.MemoryProvider;
 
@@ -35,6 +35,7 @@ export interface MemoryInjectorOptions {
 	 * Used to seed the recall query alongside the latest user message.
 	 */
 	recentFileNames: () => string[];
+	memorySettings: MemoryFactorySettings;
 }
 
 export class MemoryInjector {
@@ -42,6 +43,8 @@ export class MemoryInjector {
 	private readonly _timeoutMs: number;
 	private readonly _tokenCap: number;
 	private readonly _recentFileNames: () => string[];
+	private readonly _memorySettings: MemoryFactorySettings;
+	private readonly _retrievalEnabled: boolean;
 
 	private _provider: MemoryProviderInstance | undefined;
 	private _providerInit: Promise<MemoryProviderInstance | undefined> | undefined;
@@ -55,6 +58,9 @@ export class MemoryInjector {
 		this._timeoutMs = opts.timeoutMs;
 		this._tokenCap = opts.tokenCap;
 		this._recentFileNames = opts.recentFileNames;
+		this._memorySettings = opts.memorySettings;
+		this._retrievalEnabled = opts.memorySettings.retrieval.enabled;
+		this._enabled = opts.memorySettings.enabled;
 	}
 
 	/** Token cap consumed by AgentSession's `_mergeRetrievalInjections`. */
@@ -82,8 +88,8 @@ export class MemoryInjector {
 	}
 
 	/**
-	 * Resolve (and lazily build) the active memory provider. Cavemem when its
-	 * CLI is on $PATH; FilesProvider over `<cwd>/.cave/memory/` otherwise.
+	 * Resolve (and lazily build) the active memory provider. zbrain is the default;
+	 * cavemem/files remain supported when configured.
 	 *
 	 * Returns the same instance the `/memory` slash command should use so the
 	 * MCP transport, embedding model, and FTS handles are reused.
@@ -91,7 +97,7 @@ export class MemoryInjector {
 	async getProvider(): Promise<MemoryProviderInstance | undefined> {
 		if (this._provider) return this._provider;
 		if (!this._providerInit) {
-			this._providerInit = resolveMemoryProvider({ cwd: this._cwd })
+			this._providerInit = resolveMemoryProvider({ cwd: this._cwd, settings: this._memorySettings })
 				.then((p) => {
 					this._provider = p;
 					return p;
@@ -231,7 +237,7 @@ export class MemoryInjector {
 	 * return `messages` untouched.
 	 */
 	async buildTransform(messages: AgentMessage[]): Promise<AgentMessage[]> {
-		if (!this._enabled) return messages;
+		if (!this._enabled || !this._retrievalEnabled) return messages;
 
 		const query = this._query(messages);
 		const rendered = await this._getOrBuildRecall(query);
