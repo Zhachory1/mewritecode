@@ -479,9 +479,11 @@ export class AgentSession {
 	// Base system prompt (without extension appends) - used to apply fresh appends each turn
 	private _baseSystemPrompt = "";
 
-	// Cave mode session overrides (null = use settings value)
+	// Cave / Ponytail mode session overrides (null = use settings value)
 	private _sessionCaveModeIntensity: "lite" | "full" | "ultra" | null = null;
 	private _sessionCaveModeDisabled = false;
+	private _sessionPonytailIntensity: "lite" | "full" | "ultra" | null = null;
+	private _sessionPonytailDisabled = false;
 	// Tool-output COMPRESSION override (null = fall back to settings). This is a
 	// SEPARATE knob from prose/disabled: caveman-mode is two features (prose-style
 	// injection vs tool-output compression) and the ablation runner (#33) must let
@@ -1922,6 +1924,7 @@ export class AgentSession {
 		const toolSnippets: Record<string, string> = {};
 		const promptGuidelines: string[] = [];
 		const caveModeEnabled = this._sessionCaveModeDisabled ? false : this.settingsManager.getCaveModeEnabled();
+		const ponytailEnabled = this._sessionPonytailDisabled ? false : this.settingsManager.getPonytailEnabled();
 
 		for (const name of validToolNames) {
 			const snippet = this._toolPromptSnippets.get(name);
@@ -1946,6 +1949,7 @@ export class AgentSession {
 		const loadedContextFiles = this._resourceLoader.getAgentsFiles().agentsFiles;
 
 		const caveModeSettings = this.settingsManager.getCaveModeSettings();
+		const ponytailSettings = this.settingsManager.getPonytailSettings();
 		const activeModel = this.agent.state.model;
 		return buildSystemPrompt({
 			cwd: this._cwd,
@@ -1961,6 +1965,10 @@ export class AgentSession {
 			caveMode: {
 				enabled: caveModeEnabled,
 				intensity: this._sessionCaveModeIntensity ?? caveModeSettings.intensity,
+			},
+			ponytailMode: {
+				enabled: ponytailEnabled,
+				intensity: this._sessionPonytailIntensity ?? ponytailSettings.intensity,
 			},
 		});
 	}
@@ -3911,6 +3919,32 @@ export class AgentSession {
 	 */
 	getEffectiveCaveCompressionGate(): boolean {
 		return this._effectiveToolCompression();
+	}
+
+	// =========================================================================
+	// Ponytail Mode Session Controls
+	// =========================================================================
+
+	getPonytailSessionState(): { enabled: boolean; intensity: "lite" | "full" | "ultra" } {
+		const settings = this.settingsManager.getPonytailSettings();
+		return {
+			enabled: this._sessionPonytailDisabled ? false : settings.enabled,
+			intensity: this._sessionPonytailIntensity ?? settings.intensity,
+		};
+	}
+
+	setPonytailSessionIntensity(intensity: "lite" | "full" | "ultra" | null): void {
+		this._sessionPonytailIntensity = intensity;
+		this._sessionPonytailDisabled = false;
+		this._baseSystemPrompt = this._rebuildSystemPrompt(this.getActiveToolNames());
+		this.agent.state.systemPrompt = this._baseSystemPrompt;
+	}
+
+	setPonytailSessionDisabled(): void {
+		this._sessionPonytailDisabled = true;
+		this._sessionPonytailIntensity = null;
+		this._baseSystemPrompt = this._rebuildSystemPrompt(this.getActiveToolNames());
+		this.agent.state.systemPrompt = this._baseSystemPrompt;
 	}
 
 	// =========================================================================

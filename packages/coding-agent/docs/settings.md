@@ -101,6 +101,26 @@ Tool compression applies three steps to all tool output:
 
 Use `/settings` to change intensity during a session without editing settings.
 
+### Ponytail Mode
+
+Ponytail Mode is enabled by default and reduces code size by steering coding tasks toward reuse, standard library, native platform features, and the smallest correct diff. It governs what to build, not response prose.
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `ponytail.enabled` | boolean | `true` | Enable code-minimalism guidance |
+| `ponytail.intensity` | string | `"full"` | Code-minimalism level: `"lite"`, `"full"`, or `"ultra"` |
+
+```json
+{
+  "ponytail": {
+    "enabled": true,
+    "intensity": "full"
+  }
+}
+```
+
+Use `/settings` to persist Ponytail defaults. Use `/ponytail [on|off|lite|full|ultra|status]` to change Ponytail for the current session without editing settings.
+
 ### RTK (Rust Token Killer)
 
 RTK is an optional external binary that rewrites bash commands to produce more compact output.

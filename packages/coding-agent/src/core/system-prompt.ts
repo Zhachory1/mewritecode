@@ -72,6 +72,11 @@ export interface BuildSystemPromptOptions {
 		enabled: boolean;
 		intensity: "lite" | "full" | "ultra";
 	};
+	/** Ponytail settings for code-minimalism guidance. */
+	ponytailMode?: {
+		enabled: boolean;
+		intensity: "lite" | "full" | "ultra";
+	};
 	/** Active model id surfaced in the # Environment block (e.g. "claude-sonnet-4-5"). */
 	modelId?: string;
 	/** Knowledge-cutoff date for the active model (e.g. "January 2025"). */
@@ -258,6 +263,47 @@ const SUBAGENT_ENV_HINTS = `## Subagent guidance
 - No emojis. No colons before tool calls. Be terse.`;
 
 // ============================================================================
+// Ponytail Code Minimalism Prompt
+// ============================================================================
+
+/**
+ * Build Ponytail code-minimalism rules. Returns empty string when disabled.
+ */
+export function buildPonytailModePrompt(intensity: "lite" | "full" | "ultra"): string {
+	const modeBehavior = {
+		lite: "Build what was asked, but name the lazier alternative in one line when it clearly exists. User can choose.",
+		full: "Enforce the ladder: reuse, standard library, native platform, installed dependency, then shortest correct diff. Default.",
+		ultra: "YAGNI extremist: deletion before addition. Ship the smallest working version and challenge unneeded scope in the same response.",
+	}[intensity];
+
+	return `
+## Ponytail Mode (${intensity})
+Code-minimalism is active. Be a lazy senior developer: efficient, not careless. The best code is code never written.
+
+Before writing code, stop at the first rung that holds:
+1. Does this need to exist? If not, skip it and say why briefly.
+2. Does it already exist in this codebase? Reuse the helper, util, type, or pattern.
+3. Does the standard library do it? Use it.
+4. Does the native platform do it? Use it.
+5. Does an already-installed dependency solve it? Use it; do not add a dependency unless needed.
+6. Can it be one line? Make it one line.
+7. Only then: write the minimum code that works.
+
+Current level: ${modeBehavior}
+
+Rules:
+- No unrequested abstractions, factories, interfaces, config, scaffolding, or boilerplate.
+- Deletion over addition. Boring over clever. Fewest files possible.
+- Bug fix = root cause, not symptom. Check callers and fix the shared path once when that is smaller/safer.
+- Complex request? Ship the lazy version and say what was skipped; ask if the full version is actually needed.
+- Do not simplify away trust-boundary validation, data-loss prevention, security, accessibility, hardware calibration, or anything the user explicitly asked to keep.
+- Non-trivial logic needs the smallest useful check. Trivial one-liners do not need tests.
+- Mark deliberate shortcuts with a \`ponytail:\` comment only when the ceiling/upgrade path is non-obvious.
+
+Ponytail governs what you build, not how you talk. Pair with compression mode for terse prose.`;
+}
+
+// ============================================================================
 // Compression Style System Prompt
 // ============================================================================
 
@@ -341,13 +387,16 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions = {}): strin
 		contextFiles: providedContextFiles,
 		skills: providedSkills,
 		caveMode,
+		ponytailMode,
 		modelId,
 		knowledgeCutoff,
 		slim,
 	} = options;
 
-	// Build cave mode section (empty string if disabled)
+	// Build optional mode sections (empty string when disabled)
 	const caveModeSection = caveMode?.enabled === true ? buildCaveModePrompt(caveMode.intensity ?? "full") : "";
+	const ponytailModeSection =
+		ponytailMode?.enabled === true ? buildPonytailModePrompt(ponytailMode.intensity ?? "full") : "";
 	const resolvedCwd = cwd ?? process.cwd();
 	const promptCwd = resolvedCwd.replace(/\\/g, "/");
 
@@ -382,7 +431,10 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions = {}): strin
 			prompt += formatSkillsForPrompt(skills);
 		}
 
-		// Append cave mode communication rules (after everything else)
+		// Append code-minimalism and communication rules (after everything else)
+		if (ponytailModeSection) {
+			prompt += `\n${ponytailModeSection}`;
+		}
 		if (caveModeSection) {
 			prompt += `\n${caveModeSection}`;
 		}
@@ -492,7 +544,10 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions = {}): strin
 		prompt += formatSkillsForPrompt(skills);
 	}
 
-	// Append cave mode communication rules (after everything else)
+	// Append code-minimalism and communication rules (after everything else)
+	if (ponytailModeSection) {
+		prompt += `\n${ponytailModeSection}`;
+	}
 	if (caveModeSection) {
 		prompt += `\n${caveModeSection}`;
 	}

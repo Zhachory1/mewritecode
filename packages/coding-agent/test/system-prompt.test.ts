@@ -58,6 +58,33 @@ describe("buildSystemPrompt", () => {
 		});
 	});
 
+	describe("ponytailMode", () => {
+		test("adds code-minimalism guidance by default when enabled", () => {
+			const prompt = buildSystemPrompt({
+				selectedTools: [],
+				contextFiles: [],
+				skills: [],
+				ponytailMode: { enabled: true, intensity: "full" },
+			});
+
+			expect(prompt).toContain("## Ponytail Mode (full)");
+			expect(prompt).toContain("The best code is code never written");
+			expect(prompt).toContain("Does it already exist in this codebase?");
+			expect(prompt).toContain("No unrequested abstractions");
+		});
+
+		test("omits code-minimalism guidance when disabled", () => {
+			const prompt = buildSystemPrompt({
+				selectedTools: [],
+				contextFiles: [],
+				skills: [],
+				ponytailMode: { enabled: false, intensity: "full" },
+			});
+
+			expect(prompt).not.toContain("## Ponytail Mode");
+		});
+	});
+
 	describe("appendSystemPrompt", () => {
 		test("adds downstream text after defaults while preserving core sections", () => {
 			const prompt = buildSystemPrompt({

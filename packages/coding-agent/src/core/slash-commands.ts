@@ -88,6 +88,7 @@ export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 	{ name: "freeze", description: "Compression-optimized compaction checkpoint (optional label)", wired: true },
 	{ name: "checkpoints", description: "List manual freeze checkpoints in this session", wired: true },
 	{ name: "mode", description: `Control ${COMPRESSION_MODE_NAME} (on/off/lite/full/ultra/stats)`, wired: true },
+	{ name: "ponytail", description: "Control code-minimalism mode (on/off/lite/full/ultra/status)", wired: true },
 	{ name: "resume", description: "Resume a different session", wired: true },
 	{ name: "reload", description: "Reload keybindings, extensions, skills, prompts, and themes", wired: true },
 	{
@@ -102,8 +103,7 @@ export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 	},
 	{
 		name: "memory",
-		description:
-			"Memory layer (cavemem-backed). Subcommands: search, save, show, forget, export, consolidate, sync, off, on, config.",
+		description: "Memory layer. Subcommands: search, save, show, forget, export, consolidate, sync, off, on, config.",
 		wired: true,
 	},
 	{

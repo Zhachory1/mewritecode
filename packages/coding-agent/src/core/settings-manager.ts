@@ -50,6 +50,11 @@ export interface CaveModeSettings {
 	mlCompression?: boolean; // default: false — enables LLMLingua-2 ONNX compression
 }
 
+export interface PonytailSettings {
+	enabled?: boolean; // default: true
+	intensity?: "lite" | "full" | "ultra"; // default: "full"
+}
+
 export interface RtkSettings {
 	enabled?: boolean; // default: true
 }
@@ -266,6 +271,7 @@ export interface Settings {
 	markdown?: MarkdownSettings;
 	sessionDir?: string; // Custom session storage directory (same format as --session-dir CLI flag)
 	caveMode?: CaveModeSettings;
+	ponytail?: PonytailSettings;
 	rtk?: RtkSettings;
 	memory?: MemorySettings;
 	contextEngine?: ContextEngineSettings;
@@ -1295,6 +1301,39 @@ export class SettingsManager {
 			intensity: this.getCaveModeIntensity(),
 			toolCompression: this.getCaveModeToolCompression(),
 			mlCompression: this.getCaveModeMLCompression(),
+		};
+	}
+
+	getPonytailEnabled(): boolean {
+		return this.settings.ponytail?.enabled ?? true;
+	}
+
+	setPonytailEnabled(enabled: boolean): void {
+		if (!this.globalSettings.ponytail) {
+			this.globalSettings.ponytail = {};
+		}
+		this.globalSettings.ponytail.enabled = enabled;
+		this.markModified("ponytail", "enabled");
+		this.save();
+	}
+
+	getPonytailIntensity(): "lite" | "full" | "ultra" {
+		return this.settings.ponytail?.intensity ?? "full";
+	}
+
+	setPonytailIntensity(intensity: "lite" | "full" | "ultra"): void {
+		if (!this.globalSettings.ponytail) {
+			this.globalSettings.ponytail = {};
+		}
+		this.globalSettings.ponytail.intensity = intensity;
+		this.markModified("ponytail", "intensity");
+		this.save();
+	}
+
+	getPonytailSettings(): { enabled: boolean; intensity: "lite" | "full" | "ultra" } {
+		return {
+			enabled: this.getPonytailEnabled(),
+			intensity: this.getPonytailIntensity(),
 		};
 	}
 

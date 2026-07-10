@@ -2544,6 +2544,11 @@ export class InteractiveMode {
 				this.handleCaveCommand(text);
 				return;
 			}
+			if (text === "/ponytail" || text.startsWith("/ponytail ")) {
+				this.editor.setText("");
+				this.handlePonytailCommand(text);
+				return;
+			}
 			if (text === "/tokens") {
 				this.editor.setText("");
 				this.handleTokensCommand();
@@ -4201,6 +4206,8 @@ export class InteractiveMode {
 					autocompleteMaxVisible: this.settingsManager.getAutocompleteMaxVisible(),
 					quietStartup: this.settingsManager.getQuietStartup(),
 					clearOnShrink: this.settingsManager.getClearOnShrink(),
+					ponytailEnabled: this.settingsManager.getPonytailEnabled(),
+					ponytailIntensity: this.settingsManager.getPonytailIntensity(),
 				},
 				{
 					onAutoCompactChange: (enabled) => {
@@ -4305,6 +4312,18 @@ export class InteractiveMode {
 					onClearOnShrinkChange: (enabled) => {
 						this.settingsManager.setClearOnShrink(enabled);
 						this.ui.setClearOnShrink(enabled);
+					},
+					onPonytailEnabledChange: (enabled) => {
+						this.settingsManager.setPonytailEnabled(enabled);
+						if (enabled) {
+							this.session.setPonytailSessionIntensity(this.settingsManager.getPonytailIntensity());
+						} else {
+							this.session.setPonytailSessionDisabled();
+						}
+					},
+					onPonytailIntensityChange: (intensity) => {
+						this.settingsManager.setPonytailIntensity(intensity);
+						this.session.setPonytailSessionIntensity(intensity);
 					},
 					onCancel: () => {
 						done();
@@ -6179,6 +6198,50 @@ export class InteractiveMode {
 		}
 
 		this.showWarning(`/mode: unknown argument '${arg}'. Usage: /mode [on|off|lite|full|ultra|stats]`);
+	}
+
+	private handlePonytailCommand(text: string): void {
+		const arg = text
+			.replace(/^\/ponytail\s*/, "")
+			.trim()
+			.toLowerCase();
+
+		if (!arg || arg === "status") {
+			const state = this.session.getPonytailSessionState();
+			const status = state.enabled ? `on (intensity: ${state.intensity})` : "off";
+			this.chatContainer.addChild(new Spacer(1));
+			this.chatContainer.addChild(new Text(theme.fg("muted", `Ponytail: ${status}`), 1, 0));
+			this.ui.requestRender();
+			return;
+		}
+
+		if (arg === "on") {
+			this.session.setPonytailSessionIntensity(this.settingsManager.getPonytailIntensity());
+			this.chatContainer.addChild(new Spacer(1));
+			this.chatContainer.addChild(new Text(theme.fg("muted", "Ponytail: on (session)"), 1, 0));
+			this.ui.requestRender();
+			return;
+		}
+
+		if (arg === "off" || arg === "stop") {
+			this.session.setPonytailSessionDisabled();
+			this.chatContainer.addChild(new Spacer(1));
+			this.chatContainer.addChild(new Text(theme.fg("muted", "Ponytail: off (session)"), 1, 0));
+			this.ui.requestRender();
+			return;
+		}
+
+		if (arg === "lite" || arg === "full" || arg === "ultra") {
+			this.session.setPonytailSessionIntensity(arg);
+			this.chatContainer.addChild(new Spacer(1));
+			this.chatContainer.addChild(
+				new Text(theme.fg("muted", `Ponytail: on, intensity set to ${arg} (session)`), 1, 0),
+			);
+			this.ui.requestRender();
+			return;
+		}
+
+		this.showWarning(`/ponytail: unknown argument '${arg}'. Usage: /ponytail [on|off|lite|full|ultra|status]`);
 	}
 
 	private handleCaveStatsCommand(): void {

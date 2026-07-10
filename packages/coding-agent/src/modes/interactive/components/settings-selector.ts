@@ -51,6 +51,8 @@ export interface SettingsConfig {
 	autocompleteMaxVisible: number;
 	quietStartup: boolean;
 	clearOnShrink: boolean;
+	ponytailEnabled: boolean;
+	ponytailIntensity: "lite" | "full" | "ultra";
 }
 
 export interface SettingsCallbacks {
@@ -75,6 +77,8 @@ export interface SettingsCallbacks {
 	onAutocompleteMaxVisibleChange: (maxVisible: number) => void;
 	onQuietStartupChange: (enabled: boolean) => void;
 	onClearOnShrinkChange: (enabled: boolean) => void;
+	onPonytailEnabledChange: (enabled: boolean) => void;
+	onPonytailIntensityChange: (intensity: "lite" | "full" | "ultra") => void;
 	onCancel: () => void;
 }
 
@@ -363,6 +367,27 @@ export class SettingsSelectorComponent extends Container {
 			values: ["true", "false"],
 		});
 
+		// Ponytail toggles (insert after clear-on-shrink)
+		const clearOnShrinkIndex = items.findIndex((item) => item.id === "clear-on-shrink");
+		items.splice(
+			clearOnShrinkIndex + 1,
+			0,
+			{
+				id: "ponytail-enabled",
+				label: "Ponytail",
+				description: "Code-minimalism guidance (reuse, stdlib/native first, smallest correct diff)",
+				currentValue: config.ponytailEnabled ? "true" : "false",
+				values: ["true", "false"],
+			},
+			{
+				id: "ponytail-intensity",
+				label: "Ponytail intensity",
+				description: "Code-minimalism level",
+				currentValue: config.ponytailIntensity,
+				values: ["lite", "full", "ultra"],
+			},
+		);
+
 		// Add borders
 		this.addChild(new DynamicBorder());
 
@@ -427,6 +452,12 @@ export class SettingsSelectorComponent extends Container {
 						break;
 					case "clear-on-shrink":
 						callbacks.onClearOnShrinkChange(newValue === "true");
+						break;
+					case "ponytail-enabled":
+						callbacks.onPonytailEnabledChange(newValue === "true");
+						break;
+					case "ponytail-intensity":
+						callbacks.onPonytailIntensityChange(newValue as "lite" | "full" | "ultra");
 						break;
 				}
 			},

@@ -322,6 +322,30 @@ describe("SettingsManager", () => {
 		});
 	});
 
+	describe("ponytail settings", () => {
+		it("defaults Ponytail on at full intensity", () => {
+			const manager = SettingsManager.create(projectDir, agentDir);
+
+			expect(manager.getPonytailSettings()).toEqual({ enabled: true, intensity: "full" });
+		});
+
+		it("loads and persists Ponytail settings", async () => {
+			const settingsPath = join(agentDir, "settings.json");
+			writeFileSync(settingsPath, JSON.stringify({ ponytail: { enabled: false, intensity: "lite" } }));
+
+			const manager = SettingsManager.create(projectDir, agentDir);
+			expect(manager.getPonytailSettings()).toEqual({ enabled: false, intensity: "lite" });
+
+			manager.setPonytailEnabled(true);
+			manager.setPonytailIntensity("ultra");
+			await manager.flush();
+
+			expect(JSON.parse(readFileSync(settingsPath, "utf-8"))).toMatchObject({
+				ponytail: { enabled: true, intensity: "ultra" },
+			});
+		});
+	});
+
 	describe("memory settings", () => {
 		it("defaults durable memory to zbrain with previewed capture and retrieval enabled", () => {
 			const manager = SettingsManager.create(projectDir, agentDir);
