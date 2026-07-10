@@ -400,6 +400,22 @@ describe("SettingsManager", () => {
 			expect(settings.compression.headroom.enabled).toBe(true);
 		});
 
+		it("persists Headroom enabled from settings UI setter", async () => {
+			const settingsPath = join(agentDir, "settings.json");
+			writeFileSync(settingsPath, JSON.stringify({ theme: "dark" }));
+
+			const manager = SettingsManager.create(projectDir, agentDir);
+			manager.setHeadroomEnabled(false);
+			await manager.flush();
+
+			expect(JSON.parse(readFileSync(settingsPath, "utf-8"))).toMatchObject({
+				contextEngine: { compression: { headroom: { enabled: false } } },
+			});
+			expect(
+				SettingsManager.create(projectDir, agentDir).getContextEngineSettings().compression.headroom.enabled,
+			).toBe(false);
+		});
+
 		it("should allow Headroom to be disabled explicitly", () => {
 			const settingsPath = join(agentDir, "settings.json");
 			writeFileSync(

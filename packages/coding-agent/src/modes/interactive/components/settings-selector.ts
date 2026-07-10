@@ -51,8 +51,12 @@ export interface SettingsConfig {
 	autocompleteMaxVisible: number;
 	quietStartup: boolean;
 	clearOnShrink: boolean;
+	caveModeEnabled: boolean;
+	caveModeIntensity: "lite" | "full" | "ultra";
+	caveModeToolCompression: boolean;
 	ponytailEnabled: boolean;
 	ponytailIntensity: "lite" | "full" | "ultra";
+	headroomEnabled: boolean;
 }
 
 export interface SettingsCallbacks {
@@ -77,8 +81,12 @@ export interface SettingsCallbacks {
 	onAutocompleteMaxVisibleChange: (maxVisible: number) => void;
 	onQuietStartupChange: (enabled: boolean) => void;
 	onClearOnShrinkChange: (enabled: boolean) => void;
+	onCaveModeEnabledChange: (enabled: boolean) => void;
+	onCaveModeIntensityChange: (intensity: "lite" | "full" | "ultra") => void;
+	onCaveModeToolCompressionChange: (enabled: boolean) => void;
 	onPonytailEnabledChange: (enabled: boolean) => void;
 	onPonytailIntensityChange: (intensity: "lite" | "full" | "ultra") => void;
+	onHeadroomEnabledChange: (enabled: boolean) => void;
 	onCancel: () => void;
 }
 
@@ -367,11 +375,32 @@ export class SettingsSelectorComponent extends Container {
 			values: ["true", "false"],
 		});
 
-		// Ponytail toggles (insert after clear-on-shrink)
+		// Code/token reduction toggles (insert after clear-on-shrink)
 		const clearOnShrinkIndex = items.findIndex((item) => item.id === "clear-on-shrink");
 		items.splice(
 			clearOnShrinkIndex + 1,
 			0,
+			{
+				id: "cave-mode-enabled",
+				label: "Compression mode",
+				description: "Terse communication-style compression",
+				currentValue: config.caveModeEnabled ? "true" : "false",
+				values: ["true", "false"],
+			},
+			{
+				id: "cave-mode-intensity",
+				label: "Compression intensity",
+				description: "Communication compression level",
+				currentValue: config.caveModeIntensity,
+				values: ["lite", "full", "ultra"],
+			},
+			{
+				id: "cave-tool-compression",
+				label: "Tool compression",
+				description: "Compress long tool output",
+				currentValue: config.caveModeToolCompression ? "true" : "false",
+				values: ["true", "false"],
+			},
 			{
 				id: "ponytail-enabled",
 				label: "Ponytail",
@@ -385,6 +414,13 @@ export class SettingsSelectorComponent extends Container {
 				description: "Code-minimalism level",
 				currentValue: config.ponytailIntensity,
 				values: ["lite", "full", "ultra"],
+			},
+			{
+				id: "headroom-enabled",
+				label: "Headroom",
+				description: "Allow Headroom context compression when context compression is enabled",
+				currentValue: config.headroomEnabled ? "true" : "false",
+				values: ["true", "false"],
 			},
 		);
 
@@ -453,11 +489,23 @@ export class SettingsSelectorComponent extends Container {
 					case "clear-on-shrink":
 						callbacks.onClearOnShrinkChange(newValue === "true");
 						break;
+					case "cave-mode-enabled":
+						callbacks.onCaveModeEnabledChange(newValue === "true");
+						break;
+					case "cave-mode-intensity":
+						callbacks.onCaveModeIntensityChange(newValue as "lite" | "full" | "ultra");
+						break;
+					case "cave-tool-compression":
+						callbacks.onCaveModeToolCompressionChange(newValue === "true");
+						break;
 					case "ponytail-enabled":
 						callbacks.onPonytailEnabledChange(newValue === "true");
 						break;
 					case "ponytail-intensity":
 						callbacks.onPonytailIntensityChange(newValue as "lite" | "full" | "ultra");
+						break;
+					case "headroom-enabled":
+						callbacks.onHeadroomEnabledChange(newValue === "true");
 						break;
 				}
 			},

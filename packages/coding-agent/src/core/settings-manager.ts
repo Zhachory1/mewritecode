@@ -1430,6 +1430,19 @@ export class SettingsManager {
 		this.save();
 	}
 
+	setHeadroomEnabled(enabled: boolean): void {
+		if (!this.globalSettings.contextEngine) this.globalSettings.contextEngine = {};
+		this.globalSettings.contextEngine.compression = {
+			...this.settings.contextEngine?.compression,
+			headroom: {
+				...this.settings.contextEngine?.compression?.headroom,
+				enabled,
+			},
+		};
+		this.markModified("contextEngine", "compression");
+		this.save();
+	}
+
 	getContextEngineSettings(): {
 		enabled: boolean;
 		provider: string;

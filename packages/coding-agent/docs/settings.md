@@ -99,7 +99,7 @@ Tool compression applies three steps to all tool output:
 2. Collapse 3+ consecutive blank lines to a single blank line
 3. Truncate output exceeding 500 lines (keeps first 200 + last 100 lines)
 
-Use `/settings` to change intensity during a session without editing settings.
+Use `/settings` to toggle Compression Mode, Tool compression, and intensity. Use `/mode [on|off|lite|full|ultra|stats]` for session-only changes.
 
 ### Ponytail Mode
 
@@ -215,7 +215,7 @@ The Context Engine is disabled by default. It can inject transient, lower-priori
 
 #### contextEngine.compression.headroom
 
-Headroom compression is experimental. The Headroom integration is built into Me Write and is on by default when `contextEngine.compression.enabled` is true. Set `contextEngine.compression.headroom.enabled` to `false` to turn it off. `contextEngine.compression.headroom.python` is an advanced runtime override; normal setup should not need it.
+Headroom compression is experimental. The Headroom integration is built into Me Write and is on by default when `contextEngine.compression.enabled` is true. Use `/settings` or set `contextEngine.compression.headroom.enabled` to `false` to turn it off. `contextEngine.compression.headroom.python` is an advanced runtime override; normal setup should not need it.
 
 ```json
 {

@@ -4182,6 +4182,7 @@ export class InteractiveMode {
 
 	private showSettingsSelector(): void {
 		this.showSelector((done) => {
+			const contextEngineSettings = this.settingsManager.getContextEngineSettings();
 			const selector = new SettingsSelectorComponent(
 				{
 					autoCompact: this.session.autoCompactionEnabled,
@@ -4206,8 +4207,12 @@ export class InteractiveMode {
 					autocompleteMaxVisible: this.settingsManager.getAutocompleteMaxVisible(),
 					quietStartup: this.settingsManager.getQuietStartup(),
 					clearOnShrink: this.settingsManager.getClearOnShrink(),
+					caveModeEnabled: this.settingsManager.getCaveModeEnabled(),
+					caveModeIntensity: this.settingsManager.getCaveModeIntensity(),
+					caveModeToolCompression: this.settingsManager.getCaveModeToolCompression(),
 					ponytailEnabled: this.settingsManager.getPonytailEnabled(),
 					ponytailIntensity: this.settingsManager.getPonytailIntensity(),
+					headroomEnabled: contextEngineSettings.compression.headroom.enabled,
 				},
 				{
 					onAutoCompactChange: (enabled) => {
@@ -4313,6 +4318,22 @@ export class InteractiveMode {
 						this.settingsManager.setClearOnShrink(enabled);
 						this.ui.setClearOnShrink(enabled);
 					},
+					onCaveModeEnabledChange: (enabled) => {
+						this.settingsManager.setCaveModeEnabled(enabled);
+						if (enabled) {
+							this.session.setCaveModeSessionIntensity(this.settingsManager.getCaveModeIntensity());
+						} else {
+							this.session.setCaveModeSessionDisabled();
+						}
+					},
+					onCaveModeIntensityChange: (intensity) => {
+						this.settingsManager.setCaveModeIntensity(intensity);
+						this.session.setCaveModeSessionIntensity(intensity);
+					},
+					onCaveModeToolCompressionChange: (enabled) => {
+						this.settingsManager.setCaveModeToolCompression(enabled);
+						this.session.setCaveModeSessionToolCompression(enabled);
+					},
 					onPonytailEnabledChange: (enabled) => {
 						this.settingsManager.setPonytailEnabled(enabled);
 						if (enabled) {
@@ -4324,6 +4345,9 @@ export class InteractiveMode {
 					onPonytailIntensityChange: (intensity) => {
 						this.settingsManager.setPonytailIntensity(intensity);
 						this.session.setPonytailSessionIntensity(intensity);
+					},
+					onHeadroomEnabledChange: (enabled) => {
+						this.settingsManager.setHeadroomEnabled(enabled);
 					},
 					onCancel: () => {
 						done();

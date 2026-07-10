@@ -239,6 +239,8 @@ Caveman Mode is enabled by default and reduces token waste without changing work
 
 Change level with `/cave [lite|full|ultra|off]`.
 
+Use `/settings` to turn Compression Mode, tool compression, Ponytail, and Headroom on or off and to set default intensity levels. Session-only controls remain available via `/cave` and `/ponytail`.
+
 Settings reference: [docs/settings.md](docs/settings.md)
 
 ### Benchmarks
