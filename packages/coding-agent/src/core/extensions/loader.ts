@@ -17,6 +17,7 @@ import * as _bundledTypebox from "@sinclair/typebox";
 import * as _bundledPiAgentCore from "@zhachory1/mewrite-agent";
 import * as _bundledPiAi from "@zhachory1/mewrite-ai";
 import * as _bundledPiAiOauth from "@zhachory1/mewrite-ai/oauth";
+import * as _bundledPiAiRegistry from "@zhachory1/mewrite-ai/registry";
 import type { KeyId } from "@zhachory1/mewrite-tui";
 import * as _bundledPiTui from "@zhachory1/mewrite-tui";
 import { CONFIG_DIR_NAME, getAgentDir, getPackageDir, isBunBinary } from "../../config.js";
@@ -46,6 +47,7 @@ const VIRTUAL_MODULES: Record<string, unknown> = {
 	"@zhachory1/mewrite-tui": _bundledPiTui,
 	"@zhachory1/mewrite-ai": _bundledPiAi,
 	"@zhachory1/mewrite-ai/oauth": _bundledPiAiOauth,
+	"@zhachory1/mewrite-ai/registry": _bundledPiAiRegistry,
 	cave: _bundledPiCodingAgent,
 	// Extensions import from the published package name; alias it to the same
 	// coding-agent index that `cave` resolves to.
@@ -69,20 +71,47 @@ function getAliases(): Record<string, string> {
 	const typeboxRoot = typeboxEntry.replace(/[\\/]build[\\/]cjs[\\/]index\.js$/, "");
 
 	const packagesRoot = path.resolve(__dirname, "../../../../");
-	const resolveWorkspaceOrImport = (workspaceRelativePath: string, specifier: string): string => {
+	const resolveWorkspaceOrImport = (
+		workspaceRelativePath: string,
+		specifier: string,
+		sourceRelativePath?: string,
+	): string => {
 		const workspacePath = path.join(packagesRoot, workspaceRelativePath);
 		if (fs.existsSync(workspacePath)) {
 			return workspacePath;
 		}
-		return fileURLToPath(import.meta.resolve(specifier));
+		if (sourceRelativePath) {
+			const sourcePath = path.join(packagesRoot, sourceRelativePath);
+			if (fs.existsSync(sourcePath)) {
+				return sourcePath;
+			}
+		}
+		return require.resolve(specifier);
 	};
 
 	_aliases = {
 		cave: packageIndex,
-		"@zhachory1/mewrite-agent": resolveWorkspaceOrImport("agent/dist/index.js", "@zhachory1/mewrite-agent"),
-		"@zhachory1/mewrite-tui": resolveWorkspaceOrImport("tui/dist/index.js", "@zhachory1/mewrite-tui"),
-		"@zhachory1/mewrite-ai": resolveWorkspaceOrImport("ai/dist/index.js", "@zhachory1/mewrite-ai"),
-		"@zhachory1/mewrite-ai/oauth": resolveWorkspaceOrImport("ai/dist/oauth.js", "@zhachory1/mewrite-ai/oauth"),
+		"@zhachory1/mewrite-agent": resolveWorkspaceOrImport(
+			"agent/dist/index.js",
+			"@zhachory1/mewrite-agent",
+			"agent/src/index.ts",
+		),
+		"@zhachory1/mewrite-tui": resolveWorkspaceOrImport(
+			"tui/dist/index.js",
+			"@zhachory1/mewrite-tui",
+			"tui/src/index.ts",
+		),
+		"@zhachory1/mewrite-ai": resolveWorkspaceOrImport("ai/dist/index.js", "@zhachory1/mewrite-ai", "ai/src/index.ts"),
+		"@zhachory1/mewrite-ai/oauth": resolveWorkspaceOrImport(
+			"ai/dist/oauth.js",
+			"@zhachory1/mewrite-ai/oauth",
+			"ai/src/oauth.ts",
+		),
+		"@zhachory1/mewrite-ai/registry": resolveWorkspaceOrImport(
+			"ai/dist/registry/index.js",
+			"@zhachory1/mewrite-ai/registry",
+			"ai/src/registry/index.ts",
+		),
 		"@sinclair/typebox": typeboxRoot,
 	};
 	// Extensions import the published package name; resolve it to the same

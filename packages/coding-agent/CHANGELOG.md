@@ -9,6 +9,10 @@
 - Added zbrain as the default durable-memory backend, including memory backend settings, zbrain-backed search/save routing, `/memory status` backend details, and preview-by-default `/memory save` writes ([#58](https://github.com/Zhachory1/mewritecode/issues/58)).
 - Added native Ponytail code-minimalism mode, enabled by default with `/ponytail` session controls, `/settings` controls for Compression/Ponytail/Headroom toggles, and `ponytail.enabled`/`ponytail.intensity` settings ([#46](https://github.com/Zhachory1/mewritecode/issues/46), [#56](https://github.com/Zhachory1/mewritecode/issues/56)).
 
+### Fixed
+
+- Fixed extension loading for extensions that import the `@zhachory1/mewrite-ai/registry` package subpath.
+
 ## [1.0.12] - 2026-07-09
 
 ### Changed

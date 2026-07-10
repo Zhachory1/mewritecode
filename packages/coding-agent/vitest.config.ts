@@ -11,6 +11,8 @@ export default defineConfig({
 			"@zhachory1/mewrite-ai/oauth": resolve(packageDir, "../ai/src/oauth.ts"),
 			"@zhachory1/mewrite-ai/registry": resolve(packageDir, "../ai/src/registry/index.ts"),
 			"@zhachory1/mewrite-ai": resolve(packageDir, "../ai/src/index.ts"),
+			"@zhachory1/mewrite-code/hooks": resolve(packageDir, "src/core/hooks/index.ts"),
+			"@zhachory1/mewrite-code": resolve(packageDir, "src/index.ts"),
 			"@zhachory1/mewrite-tui": resolve(packageDir, "../tui/src/index.ts"),
 		},
 	},
