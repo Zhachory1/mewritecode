@@ -1,0 +1,521 @@
+{
+  "date": "2026-07-12",
+  "model": "cave:openai-codex:gpt-5.4:high",
+  "config": {
+    "provider": "openai-codex",
+    "model": "gpt-5.4",
+    "thinking": "high",
+    "capDollars": 5,
+    "cave": "ultra",
+    "compression": "ultra+tool+ml"
+  },
+  "aggregate": {
+    "total": 50,
+    "resolved": 0,
+    "resolvedRate": 0,
+    "dollarsTotal": 0,
+    "capFailures": 0
+  },
+  "results": [
+    {
+      "instance_id": "astropy__astropy-12907",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 255,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/astropy__astropy-12907.json"
+      ]
+    },
+    {
+      "instance_id": "astropy__astropy-13033",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 243,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/astropy__astropy-13033.json"
+      ]
+    },
+    {
+      "instance_id": "astropy__astropy-13236",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 247,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/astropy__astropy-13236.json"
+      ]
+    },
+    {
+      "instance_id": "astropy__astropy-13398",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 246,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/astropy__astropy-13398.json"
+      ]
+    },
+    {
+      "instance_id": "astropy__astropy-13453",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 244,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/astropy__astropy-13453.json"
+      ]
+    },
+    {
+      "instance_id": "astropy__astropy-13579",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 340,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/astropy__astropy-13579.json"
+      ]
+    },
+    {
+      "instance_id": "astropy__astropy-13977",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 189,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/astropy__astropy-13977.json"
+      ]
+    },
+    {
+      "instance_id": "astropy__astropy-14096",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 241,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/astropy__astropy-14096.json"
+      ]
+    },
+    {
+      "instance_id": "astropy__astropy-14182",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 247,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/astropy__astropy-14182.json"
+      ]
+    },
+    {
+      "instance_id": "astropy__astropy-14309",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 237,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/astropy__astropy-14309.json"
+      ]
+    },
+    {
+      "instance_id": "astropy__astropy-14365",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 283,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/astropy__astropy-14365.json"
+      ]
+    },
+    {
+      "instance_id": "astropy__astropy-14369",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 233,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/astropy__astropy-14369.json"
+      ]
+    },
+    {
+      "instance_id": "astropy__astropy-14508",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 233,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/astropy__astropy-14508.json"
+      ]
+    },
+    {
+      "instance_id": "astropy__astropy-14539",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 182,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/astropy__astropy-14539.json"
+      ]
+    },
+    {
+      "instance_id": "astropy__astropy-14598",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 153,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/astropy__astropy-14598.json"
+      ]
+    },
+    {
+      "instance_id": "astropy__astropy-14995",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 238,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/astropy__astropy-14995.json"
+      ]
+    },
+    {
+      "instance_id": "astropy__astropy-7166",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 234,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/astropy__astropy-7166.json"
+      ]
+    },
+    {
+      "instance_id": "astropy__astropy-7336",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 227,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/astropy__astropy-7336.json"
+      ]
+    },
+    {
+      "instance_id": "astropy__astropy-7606",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 239,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/astropy__astropy-7606.json"
+      ]
+    },
+    {
+      "instance_id": "astropy__astropy-7671",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 230,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/astropy__astropy-7671.json"
+      ]
+    },
+    {
+      "instance_id": "astropy__astropy-8707",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 238,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/astropy__astropy-8707.json"
+      ]
+    },
+    {
+      "instance_id": "astropy__astropy-8872",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 148,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/astropy__astropy-8872.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-10097",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 304,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-10097.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-10554",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 276,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-10554.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-10880",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 320,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-10880.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-10914",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 362,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-10914.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-10973",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 348,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-10973.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-10999",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 261,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-10999.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-11066",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 338,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-11066.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-11087",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 355,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-11087.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-11095",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 317,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-11095.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-11099",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 363,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-11099.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-11119",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 265,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-11119.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-11133",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 319,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-11133.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-11138",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 355,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-11138.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-11141",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 326,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-11141.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-11149",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 332,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-11149.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-11163",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 281,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-11163.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-11179",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 321,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-11179.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-11206",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 375,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-11206.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-11211",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 334,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-11211.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-11239",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 362,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-11239.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-11265",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 320,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-11265.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-11276",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 269,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-11276.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-11292",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 320,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-11292.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-11299",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 339,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-11299.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-11333",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 302,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-11333.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-11400",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 348,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-11400.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-11433",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 318,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-11433.json"
+      ]
+    },
+    {
+      "instance_id": "django__django-11451",
+      "resolved": false,
+      "attempts": 1,
+      "dollars_spent": 0,
+      "duration_ms": 319,
+      "traces": [
+        "/home/runner/work/mewritecode/mewritecode/research/results/traces/django__django-11451.json"
+      ]
+    }
+  ]
+}
