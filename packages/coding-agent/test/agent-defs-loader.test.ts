@@ -297,8 +297,7 @@ describe("loadAgentDefs", () => {
 	});
 
 	it("loads the bundled defaults shipped with this package", () => {
-		// Use the real package dir — we should pick up explore + reviewer + tester +
-		// implementer + critic.
+		// Use the real package dir — we should pick up the default review/explore agents and ship workflow agents.
 		const realResult = loadAgentDefs({
 			cwd,
 			userDir,
@@ -307,10 +306,19 @@ describe("loadAgentDefs", () => {
 			skipProject: true,
 		});
 		const names = realResult.agents.map((a) => a.def.name).sort();
-		// At minimum the P0 defaults must be there.
-		expect(names).toContain("explore");
-		expect(names).toContain("reviewer");
-		expect(names).toContain("tester");
+		for (const name of [
+			"explore",
+			"reviewer",
+			"tester",
+			"ship-doc-writer",
+			"ship-implementation-lead",
+			"ship-occams-principles",
+			"ship-spec-checker",
+			"ship-test-writer",
+		]) {
+			expect(names).toContain(name);
+		}
+		expect(realResult.diagnostics.filter((d) => d.path?.includes("ship-")).map((d) => d.message)).toEqual([]);
 	});
 
 	it("bundles an in-place editor agent (edit+write+read, no isolation, no warnings)", () => {

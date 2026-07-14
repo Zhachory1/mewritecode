@@ -83,6 +83,12 @@ The package installs these aliases:
 - `mewrite-code`
 - `mewritecode`
 
+### Install demo
+
+<p align="center">
+  <img src="vhs/install.gif" alt="Installing and launching Me Write Code" width="760">
+</p>
+
 ---
 
 ## Quick start

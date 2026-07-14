@@ -50,6 +50,12 @@ mewrite
 
 The package supports x86_64 and aarch64 systems. It installs `mewrite` plus `mewrite-code` and `mewritecode` aliases.
 
+### Install demo
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Zhachory1/mewritecode/main/vhs/install.gif" alt="Installing and launching Me Write Code" width="760">
+</p>
+
 ### Snap (tracked, not yet published)
 
 Snap packaging metadata is tracked in `snap/snapcraft.yaml`. Once published:

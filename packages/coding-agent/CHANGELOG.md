@@ -2,8 +2,13 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added bundled ship workflow agents (`ship-implementation-lead`, `ship-spec-checker`, `ship-test-writer`, `ship-doc-writer`, and `ship-occams-principles`) so disciplined `/ship` workflows can use them by default ([#52](https://github.com/Zhachory1/mewritecode/issues/52)).
+
 ### Changed
 
+- Embedded the install demo GIF in the root and package READMEs ([#7](https://github.com/Zhachory1/mewritecode/issues/7)).
 - Tightened the default coding-agent prompt with exact-schema plan-mode precedence, explicit read-only mutation boundaries, opt-in durable-memory guardrails, scoped validation guidance, and clearer large-file/tooling exceptions.
 - Updated the `/models` slash-command registry import to use the base `@zhachory1/mewrite-ai` export instead of the registry package subpath.
 - Refresh the model registry pricing source when opening `/model`, and apply registry input/output prices to built-in model picker costs while preserving user `models.json` overrides.
