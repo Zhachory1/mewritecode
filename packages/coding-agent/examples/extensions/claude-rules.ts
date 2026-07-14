@@ -19,7 +19,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { ExtensionAPI } from "@zhachory1/mewrite-code";
+import type { ExtensionAPI } from "cave";
 
 /**
  * Recursively find all .md files in a directory

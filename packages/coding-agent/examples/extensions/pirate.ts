@@ -10,7 +10,7 @@
  * 3. When enabled, the agent will respond like a pirate
  */
 
-import type { ExtensionAPI } from "@zhachory1/mewrite-code";
+import type { ExtensionAPI } from "cave";
 
 export default function pirateExtension(pi: ExtensionAPI) {
 	let pirateMode = false;

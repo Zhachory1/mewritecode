@@ -16,7 +16,8 @@
 
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { Type } from "@sinclair/typebox";
-import type { ExtensionAPI } from "@zhachory1/mewrite-code";
+import { Text } from "@zhachory1/mewrite-tui";
+import type { ExtensionAPI } from "cave";
 import {
 	DEFAULT_MAX_BYTES,
 	DEFAULT_MAX_LINES,
@@ -24,8 +25,7 @@ import {
 	type TruncationResult,
 	truncateHead,
 	withFileMutationQueue,
-} from "@zhachory1/mewrite-code";
-import { Text } from "@zhachory1/mewrite-tui";
+} from "cave";
 import { execSync } from "child_process";
 import { tmpdir } from "os";
 import { join } from "path";

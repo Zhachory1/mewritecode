@@ -1,7 +1,7 @@
 import { complete, getModel } from "@zhachory1/mewrite-ai";
-import type { ExtensionAPI, ExtensionCommandContext } from "@zhachory1/mewrite-code";
-import { DynamicBorder, getMarkdownTheme } from "@zhachory1/mewrite-code";
 import { Container, Markdown, matchesKey, Text } from "@zhachory1/mewrite-tui";
+import type { ExtensionAPI, ExtensionCommandContext } from "cave";
+import { DynamicBorder, getMarkdownTheme } from "cave";
 
 type ContentBlock = {
 	type?: string;

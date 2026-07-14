@@ -6,7 +6,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import { getAgentDir, parseFrontmatter } from "@zhachory1/mewrite-code";
+import { getAgentDir, parseFrontmatter } from "cave";
 
 /**
  * Resolve the cave-bundled agents dir from inside this extension's own
@@ -14,7 +14,7 @@ import { getAgentDir, parseFrontmatter } from "@zhachory1/mewrite-code";
  * `<cave-package>/examples/extensions/subagent/agents.ts`; the bundled
  * agents live at `<cave-package>/agents/`. Walking up three levels gets us
  * to the cave package root. We avoid taking a dependency on a getter exported
- * from `@zhachory1/mewrite-code` so the extension keeps loading cleanly
+ * from `cave` so the extension keeps loading cleanly
  * against any published cave version that ships its agents at that path.
  */
 function getBundledAgentsDir(): string {

@@ -3,7 +3,7 @@
  */
 
 import { Type } from "@zhachory1/mewrite-ai";
-import { defineTool, type ExtensionAPI } from "@zhachory1/mewrite-code";
+import { defineTool, type ExtensionAPI } from "cave";
 
 const helloTool = defineTool({
 	name: "hello",

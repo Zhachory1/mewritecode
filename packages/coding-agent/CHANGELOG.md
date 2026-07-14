@@ -5,6 +5,7 @@
 ### Changed
 
 - Tightened the default coding-agent prompt with exact-schema plan-mode precedence, explicit read-only mutation boundaries, opt-in durable-memory guardrails, scoped validation guidance, and clearer large-file/tooling exceptions.
+- Updated typechecked examples and registry command imports to avoid self-importing the published coding-agent package name during workspace checks.
 - Refresh the model registry pricing source when opening `/model`, and apply registry input/output prices to built-in model picker costs while preserving user `models.json` overrides.
 - Added default system prompt routing for matching MCP tools on broad external lookups and zbrain workspace filing when users explicitly request durable notes or learning capture ([#57](https://github.com/Zhachory1/mewritecode/issues/57)).
 - Added zbrain as the default durable-memory backend, including memory backend settings, zbrain-backed search/save routing, `/memory status` backend details, and preview-by-default `/memory save` writes ([#58](https://github.com/Zhachory1/mewritecode/issues/58)).

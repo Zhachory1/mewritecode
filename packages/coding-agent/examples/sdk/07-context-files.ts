@@ -4,7 +4,7 @@
  * Context files provide project-specific instructions loaded into the system prompt.
  */
 
-import { createAgentSession, DefaultResourceLoader, SessionManager } from "@zhachory1/mewrite-code";
+import { createAgentSession, DefaultResourceLoader, SessionManager } from "cave";
 
 // Disable context files entirely by returning an empty list in agentsFilesOverride.
 const loader = new DefaultResourceLoader({

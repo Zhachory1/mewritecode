@@ -14,8 +14,8 @@
  */
 
 import { complete } from "@zhachory1/mewrite-ai";
-import type { ExtensionAPI } from "@zhachory1/mewrite-code";
-import { convertToLlm, serializeConversation } from "@zhachory1/mewrite-code";
+import type { ExtensionAPI } from "cave";
+import { convertToLlm, serializeConversation } from "cave";
 
 export default function (pi: ExtensionAPI) {
 	pi.on("session_before_compact", async (event, ctx) => {

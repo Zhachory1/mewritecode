@@ -9,8 +9,8 @@
  */
 
 import type { AssistantMessage } from "@zhachory1/mewrite-ai";
-import type { ExtensionAPI } from "@zhachory1/mewrite-code";
 import { truncateToWidth, visibleWidth } from "@zhachory1/mewrite-tui";
+import type { ExtensionAPI } from "cave";
 
 export default function (pi: ExtensionAPI) {
 	let enabled = false;

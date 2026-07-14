@@ -5,8 +5,8 @@
  */
 
 import { Type } from "@sinclair/typebox";
-import type { ExtensionAPI } from "@zhachory1/mewrite-code";
 import { Editor, type EditorTheme, Key, matchesKey, Text, truncateToWidth } from "@zhachory1/mewrite-tui";
+import type { ExtensionAPI } from "cave";
 
 interface OptionWithDesc {
 	label: string;

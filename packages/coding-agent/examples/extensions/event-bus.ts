@@ -7,7 +7,7 @@
  * Usage: /emit [event-name] [data] - emit an event on the bus
  */
 
-import type { ExtensionAPI, ExtensionContext } from "@zhachory1/mewrite-code";
+import type { ExtensionAPI, ExtensionContext } from "cave";
 
 export default function (pi: ExtensionAPI) {
 	// Store ctx for use in event handler

@@ -1,4 +1,4 @@
-import type { ExtensionAPI, ExtensionContext } from "@zhachory1/mewrite-code";
+import type { ExtensionAPI, ExtensionContext } from "cave";
 
 const COMPACT_THRESHOLD_TOKENS = 100_000;
 

@@ -10,7 +10,7 @@
  */
 
 import type { OAuthCredentials, OAuthLoginCallbacks } from "@zhachory1/mewrite-ai";
-import type { ExtensionAPI } from "@zhachory1/mewrite-code";
+import type { ExtensionAPI } from "cave";
 
 // =============================================================================
 // Constants

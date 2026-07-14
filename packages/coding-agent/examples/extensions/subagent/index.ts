@@ -20,8 +20,8 @@ import { Type } from "@sinclair/typebox";
 import type { AgentToolResult } from "@zhachory1/mewrite-agent";
 import type { Message } from "@zhachory1/mewrite-ai";
 import { StringEnum } from "@zhachory1/mewrite-ai";
-import { type ExtensionAPI, getMarkdownTheme, withFileMutationQueue } from "@zhachory1/mewrite-code";
 import { Container, Markdown, Spacer, Text } from "@zhachory1/mewrite-tui";
+import { type ExtensionAPI, getMarkdownTheme, withFileMutationQueue } from "cave";
 import { type AgentConfig, type AgentScope, discoverAgents } from "./agents.js";
 
 const MAX_PARALLEL_TASKS = 8;
