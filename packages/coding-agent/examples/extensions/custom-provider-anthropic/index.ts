@@ -43,7 +43,7 @@ import {
 	type ToolCall,
 	type ToolResultMessage,
 } from "@zhachory1/mewrite-ai";
-import type { ExtensionAPI } from "cave";
+import type { ExtensionAPI } from "@zhachory1/mewrite-code";
 
 // =============================================================================
 // OAuth Implementation (copied from packages/ai/src/utils/oauth/anthropic.ts)

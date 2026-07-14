@@ -22,7 +22,7 @@ import {
 	readOnlyTools,
 	readTool,
 	SessionManager,
-} from "cave";
+} from "@zhachory1/mewrite-code";
 
 // Read-only mode (no edit/write) - uses process.cwd()
 await createAgentSession({

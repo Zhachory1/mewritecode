@@ -11,7 +11,7 @@
  *   /followup And then?   - Sends while streaming with followUp delivery
  */
 
-import type { ExtensionAPI } from "cave";
+import type { ExtensionAPI } from "@zhachory1/mewrite-code";
 
 export default function (pi: ExtensionAPI) {
 	// Simple command that sends a user message

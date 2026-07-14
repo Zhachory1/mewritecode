@@ -4,7 +4,7 @@
  * Control session persistence: in-memory, new file, continue, or open specific.
  */
 
-import { createAgentSession, SessionManager } from "cave";
+import { createAgentSession, SessionManager } from "@zhachory1/mewrite-code";
 
 // In-memory (no persistence)
 const { session: inMemory } = await createAgentSession({

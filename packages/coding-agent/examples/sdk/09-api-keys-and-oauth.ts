@@ -4,7 +4,7 @@
  * Configure API key resolution via AuthStorage and ModelRegistry.
  */
 
-import { AuthStorage, createAgentSession, ModelRegistry, SessionManager } from "cave";
+import { AuthStorage, createAgentSession, ModelRegistry, SessionManager } from "@zhachory1/mewrite-code";
 
 // Default: AuthStorage uses ~/.pi/agent/auth.json
 // ModelRegistry loads built-in + custom models from ~/.pi/agent/models.json

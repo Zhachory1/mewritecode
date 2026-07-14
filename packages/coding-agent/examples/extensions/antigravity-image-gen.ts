@@ -31,7 +31,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { type Static, Type } from "@sinclair/typebox";
 import { StringEnum } from "@zhachory1/mewrite-ai";
-import { type ExtensionAPI, getAgentDir, withFileMutationQueue } from "cave";
+import { type ExtensionAPI, getAgentDir, withFileMutationQueue } from "@zhachory1/mewrite-code";
 
 const PROVIDER = "google-antigravity";
 

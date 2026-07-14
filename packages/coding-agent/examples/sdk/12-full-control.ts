@@ -19,7 +19,7 @@ import {
 	type ResourceLoader,
 	SessionManager,
 	SettingsManager,
-} from "cave";
+} from "@zhachory1/mewrite-code";
 
 // Custom auth storage location
 const authStorage = AuthStorage.create("/tmp/my-agent/auth.json");

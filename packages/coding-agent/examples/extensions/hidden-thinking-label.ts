@@ -18,7 +18,7 @@
  *   /thinking-label          Reset to the default label
  */
 
-import type { ExtensionAPI, ExtensionContext } from "cave";
+import type { ExtensionAPI, ExtensionContext } from "@zhachory1/mewrite-code";
 
 const DEFAULT_LABEL = "Pondering...";
 

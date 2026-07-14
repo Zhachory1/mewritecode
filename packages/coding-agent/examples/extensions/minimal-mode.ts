@@ -16,8 +16,7 @@
  * Then use ctrl+o to toggle between minimal (collapsed) and full (expanded) views.
  */
 
-import { Text } from "@zhachory1/mewrite-tui";
-import type { ExtensionAPI } from "cave";
+import type { ExtensionAPI } from "@zhachory1/mewrite-code";
 import {
 	createBashTool,
 	createEditTool,
@@ -26,7 +25,8 @@ import {
 	createLsTool,
 	createReadTool,
 	createWriteTool,
-} from "cave";
+} from "@zhachory1/mewrite-code";
+import { Text } from "@zhachory1/mewrite-tui";
 import { homedir } from "os";
 
 /**

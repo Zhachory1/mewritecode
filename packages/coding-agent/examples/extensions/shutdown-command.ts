@@ -6,7 +6,7 @@
  */
 
 import { Type } from "@sinclair/typebox";
-import type { ExtensionAPI } from "cave";
+import type { ExtensionAPI } from "@zhachory1/mewrite-code";
 
 export default function (pi: ExtensionAPI) {
 	// Register a /quit command that cleanly exits pi

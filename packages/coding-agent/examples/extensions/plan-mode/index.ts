@@ -14,8 +14,8 @@
 
 import type { AgentMessage } from "@zhachory1/mewrite-agent";
 import type { AssistantMessage, TextContent } from "@zhachory1/mewrite-ai";
+import type { ExtensionAPI, ExtensionContext } from "@zhachory1/mewrite-code";
 import { Key } from "@zhachory1/mewrite-tui";
-import type { ExtensionAPI, ExtensionContext } from "cave";
 import { extractTodoItems, isSafeCommand, markCompletedSteps, type TodoItem } from "./utils.js";
 
 // Tools

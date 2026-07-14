@@ -12,8 +12,8 @@
 
 import { Type } from "@sinclair/typebox";
 import { StringEnum } from "@zhachory1/mewrite-ai";
+import type { ExtensionAPI, ExtensionContext, Theme } from "@zhachory1/mewrite-code";
 import { matchesKey, Text, truncateToWidth } from "@zhachory1/mewrite-tui";
-import type { ExtensionAPI, ExtensionContext, Theme } from "cave";
 
 interface Todo {
 	id: number;

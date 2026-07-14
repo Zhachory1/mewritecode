@@ -22,7 +22,7 @@
 
 import { Type } from "@sinclair/typebox";
 import type { TextContent } from "@zhachory1/mewrite-ai";
-import { type ExtensionAPI, getAgentDir, withFileMutationQueue } from "cave";
+import { type ExtensionAPI, getAgentDir, withFileMutationQueue } from "@zhachory1/mewrite-code";
 import { constants, readFileSync } from "fs";
 import { access, appendFile, readFile } from "fs/promises";
 import { join, resolve } from "path";
