@@ -19,6 +19,7 @@
 
 ### Fixed
 
+- Moved Caveman, Ponytail, and Headroom toggles near the top of `/settings` and labeled Caveman explicitly.
 - Fixed extension loading for extensions that import the `@zhachory1/mewrite-ai/registry` package subpath.
 
 ## [1.0.12] - 2026-07-09

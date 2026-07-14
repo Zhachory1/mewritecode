@@ -177,6 +177,48 @@ export class SettingsSelectorComponent extends Container {
 				values: ["true", "false"],
 			},
 			{
+				id: "cave-mode-enabled",
+				label: "Caveman Mode",
+				description: "Terse communication-style compression",
+				currentValue: config.caveModeEnabled ? "true" : "false",
+				values: ["true", "false"],
+			},
+			{
+				id: "cave-mode-intensity",
+				label: "Caveman intensity",
+				description: "Communication compression level",
+				currentValue: config.caveModeIntensity,
+				values: ["lite", "full", "ultra"],
+			},
+			{
+				id: "cave-tool-compression",
+				label: "Tool compression",
+				description: "Compress long tool output",
+				currentValue: config.caveModeToolCompression ? "true" : "false",
+				values: ["true", "false"],
+			},
+			{
+				id: "ponytail-enabled",
+				label: "Ponytail",
+				description: "Code-minimalism guidance (reuse, stdlib/native first, smallest correct diff)",
+				currentValue: config.ponytailEnabled ? "true" : "false",
+				values: ["true", "false"],
+			},
+			{
+				id: "ponytail-intensity",
+				label: "Ponytail intensity",
+				description: "Code-minimalism level",
+				currentValue: config.ponytailIntensity,
+				values: ["lite", "full", "ultra"],
+			},
+			{
+				id: "headroom-enabled",
+				label: "Headroom",
+				description: "Allow Headroom context compression when context compression is enabled",
+				currentValue: config.headroomEnabled ? "true" : "false",
+				values: ["true", "false"],
+			},
+			{
 				id: "steering-mode",
 				label: "Steering mode",
 				description:
@@ -374,55 +416,6 @@ export class SettingsSelectorComponent extends Container {
 			currentValue: config.clearOnShrink ? "true" : "false",
 			values: ["true", "false"],
 		});
-
-		// Code/token reduction toggles (insert after clear-on-shrink)
-		const clearOnShrinkIndex = items.findIndex((item) => item.id === "clear-on-shrink");
-		items.splice(
-			clearOnShrinkIndex + 1,
-			0,
-			{
-				id: "cave-mode-enabled",
-				label: "Compression mode",
-				description: "Terse communication-style compression",
-				currentValue: config.caveModeEnabled ? "true" : "false",
-				values: ["true", "false"],
-			},
-			{
-				id: "cave-mode-intensity",
-				label: "Compression intensity",
-				description: "Communication compression level",
-				currentValue: config.caveModeIntensity,
-				values: ["lite", "full", "ultra"],
-			},
-			{
-				id: "cave-tool-compression",
-				label: "Tool compression",
-				description: "Compress long tool output",
-				currentValue: config.caveModeToolCompression ? "true" : "false",
-				values: ["true", "false"],
-			},
-			{
-				id: "ponytail-enabled",
-				label: "Ponytail",
-				description: "Code-minimalism guidance (reuse, stdlib/native first, smallest correct diff)",
-				currentValue: config.ponytailEnabled ? "true" : "false",
-				values: ["true", "false"],
-			},
-			{
-				id: "ponytail-intensity",
-				label: "Ponytail intensity",
-				description: "Code-minimalism level",
-				currentValue: config.ponytailIntensity,
-				values: ["lite", "full", "ultra"],
-			},
-			{
-				id: "headroom-enabled",
-				label: "Headroom",
-				description: "Allow Headroom context compression when context compression is enabled",
-				currentValue: config.headroomEnabled ? "true" : "false",
-				values: ["true", "false"],
-			},
-		);
 
 		// Add borders
 		this.addChild(new DynamicBorder());
