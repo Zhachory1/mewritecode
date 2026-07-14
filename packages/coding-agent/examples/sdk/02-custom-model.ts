@@ -5,7 +5,7 @@
  */
 
 import { getModel } from "@juliusbrussee/caveman-ai";
-import { AuthStorage, createAgentSession, ModelRegistry } from "@juliusbrussee/caveman-code";
+import { AuthStorage, createAgentSession, ModelRegistry } from "cave";
 
 // Set up auth storage and model registry
 const authStorage = AuthStorage.create();

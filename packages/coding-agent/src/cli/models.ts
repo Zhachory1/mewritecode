@@ -9,14 +9,14 @@
 
 import { homedir } from "node:os";
 import { join } from "node:path";
+import chalk from "chalk";
 import {
 	type FetchChannel,
 	fetchAndCacheRegistry,
 	getCachePath,
 	loadRegistry,
 	type Registry,
-} from "@juliusbrussee/caveman-ai/registry";
-import chalk from "chalk";
+} from "../../../ai/src/registry/index.js";
 
 // ---------------------------------------------------------------------------
 // Path helpers

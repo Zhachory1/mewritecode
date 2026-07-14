@@ -14,8 +14,8 @@
 
 import type { AgentMessage } from "@juliusbrussee/caveman-agent";
 import type { AssistantMessage, TextContent } from "@juliusbrussee/caveman-ai";
-import type { ExtensionAPI, ExtensionContext } from "@juliusbrussee/caveman-code";
 import { Key } from "@juliusbrussee/caveman-tui";
+import type { ExtensionAPI, ExtensionContext } from "cave";
 import { extractTodoItems, isSafeCommand, markCompletedSteps, type TodoItem } from "./utils.js";
 
 // Tools

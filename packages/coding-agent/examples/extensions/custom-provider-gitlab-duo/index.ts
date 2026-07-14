@@ -21,7 +21,7 @@ import {
 	streamSimpleAnthropic,
 	streamSimpleOpenAIResponses,
 } from "@juliusbrussee/caveman-ai";
-import type { ExtensionAPI } from "@juliusbrussee/caveman-code";
+import type { ExtensionAPI } from "cave";
 
 // =============================================================================
 // Constants

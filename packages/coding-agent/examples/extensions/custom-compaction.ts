@@ -14,8 +14,8 @@
  */
 
 import { complete } from "@juliusbrussee/caveman-ai";
-import type { ExtensionAPI } from "@juliusbrussee/caveman-code";
-import { convertToLlm, serializeConversation } from "@juliusbrussee/caveman-code";
+import type { ExtensionAPI } from "cave";
+import { convertToLlm, serializeConversation } from "cave";
 
 export default function (pi: ExtensionAPI) {
 	pi.on("session_before_compact", async (event, ctx) => {

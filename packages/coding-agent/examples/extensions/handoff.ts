@@ -13,8 +13,8 @@
  */
 
 import { complete, type Message } from "@juliusbrussee/caveman-ai";
-import type { ExtensionAPI, SessionEntry } from "@juliusbrussee/caveman-code";
-import { BorderedLoader, convertToLlm, serializeConversation } from "@juliusbrussee/caveman-code";
+import type { ExtensionAPI, SessionEntry } from "cave";
+import { BorderedLoader, convertToLlm, serializeConversation } from "cave";
 
 const SYSTEM_PROMPT = `You are a context transfer assistant. Given a conversation history and the user's goal for a new thread, generate a focused prompt that:
 

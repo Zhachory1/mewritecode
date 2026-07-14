@@ -8,8 +8,8 @@
  */
 
 import { complete, type UserMessage } from "@juliusbrussee/caveman-ai";
-import type { ExtensionAPI } from "@juliusbrussee/caveman-code";
-import { BorderedLoader } from "@juliusbrussee/caveman-code";
+import type { ExtensionAPI } from "cave";
+import { BorderedLoader } from "cave";
 
 const SYSTEM_PROMPT = `You are a question extractor. Given text from a conversation, extract any questions that need answering and format them for the user to fill in.
 

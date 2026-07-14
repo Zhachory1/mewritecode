@@ -9,8 +9,8 @@
  */
 
 import type { AssistantMessage } from "@juliusbrussee/caveman-ai";
-import type { ExtensionAPI } from "@juliusbrussee/caveman-code";
 import { truncateToWidth, visibleWidth } from "@juliusbrussee/caveman-tui";
+import type { ExtensionAPI } from "cave";
 
 export default function (pi: ExtensionAPI) {
 	let enabled = false;

@@ -14,7 +14,7 @@ import {
 	fetchAndCacheRegistry,
 	getCachePath,
 	loadRegistry,
-} from "@juliusbrussee/caveman-ai/registry";
+} from "../../../../ai/src/registry/index.js";
 
 function getAgentConfigDir(): string {
 	const envDir = process.env.CAVE_CODING_AGENT_DIR;

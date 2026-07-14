@@ -5,7 +5,7 @@
  * from cwd and ~/.pi/agent. Model chosen from settings or first available.
  */
 
-import { createAgentSession } from "@juliusbrussee/caveman-code";
+import { createAgentSession } from "cave";
 
 const { session } = await createAgentSession();
 

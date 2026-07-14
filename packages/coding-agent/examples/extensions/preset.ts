@@ -40,9 +40,9 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { ExtensionAPI, ExtensionContext } from "@juliusbrussee/caveman-code";
-import { DynamicBorder, getAgentDir } from "@juliusbrussee/caveman-code";
 import { Container, Key, type SelectItem, SelectList, Text } from "@juliusbrussee/caveman-tui";
+import type { ExtensionAPI, ExtensionContext } from "cave";
+import { DynamicBorder, getAgentDir } from "cave";
 
 // Preset configuration
 interface Preset {

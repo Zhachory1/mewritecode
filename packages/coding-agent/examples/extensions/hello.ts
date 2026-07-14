@@ -3,7 +3,7 @@
  */
 
 import { Type } from "@juliusbrussee/caveman-ai";
-import { defineTool, type ExtensionAPI } from "@juliusbrussee/caveman-code";
+import { defineTool, type ExtensionAPI } from "cave";
 
 const helloTool = defineTool({
 	name: "hello",

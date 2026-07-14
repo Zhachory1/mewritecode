@@ -5,13 +5,7 @@
  * Discover, filter, merge, or replace them.
  */
 
-import {
-	createAgentSession,
-	createSyntheticSourceInfo,
-	DefaultResourceLoader,
-	SessionManager,
-	type Skill,
-} from "@juliusbrussee/caveman-code";
+import { createAgentSession, createSyntheticSourceInfo, DefaultResourceLoader, SessionManager, type Skill } from "cave";
 
 // Or define custom skills inline
 const customSkill: Skill = {

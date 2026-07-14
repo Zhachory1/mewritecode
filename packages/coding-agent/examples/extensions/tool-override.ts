@@ -21,8 +21,8 @@
  */
 
 import type { TextContent } from "@juliusbrussee/caveman-ai";
-import { type ExtensionAPI, getAgentDir, withFileMutationQueue } from "@juliusbrussee/caveman-code";
 import { Type } from "@sinclair/typebox";
+import { type ExtensionAPI, getAgentDir, withFileMutationQueue } from "cave";
 import { constants, readFileSync } from "fs";
 import { access, appendFile, readFile } from "fs/promises";
 import { join, resolve } from "path";
