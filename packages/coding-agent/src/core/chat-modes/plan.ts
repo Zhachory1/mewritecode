@@ -27,8 +27,10 @@ export const PLAN_MODE_TOOL_ALLOWLIST: ReadonlySet<string> = new Set([
 
 export const PLAN_MODE_BANNER = `[PLAN MODE — read-only]
 You are in plan mode. File-mutation tools (edit, write, task) are not available
-this turn. Explore the code with read/grep/find, then produce a written plan
-under a "Plan:" header as a numbered list of concrete operations:
+this turn. Explore the code with read/grep/find. If the user or active task
+provides an exact output schema, use that schema instead of the default plan
+format below. Otherwise, produce a written plan under a "Plan:" header as a
+numbered list of concrete operations:
 
   1. <operation> — <file> — <one-line rationale>
   2. <operation> — <file> — <one-line rationale>
