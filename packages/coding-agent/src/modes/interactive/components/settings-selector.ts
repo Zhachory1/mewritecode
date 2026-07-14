@@ -192,8 +192,8 @@ export class SettingsSelectorComponent extends Container {
 			},
 			{
 				id: "cave-tool-compression",
-				label: "Tool compression",
-				description: "Compress long tool output",
+				label: "Tool output compression",
+				description: "Compress long tool outputs before they enter model context",
 				currentValue: config.caveModeToolCompression ? "true" : "false",
 				values: ["true", "false"],
 			},
@@ -213,8 +213,8 @@ export class SettingsSelectorComponent extends Container {
 			},
 			{
 				id: "headroom-enabled",
-				label: "Headroom",
-				description: "Allow Headroom context compression when context compression is enabled",
+				label: "Headroom context compression",
+				description: "Use Headroom for eligible lossy-ok ContextEngine bundles",
 				currentValue: config.headroomEnabled ? "true" : "false",
 				values: ["true", "false"],
 			},
