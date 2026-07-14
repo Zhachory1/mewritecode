@@ -52,6 +52,86 @@ describe("Context compression M4a", () => {
 		expect(result.stats.skippedExact).toBe(1);
 	});
 
+	it("routes high-noise bundles to lossy-ok compression", async () => {
+		const result = await compressContextPack(
+			pack([
+				bundle({
+					id: "ci",
+					entityType: "ci-log",
+					title: "CI log",
+					content: "line\n".repeat(200),
+					provenance: { path: "build.log" },
+				}),
+				bundle({
+					id: "tool-json",
+					entityType: "tool-json",
+					title: "Tool JSON",
+					content: JSON.stringify({
+						rows: Array.from({ length: 40 }, (_, index) => ({ index, value: `value-${index}` })),
+					}),
+					provenance: { toolCallId: "tool-1" },
+				}),
+			]),
+			compressor((input) => ({ id: input.id, content: `short ${input.id}` })),
+			{ enabled: true },
+		);
+
+		expect(result.pack.bundles.map((b) => b.content)).toEqual(["short ci", "short tool-json"]);
+		expect(result.pack.bundles.map((b) => b.compression?.reason)).toEqual([
+			"context-compression-router",
+			"context-compression-router",
+		]);
+		expect(result.stats.attempted).toBe(2);
+		expect(result.stats.compressed).toBe(2);
+	});
+
+	it("keeps exact-detail bundles exact unless explicitly marked", async () => {
+		const result = await compressContextPack(
+			pack([
+				bundle({ entityType: "code-chunk", content: "const exact = true;", provenance: { path: "src/exact.ts" } }),
+				bundle({ entityType: "diff", content: "@@ -1 +1", provenance: { path: "change.diff" } }),
+				bundle({
+					entityType: "tool-json",
+					content: '{"scripts":{"test":"vitest"}}',
+					provenance: { path: "package.json" },
+				}),
+				bundle({ entityType: "memory", content: "remember exact fact", provenance: { memoryId: "mem-1" } }),
+				bundle({ entityType: "citation", content: "citation text", provenance: { url: "https://example.test" } }),
+			]),
+			compressor((input) => ({ id: input.id, content: "short" })),
+			{ enabled: true },
+		);
+
+		expect(result.stats.attempted).toBe(0);
+		expect(result.stats.skippedExact).toBe(5);
+		expect(result.pack.bundles.map((b) => b.content)).toEqual([
+			"const exact = true;",
+			"@@ -1 +1",
+			'{"scripts":{"test":"vitest"}}',
+			"remember exact fact",
+			"citation text",
+		]);
+	});
+
+	it("honors explicit exact-preserve over router allowlists", async () => {
+		const result = await compressContextPack(
+			pack([
+				bundle({
+					entityType: "ci-log",
+					content: "line\n".repeat(200),
+					compression: { mode: "exact-preserve", reason: "debug exact frames" },
+					provenance: { path: "ci.log" },
+				}),
+			]),
+			compressor((input) => ({ id: input.id, content: "short" })),
+			{ enabled: true },
+		);
+
+		expect(result.stats.attempted).toBe(0);
+		expect(result.stats.skippedExact).toBe(1);
+		expect(result.pack.bundles[0].content).toContain("line");
+	});
+
 	it("compresses explicit lossy-ok bundles and preserves metadata", async () => {
 		const original = bundle({ compression: { mode: "lossy-ok", reason: "fixture" } });
 		const result = await compressContextPack(
@@ -146,7 +226,23 @@ describe("Context compression M4a", () => {
 			contextEngine: {
 				name: "fake",
 				health: async () => ({ enabled: true, provider: "fake", ok: true }),
-				retrieve: async () => pack([bundle({ compression: { mode: "lossy-ok", reason: "test" } })]),
+				retrieve: async () =>
+					pack([
+						bundle({
+							id: "ci-log",
+							entityType: "ci-log",
+							title: "CI log",
+							content: "long test context\n".repeat(100),
+							provenance: { path: "ci.log" },
+						}),
+						bundle({
+							id: "code",
+							entityType: "code-chunk",
+							title: "Source code",
+							content: "export const codeMustStayExact = true;",
+							provenance: { path: "src/exact.ts" },
+						}),
+					]),
 			},
 			contextCompressor: compressor((input) => ({ id: input.id, content: "short" })),
 		});
@@ -161,9 +257,10 @@ describe("Context compression M4a", () => {
 
 			expect(payloadText).toContain("short");
 			expect(payloadText).not.toContain("long test context");
+			expect(payloadText).toContain("codeMustStayExact");
 			const status = harness.session.getContextEngineStatusLines().join("\n");
 			expect(status).toContain("Compression: enabled");
-			expect(status).toContain("attempted=1 compressed=1 skippedExact=0 failed=0");
+			expect(status).toContain("attempted=1 compressed=1 skippedExact=1 failed=0");
 		} finally {
 			harness.cleanup();
 		}
