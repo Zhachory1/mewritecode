@@ -9,7 +9,7 @@
 
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { type FetchChannel, fetchAndCacheRegistry, getCachePath, loadRegistry } from "@zhachory1/mewrite-ai/registry";
+import { type FetchChannel, fetchAndCacheRegistry, getCachePath, loadRegistry } from "@zhachory1/mewrite-ai";
 
 function getAgentConfigDir(): string {
 	const envDir = process.env.CAVE_CODING_AGENT_DIR;
