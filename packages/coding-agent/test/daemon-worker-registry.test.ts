@@ -12,14 +12,22 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 let tmpHome: string;
+let originalHome: string | undefined;
+let originalUserProfile: string | undefined;
 
 beforeEach(() => {
+	originalHome = process.env.HOME;
+	originalUserProfile = process.env.USERPROFILE;
 	tmpHome = mkdtempSync(join(tmpdir(), "cave-worker-test-"));
 	process.env.HOME = tmpHome;
 	process.env.USERPROFILE = tmpHome; // win32 path
 });
 
 afterEach(() => {
+	if (originalHome === undefined) delete process.env.HOME;
+	else process.env.HOME = originalHome;
+	if (originalUserProfile === undefined) delete process.env.USERPROFILE;
+	else process.env.USERPROFILE = originalUserProfile;
 	rmSync(tmpHome, { recursive: true, force: true });
 });
 
@@ -53,6 +61,21 @@ describe("mewrite worker registry", () => {
 		// Stable JSON: round-trip should be readable.
 		const raw = JSON.parse(readFileSync(path, "utf8"));
 		expect(raw.workers[0].url).toBe("http://1.2.3.4:7421");
+	});
+
+	it("rejects unsafe worker names", async () => {
+		const { handleWorkerCommand, readWorkersForTest } = await freshWorker();
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation(((code?: number) => {
+			throw new Error(`__exit__:${code ?? 0}`);
+		}) as never);
+		try {
+			await expect(handleWorkerCommand(["worker", "register", "gpu prod", "--url", "http://a"])).rejects.toThrow(
+				/__exit__:1/,
+			);
+		} finally {
+			exitSpy.mockRestore();
+		}
+		expect(readWorkersForTest().workers).toEqual([]);
 	});
 
 	it("register is idempotent on the same name (replaces entry)", async () => {

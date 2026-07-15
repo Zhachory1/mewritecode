@@ -10,57 +10,18 @@
  * Worker registry lives at `~/.mewrite/workers.json` (with legacy
  * `~/.cave/workers.json` read fallback). The local registry is separate from
  * the daemon's own SQLite worker table — `mewrite worker` does not require a
- * running local daemon, just the JSON file. When a daemon IS running locally,
- * `mewrite worker register` ALSO posts the entry to
- * `/v1/workers` so listings stay consistent.
- *
- * P0 ships: register / list / remove / start (stub). The actual `&`-prefix
- * dispatch wiring belongs in interactive-mode (WS10's territory) — this
- * lands the registry plumbing only. TODO(ws9-worker-dispatch): wire
- * `&`-prefix in modes/interactive once WS10 surface stabilizes.
+ * running local daemon, just the JSON file.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { dirname, join } from "node:path";
 import chalk from "chalk";
-
-interface WorkerEntry {
-	name: string;
-	url: string;
-	token?: string;
-	registeredAt: string;
-	labels?: Record<string, string>;
-}
-
-interface WorkersFile {
-	workers: WorkerEntry[];
-}
-
-function workersFilePath(): string {
-	return join(homedir(), ".mewrite", "workers.json");
-}
-
-function legacyWorkersFilePath(): string {
-	return join(homedir(), ".cave", "workers.json");
-}
-
-function readWorkers(): WorkersFile {
-	const path = existsSync(workersFilePath()) ? workersFilePath() : legacyWorkersFilePath();
-	if (!existsSync(path)) return { workers: [] };
-	try {
-		const raw = readFileSync(path, "utf8");
-		return raw.trim() ? (JSON.parse(raw) as WorkersFile) : { workers: [] };
-	} catch (err) {
-		throw new Error(`failed to parse ${path}: ${err instanceof Error ? err.message : err}`);
-	}
-}
-
-function writeWorkers(file: WorkersFile): void {
-	const path = workersFilePath();
-	mkdirSync(dirname(path), { recursive: true });
-	writeFileSync(path, `${JSON.stringify(file, null, 2)}\n`, "utf8");
-}
+import {
+	isValidWorkerName,
+	readWorkers,
+	safeWorkerOrigin,
+	type WorkerEntry,
+	type WorkersFile,
+	writeWorkers,
+} from "../core/worker-registry.js";
 
 function printHelp(): void {
 	console.log(`Usage: mewrite worker <subcommand>
@@ -73,8 +34,9 @@ Subcommands:
   start [--port <n>] [--token <t>]  Run \`mewrite serve\` configured as a worker
                                     (alias for \`mewrite serve --token ...\`)
 
-Workers persist to ~/.mewrite/workers.json. Legacy ~/.cave/workers.json is read if the new file does not exist. Use \`&prompt\` in interactive
-mode to dispatch a prompt to the most recently used worker (TODO ws9-dispatch).`);
+Workers persist to ~/.mewrite/workers.json. Legacy ~/.cave/workers.json is read if the new file does not exist.
+Use \`&prompt\` in interactive mode to dispatch a prompt to the most recently registered worker.
+Use \`mewrite attach --worker <name> <session-id>\` to attach to a dispatched worker session.`);
 }
 
 function parseLabels(args: string[], from: number): Record<string, string> {
@@ -95,6 +57,10 @@ function doRegister(rest: string[]): number {
 	if (!name || name.startsWith("--")) {
 		console.error(chalk.red("Error: missing <name>"));
 		printHelp();
+		return 1;
+	}
+	if (!isValidWorkerName(name)) {
+		console.error(chalk.red("Error: worker name may contain only letters, numbers, '.', '_', and '-'"));
 		return 1;
 	}
 	let url: string | undefined;
@@ -121,7 +87,7 @@ function doRegister(rest: string[]): number {
 	if (idx >= 0) file.workers[idx] = entry;
 	else file.workers.push(entry);
 	writeWorkers(file);
-	console.log(chalk.green(`registered worker ${name} → ${url}`));
+	console.log(chalk.green(`registered worker ${name} → ${safeWorkerOrigin(url)}`));
 	return 0;
 }
 
@@ -133,7 +99,7 @@ function doList(): number {
 	}
 	console.log(chalk.bold("NAME              URL                                  REGISTERED"));
 	for (const w of file.workers) {
-		console.log(`${w.name.padEnd(18)}${w.url.padEnd(38)}${w.registeredAt}`);
+		console.log(`${w.name.padEnd(18)}${safeWorkerOrigin(w.url).padEnd(38)}${w.registeredAt}`);
 	}
 	return 0;
 }
