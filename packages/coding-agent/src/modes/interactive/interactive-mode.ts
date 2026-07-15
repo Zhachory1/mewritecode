@@ -182,6 +182,7 @@ import {
 	evaluateFireStarter,
 	evaluateTribalSignal,
 } from "./context-drift-widgets.js";
+import { classifyInteractiveSlashCommand } from "./interactive-slash-command.js";
 import { resolveSessionReference } from "./session-reference.js";
 import {
 	AUTO_THEME_NAME,
@@ -2417,288 +2418,224 @@ export class InteractiveMode {
 			}
 
 			// Handle commands
-			if (text === "/settings") {
-				this.showSettingsSelector();
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/scoped-models") {
-				this.editor.setText("");
-				await this.showModelsSelector();
-				return;
-			}
-			if (text === "/model" || text.startsWith("/model ")) {
-				const searchTerm = text.startsWith("/model ") ? text.slice(7).trim() : undefined;
-				this.editor.setText("");
-				await this.handleModelCommand(searchTerm);
-				return;
-			}
-			if (text.startsWith("/export")) {
-				await this.handleExportCommand(text);
-				this.editor.setText("");
-				return;
-			}
-			if (text.startsWith("/import")) {
-				await this.handleImportCommand(text);
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/share") {
-				await this.handleShareCommand();
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/copy") {
-				await this.handleCopyCommand();
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/name" || text.startsWith("/name ")) {
-				this.handleNameCommand(text);
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/session") {
-				this.handleSessionCommand();
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/changelog") {
-				this.handleChangelogCommand();
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/hotkeys") {
-				this.handleHotkeysCommand();
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/activity") {
-				this.editor.setText("");
-				this.toggleActivityOverlay();
-				return;
-			}
-			if (text === "/help") {
-				this.editor.setText("");
-				this.handleHelpCommand();
-				return;
-			}
-			if (text === "/skills" || text === "/plugins") {
-				this.editor.setText("");
-				this.handleSkillsCommand(text === "/plugins" ? "marketplace" : undefined);
-				return;
-			}
-			if (text === "/fork") {
-				this.showUserMessageSelector();
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/tree") {
-				this.showTreeSelector();
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/login" || text.startsWith("/login ")) {
-				this.editor.setText("");
-				const providers = this.session.modelRegistry.authStorage.getOAuthProviders();
-				const parsed = parseLoginCommand(text, providers);
-				if (parsed.kind === "selector") {
-					await this.showOAuthSelector("login");
-				} else if (parsed.kind === "provider") {
-					await this.showLoginDialog(parsed.provider);
-				} else {
-					const names = formatProviderChoices(providers);
-					this.showError(`Unknown provider "${parsed.provider}". Try: ${names || "(none)"}`);
+			const slashCommand = classifyInteractiveSlashCommand(text);
+			if (slashCommand) {
+				switch (slashCommand.kind) {
+					case "settings":
+						this.showSettingsSelector();
+						this.editor.setText("");
+						return;
+					case "scoped-models":
+						this.editor.setText("");
+						await this.showModelsSelector();
+						return;
+					case "model":
+						this.editor.setText("");
+						await this.handleModelCommand(slashCommand.searchTerm);
+						return;
+					case "export":
+						await this.handleExportCommand(slashCommand.text);
+						this.editor.setText("");
+						return;
+					case "import":
+						await this.handleImportCommand(slashCommand.text);
+						this.editor.setText("");
+						return;
+					case "share":
+						await this.handleShareCommand();
+						this.editor.setText("");
+						return;
+					case "copy":
+						await this.handleCopyCommand();
+						this.editor.setText("");
+						return;
+					case "name":
+						this.handleNameCommand(slashCommand.text);
+						this.editor.setText("");
+						return;
+					case "session":
+						this.handleSessionCommand();
+						this.editor.setText("");
+						return;
+					case "changelog":
+						this.handleChangelogCommand();
+						this.editor.setText("");
+						return;
+					case "hotkeys":
+						this.handleHotkeysCommand();
+						this.editor.setText("");
+						return;
+					case "activity":
+						this.editor.setText("");
+						this.toggleActivityOverlay();
+						return;
+					case "help":
+						this.editor.setText("");
+						this.handleHelpCommand();
+						return;
+					case "skills":
+						this.editor.setText("");
+						this.handleSkillsCommand(slashCommand.mode);
+						return;
+					case "fork":
+						this.showUserMessageSelector();
+						this.editor.setText("");
+						return;
+					case "tree":
+						this.showTreeSelector();
+						this.editor.setText("");
+						return;
+					case "login": {
+						this.editor.setText("");
+						const providers = this.session.modelRegistry.authStorage.getOAuthProviders();
+						const parsed = parseLoginCommand(slashCommand.text, providers);
+						if (parsed.kind === "selector") {
+							await this.showOAuthSelector("login");
+						} else if (parsed.kind === "provider") {
+							await this.showLoginDialog(parsed.provider);
+						} else {
+							const names = formatProviderChoices(providers);
+							this.showError(`Unknown provider "${parsed.provider}". Try: ${names || "(none)"}`);
+						}
+						return;
+					}
+					case "logout":
+						this.showOAuthSelector("logout");
+						this.editor.setText("");
+						return;
+					case "clear":
+						this.editor.setText("");
+						await this.handleClearCommand();
+						return;
+					case "compact":
+						this.editor.setText("");
+						await this.handleCompactCommand(slashCommand.instructions);
+						return;
+					case "freeze":
+						this.editor.setText("");
+						await this.handleFreezeCommand(slashCommand.label);
+						return;
+					case "checkpoints":
+						this.editor.setText("");
+						this.handleCheckpointsCommand();
+						return;
+					case "cave-mode":
+						this.editor.setText("");
+						this.handleCaveCommand(slashCommand.text);
+						return;
+					case "ponytail":
+						this.editor.setText("");
+						this.handlePonytailCommand(slashCommand.text);
+						return;
+					case "tokens":
+						this.editor.setText("");
+						this.handleTokensCommand();
+						return;
+					case "cost":
+						this.editor.setText("");
+						this.handleCostCommand();
+						return;
+					case "savings":
+						this.editor.setText("");
+						await this.handleSavingsCommand(slashCommand.arg);
+						return;
+					case "reload":
+						this.editor.setText("");
+						await this.handleReloadCommand();
+						return;
+					case "hooks":
+						this.editor.setText("");
+						await this.handleHooksCommand(slashCommand.args);
+						return;
+					case "debug":
+						this.handleDebugCommand();
+						this.editor.setText("");
+						return;
+					case "arminsayshi":
+						this.handleArminSaysHi();
+						this.editor.setText("");
+						return;
+					case "resume":
+						this.editor.setText("");
+						if (slashCommand.target) {
+							await this.handleResumeCommand(slashCommand.target);
+						} else {
+							this.showSessionSelector();
+						}
+						return;
+					case "quit":
+						this.editor.setText("");
+						await this.shutdown();
+						return;
+					case "mcp":
+						this.editor.setText("");
+						await this.handleMcpSlashCommand(slashCommand.text);
+						return;
+					case "memory":
+						this.editor.setText("");
+						await this.handleMemorySlashCommand(slashCommand.text);
+						return;
+					case "repomap":
+						this.editor.setText("");
+						await this.handleRepomapSlashCommand(slashCommand.args);
+						return;
+					case "architect":
+						this.editor.setText("");
+						await this.handleArchitectSlashCommand(slashCommand.args);
+						return;
+					case "recipe":
+						this.editor.setText("");
+						await this.handleRecipeSlashCommand(slashCommand.text);
+						return;
+					case "checkpoint":
+						this.editor.setText("");
+						await this.handleCheckpointSlashCommand(slashCommand.args);
+						return;
+					case "rollback":
+						this.editor.setText("");
+						await this.handleRollbackSlashCommand(slashCommand.args);
+						return;
+					case "goal":
+						this.editor.setText("");
+						await this.handleGoalSlashCommand(slashCommand.args);
+						return;
+					case "plan":
+						this.editor.setText("");
+						this.handlePlanSlashCommand(slashCommand.args);
+						return;
+					case "act":
+						this.editor.setText("");
+						this.handleActSlashCommand(slashCommand.args);
+						return;
+					case "approval":
+						this.editor.setText("");
+						this.handleApprovalSlashCommand(slashCommand.args);
+						return;
+					case "queue":
+						this.editor.setText("");
+						this.handleQueueSlashCommand(slashCommand.args);
+						return;
+					case "context-status":
+						this.editor.setText("");
+						this.handleContextSlashCommand();
+						return;
+					case "context-learn":
+						this.editor.setText("");
+						this.handleContextLearnSlashCommand();
+						return;
+					case "context-setup":
+						this.editor.setText("");
+						this.handleContextSetupSlashCommand(slashCommand.args);
+						return;
+					case "btw":
+						this.editor.setText("");
+						void this.handleBtwSlashCommand(slashCommand.question);
+						return;
+					default: {
+						const _exhaustive: never = slashCommand;
+						return _exhaustive;
+					}
 				}
-				return;
-			}
-			if (text === "/logout") {
-				this.showOAuthSelector("logout");
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/new" || text === "/clear") {
-				this.editor.setText("");
-				await this.handleClearCommand();
-				return;
-			}
-			if (text === "/compact" || text.startsWith("/compact ")) {
-				const customInstructions = text.startsWith("/compact ") ? text.slice(9).trim() : undefined;
-				this.editor.setText("");
-				await this.handleCompactCommand(customInstructions);
-				return;
-			}
-			if (text === "/freeze" || text.startsWith("/freeze ")) {
-				const label = text.startsWith("/freeze ") ? text.slice(8).trim() : undefined;
-				this.editor.setText("");
-				await this.handleFreezeCommand(label);
-				return;
-			}
-			if (text === "/checkpoints") {
-				this.editor.setText("");
-				this.handleCheckpointsCommand();
-				return;
-			}
-			if (text === "/mode" || text.startsWith("/mode ") || text === "/cave" || text.startsWith("/cave ")) {
-				this.editor.setText("");
-				this.handleCaveCommand(text);
-				return;
-			}
-			if (text === "/ponytail" || text.startsWith("/ponytail ")) {
-				this.editor.setText("");
-				this.handlePonytailCommand(text);
-				return;
-			}
-			if (text === "/tokens") {
-				this.editor.setText("");
-				this.handleTokensCommand();
-				return;
-			}
-			if (text === "/cost") {
-				this.editor.setText("");
-				this.handleCostCommand();
-				return;
-			}
-			if (text === "/savings" || text.startsWith("/savings ")) {
-				this.editor.setText("");
-				await this.handleSavingsCommand(text.slice("/savings".length).trim());
-				return;
-			}
-			if (text === "/reload") {
-				this.editor.setText("");
-				await this.handleReloadCommand();
-				return;
-			}
-			if (text === "/hooks" || text.startsWith("/hooks ")) {
-				const args = text.startsWith("/hooks ") ? text.slice(7) : "";
-				this.editor.setText("");
-				await this.handleHooksCommand(args);
-				return;
-			}
-			if (text === "/debug") {
-				this.handleDebugCommand();
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/arminsayshi") {
-				this.handleArminSaysHi();
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/resume" || text.startsWith("/resume ")) {
-				const target = text.startsWith("/resume ") ? text.slice(8).trim() : undefined;
-				this.editor.setText("");
-				if (target) {
-					await this.handleResumeCommand(target);
-				} else {
-					this.showSessionSelector();
-				}
-				return;
-			}
-			if (text === "/quit") {
-				this.editor.setText("");
-				await this.shutdown();
-				return;
-			}
-			if (text === "/mcp" || text.startsWith("/mcp ")) {
-				this.editor.setText("");
-				await this.handleMcpSlashCommand(text);
-				return;
-			}
-			if (text === "/memory" || text.startsWith("/memory ")) {
-				this.editor.setText("");
-				await this.handleMemorySlashCommand(text);
-				return;
-			}
-			if (text === "/repomap" || text.startsWith("/repomap ")) {
-				const args = text.startsWith("/repomap ") ? text.slice(9) : "";
-				this.editor.setText("");
-				await this.handleRepomapSlashCommand(args);
-				return;
-			}
-			if (text === "/architect" || text.startsWith("/architect ")) {
-				const args = text.startsWith("/architect ") ? text.slice(11) : "";
-				this.editor.setText("");
-				await this.handleArchitectSlashCommand(args);
-				return;
-			}
-			if (text === "/recipe" || text.startsWith("/recipe ")) {
-				this.editor.setText("");
-				await this.handleRecipeSlashCommand(text);
-				return;
-			}
-			if (text === "/checkpoint" || text.startsWith("/checkpoint ")) {
-				const args = text.startsWith("/checkpoint ") ? text.slice(12) : "";
-				this.editor.setText("");
-				await this.handleCheckpointSlashCommand(args);
-				return;
-			}
-			if (text === "/rollback" || text.startsWith("/rollback ")) {
-				const args = text.startsWith("/rollback ") ? text.slice(10) : "";
-				this.editor.setText("");
-				await this.handleRollbackSlashCommand(args);
-				return;
-			}
-			if (text === "/goal" || text.startsWith("/goal ")) {
-				const args = text.startsWith("/goal ") ? text.slice(6) : "";
-				this.editor.setText("");
-				await this.handleGoalSlashCommand(args);
-				return;
-			}
-			if (text === "/plan" || text.startsWith("/plan ")) {
-				const args = text.startsWith("/plan ") ? text.slice(6) : "";
-				this.editor.setText("");
-				this.handlePlanSlashCommand(args);
-				return;
-			}
-			if (text === "/act" || text.startsWith("/act ")) {
-				const args = text.startsWith("/act ") ? text.slice(5) : "";
-				this.editor.setText("");
-				this.handleActSlashCommand(args);
-				return;
-			}
-			if (text === "/approval" || text.startsWith("/approval ")) {
-				const args = text.startsWith("/approval ") ? text.slice(10) : "";
-				this.editor.setText("");
-				this.handleApprovalSlashCommand(args);
-				return;
-			}
-			if (text === "/queue" || text.startsWith("/queue ")) {
-				const args = text.startsWith("/queue ") ? text.slice(7).trim() : "";
-				this.editor.setText("");
-				this.handleQueueSlashCommand(args);
-				return;
-			}
-			if (
-				text === "/context" ||
-				text === "/context status" ||
-				text === "/context memory status" ||
-				text === "/context doctor"
-			) {
-				this.editor.setText("");
-				this.handleContextSlashCommand();
-				return;
-			}
-			if (text === "/context learn" || text === "/context learn --preview") {
-				this.editor.setText("");
-				this.handleContextLearnSlashCommand();
-				return;
-			}
-			if (text === "/context setup" || text.startsWith("/context setup ")) {
-				const args = text.startsWith("/context setup ") ? text.slice(15).trim() : "";
-				this.editor.setText("");
-				this.handleContextSetupSlashCommand(args);
-				return;
-			}
-			// /btw <question> — side-question (#61). Dispatched BEFORE the
-			// isStreaming guard so it works mid-turn without disturbing the running
-			// agent. The handler fires its own completion against the current
-			// conversation and renders the answer dimmed in the chat scroll.
-			if (text === "/btw" || text.startsWith("/btw ")) {
-				const question = text.startsWith("/btw ") ? text.slice(5).trim() : "";
-				this.editor.setText("");
-				void this.handleBtwSlashCommand(question);
-				return;
 			}
 
 			// Unknown built-in slash → show error rather than leaking to chat.

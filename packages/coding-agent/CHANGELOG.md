@@ -9,6 +9,7 @@
 
 ### Changed
 
+- Extracted cohesive interactive slash-command classification from `InteractiveMode` so built-in command parsing is centralized and directly tested ([#36](https://github.com/Zhachory1/mewritecode/issues/36)).
 - Embedded the install demo GIF in the root and package READMEs ([#7](https://github.com/Zhachory1/mewritecode/issues/7)).
 - Tightened the default coding-agent prompt with exact-schema plan-mode precedence, explicit read-only mutation boundaries, opt-in durable-memory guardrails, scoped validation guidance, and clearer large-file/tooling exceptions.
 - Updated the `/models` slash-command registry import to use the base `@zhachory1/mewrite-ai` export instead of the registry package subpath.
