@@ -183,6 +183,7 @@ import {
 	evaluateTribalSignal,
 } from "./context-drift-widgets.js";
 import { resolveSessionReference } from "./session-reference.js";
+import { classifySafeInteractiveSlashCommand } from "./slash-dispatch.js";
 import {
 	AUTO_THEME_NAME,
 	getAvailableThemes,
@@ -2512,26 +2513,25 @@ export class InteractiveMode {
 				}
 				return;
 			}
-			if (text === "/logout") {
+			const safeSlashCommand = classifySafeInteractiveSlashCommand(text);
+			if (safeSlashCommand?.kind === "logout") {
 				this.showOAuthSelector("logout");
 				this.editor.setText("");
 				return;
 			}
-			if (text === "/new" || text === "/clear") {
+			if (safeSlashCommand?.kind === "clear") {
 				this.editor.setText("");
 				await this.handleClearCommand();
 				return;
 			}
-			if (text === "/compact" || text.startsWith("/compact ")) {
-				const customInstructions = text.startsWith("/compact ") ? text.slice(9).trim() : undefined;
+			if (safeSlashCommand?.kind === "compact") {
 				this.editor.setText("");
-				await this.handleCompactCommand(customInstructions);
+				await this.handleCompactCommand(safeSlashCommand.instructions);
 				return;
 			}
-			if (text === "/freeze" || text.startsWith("/freeze ")) {
-				const label = text.startsWith("/freeze ") ? text.slice(8).trim() : undefined;
+			if (safeSlashCommand?.kind === "freeze") {
 				this.editor.setText("");
-				await this.handleFreezeCommand(label);
+				await this.handleFreezeCommand(safeSlashCommand.label);
 				return;
 			}
 			if (text === "/checkpoints") {

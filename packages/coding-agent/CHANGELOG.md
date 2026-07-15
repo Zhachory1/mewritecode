@@ -9,6 +9,7 @@
 
 ### Changed
 
+- Extracted a pure safe-subset slash-command classifier from `InteractiveMode` for `/logout`, `/new`, `/clear`, `/compact`, and `/freeze` as the first small god-object decomposition slice ([#36](https://github.com/Zhachory1/mewritecode/issues/36)).
 - Embedded the install demo GIF in the root and package READMEs ([#7](https://github.com/Zhachory1/mewritecode/issues/7)).
 - Tightened the default coding-agent prompt with exact-schema plan-mode precedence, explicit read-only mutation boundaries, opt-in durable-memory guardrails, scoped validation guidance, and clearer large-file/tooling exceptions.
 - Updated the `/models` slash-command registry import to use the base `@zhachory1/mewrite-ai` export instead of the registry package subpath.
