@@ -6,8 +6,9 @@ import { BUILTIN_SLASH_COMMANDS } from "../src/core/slash-commands.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const interactiveModePath = resolve(here, "../src/modes/interactive/interactive-mode.ts");
+const slashDispatchPath = resolve(here, "../src/modes/interactive/slash-dispatch.ts");
 
-const SOURCE = readFileSync(interactiveModePath, "utf-8");
+const SOURCE = [interactiveModePath, slashDispatchPath].map((path) => readFileSync(path, "utf-8")).join("\n");
 
 // Some commands intentionally route to a non-/<name> path (e.g. /plugins
 // reuses /skills' handler, /scoped-models opens the models selector). The set
@@ -24,7 +25,7 @@ describe("slash command dispatcher", () => {
 		const missing: string[] = [];
 		for (const cmd of BUILTIN_SLASH_COMMANDS) {
 			const directBranch = new RegExp(
-				`text === "/${cmd.name}"|text\\.startsWith\\("/${cmd.name}"\\)|text\\.startsWith\\("/${cmd.name} "\\)`,
+				`(?:text|trimmed) === "/${cmd.name}"|(?:text|trimmed)\\.startsWith\\("/${cmd.name}"\\)|(?:text|trimmed)\\.startsWith\\("/${cmd.name} "\\)`,
 			);
 			if (directBranch.test(SOURCE)) continue;
 			const aliases = ALIASES[cmd.name] ?? [];
