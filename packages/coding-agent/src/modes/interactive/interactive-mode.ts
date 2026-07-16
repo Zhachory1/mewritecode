@@ -43,7 +43,6 @@ import {
 	Text,
 	TruncatedText,
 	TUI,
-	visibleWidth,
 } from "@zhachory1/mewrite-tui";
 import { spawn, spawnSync } from "child_process";
 import { maybeNotifyUpdateAvailable } from "../../cli/update.js";
@@ -52,7 +51,6 @@ import {
 	CHANGELOG_URL,
 	getAgentDir,
 	getAuthPath,
-	getDebugLogPath,
 	getShareViewerUrl,
 	getUpdateInstruction,
 	PACKAGE_NAME,
@@ -107,6 +105,7 @@ import {
 	labelOf,
 	parseLoginCommand,
 } from "./activity-helpers.js";
+import { renderDebugCommand } from "./commands/debug-command.js";
 import {
 	createDefaultInteractiveSlashCommands,
 	type InteractiveSlashCommandContext,
@@ -2329,7 +2328,7 @@ export class InteractiveMode {
 		this.defaultEditor.onAction("app.model.cycleBackward", () => this.cycleModel("backward"));
 
 		// Global debug handler on TUI (works regardless of focus)
-		this.ui.onDebug = () => this.handleDebugCommand();
+		this.ui.onDebug = () => renderDebugCommand(this.createInteractiveSlashCommandContext(), { clearEditor: false });
 		this.defaultEditor.onAction("app.model.select", () => this.showModelSelector());
 		this.defaultEditor.onAction("app.tools.expand", () => this.toggleToolOutputExpansion());
 		this.defaultEditor.onAction("app.thinking.toggle", () => this.toggleThinkingBlockVisibility());
@@ -2433,7 +2432,6 @@ export class InteractiveMode {
 				settings: () => mode.showSettingsSelector(),
 				scopedModels: async () => mode.showModelsSelector(),
 				model: async (searchTerm) => mode.handleModelCommand(searchTerm),
-				export: async (commandText) => mode.handleExportCommand(commandText),
 				import: async (commandText) => mode.handleImportCommand(commandText),
 				share: async () => mode.handleShareCommand(),
 				activity: () => mode.toggleActivityOverlay(),
@@ -2458,7 +2456,6 @@ export class InteractiveMode {
 				newSession: async () => mode.handleClearCommand(),
 				clear: async () => mode.handleClearCommand(),
 				reload: async () => mode.handleReloadCommand(),
-				debug: () => mode.handleDebugCommand(),
 
 				resume: async (target) => {
 					if (target) {
@@ -2468,7 +2465,6 @@ export class InteractiveMode {
 					}
 				},
 				quit: async () => mode.shutdown(),
-				btw: (question) => void mode.handleBtwSlashCommand(question),
 			},
 		};
 	}
@@ -4860,12 +4856,7 @@ export class InteractiveMode {
 		this.ui.requestRender();
 	}
 
-	/**
-	 * /btw <question> — fire a one-shot side completion against the session's
-	 * current context (#61). Does not interrupt the running turn; the answer is
-	 * rendered dimmed inline. V1: no model override, no cancellation polish, no
-	 * automatic context-isolation for the next turn.
-	 */
+	/** Dispatch `&prompt` to a registered worker daemon instead of the local session. */
 	private async handleWorkerPromptCommand(text: string): Promise<boolean> {
 		const parsed = parseWorkerPrompt(text);
 		if (!parsed.ok) {
@@ -4890,32 +4881,6 @@ export class InteractiveMode {
 			this.showError(message);
 		}
 		return true;
-	}
-
-	private async handleBtwSlashCommand(question: string): Promise<void> {
-		const q = question.trim();
-		if (!q) {
-			this.showError("/btw needs a question. Usage: /btw <question>.");
-			return;
-		}
-
-		// Render the question immediately as a dimmed inline marker so the user
-		// sees their input land in the scroll while the side completion is
-		// in-flight. The answer appears below it when ready.
-		this.chatContainer.addChild(new Spacer(1));
-		this.chatContainer.addChild(new Text(theme.fg("dim", `↪ btw: ${q}`), 1, 0));
-		const pending = new Text(theme.fg("dim", "↪ btw: (thinking…)"), 1, 0);
-		this.chatContainer.addChild(pending);
-		this.ui.requestRender();
-
-		try {
-			const answer = await this.session.askSidecar(q);
-			pending.setText(theme.fg("dim", `↪ btw: ${answer || "(empty response)"}`));
-		} catch (err) {
-			const msg = err instanceof Error ? err.message : String(err);
-			pending.setText(theme.fg("warning", `↪ btw: error — ${msg}`));
-		}
-		this.ui.requestRender();
 	}
 
 	/** #14: surface approval mode as a footer extension status. */
@@ -5018,23 +4983,6 @@ export class InteractiveMode {
 		} catch (error) {
 			dismissLoader(previousEditor as Component);
 			this.showError(`Reload failed: ${error instanceof Error ? error.message : String(error)}`);
-		}
-	}
-
-	private async handleExportCommand(text: string): Promise<void> {
-		const parts = text.split(/\s+/);
-		const outputPath = parts.length > 1 ? parts[1] : undefined;
-
-		try {
-			if (outputPath?.endsWith(".jsonl")) {
-				const filePath = this.session.exportToJsonl(outputPath);
-				this.showStatus(`Session exported to: ${filePath}`);
-			} else {
-				const filePath = await this.session.exportToHtml(outputPath);
-				this.showStatus(`Session exported to: ${filePath}`);
-			}
-		} catch (error: unknown) {
-			this.showError(`Failed to export session: ${error instanceof Error ? error.message : "Unknown error"}`);
 		}
 	}
 
@@ -5412,39 +5360,6 @@ export class InteractiveMode {
 		} catch (error: unknown) {
 			await this.handleFatalRuntimeError("Failed to create session", error);
 		}
-	}
-
-	private handleDebugCommand(): void {
-		const width = this.ui.terminal.columns;
-		const height = this.ui.terminal.rows;
-		const allLines = this.ui.render(width);
-
-		const debugLogPath = getDebugLogPath();
-		const debugData = [
-			`Debug output at ${new Date().toISOString()}`,
-			`Terminal: ${width}x${height}`,
-			`Total lines: ${allLines.length}`,
-			"",
-			"=== All rendered lines with visible widths ===",
-			...allLines.map((line, idx) => {
-				const vw = visibleWidth(line);
-				const escaped = JSON.stringify(line);
-				return `[${idx}] (w=${vw}) ${escaped}`;
-			}),
-			"",
-			"=== Agent messages (JSONL) ===",
-			...this.session.messages.map((msg) => JSON.stringify(msg)),
-			"",
-		].join("\n");
-
-		fs.mkdirSync(path.dirname(debugLogPath), { recursive: true });
-		fs.writeFileSync(debugLogPath, debugData);
-
-		this.chatContainer.addChild(new Spacer(1));
-		this.chatContainer.addChild(
-			new Text(`${theme.fg("accent", "✓ Debug log written")}\n${theme.fg("muted", debugLogPath)}`, 1, 1),
-		);
-		this.ui.requestRender();
 	}
 
 	private handleDaxnuts(): void {
