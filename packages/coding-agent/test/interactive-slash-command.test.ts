@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { BUILTIN_SLASH_COMMANDS } from "../src/core/slash-commands.js";
-import { classifyInteractiveSlashCommand } from "../src/modes/interactive/interactive-slash-command.js";
+import {
+	classifyInteractiveSlashCommand,
+	handleInteractiveSlashCommand,
+	type InteractiveSlashCommandHandlers,
+} from "../src/modes/interactive/interactive-slash-command.js";
 
 const SAMPLE_INPUTS: Record<string, string> = {
 	help: "/help",
@@ -51,6 +55,22 @@ const SAMPLE_INPUTS: Record<string, string> = {
 	btw: "/btw what changed?",
 	quit: "/quit",
 };
+
+function recordingHandlers(calls: string[]): InteractiveSlashCommandHandlers {
+	return new Proxy(
+		{
+			setEditorText: (value: string) => {
+				calls.push(`setEditorText:${value}`);
+			},
+		},
+		{
+			get(target, prop: string) {
+				if (prop in target) return target[prop as keyof typeof target];
+				return (...args: unknown[]) => calls.push(`${prop}:${args.map(String).join("|")}`);
+			},
+		},
+	) as unknown as InteractiveSlashCommandHandlers;
+}
 
 describe("classifyInteractiveSlashCommand", () => {
 	it("classifies every wired built-in slash command", () => {
@@ -105,5 +125,28 @@ describe("classifyInteractiveSlashCommand", () => {
 		]) {
 			expect(classifyInteractiveSlashCommand(input), input).toBeNull();
 		}
+	});
+
+	it("dispatches through handlers with preserved editor clearing order", async () => {
+		const logoutCalls: string[] = [];
+		expect(await handleInteractiveSlashCommand("/logout", recordingHandlers(logoutCalls))).toBe(true);
+		expect(logoutCalls).toEqual(["logout:", "setEditorText:"]);
+
+		const compactCalls: string[] = [];
+		expect(await handleInteractiveSlashCommand("/compact keep decisions", recordingHandlers(compactCalls))).toBe(
+			true,
+		);
+		expect(compactCalls).toEqual(["setEditorText:", "compact:keep decisions"]);
+
+		const loginCalls: string[] = [];
+		expect(await handleInteractiveSlashCommand("/login anthropic", recordingHandlers(loginCalls))).toBe(true);
+		expect(loginCalls).toEqual(["setEditorText:", "login:/login anthropic"]);
+	});
+
+	it("does not handle non-slash or unknown slash commands", async () => {
+		const calls: string[] = [];
+		expect(await handleInteractiveSlashCommand("hello", recordingHandlers(calls))).toBe(false);
+		expect(await handleInteractiveSlashCommand("/unknown", recordingHandlers(calls))).toBe(false);
+		expect(calls).toEqual([]);
 	});
 });

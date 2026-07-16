@@ -182,7 +182,7 @@ import {
 	evaluateFireStarter,
 	evaluateTribalSignal,
 } from "./context-drift-widgets.js";
-import { classifyInteractiveSlashCommand } from "./interactive-slash-command.js";
+import { handleInteractiveSlashCommand, type InteractiveSlashCommandHandlers } from "./interactive-slash-command.js";
 import { resolveSessionReference } from "./session-reference.js";
 import {
 	AUTO_THEME_NAME,
@@ -2400,6 +2400,78 @@ export class InteractiveMode {
 		}
 	}
 
+	private createInteractiveSlashCommandHandlers(): InteractiveSlashCommandHandlers {
+		return {
+			setEditorText: (value) => this.editor.setText(value),
+			settings: () => this.showSettingsSelector(),
+			scopedModels: async () => this.showModelsSelector(),
+			model: async (searchTerm) => this.handleModelCommand(searchTerm),
+			export: async (commandText) => this.handleExportCommand(commandText),
+			import: async (commandText) => this.handleImportCommand(commandText),
+			share: async () => this.handleShareCommand(),
+			copy: async () => this.handleCopyCommand(),
+			name: (commandText) => this.handleNameCommand(commandText),
+			session: () => this.handleSessionCommand(),
+			changelog: () => this.handleChangelogCommand(),
+			hotkeys: () => this.handleHotkeysCommand(),
+			activity: () => this.toggleActivityOverlay(),
+			help: () => this.handleHelpCommand(),
+			skills: (mode) => this.handleSkillsCommand(mode),
+			fork: () => this.showUserMessageSelector(),
+			tree: () => this.showTreeSelector(),
+			login: async (commandText) => {
+				const providers = this.session.modelRegistry.authStorage.getOAuthProviders();
+				const parsed = parseLoginCommand(commandText, providers);
+				if (parsed.kind === "selector") {
+					await this.showOAuthSelector("login");
+				} else if (parsed.kind === "provider") {
+					await this.showLoginDialog(parsed.provider);
+				} else {
+					const names = formatProviderChoices(providers);
+					this.showError(`Unknown provider "${parsed.provider}". Try: ${names || "(none)"}`);
+				}
+			},
+			logout: () => this.showOAuthSelector("logout"),
+			clear: async () => this.handleClearCommand(),
+			compact: async (instructions) => this.handleCompactCommand(instructions),
+			freeze: async (label) => this.handleFreezeCommand(label),
+			checkpoints: () => this.handleCheckpointsCommand(),
+			caveMode: (commandText) => this.handleCaveCommand(commandText),
+			ponytail: (commandText) => this.handlePonytailCommand(commandText),
+			tokens: () => this.handleTokensCommand(),
+			cost: () => this.handleCostCommand(),
+			savings: async (arg) => this.handleSavingsCommand(arg),
+			reload: async () => this.handleReloadCommand(),
+			hooks: async (args) => this.handleHooksCommand(args),
+			debug: () => this.handleDebugCommand(),
+			arminSaysHi: () => this.handleArminSaysHi(),
+			resume: async (target) => {
+				if (target) {
+					await this.handleResumeCommand(target);
+				} else {
+					this.showSessionSelector();
+				}
+			},
+			quit: async () => this.shutdown(),
+			mcp: async (commandText) => this.handleMcpSlashCommand(commandText),
+			memory: async (commandText) => this.handleMemorySlashCommand(commandText),
+			repomap: async (args) => this.handleRepomapSlashCommand(args),
+			architect: async (args) => this.handleArchitectSlashCommand(args),
+			recipe: async (commandText) => this.handleRecipeSlashCommand(commandText),
+			checkpoint: async (args) => this.handleCheckpointSlashCommand(args),
+			rollback: async (args) => this.handleRollbackSlashCommand(args),
+			goal: async (args) => this.handleGoalSlashCommand(args),
+			plan: (args) => this.handlePlanSlashCommand(args),
+			act: (args) => this.handleActSlashCommand(args),
+			approval: (args) => this.handleApprovalSlashCommand(args),
+			queue: (args) => this.handleQueueSlashCommand(args),
+			contextStatus: () => this.handleContextSlashCommand(),
+			contextLearn: () => this.handleContextLearnSlashCommand(),
+			contextSetup: (args) => this.handleContextSetupSlashCommand(args),
+			btw: (question) => void this.handleBtwSlashCommand(question),
+		};
+	}
+
 	private setupEditorSubmitHandler(): void {
 		this.defaultEditor.onSubmit = async (text: string) => {
 			promptTimingMark("submit");
@@ -2418,224 +2490,8 @@ export class InteractiveMode {
 			}
 
 			// Handle commands
-			const slashCommand = classifyInteractiveSlashCommand(text);
-			if (slashCommand) {
-				switch (slashCommand.kind) {
-					case "settings":
-						this.showSettingsSelector();
-						this.editor.setText("");
-						return;
-					case "scoped-models":
-						this.editor.setText("");
-						await this.showModelsSelector();
-						return;
-					case "model":
-						this.editor.setText("");
-						await this.handleModelCommand(slashCommand.searchTerm);
-						return;
-					case "export":
-						await this.handleExportCommand(slashCommand.text);
-						this.editor.setText("");
-						return;
-					case "import":
-						await this.handleImportCommand(slashCommand.text);
-						this.editor.setText("");
-						return;
-					case "share":
-						await this.handleShareCommand();
-						this.editor.setText("");
-						return;
-					case "copy":
-						await this.handleCopyCommand();
-						this.editor.setText("");
-						return;
-					case "name":
-						this.handleNameCommand(slashCommand.text);
-						this.editor.setText("");
-						return;
-					case "session":
-						this.handleSessionCommand();
-						this.editor.setText("");
-						return;
-					case "changelog":
-						this.handleChangelogCommand();
-						this.editor.setText("");
-						return;
-					case "hotkeys":
-						this.handleHotkeysCommand();
-						this.editor.setText("");
-						return;
-					case "activity":
-						this.editor.setText("");
-						this.toggleActivityOverlay();
-						return;
-					case "help":
-						this.editor.setText("");
-						this.handleHelpCommand();
-						return;
-					case "skills":
-						this.editor.setText("");
-						this.handleSkillsCommand(slashCommand.mode);
-						return;
-					case "fork":
-						this.showUserMessageSelector();
-						this.editor.setText("");
-						return;
-					case "tree":
-						this.showTreeSelector();
-						this.editor.setText("");
-						return;
-					case "login": {
-						this.editor.setText("");
-						const providers = this.session.modelRegistry.authStorage.getOAuthProviders();
-						const parsed = parseLoginCommand(slashCommand.text, providers);
-						if (parsed.kind === "selector") {
-							await this.showOAuthSelector("login");
-						} else if (parsed.kind === "provider") {
-							await this.showLoginDialog(parsed.provider);
-						} else {
-							const names = formatProviderChoices(providers);
-							this.showError(`Unknown provider "${parsed.provider}". Try: ${names || "(none)"}`);
-						}
-						return;
-					}
-					case "logout":
-						this.showOAuthSelector("logout");
-						this.editor.setText("");
-						return;
-					case "clear":
-						this.editor.setText("");
-						await this.handleClearCommand();
-						return;
-					case "compact":
-						this.editor.setText("");
-						await this.handleCompactCommand(slashCommand.instructions);
-						return;
-					case "freeze":
-						this.editor.setText("");
-						await this.handleFreezeCommand(slashCommand.label);
-						return;
-					case "checkpoints":
-						this.editor.setText("");
-						this.handleCheckpointsCommand();
-						return;
-					case "cave-mode":
-						this.editor.setText("");
-						this.handleCaveCommand(slashCommand.text);
-						return;
-					case "ponytail":
-						this.editor.setText("");
-						this.handlePonytailCommand(slashCommand.text);
-						return;
-					case "tokens":
-						this.editor.setText("");
-						this.handleTokensCommand();
-						return;
-					case "cost":
-						this.editor.setText("");
-						this.handleCostCommand();
-						return;
-					case "savings":
-						this.editor.setText("");
-						await this.handleSavingsCommand(slashCommand.arg);
-						return;
-					case "reload":
-						this.editor.setText("");
-						await this.handleReloadCommand();
-						return;
-					case "hooks":
-						this.editor.setText("");
-						await this.handleHooksCommand(slashCommand.args);
-						return;
-					case "debug":
-						this.handleDebugCommand();
-						this.editor.setText("");
-						return;
-					case "arminsayshi":
-						this.handleArminSaysHi();
-						this.editor.setText("");
-						return;
-					case "resume":
-						this.editor.setText("");
-						if (slashCommand.target) {
-							await this.handleResumeCommand(slashCommand.target);
-						} else {
-							this.showSessionSelector();
-						}
-						return;
-					case "quit":
-						this.editor.setText("");
-						await this.shutdown();
-						return;
-					case "mcp":
-						this.editor.setText("");
-						await this.handleMcpSlashCommand(slashCommand.text);
-						return;
-					case "memory":
-						this.editor.setText("");
-						await this.handleMemorySlashCommand(slashCommand.text);
-						return;
-					case "repomap":
-						this.editor.setText("");
-						await this.handleRepomapSlashCommand(slashCommand.args);
-						return;
-					case "architect":
-						this.editor.setText("");
-						await this.handleArchitectSlashCommand(slashCommand.args);
-						return;
-					case "recipe":
-						this.editor.setText("");
-						await this.handleRecipeSlashCommand(slashCommand.text);
-						return;
-					case "checkpoint":
-						this.editor.setText("");
-						await this.handleCheckpointSlashCommand(slashCommand.args);
-						return;
-					case "rollback":
-						this.editor.setText("");
-						await this.handleRollbackSlashCommand(slashCommand.args);
-						return;
-					case "goal":
-						this.editor.setText("");
-						await this.handleGoalSlashCommand(slashCommand.args);
-						return;
-					case "plan":
-						this.editor.setText("");
-						this.handlePlanSlashCommand(slashCommand.args);
-						return;
-					case "act":
-						this.editor.setText("");
-						this.handleActSlashCommand(slashCommand.args);
-						return;
-					case "approval":
-						this.editor.setText("");
-						this.handleApprovalSlashCommand(slashCommand.args);
-						return;
-					case "queue":
-						this.editor.setText("");
-						this.handleQueueSlashCommand(slashCommand.args);
-						return;
-					case "context-status":
-						this.editor.setText("");
-						this.handleContextSlashCommand();
-						return;
-					case "context-learn":
-						this.editor.setText("");
-						this.handleContextLearnSlashCommand();
-						return;
-					case "context-setup":
-						this.editor.setText("");
-						this.handleContextSetupSlashCommand(slashCommand.args);
-						return;
-					case "btw":
-						this.editor.setText("");
-						void this.handleBtwSlashCommand(slashCommand.question);
-						return;
-					default: {
-						const _exhaustive: never = slashCommand;
-						return _exhaustive;
-					}
-				}
+			if (await handleInteractiveSlashCommand(text, this.createInteractiveSlashCommandHandlers())) {
+				return;
 			}
 
 			// Unknown built-in slash → show error rather than leaking to chat.
