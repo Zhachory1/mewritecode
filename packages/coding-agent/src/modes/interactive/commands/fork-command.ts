@@ -12,7 +12,7 @@ export class ForkCommand extends InteractiveSlashCommand {
 		const userMessages = context.session.getUserMessagesForForking();
 		if (userMessages.length === 0) {
 			context.showStatus("No messages to fork from");
-			context.editor.setText("");
+			context.clearEditor();
 			return;
 		}
 
@@ -39,6 +39,6 @@ export class ForkCommand extends InteractiveSlashCommand {
 			);
 			return { component: selector, focus: selector.getMessageList() };
 		});
-		context.editor.setText("");
+		context.clearEditor();
 	}
 }

@@ -9,6 +9,6 @@ export class LogoutCommand extends InteractiveSlashCommand {
 
 	handleCommand(_text: string, context: InteractiveSlashCommandContext): void {
 		context.showOAuthSelector("logout");
-		context.editor.setText("");
+		context.clearEditor();
 	}
 }

@@ -64,7 +64,8 @@ const SAMPLE_INPUTS: Record<string, string> = {
 };
 
 const noopHandlers: InteractiveSlashCommandContext = {
-	editor: { setText: () => {} },
+	editor: { setText: () => {}, getText: () => "" } as never,
+	clearEditor: () => {},
 	ui: { requestRender: () => {} } as never,
 	chatContainer: { addChild: () => {} } as never,
 	statusContainer: { clear: () => {} } as never,
@@ -99,6 +100,16 @@ const noopHandlers: InteractiveSlashCommandContext = {
 	toggleActivityOverlay: () => {},
 	shutdown: async () => {},
 	updateTerminalTitle: () => {},
+	invalidateFooter: () => {},
+	updateEditorBorderColor: () => {},
+	checkDaxnutsEasterEgg: () => {},
+	updateAvailableProviderCount: async () => {},
+	disposeMountedToolRows: () => {},
+	renderInitialMessages: () => {},
+	getDefaultEditorEscape: () => undefined,
+	setDefaultEditorEscape: () => {},
+	showExtensionSelector: async () => "No summary",
+	showExtensionEditor: async () => undefined,
 	legacy: new Proxy(
 		{},
 		{

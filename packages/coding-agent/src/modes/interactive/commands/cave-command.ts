@@ -13,7 +13,7 @@ export class CaveCommand extends InteractiveSlashCommand {
 	}
 
 	handleCommand(text: string, context: InteractiveSlashCommandContext): void {
-		context.editor.setText("");
+		context.clearEditor();
 		handleCaveModeCommand(text, context);
 	}
 }

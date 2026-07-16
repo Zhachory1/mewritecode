@@ -9,7 +9,7 @@ export class CopyCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(_text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		context.editor.setText("");
+		context.clearEditor();
 		const text = context.session.getLastAssistantText();
 		if (!text) {
 			context.showError("No agent messages to copy yet.");

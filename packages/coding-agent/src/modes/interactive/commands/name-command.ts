@@ -15,7 +15,7 @@ export class NameCommand extends InteractiveSlashCommand {
 
 	handleCommand(text: string, context: InteractiveSlashCommandContext): void {
 		const name = text.replace(/^\/name\s*/, "").trim();
-		context.editor.setText("");
+		context.clearEditor();
 		if (!name) {
 			const currentName = context.sessionManager.getSessionName();
 			if (currentName) {

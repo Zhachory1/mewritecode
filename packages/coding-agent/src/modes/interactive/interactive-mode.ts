@@ -79,7 +79,7 @@ import type {
 import { FooterDataProvider, type ReadonlyFooterDataProvider } from "../../core/footer-data-provider.js";
 import { type AppKeybinding, KeybindingsManager } from "../../core/keybindings.js";
 import { createCompactionSummaryMessage } from "../../core/messages.js";
-import { findExactModelReferenceMatch, findInitialModel, resolveModelScope } from "../../core/model-resolver.js";
+import { findInitialModel } from "../../core/model-resolver.js";
 import { DefaultPackageManager } from "../../core/package-manager.js";
 import type { ResourceDiagnostic } from "../../core/resource-loader.js";
 import { formatMissingSessionCwdPrompt, MissingSessionCwdError } from "../../core/session-cwd.js";
@@ -125,10 +125,8 @@ import { FooterComponent } from "./components/footer.js";
 import { showHelpOverlay } from "./components/help-overlay.js";
 import { keyText } from "./components/keybinding-hints.js";
 import { LoginDialogComponent } from "./components/login-dialog.js";
-import { ModelSelectorComponent } from "./components/model-selector.js";
 import { OAuthSelectorComponent } from "./components/oauth-selector.js";
 import { type QueuedItem, showQueuedMessages } from "./components/queued-messages.js";
-import { ScopedModelsSelectorComponent } from "./components/scoped-models-selector.js";
 import { SessionSelectorComponent } from "./components/session-selector.js";
 import { SettingsSelectorComponent } from "./components/settings-selector.js";
 import { SkillInvocationMessageComponent } from "./components/skill-invocation-message.js";
@@ -142,7 +140,6 @@ import {
 import { StartupHeaderComponent } from "./components/startup-header.js";
 import { ToolExecutionComponent } from "./components/tool-execution.js";
 import { ToolGroupShellComponent } from "./components/tool-shelf.js";
-import { TreeSelectorComponent } from "./components/tree-selector.js";
 import { UserMessageComponent } from "./components/user-message.js";
 import {
 	emptyFireStarterState,
@@ -2299,9 +2296,9 @@ export class InteractiveMode {
 					const now = Date.now();
 					if (now - this.lastEscapeTime < 500) {
 						if (action === "tree") {
-							this.showTreeSelector();
+							this.handleSlashShortcut("/tree");
 						} else {
-							void this.slashCommandRouter.handleCommand("/fork");
+							this.handleSlashShortcut("/fork");
 						}
 						this.lastEscapeTime = 0;
 					} else {
@@ -2321,24 +2318,18 @@ export class InteractiveMode {
 
 		// Global debug handler on TUI (works regardless of focus)
 		this.ui.onDebug = () => renderDebugCommand(this.createInteractiveSlashCommandContext(), { clearEditor: false });
-		this.defaultEditor.onAction("app.model.select", () => this.showModelSelector());
+		this.defaultEditor.onAction("app.model.select", () => this.handleSlashShortcut("/model"));
 		this.defaultEditor.onAction("app.tools.expand", () => this.toggleToolOutputExpansion());
 		this.defaultEditor.onAction("app.thinking.toggle", () => this.toggleThinkingBlockVisibility());
 		this.defaultEditor.onAction("app.editor.external", () => this.openExternalEditor());
 		this.defaultEditor.onAction("app.message.followUp", () => this.handleFollowUp());
 		this.defaultEditor.onAction("app.message.dequeue", () => this.handleDequeue());
-		this.defaultEditor.onAction("app.session.new", () => {
-			void this.slashCommandRouter.handleCommand("/new");
-		});
-		this.defaultEditor.onAction("app.session.tree", () => this.showTreeSelector());
-		this.defaultEditor.onAction("app.session.fork", () => {
-			void this.slashCommandRouter.handleCommand("/fork");
-		});
+		this.defaultEditor.onAction("app.session.new", () => this.handleSlashShortcut("/new"));
+		this.defaultEditor.onAction("app.session.tree", () => this.handleSlashShortcut("/tree"));
+		this.defaultEditor.onAction("app.session.fork", () => this.handleSlashShortcut("/fork"));
 		this.defaultEditor.onAction("app.session.resume", () => this.showSessionSelector());
 		this.defaultEditor.onAction("app.help", () => this.toggleHelpOverlay());
-		this.defaultEditor.onAction("app.subagent.toggle", () => {
-			void this.slashCommandRouter.handleCommand("/activity");
-		});
+		this.defaultEditor.onAction("app.subagent.toggle", () => this.handleSlashShortcut("/activity"));
 		this.defaultEditor.onAction("app.message.editQueue", () => this.openQueuedMessagesEditor());
 		this.defaultEditor.onAction("app.tools.shelfExpand", () => this.toggleLastToolShelf());
 
@@ -2378,12 +2369,17 @@ export class InteractiveMode {
 		}
 	}
 
-	private createInteractiveSlashCommandContext(): InteractiveSlashCommandContext {
+	private createInteractiveSlashCommandContext(
+		options: { clearEditor?: boolean } = {},
+	): InteractiveSlashCommandContext {
 		const mode = this;
+		const shouldClearEditor = options.clearEditor ?? true;
 		return {
-			editor: {
-				setText: (value) => mode.editor.setText(value),
-				addToHistory: (value) => mode.editor.addToHistory?.(value),
+			get editor() {
+				return mode.editor;
+			},
+			clearEditor: () => {
+				if (shouldClearEditor) mode.editor.setText("");
 			},
 			ui: mode.ui,
 			chatContainer: mode.chatContainer,
@@ -2435,16 +2431,35 @@ export class InteractiveMode {
 			refreshChatModeFooter: () => mode._refreshChatModeFooter(),
 			refreshApprovalFooter: () => mode._refreshApprovalFooter(),
 			updateTerminalTitle: () => mode.updateTerminalTitle(),
+			invalidateFooter: () => mode.footer.invalidate(),
+			updateEditorBorderColor: () => mode.updateEditorBorderColor(),
+			checkDaxnutsEasterEgg: (model) => mode.checkDaxnutsEasterEgg(model),
+			updateAvailableProviderCount: async () => {
+				let models = mode.session.scopedModels.map((scoped) => scoped.model);
+				if (models.length === 0) {
+					try {
+						models = await mode.session.modelRegistry.getAvailable();
+					} catch {
+						models = [];
+					}
+				}
+				mode.footerDataProvider.setAvailableProviderCount(new Set(models.map((model) => model.provider)).size);
+			},
+			disposeMountedToolRows: () => mode.disposeMountedToolRows(),
+			renderInitialMessages: () => mode.renderInitialMessages(),
+			getDefaultEditorEscape: () => mode.defaultEditor.onEscape,
+			setDefaultEditorEscape: (handler) => {
+				mode.defaultEditor.onEscape = handler;
+			},
+			showExtensionSelector: (title, options) => mode.showExtensionSelector(title, options),
+			showExtensionEditor: (title) => mode.showExtensionEditor(title),
 			legacy: {
 				settings: () => mode.showSettingsSelector(),
-				scopedModels: async () => mode.showModelsSelector(),
-				model: async (searchTerm) => mode.handleModelCommand(searchTerm),
 				import: async (commandText) => mode.handleImportCommand(commandText),
 				share: async () => mode.handleShareCommand(),
 
 				skills: () => mode.handleSkillsCommand(),
 				plugins: () => mode.handleSkillsCommand("marketplace"),
-				tree: () => mode.showTreeSelector(),
 				reload: async () => mode.handleReloadCommand(),
 
 				resume: async (target) => {
@@ -2456,6 +2471,14 @@ export class InteractiveMode {
 				},
 			},
 		};
+	}
+
+	private handleSlashShortcut(text: string): void {
+		const router = new InteractiveSlashCommandRouter(
+			this.createInteractiveSlashCommandContext({ clearEditor: false }),
+			createDefaultInteractiveSlashCommands(),
+		);
+		void router.handleCommand(text);
 	}
 
 	private setupEditorSubmitHandler(): void {
@@ -4142,35 +4165,6 @@ export class InteractiveMode {
 		});
 	}
 
-	private async handleModelCommand(searchTerm?: string): Promise<void> {
-		if (!searchTerm) {
-			this.showModelSelector();
-			return;
-		}
-
-		void this.session.modelRegistry.refreshPricingFromSource();
-		const model = await this.findExactModelMatch(searchTerm);
-		if (model) {
-			try {
-				await this.session.setModel(model);
-				this.footer.invalidate();
-				this.updateEditorBorderColor();
-				this.showStatus(`Model: ${model.id}`);
-				this.checkDaxnutsEasterEgg(model);
-			} catch (error) {
-				this.showError(error instanceof Error ? error.message : String(error));
-			}
-			return;
-		}
-
-		this.showModelSelector(searchTerm);
-	}
-
-	private async findExactModelMatch(searchTerm: string): Promise<Model<any> | undefined> {
-		const models = await this.getModelCandidates();
-		return findExactModelReferenceMatch(searchTerm, models);
-	}
-
 	private async getModelCandidates(): Promise<Model<any>[]> {
 		if (this.session.scopedModels.length > 0) {
 			return this.session.scopedModels.map((scoped) => scoped.model);
@@ -4189,284 +4183,6 @@ export class InteractiveMode {
 		const models = await this.getModelCandidates();
 		const uniqueProviders = new Set(models.map((m) => m.provider));
 		this.footerDataProvider.setAvailableProviderCount(uniqueProviders.size);
-	}
-
-	private showModelSelector(initialSearchInput?: string): void {
-		this.showSelector((done) => {
-			const selector = new ModelSelectorComponent(
-				this.ui,
-				this.session.model,
-				this.settingsManager,
-				this.session.modelRegistry,
-				this.session.scopedModels,
-				async (model) => {
-					try {
-						await this.session.setModel(model);
-						this.footer.invalidate();
-						this.updateEditorBorderColor();
-						done();
-						this.showStatus(`Model: ${model.id}`);
-						this.checkDaxnutsEasterEgg(model);
-					} catch (error) {
-						done();
-						this.showError(error instanceof Error ? error.message : String(error));
-					}
-				},
-				() => {
-					done();
-					this.ui.requestRender();
-				},
-				initialSearchInput,
-			);
-			return { component: selector, focus: selector };
-		});
-	}
-
-	private async showModelsSelector(): Promise<void> {
-		// Get all available models
-		this.session.modelRegistry.refresh();
-		const allModels = this.session.modelRegistry.getAvailable();
-
-		if (allModels.length === 0) {
-			this.showStatus("No models available");
-			return;
-		}
-
-		// Check if session has scoped models (from previous session-only changes or CLI --models)
-		const sessionScopedModels = this.session.scopedModels;
-		const hasSessionScope = sessionScopedModels.length > 0;
-
-		// Build enabled model IDs from session state or settings
-		const enabledModelIds = new Set<string>();
-		let hasFilter = false;
-
-		if (hasSessionScope) {
-			// Use current session's scoped models
-			for (const sm of sessionScopedModels) {
-				enabledModelIds.add(`${sm.model.provider}/${sm.model.id}`);
-			}
-			hasFilter = true;
-		} else {
-			// Fall back to settings
-			const patterns = this.settingsManager.getEnabledModels();
-			if (patterns !== undefined && patterns.length > 0) {
-				hasFilter = true;
-				const scopedModels = await resolveModelScope(patterns, this.session.modelRegistry);
-				for (const sm of scopedModels) {
-					enabledModelIds.add(`${sm.model.provider}/${sm.model.id}`);
-				}
-			}
-		}
-
-		// Track current enabled state (session-only until persisted)
-		const currentEnabledIds = new Set(enabledModelIds);
-		let currentHasFilter = hasFilter;
-
-		// Helper to update session's scoped models (session-only, no persist)
-		const updateSessionModels = async (enabledIds: Set<string>) => {
-			if (enabledIds.size > 0 && enabledIds.size < allModels.length) {
-				const newScopedModels = await resolveModelScope(Array.from(enabledIds), this.session.modelRegistry);
-				this.session.setScopedModels(
-					newScopedModels.map((sm) => ({
-						model: sm.model,
-						thinkingLevel: sm.thinkingLevel,
-					})),
-				);
-			} else {
-				// All enabled or none enabled = no filter
-				this.session.setScopedModels([]);
-			}
-			await this.updateAvailableProviderCount();
-			this.ui.requestRender();
-		};
-
-		this.showSelector((done) => {
-			const selector = new ScopedModelsSelectorComponent(
-				{
-					allModels,
-					enabledModelIds: currentEnabledIds,
-					hasEnabledModelsFilter: currentHasFilter,
-				},
-				{
-					onModelToggle: async (modelId, enabled) => {
-						if (enabled) {
-							currentEnabledIds.add(modelId);
-						} else {
-							currentEnabledIds.delete(modelId);
-						}
-						currentHasFilter = true;
-						await updateSessionModels(currentEnabledIds);
-					},
-					onEnableAll: async (allModelIds) => {
-						currentEnabledIds.clear();
-						for (const id of allModelIds) {
-							currentEnabledIds.add(id);
-						}
-						currentHasFilter = false;
-						await updateSessionModels(currentEnabledIds);
-					},
-					onClearAll: async () => {
-						currentEnabledIds.clear();
-						currentHasFilter = true;
-						await updateSessionModels(currentEnabledIds);
-					},
-					onToggleProvider: async (_provider, modelIds, enabled) => {
-						for (const id of modelIds) {
-							if (enabled) {
-								currentEnabledIds.add(id);
-							} else {
-								currentEnabledIds.delete(id);
-							}
-						}
-						currentHasFilter = true;
-						await updateSessionModels(currentEnabledIds);
-					},
-					onPersist: (enabledIds) => {
-						// Persist to settings
-						const newPatterns =
-							enabledIds.length === allModels.length
-								? undefined // All enabled = clear filter
-								: enabledIds;
-						this.settingsManager.setEnabledModels(newPatterns);
-						this.showStatus("Model selection saved to settings");
-					},
-					onCancel: () => {
-						done();
-						this.ui.requestRender();
-					},
-				},
-			);
-			return { component: selector, focus: selector };
-		});
-	}
-
-	private showTreeSelector(initialSelectedId?: string): void {
-		const tree = this.sessionManager.getTree();
-		const realLeafId = this.sessionManager.getLeafId();
-		const initialFilterMode = this.settingsManager.getTreeFilterMode();
-
-		if (tree.length === 0) {
-			this.showStatus("No entries in session");
-			return;
-		}
-
-		this.showSelector((done) => {
-			const selector = new TreeSelectorComponent(
-				tree,
-				realLeafId,
-				this.ui.terminal.rows,
-				async (entryId) => {
-					// Selecting the current leaf is a no-op (already there)
-					if (entryId === realLeafId) {
-						done();
-						this.showStatus("Already at this point");
-						return;
-					}
-
-					// Ask about summarization
-					done(); // Close selector first
-
-					// Loop until user makes a complete choice or cancels to tree
-					let wantsSummary = false;
-					let customInstructions: string | undefined;
-
-					// Check if we should skip the prompt (user preference to always default to no summary)
-					if (!this.settingsManager.getBranchSummarySkipPrompt()) {
-						while (true) {
-							const summaryChoice = await this.showExtensionSelector("Summarize branch?", [
-								"No summary",
-								"Summarize",
-								"Summarize with custom prompt",
-							]);
-
-							if (summaryChoice === undefined) {
-								// User pressed escape - re-show tree selector with same selection
-								this.showTreeSelector(entryId);
-								return;
-							}
-
-							wantsSummary = summaryChoice !== "No summary";
-
-							if (summaryChoice === "Summarize with custom prompt") {
-								customInstructions = await this.showExtensionEditor("Custom summarization instructions");
-								if (customInstructions === undefined) {
-									// User cancelled - loop back to summary selector
-									continue;
-								}
-							}
-
-							// User made a complete choice
-							break;
-						}
-					}
-
-					// Set up escape handler and loader if summarizing
-					let summaryLoader: Loader | undefined;
-					const originalOnEscape = this.defaultEditor.onEscape;
-
-					if (wantsSummary) {
-						this.defaultEditor.onEscape = () => {
-							this.session.abortBranchSummary();
-						};
-						this.chatContainer.addChild(new Spacer(1));
-						summaryLoader = new Loader(
-							this.ui,
-							(spinner) => theme.fg("accent", spinner),
-							(text) => theme.fg("muted", text),
-							`Summarizing branch... (${keyText("app.interrupt")} to cancel)`,
-						);
-						this.statusContainer.addChild(summaryLoader);
-						this.ui.requestRender();
-					}
-
-					try {
-						const result = await this.session.navigateTree(entryId, {
-							summarize: wantsSummary,
-							customInstructions,
-						});
-
-						if (result.aborted) {
-							// Summarization aborted - re-show tree selector with same selection
-							this.showStatus("Branch summarization cancelled");
-							this.showTreeSelector(entryId);
-							return;
-						}
-						if (result.cancelled) {
-							this.showStatus("Navigation cancelled");
-							return;
-						}
-
-						// Update UI
-						this.disposeMountedToolRows();
-						this.chatContainer.clear();
-						this.renderInitialMessages();
-						if (result.editorText && !this.editor.getText().trim()) {
-							this.editor.setText(result.editorText);
-						}
-						this.showStatus("Navigated to selected point");
-					} catch (error) {
-						this.showError(error instanceof Error ? error.message : String(error));
-					} finally {
-						if (summaryLoader) {
-							summaryLoader.stop();
-							this.statusContainer.clear();
-						}
-						this.defaultEditor.onEscape = originalOnEscape;
-					}
-				},
-				() => {
-					done();
-					this.ui.requestRender();
-				},
-				(entryId, label) => {
-					this.sessionManager.appendLabelChange(entryId, label);
-					this.ui.requestRender();
-				},
-				initialSelectedId,
-				initialFilterMode,
-			);
-			return { component: selector, focus: selector };
-		});
 	}
 
 	private showSessionSelector(): void {

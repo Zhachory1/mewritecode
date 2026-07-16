@@ -22,7 +22,7 @@ export class ChangelogCommand extends InteractiveSlashCommand {
 						.join("\n\n")
 				: "No changelog entries found.";
 
-		context.editor.setText("");
+		context.clearEditor();
 		context.chatContainer.addChild(new Spacer(1));
 		context.chatContainer.addChild(new DynamicBorder());
 		context.chatContainer.addChild(new Text(theme.bold(theme.fg("accent", "What's New")), 1, 0));
