@@ -1,3 +1,6 @@
+import { spawn } from "node:child_process";
+import { runGoalSlashCommand } from "../../../core/slash-commands/goal.js";
+import { resolveCurrentCaveInvocation } from "../../../utils/cave-invocation.js";
 import {
 	args,
 	clearAnd,
@@ -14,6 +17,20 @@ export class GoalCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.legacy.goal(args(text, "/goal")));
+		await clearAnd(context, async () => {
+			const result = await runGoalSlashCommand(args(text, "/goal"), {
+				cwd: context.sessionManager.getCwd(),
+				spawnDriver: (id) => {
+					const invocation = resolveCurrentCaveInvocation();
+					const child = spawn(invocation.command, [...invocation.argsPrefix, "goal", "resume", id], {
+						cwd: context.sessionManager.getCwd(),
+						detached: true,
+						stdio: "ignore",
+					});
+					child.unref();
+				},
+			});
+			context.appendSlashOutput(result.output, result.exitCode !== 0);
+		});
 	}
 }

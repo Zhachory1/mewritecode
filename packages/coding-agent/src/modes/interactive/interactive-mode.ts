@@ -91,24 +91,16 @@ import { DefaultPackageManager } from "../../core/package-manager.js";
 import type { ResourceDiagnostic } from "../../core/resource-loader.js";
 import { formatMissingSessionCwdPrompt, MissingSessionCwdError } from "../../core/session-cwd.js";
 import { type SessionContext, SessionManager } from "../../core/session-manager.js";
-import { runCheckpointCommand } from "../../core/slash-commands/checkpoint.js";
-import { runGoalSlashCommand } from "../../core/slash-commands/goal.js";
-import { runMcpSlashCommand } from "../../core/slash-commands/mcp.js";
-import { runRollbackCommand } from "../../core/slash-commands/rollback.js";
 import { formatSavingsReport, formatSavingsShare, runSavingsCommand } from "../../core/slash-commands/savings.js";
 import {
 	BUILTIN_SLASH_COMMANDS,
 	emptyRepomapChatState,
 	isUnwiredBuiltinCommand,
 	type RepomapChatState,
-	runArchitectCommand,
-	runRecipeSlashCommand,
-	runRepomapCommand,
 } from "../../core/slash-commands.js";
 import type { SourceInfo } from "../../core/source-info.js";
 import type { TruncationResult } from "../../core/tools/truncate.js";
 import { dispatchWorkerPrompt, parseWorkerPrompt, WorkerDispatchError } from "../../core/worker-dispatch.js";
-import { resolveCurrentCaveInvocation } from "../../utils/cave-invocation.js";
 import { getChangelogPath, getNewEntries, parseChangelog } from "../../utils/changelog.js";
 import { copyToClipboard } from "../../utils/clipboard.js";
 import { extensionForImageMimeType, readClipboardImage } from "../../utils/clipboard-image.js";
@@ -2397,85 +2389,94 @@ export class InteractiveMode {
 	}
 
 	private createInteractiveSlashCommandContext(): InteractiveSlashCommandContext {
+		const mode = this;
 		return {
 			editor: {
-				setText: (value) => this.editor.setText(value),
-				addToHistory: (value) => this.editor.addToHistory?.(value),
+				setText: (value) => mode.editor.setText(value),
+				addToHistory: (value) => mode.editor.addToHistory?.(value),
 			},
-			ui: this.ui,
-			chatContainer: this.chatContainer,
-			statusContainer: this.statusContainer,
-			session: this.session,
-			sessionManager: this.sessionManager,
-			settingsManager: this.settingsManager,
-			freezeCheckpoints: this.freezeCheckpoints,
+			ui: mode.ui,
+			chatContainer: mode.chatContainer,
+			statusContainer: mode.statusContainer,
+			get session() {
+				return mode.session;
+			},
+			get sessionManager() {
+				return mode.sessionManager;
+			},
+			get settingsManager() {
+				return mode.settingsManager;
+			},
+			freezeCheckpoints: mode.freezeCheckpoints,
+			getCommandQueue: () => mode.commandQueue,
+			clearCommandQueue: () => {
+				const count = mode.commandQueue.length;
+				mode.commandQueue = [];
+				return count;
+			},
+			repomapChatState: mode.repomapChatState,
+			getArchitectState: () => mode.architectState,
+			setArchitectState: (state) => {
+				mode.architectState = state;
+			},
+			updatePendingMessagesDisplay: () => mode.updatePendingMessagesDisplay(),
 			stopLoadingAndClearStatus: () => {
-				if (this.loadingAnimation) {
-					this.loadingAnimation.stop();
-					this.loadingAnimation = undefined;
+				if (mode.loadingAnimation) {
+					mode.loadingAnimation.stop();
+					mode.loadingAnimation = undefined;
 				}
-				this.statusContainer.clear();
+				mode.statusContainer.clear();
 			},
-			buildHotkeysMarkdown: () => this.buildHotkeysMarkdown(),
-			getMarkdownTheme: () => this.getMarkdownThemeWithSettings(),
-			showError: (message) => this.showError(message),
-			showStatus: (message) => this.showStatus(message),
-			showWarning: (message) => this.showWarning(message),
-			appendSlashOutput: (text, isError) => this.appendSlashOutput(text, isError),
-			refreshChatModeFooter: () => this._refreshChatModeFooter(),
-			refreshApprovalFooter: () => this._refreshApprovalFooter(),
-			updateTerminalTitle: () => this.updateTerminalTitle(),
+			buildHotkeysMarkdown: () => mode.buildHotkeysMarkdown(),
+			getMarkdownTheme: () => mode.getMarkdownThemeWithSettings(),
+			showError: (message) => mode.showError(message),
+			showStatus: (message) => mode.showStatus(message),
+			showWarning: (message) => mode.showWarning(message),
+			appendSlashOutput: (text, isError) => mode.appendSlashOutput(text, isError),
+			refreshChatModeFooter: () => mode._refreshChatModeFooter(),
+			refreshApprovalFooter: () => mode._refreshApprovalFooter(),
+			updateTerminalTitle: () => mode.updateTerminalTitle(),
 			legacy: {
-				settings: () => this.showSettingsSelector(),
-				scopedModels: async () => this.showModelsSelector(),
-				model: async (searchTerm) => this.handleModelCommand(searchTerm),
-				export: async (commandText) => this.handleExportCommand(commandText),
-				import: async (commandText) => this.handleImportCommand(commandText),
-				share: async () => this.handleShareCommand(),
-				activity: () => this.toggleActivityOverlay(),
+				settings: () => mode.showSettingsSelector(),
+				scopedModels: async () => mode.showModelsSelector(),
+				model: async (searchTerm) => mode.handleModelCommand(searchTerm),
+				export: async (commandText) => mode.handleExportCommand(commandText),
+				import: async (commandText) => mode.handleImportCommand(commandText),
+				share: async () => mode.handleShareCommand(),
+				activity: () => mode.toggleActivityOverlay(),
 
-				skills: () => this.handleSkillsCommand(),
-				plugins: () => this.handleSkillsCommand("marketplace"),
-				fork: () => this.showUserMessageSelector(),
-				tree: () => this.showTreeSelector(),
+				skills: () => mode.handleSkillsCommand(),
+				plugins: () => mode.handleSkillsCommand("marketplace"),
+				fork: () => mode.showUserMessageSelector(),
+				tree: () => mode.showTreeSelector(),
 				login: async (commandText) => {
-					const providers = this.session.modelRegistry.authStorage.getOAuthProviders();
+					const providers = mode.session.modelRegistry.authStorage.getOAuthProviders();
 					const parsed = parseLoginCommand(commandText, providers);
 					if (parsed.kind === "selector") {
-						await this.showOAuthSelector("login");
+						await mode.showOAuthSelector("login");
 					} else if (parsed.kind === "provider") {
-						await this.showLoginDialog(parsed.provider);
+						await mode.showLoginDialog(parsed.provider);
 					} else {
 						const names = formatProviderChoices(providers);
-						this.showError(`Unknown provider "${parsed.provider}". Try: ${names || "(none)"}`);
+						mode.showError(`Unknown provider "${parsed.provider}". Try: ${names || "(none)"}`);
 					}
 				},
-				logout: () => this.showOAuthSelector("logout"),
-				newSession: async () => this.handleClearCommand(),
-				clear: async () => this.handleClearCommand(),
-				savings: async (arg) => this.handleSavingsCommand(arg),
-				reload: async () => this.handleReloadCommand(),
-				hooks: async (args) => this.handleHooksCommand(args),
-				debug: () => this.handleDebugCommand(),
+				logout: () => mode.showOAuthSelector("logout"),
+				newSession: async () => mode.handleClearCommand(),
+				clear: async () => mode.handleClearCommand(),
+				savings: async (arg) => mode.handleSavingsCommand(arg),
+				reload: async () => mode.handleReloadCommand(),
+				debug: () => mode.handleDebugCommand(),
 
 				resume: async (target) => {
 					if (target) {
-						await this.handleResumeCommand(target);
+						await mode.handleResumeCommand(target);
 					} else {
-						this.showSessionSelector();
+						mode.showSessionSelector();
 					}
 				},
-				quit: async () => this.shutdown(),
-				mcp: async (commandText) => this.handleMcpSlashCommand(commandText),
-				memory: async (commandText) => this.handleMemorySlashCommand(commandText),
-				repomap: async (args) => this.handleRepomapSlashCommand(args),
-				architect: async (args) => this.handleArchitectSlashCommand(args),
-				recipe: async (commandText) => this.handleRecipeSlashCommand(commandText),
-				checkpoint: async (args) => this.handleCheckpointSlashCommand(args),
-				rollback: async (args) => this.handleRollbackSlashCommand(args),
-				goal: async (args) => this.handleGoalSlashCommand(args),
-				queue: (args) => this.handleQueueSlashCommand(args),
-				btw: (question) => void this.handleBtwSlashCommand(question),
+				quit: async () => mode.shutdown(),
+				btw: (question) => void mode.handleBtwSlashCommand(question),
 			},
 		};
 	}
@@ -4856,19 +4857,6 @@ export class InteractiveMode {
 	// Command handlers
 	// =========================================================================
 
-	private async handleHooksCommand(args: string): Promise<void> {
-		const { runHooksCommand } = await import("../../core/slash-commands.js");
-		const result = await runHooksCommand(args, {
-			settings: this.settingsManager,
-			cwd: this.sessionManager.getCwd(),
-		});
-		this.chatContainer.addChild(new Spacer(1));
-		this.chatContainer.addChild(
-			new Text(result.exitCode === 0 ? result.output : theme.fg("warning", result.output), 1, 0),
-		);
-		this.ui.requestRender();
-	}
-
 	// =========================================================================
 	// Slash command runners (WS-era commands not yet covered above)
 	// =========================================================================
@@ -4878,117 +4866,6 @@ export class InteractiveMode {
 		this.chatContainer.addChild(new Spacer(1));
 		this.chatContainer.addChild(new Text(display, 1, 0));
 		this.ui.requestRender();
-	}
-
-	private async handleMcpSlashCommand(text: string): Promise<void> {
-		const result = await runMcpSlashCommand(text, { cwd: this.sessionManager.getCwd() });
-		this.appendSlashOutput(result.lines.join("\n"), result.errors > 0);
-	}
-
-	private async handleMemorySlashCommand(text: string): Promise<void> {
-		const { runMemorySlashCommand } = await import("../../core/slash-commands.js");
-		try {
-			// Reuse the AgentSession's MemoryProvider so MCP transport, embedding
-			// model, and FTS handles are shared with the auto-injection transform.
-			const provider = await this.session.memoryProvider();
-			if (!provider) {
-				this.appendSlashOutput("Memory backend unavailable. Run `/memory status` to inspect configuration.", true);
-				return;
-			}
-			const result = await runMemorySlashCommand(text, {
-				cwd: this.sessionManager.getCwd(),
-				provider,
-				enabled: this.session.memoryEnabled,
-				settings: this.settingsManager.getMemorySettings(),
-				setEnabled: (next) => this.session.setMemoryEnabled(next),
-			});
-			this.appendSlashOutput(result.lines.join("\n"), result.errors > 0);
-		} catch (err) {
-			const message = err instanceof Error ? err.message : String(err);
-			this.appendSlashOutput(`Memory unavailable: ${message}\nRun \`/memory status\` for setup details.`, true);
-		}
-	}
-
-	private async handleRepomapSlashCommand(args: string): Promise<void> {
-		const result = await runRepomapCommand(args, {
-			cwd: this.sessionManager.getCwd(),
-			chatState: this.repomapChatState,
-		});
-		this.appendSlashOutput(result.output, result.exitCode !== 0);
-	}
-
-	private async handleArchitectSlashCommand(args: string): Promise<void> {
-		const result = await runArchitectCommand(args, { state: this.architectState });
-		this.architectState = result.state;
-		this.appendSlashOutput(result.output, result.exitCode !== 0);
-	}
-
-	private async handleRecipeSlashCommand(text: string): Promise<void> {
-		const args = text.replace(/^\/recipe\s*/, "");
-		const result = await runRecipeSlashCommand(args, {
-			cwd: this.sessionManager.getCwd(),
-		});
-		this.appendSlashOutput(result.output, result.exitCode !== 0);
-		// If the recipe yielded a goal, inject it as the next user prompt.
-		if (result.goal && result.exitCode === 0) {
-			await this.session.prompt(result.goal);
-		}
-	}
-
-	private async handleCheckpointSlashCommand(args: string): Promise<void> {
-		const result = await runCheckpointCommand(args, {
-			projectRoot: this.sessionManager.getCwd(),
-			sessionId: this.session.sessionId ?? "interactive",
-		});
-		this.appendSlashOutput(result.output, result.exitCode !== 0);
-	}
-
-	private async handleRollbackSlashCommand(args: string): Promise<void> {
-		const result = await runRollbackCommand(args, {
-			projectRoot: this.sessionManager.getCwd(),
-		});
-		this.appendSlashOutput(result.output, result.exitCode !== 0);
-	}
-
-	private async handleGoalSlashCommand(args: string): Promise<void> {
-		const result = await runGoalSlashCommand(args, {
-			cwd: this.sessionManager.getCwd(),
-			spawnDriver: (id) => {
-				const invocation = resolveCurrentCaveInvocation();
-				const child = spawn(invocation.command, [...invocation.argsPrefix, "goal", "resume", id], {
-					cwd: this.sessionManager.getCwd(),
-					detached: true,
-					stdio: "ignore",
-				});
-				child.unref();
-			},
-		});
-		this.appendSlashOutput(result.output, result.exitCode !== 0);
-	}
-
-	/** Issue #5: show or clear the /then-chained command queue. */
-	private handleQueueSlashCommand(args: string): void {
-		const sub = args.trim();
-		if (sub === "clear") {
-			const count = this.commandQueue.length;
-			this.commandQueue = [];
-			this.updatePendingMessagesDisplay();
-			this.appendSlashOutput(
-				count === 0 ? "Queue already empty." : `Cleared ${count} queued command${count === 1 ? "" : "s"}.`,
-				false,
-			);
-			return;
-		}
-		if (sub === "" || sub === "list") {
-			if (this.commandQueue.length === 0) {
-				this.appendSlashOutput("Queue is empty. Chain commands with: /a /then /b.", false);
-				return;
-			}
-			const lines = this.commandQueue.map((cmd, idx) => `  ${idx + 1}. ${cmd}`);
-			this.appendSlashOutput(`${this.commandQueue.length} queued:\n${lines.join("\n")}`, false);
-			return;
-		}
-		this.appendSlashOutput(`Unknown /queue subcommand: ${sub}. Try /queue or /queue clear.`, true);
 	}
 
 	/**

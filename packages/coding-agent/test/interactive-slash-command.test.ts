@@ -65,6 +65,7 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 			},
 		},
 	) as InteractiveSlashCommandContext["legacy"];
+	let commandQueue = ["/first", "/second"];
 	return {
 		editor: {
 			setText: (value: string) => {
@@ -113,6 +114,16 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 			getPonytailIntensity: () => "full",
 		} as never,
 		freezeCheckpoints: [],
+		getCommandQueue: () => commandQueue,
+		clearCommandQueue: () => {
+			const count = commandQueue.length;
+			commandQueue = [];
+			return count;
+		},
+		repomapChatState: {} as never,
+		getArchitectState: () => ({}) as never,
+		setArchitectState: (value) => calls.push(`setArchitectState:${JSON.stringify(value)}`),
+		updatePendingMessagesDisplay: () => calls.push("updatePendingMessagesDisplay:"),
 		stopLoadingAndClearStatus: () => calls.push("stopLoadingAndClearStatus:"),
 		buildHotkeysMarkdown: () => "hotkeys",
 		getMarkdownTheme: () => ({}) as never,
@@ -158,7 +169,8 @@ describe("InteractiveSlashCommandRouter", () => {
 		expect(calls).toContain("model:claude");
 		expect(calls).toContain("session.compact:keep decisions");
 		expect(calls.some((call) => call.startsWith("session.compact:Only preserve:"))).toBe(true);
-		expect(calls).toContain("queue:clear");
+		expect(calls).toContain("updatePendingMessagesDisplay:");
+		expect(calls.some((call) => call.includes("Cleared 2 queued commands"))).toBe(true);
 		expect(calls.some((call) => call.includes("Unknown /context setup subcommand: docs"))).toBe(true);
 	});
 
@@ -230,6 +242,15 @@ describe("InteractiveSlashCommandRouter", () => {
 		const loginCalls: string[] = [];
 		expect(await router(loginCalls).handleCommand("/login anthropic")).toBe(true);
 		expect(loginCalls).toEqual(["setEditorText:", "login:/login anthropic"]);
+	});
+
+	it("uses live queue accessors instead of a captured queue reference", async () => {
+		const calls: string[] = [];
+		const r = router(calls);
+		expect(await r.handleCommand("/queue clear")).toBe(true);
+		expect(await r.handleCommand("/queue")).toBe(true);
+		expect(calls.some((call) => call.includes("Cleared 2 queued commands"))).toBe(true);
+		expect(calls.some((call) => call.includes("Queue is empty"))).toBe(true);
 	});
 
 	it("clears the editor before reporting that /copy has no assistant message", async () => {

@@ -1,3 +1,4 @@
+import { runCheckpointCommand } from "../../../core/slash-commands/checkpoint.js";
 import {
 	args,
 	clearAnd,
@@ -14,6 +15,12 @@ export class CheckpointCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.legacy.checkpoint(args(text, "/checkpoint")));
+		await clearAnd(context, async () => {
+			const result = await runCheckpointCommand(args(text, "/checkpoint"), {
+				projectRoot: context.sessionManager.getCwd(),
+				sessionId: context.session.sessionId ?? "interactive",
+			});
+			context.appendSlashOutput(result.output, result.exitCode !== 0);
+		});
 	}
 }

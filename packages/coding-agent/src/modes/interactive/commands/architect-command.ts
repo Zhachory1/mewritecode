@@ -1,3 +1,4 @@
+import { runArchitectCommand } from "../../../core/slash-commands.js";
 import {
 	args,
 	clearAnd,
@@ -14,6 +15,10 @@ export class ArchitectCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.legacy.architect(args(text, "/architect")));
+		await clearAnd(context, async () => {
+			const result = await runArchitectCommand(args(text, "/architect"), { state: context.getArchitectState() });
+			context.setArchitectState(result.state);
+			context.appendSlashOutput(result.output, result.exitCode !== 0);
+		});
 	}
 }

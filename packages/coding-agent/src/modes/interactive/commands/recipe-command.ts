@@ -1,3 +1,4 @@
+import { runRecipeSlashCommand } from "../../../core/slash-commands.js";
 import {
 	clearAnd,
 	exactOrArg,
@@ -13,6 +14,13 @@ export class RecipeCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.legacy.recipe(text));
+		await clearAnd(context, async () => {
+			const commandArgs = text.replace(/^\/recipe\s*/, "");
+			const result = await runRecipeSlashCommand(commandArgs, { cwd: context.sessionManager.getCwd() });
+			context.appendSlashOutput(result.output, result.exitCode !== 0);
+			if (result.goal && result.exitCode === 0) {
+				await context.session.prompt(result.goal);
+			}
+		});
 	}
 }

@@ -1,3 +1,4 @@
+import { runRepomapCommand } from "../../../core/slash-commands.js";
 import {
 	args,
 	clearAnd,
@@ -14,6 +15,12 @@ export class RepomapCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.legacy.repomap(args(text, "/repomap")));
+		await clearAnd(context, async () => {
+			const result = await runRepomapCommand(args(text, "/repomap"), {
+				cwd: context.sessionManager.getCwd(),
+				chatState: context.repomapChatState,
+			});
+			context.appendSlashOutput(result.output, result.exitCode !== 0);
+		});
 	}
 }
