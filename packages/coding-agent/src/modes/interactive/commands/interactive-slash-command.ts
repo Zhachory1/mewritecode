@@ -28,7 +28,7 @@ export interface FreezeCheckpoint {
 }
 
 export interface InteractiveSlashCommandContext {
-	editor: { setText(value: string): void };
+	editor: { setText(value: string): void; addToHistory?(value: string): void };
 	ui: TUI;
 	chatContainer: Container;
 	statusContainer: Container;
@@ -42,6 +42,9 @@ export interface InteractiveSlashCommandContext {
 	showError(message: string): void;
 	showStatus(message: string): void;
 	showWarning(message: string): void;
+	appendSlashOutput(text: string, isError: boolean): void;
+	refreshChatModeFooter(): void;
+	refreshApprovalFooter(): void;
 	updateTerminalTitle(): void;
 	legacy: {
 		settings(): MaybePromise;
@@ -73,13 +76,7 @@ export interface InteractiveSlashCommandContext {
 		checkpoint(args: string): MaybePromise;
 		rollback(args: string): MaybePromise;
 		goal(args: string): MaybePromise;
-		plan(args: string): MaybePromise;
-		act(args: string): MaybePromise;
-		approval(args: string): MaybePromise;
 		queue(args: string): MaybePromise;
-		contextStatus(): MaybePromise;
-		contextLearn(): MaybePromise;
-		contextSetup(args: string): MaybePromise;
 		btw(question: string): MaybePromise;
 	};
 }

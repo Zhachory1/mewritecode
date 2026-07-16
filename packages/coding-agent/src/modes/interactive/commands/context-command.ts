@@ -1,3 +1,4 @@
+import { formatContextSetupStatus } from "../../../core/context-setup.js";
 import { clearAnd, InteractiveSlashCommand, type InteractiveSlashCommandContext } from "./interactive-slash-command.js";
 
 export class ContextCommand extends InteractiveSlashCommand {
@@ -13,6 +14,12 @@ export class ContextCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(_text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.legacy.contextStatus());
+		await clearAnd(context, () => {
+			const setupLines = formatContextSetupStatus(context.settingsManager.getContextSetupSettings());
+			context.appendSlashOutput(
+				[...setupLines, "", ...context.session.getContextEngineStatusLines()].join("\n"),
+				false,
+			);
+		});
 	}
 }

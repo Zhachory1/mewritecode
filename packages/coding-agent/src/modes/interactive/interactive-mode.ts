@@ -67,14 +67,7 @@ import {
 import type { AgentSessionRuntime } from "../../core/agent-session-runtime.js";
 import { type ArchitectModeState, defaultArchitectState } from "../../core/chat-modes/architect.js";
 import { splitOnThen } from "../../core/command-queue.js";
-import { buildContextLearnPreview } from "../../core/context-learn.js";
-import {
-	formatContextSetupHelp,
-	formatContextSetupNotice,
-	formatContextSetupStatus,
-	shouldShowContextSetupNotice,
-	validateSetupDir,
-} from "../../core/context-setup.js";
+import { formatContextSetupNotice, shouldShowContextSetupNotice } from "../../core/context-setup.js";
 import { formatSavingsLine, formatSessionEndSummary } from "../../core/cost-formatter.js";
 import {
 	getAllTimeSavingsBytes,
@@ -98,12 +91,9 @@ import { DefaultPackageManager } from "../../core/package-manager.js";
 import type { ResourceDiagnostic } from "../../core/resource-loader.js";
 import { formatMissingSessionCwdPrompt, MissingSessionCwdError } from "../../core/session-cwd.js";
 import { type SessionContext, SessionManager } from "../../core/session-manager.js";
-import { runActCommand } from "../../core/slash-commands/act.js";
-import { runApprovalCommand } from "../../core/slash-commands/approval.js";
 import { runCheckpointCommand } from "../../core/slash-commands/checkpoint.js";
 import { runGoalSlashCommand } from "../../core/slash-commands/goal.js";
 import { runMcpSlashCommand } from "../../core/slash-commands/mcp.js";
-import { runPlanCommand } from "../../core/slash-commands/plan.js";
 import { runRollbackCommand } from "../../core/slash-commands/rollback.js";
 import { formatSavingsReport, formatSavingsShare, runSavingsCommand } from "../../core/slash-commands/savings.js";
 import {
@@ -2408,7 +2398,10 @@ export class InteractiveMode {
 
 	private createInteractiveSlashCommandContext(): InteractiveSlashCommandContext {
 		return {
-			editor: { setText: (value) => this.editor.setText(value) },
+			editor: {
+				setText: (value) => this.editor.setText(value),
+				addToHistory: (value) => this.editor.addToHistory?.(value),
+			},
 			ui: this.ui,
 			chatContainer: this.chatContainer,
 			statusContainer: this.statusContainer,
@@ -2428,6 +2421,9 @@ export class InteractiveMode {
 			showError: (message) => this.showError(message),
 			showStatus: (message) => this.showStatus(message),
 			showWarning: (message) => this.showWarning(message),
+			appendSlashOutput: (text, isError) => this.appendSlashOutput(text, isError),
+			refreshChatModeFooter: () => this._refreshChatModeFooter(),
+			refreshApprovalFooter: () => this._refreshApprovalFooter(),
 			updateTerminalTitle: () => this.updateTerminalTitle(),
 			legacy: {
 				settings: () => this.showSettingsSelector(),
@@ -2478,13 +2474,7 @@ export class InteractiveMode {
 				checkpoint: async (args) => this.handleCheckpointSlashCommand(args),
 				rollback: async (args) => this.handleRollbackSlashCommand(args),
 				goal: async (args) => this.handleGoalSlashCommand(args),
-				plan: (args) => this.handlePlanSlashCommand(args),
-				act: (args) => this.handleActSlashCommand(args),
-				approval: (args) => this.handleApprovalSlashCommand(args),
 				queue: (args) => this.handleQueueSlashCommand(args),
-				contextStatus: () => this.handleContextSlashCommand(),
-				contextLearn: () => this.handleContextLearnSlashCommand(),
-				contextSetup: (args) => this.handleContextSetupSlashCommand(args),
 				btw: (question) => void this.handleBtwSlashCommand(question),
 			},
 		};
@@ -4974,100 +4964,6 @@ export class InteractiveMode {
 			},
 		});
 		this.appendSlashOutput(result.output, result.exitCode !== 0);
-	}
-
-	private handlePlanSlashCommand(args: string): void {
-		const result = runPlanCommand(args, {
-			getChatMode: () => this.session.chatMode,
-			setChatMode: (mode) => this.session.setChatMode(mode),
-			sessionId: this.session.sessionId,
-		});
-		this.appendSlashOutput(result.output, result.exitCode !== 0);
-		this._refreshChatModeFooter();
-		if (result.promptToSend) {
-			const text = result.promptToSend;
-			this.editor.addToHistory?.(`/plan ${text}`);
-			void this.session
-				.prompt(text, this.session.isStreaming ? { streamingBehavior: "steer" } : undefined)
-				.catch((err: unknown) => {
-					const msg = err instanceof Error ? err.message : String(err);
-					this.showError(msg);
-				});
-		}
-	}
-
-	private handleActSlashCommand(args: string): void {
-		const result = runActCommand(args, {
-			setChatMode: (mode) => this.session.setChatMode(mode),
-			sessionId: this.session.sessionId,
-			enqueueFollowUp: (text) => {
-				void this.session.prompt(text, { streamingBehavior: "followUp" });
-			},
-		});
-		this.appendSlashOutput(result.output, result.exitCode !== 0);
-		this._refreshChatModeFooter();
-	}
-
-	private handleApprovalSlashCommand(args: string): void {
-		const result = runApprovalCommand(args, {
-			getApprovalMode: () => this.session.approvalMode,
-			setApprovalMode: (enabled) => this.session.setApprovalMode(enabled),
-		});
-		this.appendSlashOutput(result.output, result.exitCode !== 0);
-		this._refreshApprovalFooter();
-	}
-
-	private handleContextSlashCommand(): void {
-		const setupLines = formatContextSetupStatus(this.settingsManager.getContextSetupSettings());
-		this.appendSlashOutput([...setupLines, "", ...this.session.getContextEngineStatusLines()].join("\n"), false);
-	}
-
-	private handleContextLearnSlashCommand(): void {
-		this.appendSlashOutput(
-			buildContextLearnPreview({
-				lastAssistantText: this.session.getLastAssistantText(),
-				sessionId: this.session.sessionId,
-				cwd: this.sessionManager.getCwd(),
-			}),
-			false,
-		);
-	}
-
-	private handleContextSetupSlashCommand(args: string): void {
-		const [subcommand, ...rest] = args.split(/\s+/).filter(Boolean);
-		if (!subcommand) {
-			this.appendSlashOutput(formatContextSetupHelp(this.sessionManager.getCwd()), false);
-			return;
-		}
-		if (subcommand === "skip") {
-			this.settingsManager.setContextSetupSettings({
-				hasSeenSetupPrompt: true,
-				skippedAt: new Date().toISOString(),
-			});
-			this.appendSlashOutput("Context setup skipped. Run /context setup anytime.", false);
-			return;
-		}
-		if (subcommand === "code-dir" || subcommand === "docs-dir") {
-			const value = rest.join(" ");
-			if (!value) {
-				this.appendSlashOutput(`Usage: /context setup ${subcommand} <path>`, true);
-				return;
-			}
-			const validated = validateSetupDir(value, this.sessionManager.getCwd());
-			if (!validated.ok) {
-				this.appendSlashOutput(validated.error, true);
-				return;
-			}
-			if (subcommand === "code-dir") {
-				this.settingsManager.setContextSetupSettings({ hasSeenSetupPrompt: true, mainCodeDir: validated.path });
-				this.appendSlashOutput(`Saved main code directory: ${validated.path}`, false);
-				return;
-			}
-			this.settingsManager.setContextSetupSettings({ hasSeenSetupPrompt: true, mainDocsDir: validated.path });
-			this.appendSlashOutput(`Saved main docs directory: ${validated.path}`, false);
-			return;
-		}
-		this.appendSlashOutput(`Unknown /context setup subcommand: ${subcommand}. Try /context setup.`, true);
 	}
 
 	/** Issue #5: show or clear the /then-chained command queue. */

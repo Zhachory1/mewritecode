@@ -1,3 +1,4 @@
+import { runApprovalCommand } from "../../../core/slash-commands/approval.js";
 import {
 	args,
 	clearAnd,
@@ -14,6 +15,13 @@ export class ApprovalCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.legacy.approval(args(text, "/approval")));
+		await clearAnd(context, () => {
+			const result = runApprovalCommand(args(text, "/approval"), {
+				getApprovalMode: () => context.session.approvalMode,
+				setApprovalMode: (enabled) => context.session.setApprovalMode(enabled),
+			});
+			context.appendSlashOutput(result.output, result.exitCode !== 0);
+			context.refreshApprovalFooter();
+		});
 	}
 }
