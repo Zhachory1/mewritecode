@@ -93,6 +93,11 @@ const noopHandlers: InteractiveSlashCommandContext = {
 	showError: () => {},
 	showStatus: () => {},
 	showWarning: () => {},
+	showOAuthSelector: () => {},
+	showLoginDialog: () => {},
+	showSelector: () => {},
+	toggleActivityOverlay: () => {},
+	shutdown: async () => {},
 	updateTerminalTitle: () => {},
 	legacy: new Proxy(
 		{},

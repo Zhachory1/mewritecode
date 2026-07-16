@@ -7,8 +7,8 @@ export class LogoutCommand extends InteractiveSlashCommand {
 		return exact("/logout", text);
 	}
 
-	async handleCommand(_text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		context.legacy.logout();
+	handleCommand(_text: string, context: InteractiveSlashCommandContext): void {
+		context.showOAuthSelector("logout");
 		context.editor.setText("");
 	}
 }

@@ -97,14 +97,7 @@ import { getChangelogPath, getNewEntries, parseChangelog } from "../../utils/cha
 import { extensionForImageMimeType, readClipboardImage } from "../../utils/clipboard-image.js";
 import { parseGitUrl } from "../../utils/git.js";
 import { ensureTool } from "../../utils/tools-manager.js";
-import {
-	deriveDetail,
-	detailOf,
-	formatProviderChoices,
-	kindOf,
-	labelOf,
-	parseLoginCommand,
-} from "./activity-helpers.js";
+import { deriveDetail, detailOf, kindOf, labelOf } from "./activity-helpers.js";
 import { renderDebugCommand } from "./commands/debug-command.js";
 import {
 	createDefaultInteractiveSlashCommands,
@@ -151,7 +144,6 @@ import { ToolExecutionComponent } from "./components/tool-execution.js";
 import { ToolGroupShellComponent } from "./components/tool-shelf.js";
 import { TreeSelectorComponent } from "./components/tree-selector.js";
 import { UserMessageComponent } from "./components/user-message.js";
-import { UserMessageSelectorComponent } from "./components/user-message-selector.js";
 import {
 	emptyFireStarterState,
 	emptyTribalSignalState,
@@ -2309,7 +2301,7 @@ export class InteractiveMode {
 						if (action === "tree") {
 							this.showTreeSelector();
 						} else {
-							this.showUserMessageSelector();
+							void this.slashCommandRouter.handleCommand("/fork");
 						}
 						this.lastEscapeTime = 0;
 					} else {
@@ -2339,10 +2331,14 @@ export class InteractiveMode {
 			void this.slashCommandRouter.handleCommand("/new");
 		});
 		this.defaultEditor.onAction("app.session.tree", () => this.showTreeSelector());
-		this.defaultEditor.onAction("app.session.fork", () => this.showUserMessageSelector());
+		this.defaultEditor.onAction("app.session.fork", () => {
+			void this.slashCommandRouter.handleCommand("/fork");
+		});
 		this.defaultEditor.onAction("app.session.resume", () => this.showSessionSelector());
 		this.defaultEditor.onAction("app.help", () => this.toggleHelpOverlay());
-		this.defaultEditor.onAction("app.subagent.toggle", () => this.toggleActivityOverlay());
+		this.defaultEditor.onAction("app.subagent.toggle", () => {
+			void this.slashCommandRouter.handleCommand("/activity");
+		});
 		this.defaultEditor.onAction("app.message.editQueue", () => this.openQueuedMessagesEditor());
 		this.defaultEditor.onAction("app.tools.shelfExpand", () => this.toggleLastToolShelf());
 
@@ -2430,6 +2426,11 @@ export class InteractiveMode {
 			showError: (message) => mode.showError(message),
 			showStatus: (message) => mode.showStatus(message),
 			showWarning: (message) => mode.showWarning(message),
+			showOAuthSelector: (action) => mode.showOAuthSelector(action),
+			showLoginDialog: (provider) => mode.showLoginDialog(provider),
+			showSelector: (factory) => mode.showSelector(factory),
+			toggleActivityOverlay: () => mode.toggleActivityOverlay(),
+			shutdown: () => mode.shutdown(),
 			appendSlashOutput: (text, isError) => mode.appendSlashOutput(text, isError),
 			refreshChatModeFooter: () => mode._refreshChatModeFooter(),
 			refreshApprovalFooter: () => mode._refreshApprovalFooter(),
@@ -2440,25 +2441,10 @@ export class InteractiveMode {
 				model: async (searchTerm) => mode.handleModelCommand(searchTerm),
 				import: async (commandText) => mode.handleImportCommand(commandText),
 				share: async () => mode.handleShareCommand(),
-				activity: () => mode.toggleActivityOverlay(),
 
 				skills: () => mode.handleSkillsCommand(),
 				plugins: () => mode.handleSkillsCommand("marketplace"),
-				fork: () => mode.showUserMessageSelector(),
 				tree: () => mode.showTreeSelector(),
-				login: async (commandText) => {
-					const providers = mode.session.modelRegistry.authStorage.getOAuthProviders();
-					const parsed = parseLoginCommand(commandText, providers);
-					if (parsed.kind === "selector") {
-						await mode.showOAuthSelector("login");
-					} else if (parsed.kind === "provider") {
-						await mode.showLoginDialog(parsed.provider);
-					} else {
-						const names = formatProviderChoices(providers);
-						mode.showError(`Unknown provider "${parsed.provider}". Try: ${names || "(none)"}`);
-					}
-				},
-				logout: () => mode.showOAuthSelector("logout"),
 				reload: async () => mode.handleReloadCommand(),
 
 				resume: async (target) => {
@@ -2468,7 +2454,6 @@ export class InteractiveMode {
 						mode.showSessionSelector();
 					}
 				},
-				quit: async () => mode.shutdown(),
 			},
 		};
 	}
@@ -4352,39 +4337,6 @@ export class InteractiveMode {
 				},
 			);
 			return { component: selector, focus: selector };
-		});
-	}
-
-	private showUserMessageSelector(): void {
-		const userMessages = this.session.getUserMessagesForForking();
-
-		if (userMessages.length === 0) {
-			this.showStatus("No messages to fork from");
-			return;
-		}
-
-		this.showSelector((done) => {
-			const selector = new UserMessageSelectorComponent(
-				userMessages.map((m) => ({ id: m.entryId, text: m.text })),
-				async (entryId) => {
-					const result = await this.runtimeHost.fork(entryId);
-					if (result.cancelled) {
-						done();
-						this.ui.requestRender();
-						return;
-					}
-					await this.handleRuntimeSessionChange();
-					this.renderCurrentSessionState();
-					this.editor.setText(result.selectedText ?? "");
-					done();
-					this.showStatus("Branched to new session");
-				},
-				() => {
-					done();
-					this.ui.requestRender();
-				},
-			);
-			return { component: selector, focus: selector.getMessageList() };
 		});
 	}
 

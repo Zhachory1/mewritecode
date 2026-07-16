@@ -87,6 +87,11 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 			},
 		} as never,
 		session: {
+			modelRegistry: {
+				authStorage: {
+					getOAuthProviders: () => [{ id: "anthropic", aliases: ["claude"] }],
+				},
+			},
 			chatMode: "edit",
 			sessionId: "session-1",
 			approvalMode: false,
@@ -154,6 +159,19 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 		showError: (message) => calls.push(`showError:${message}`),
 		showStatus: (message) => calls.push(`showStatus:${message}`),
 		showWarning: (message) => calls.push(`showWarning:${message}`),
+		showOAuthSelector: (action) => {
+			calls.push(`showOAuthSelector:${action}`);
+		},
+		showLoginDialog: (provider) => {
+			calls.push(`showLoginDialog:${provider}`);
+		},
+		showSelector: () => {
+			calls.push("showSelector:");
+		},
+		toggleActivityOverlay: () => calls.push("toggleActivityOverlay:"),
+		shutdown: async () => {
+			calls.push("shutdown:");
+		},
 		updateTerminalTitle: () => calls.push("updateTerminalTitle:"),
 		legacy,
 	};
@@ -265,7 +283,7 @@ describe("InteractiveSlashCommandRouter", () => {
 	it("preserves editor clearing order", async () => {
 		const logoutCalls: string[] = [];
 		expect(await router(logoutCalls).handleCommand("/logout")).toBe(true);
-		expect(logoutCalls).toEqual(["logout:", "setEditorText:"]);
+		expect(logoutCalls).toEqual(["showOAuthSelector:logout", "setEditorText:"]);
 
 		const compactCalls: string[] = [];
 		expect(await router(compactCalls).handleCommand("/compact keep decisions")).toBe(true);
@@ -273,7 +291,18 @@ describe("InteractiveSlashCommandRouter", () => {
 
 		const loginCalls: string[] = [];
 		expect(await router(loginCalls).handleCommand("/login anthropic")).toBe(true);
-		expect(loginCalls).toEqual(["setEditorText:", "login:/login anthropic"]);
+		expect(loginCalls).toEqual(["setEditorText:", "showLoginDialog:anthropic"]);
+	});
+
+	it("runs migrated activity and quit commands through context primitives", async () => {
+		const calls: string[] = [];
+		const r = router(calls);
+
+		expect(await r.handleCommand("/activity")).toBe(true);
+		expect(await r.handleCommand("/quit")).toBe(true);
+
+		expect(calls).toContain("toggleActivityOverlay:");
+		expect(calls).toContain("shutdown:");
 	});
 
 	it("uses live queue accessors instead of a captured queue reference", async () => {

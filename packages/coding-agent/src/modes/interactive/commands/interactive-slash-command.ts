@@ -13,7 +13,8 @@
  * 4. Register the class in `commands/index.ts` in the correct precedence order.
  * 5. Add a sample to `test/interactive-slash-command.test.ts` so registry and router stay in sync.
  */
-import type { Container, MarkdownTheme, TUI } from "@zhachory1/mewrite-tui";
+import type { OAuthProviderId } from "@zhachory1/mewrite-ai";
+import type { Component, Container, MarkdownTheme, TUI } from "@zhachory1/mewrite-tui";
 import type { AgentSession } from "../../../core/agent-session.js";
 import type { AgentSessionRuntime } from "../../../core/agent-session-runtime.js";
 import type { ArchitectModeState } from "../../../core/chat-modes/architect.js";
@@ -55,6 +56,11 @@ export interface InteractiveSlashCommandContext {
 	showError(message: string): void;
 	showStatus(message: string): void;
 	showWarning(message: string): void;
+	showOAuthSelector(action: "login" | "logout"): MaybePromise;
+	showLoginDialog(provider: OAuthProviderId): MaybePromise;
+	showSelector(factory: (done: () => void) => { component: Component; focus: Component }): void;
+	toggleActivityOverlay(): void;
+	shutdown(): MaybePromise;
 	appendSlashOutput(text: string, isError: boolean): void;
 	refreshChatModeFooter(): void;
 	refreshApprovalFooter(): void;
@@ -65,16 +71,11 @@ export interface InteractiveSlashCommandContext {
 		model(searchTerm: string | undefined): MaybePromise;
 		import(text: string): MaybePromise;
 		share(): MaybePromise;
-		activity(): MaybePromise;
 		skills(): MaybePromise;
 		plugins(): MaybePromise;
-		fork(): MaybePromise;
 		tree(): MaybePromise;
-		login(text: string): MaybePromise;
-		logout(): MaybePromise;
 		reload(): MaybePromise;
 		resume(target: string | undefined): MaybePromise;
-		quit(): MaybePromise;
 	};
 }
 

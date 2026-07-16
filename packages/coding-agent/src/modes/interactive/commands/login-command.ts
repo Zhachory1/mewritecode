@@ -1,3 +1,4 @@
+import { formatProviderChoices, parseLoginCommand } from "../activity-helpers.js";
 import {
 	clearAnd,
 	exactOrArg,
@@ -13,6 +14,17 @@ export class LoginCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.legacy.login(text));
+		await clearAnd(context, async () => {
+			const providers = context.session.modelRegistry.authStorage.getOAuthProviders();
+			const parsed = parseLoginCommand(text, providers);
+			if (parsed.kind === "selector") {
+				await context.showOAuthSelector("login");
+			} else if (parsed.kind === "provider") {
+				await context.showLoginDialog(parsed.provider);
+			} else {
+				const names = formatProviderChoices(providers);
+				context.showError(`Unknown provider "${parsed.provider}". Try: ${names || "(none)"}`);
+			}
+		});
 	}
 }
