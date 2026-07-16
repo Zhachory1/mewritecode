@@ -82,9 +82,13 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 			sessionId: "session-1",
 			approvalMode: false,
 			isStreaming: true,
+			exportToHtml: async (outputPath?: string) => `/tmp/${outputPath ?? "session.html"}`,
+			exportToJsonl: (outputPath?: string) => `/tmp/${outputPath ?? "session.jsonl"}`,
 			compact: async (instructions?: string) => calls.push(`session.compact:${instructions ?? ""}`),
 			prompt: async (prompt: string, options?: { streamingBehavior?: string }) =>
 				calls.push(`session.prompt:${prompt}:${options?.streamingBehavior ?? ""}`),
+			askSidecar: async (question: string) => `answer to ${question}`,
+			memoryProvider: async () => undefined,
 			setChatMode: (mode: string) => calls.push(`session.setChatMode:${mode}`),
 			setApprovalMode: (enabled: boolean) => calls.push(`session.setApprovalMode:${enabled}`),
 			getContextEngineStatusLines: () => ["ContextEngine: enabled"],
@@ -208,7 +212,7 @@ describe("InteractiveSlashCommandRouter", () => {
 		expect(calls).toContain("clear:");
 		expect(calls).toContain("plugins:");
 		expect(r.canHandle("/mode full")).toBe(true);
-		expect(calls).toContain("export:/exporter");
+		expect(calls.some((call) => call.includes("Session exported to"))).toBe(true);
 		expect(calls).toContain("import:/import-foo");
 	});
 
@@ -251,6 +255,19 @@ describe("InteractiveSlashCommandRouter", () => {
 		expect(await r.handleCommand("/queue")).toBe(true);
 		expect(calls.some((call) => call.includes("Cleared 2 queued commands"))).toBe(true);
 		expect(calls.some((call) => call.includes("Queue is empty"))).toBe(true);
+	});
+
+	it("runs representative migrated command bodies", async () => {
+		const calls: string[] = [];
+		const r = router(calls);
+
+		expect(await r.handleCommand("/btw")).toBe(true);
+		expect(await r.handleCommand("/memory status")).toBe(true);
+		expect(await r.handleCommand("/architect status")).toBe(true);
+
+		expect(calls.some((call) => call.includes("/btw needs a question"))).toBe(true);
+		expect(calls.some((call) => call.includes("Memory backend unavailable"))).toBe(true);
+		expect(calls.some((call) => call.startsWith("setArchitectState:"))).toBe(true);
 	});
 
 	it("clears the editor before reporting that /copy has no assistant message", async () => {

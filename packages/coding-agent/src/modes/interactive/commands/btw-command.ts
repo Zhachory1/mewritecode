@@ -1,3 +1,5 @@
+import { Spacer, Text } from "@zhachory1/mewrite-tui";
+import { theme } from "../theme/theme.js";
 import {
 	args,
 	clearAnd,
@@ -14,6 +16,27 @@ export class BtwCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.legacy.btw(args(text, "/btw")));
+		await clearAnd(context, async () => {
+			const question = args(text, "/btw").trim();
+			if (!question) {
+				context.showError("/btw needs a question. Usage: /btw <question>.");
+				return;
+			}
+
+			context.chatContainer.addChild(new Spacer(1));
+			context.chatContainer.addChild(new Text(theme.fg("dim", `↪ btw: ${question}`), 1, 0));
+			const pending = new Text(theme.fg("dim", "↪ btw: (thinking…)"), 1, 0);
+			context.chatContainer.addChild(pending);
+			context.ui.requestRender();
+
+			try {
+				const answer = await context.session.askSidecar(question);
+				pending.setText(theme.fg("dim", `↪ btw: ${answer || "(empty response)"}`));
+			} catch (err) {
+				const msg = err instanceof Error ? err.message : String(err);
+				pending.setText(theme.fg("warning", `↪ btw: error — ${msg}`));
+			}
+			context.ui.requestRender();
+		});
 	}
 }

@@ -58,7 +58,6 @@ export interface InteractiveSlashCommandContext {
 		settings(): MaybePromise;
 		scopedModels(): MaybePromise;
 		model(searchTerm: string | undefined): MaybePromise;
-		export(text: string): MaybePromise;
 		import(text: string): MaybePromise;
 		share(): MaybePromise;
 		activity(): MaybePromise;
@@ -71,10 +70,8 @@ export interface InteractiveSlashCommandContext {
 		newSession(): MaybePromise;
 		clear(): MaybePromise;
 		reload(): MaybePromise;
-		debug(): MaybePromise;
 		resume(target: string | undefined): MaybePromise;
 		quit(): MaybePromise;
-		btw(question: string): MaybePromise;
 	};
 }
 
