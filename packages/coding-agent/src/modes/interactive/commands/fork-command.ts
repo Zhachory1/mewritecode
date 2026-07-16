@@ -8,7 +8,7 @@ export class ForkCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(_text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		context.mode.fork();
+		context.legacy.fork();
 		context.editor.setText("");
 	}
 }

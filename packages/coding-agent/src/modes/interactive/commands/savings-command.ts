@@ -14,6 +14,6 @@ export class SavingsCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.mode.savings(args(text, "/savings")));
+		await clearAnd(context, () => context.legacy.savings(args(text, "/savings")));
 	}
 }

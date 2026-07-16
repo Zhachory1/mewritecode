@@ -14,6 +14,6 @@ export class PlanCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.mode.plan(args(text, "/plan")));
+		await clearAnd(context, () => context.legacy.plan(args(text, "/plan")));
 	}
 }

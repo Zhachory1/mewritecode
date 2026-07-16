@@ -14,6 +14,6 @@ export class ContextSetupCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.mode.contextSetup(args(text, "/context setup")));
+		await clearAnd(context, () => context.legacy.contextSetup(args(text, "/context setup")));
 	}
 }

@@ -1,9 +1,9 @@
 import {
-	clearAnd,
 	exactOrArg,
 	InteractiveSlashCommand,
 	type InteractiveSlashCommandContext,
 } from "./interactive-slash-command.js";
+import { handleCaveModeCommand } from "./mode-command.js";
 
 export class CaveCommand extends InteractiveSlashCommand {
 	readonly name = "cave";
@@ -12,7 +12,8 @@ export class CaveCommand extends InteractiveSlashCommand {
 		return exactOrArg("/cave", text);
 	}
 
-	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.mode.cave(text));
+	handleCommand(text: string, context: InteractiveSlashCommandContext): void {
+		context.editor.setText("");
+		handleCaveModeCommand(text, context);
 	}
 }

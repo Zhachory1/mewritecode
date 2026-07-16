@@ -65,14 +65,25 @@ const SAMPLE_INPUTS: Record<string, string> = {
 
 const noopHandlers: InteractiveSlashCommandContext = {
 	editor: { setText: () => {} },
-	mode: new Proxy(
+	ui: { requestRender: () => {} } as never,
+	chatContainer: { addChild: () => {} } as never,
+	statusContainer: { clear: () => {} } as never,
+	session: {} as never,
+	sessionManager: {} as never,
+	settingsManager: {} as never,
+	freezeCheckpoints: [],
+	stopLoadingAndClearStatus: () => {},
+	buildHotkeysMarkdown: () => "",
+	getMarkdownTheme: () => ({}) as never,
+	showWarning: () => {},
+	legacy: new Proxy(
 		{},
 		{
 			get() {
 				return () => {};
 			},
 		},
-	) as InteractiveSlashCommandContext["mode"],
+	) as InteractiveSlashCommandContext["legacy"],
 };
 
 describe("slash command dispatcher", () => {

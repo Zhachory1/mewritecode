@@ -8,7 +8,7 @@ export class CopyCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(_text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await context.mode.copy();
+		await context.legacy.copy();
 		context.editor.setText("");
 	}
 }

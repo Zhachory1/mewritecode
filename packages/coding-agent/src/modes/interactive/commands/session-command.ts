@@ -8,7 +8,7 @@ export class SessionCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(_text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		context.mode.session();
+		context.legacy.session();
 		context.editor.setText("");
 	}
 }

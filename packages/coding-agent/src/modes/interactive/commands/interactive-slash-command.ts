@@ -3,21 +3,44 @@
  *
  * Each built-in interactive command lives in its own `*-command.ts` file. That
  * file owns both pieces of command behavior: `condition()` says when the command
- * handles input, and `handleCommand()` runs the command through the UI/session
- * callbacks exposed by `InteractiveSlashCommandContext`.
+ * handles input, and `handleCommand()` runs the command through the primitives
+ * exposed by `InteractiveSlashCommandContext`.
  *
  * To add a new built-in command:
  * 1. Add it to `BUILTIN_SLASH_COMMANDS` in `core/slash-commands.ts`.
- * 2. Add a method to `InteractiveSlashCommandContext` only if existing callbacks are not enough.
- * 3. Create `commands/<name>-command.ts` extending `InteractiveSlashCommand`.
+ * 2. Create `commands/<name>-command.ts` extending `InteractiveSlashCommand`.
+ * 3. Use context primitives (`session`, `settingsManager`, `chatContainer`, etc.) for real command behavior.
  * 4. Register the class in `commands/index.ts` in the correct precedence order.
  * 5. Add a sample to `test/interactive-slash-command.test.ts` so registry and router stay in sync.
  */
+import type { Container, MarkdownTheme, TUI } from "@zhachory1/mewrite-tui";
+import type { AgentSession } from "../../../core/agent-session.js";
+import type { SessionManager } from "../../../core/session-manager.js";
+import type { SettingsManager } from "../../../core/settings-manager.js";
+
 type MaybePromise = void | Promise<void>;
+
+export interface FreezeCheckpoint {
+	label?: string;
+	tokensBefore: number;
+	tokensAfter: number;
+	savedAt: string;
+}
 
 export interface InteractiveSlashCommandContext {
 	editor: { setText(value: string): void };
-	mode: {
+	ui: TUI;
+	chatContainer: Container;
+	statusContainer: Container;
+	session: AgentSession;
+	sessionManager: SessionManager;
+	settingsManager: SettingsManager;
+	freezeCheckpoints: FreezeCheckpoint[];
+	stopLoadingAndClearStatus(): void;
+	buildHotkeysMarkdown(): string;
+	getMarkdownTheme(): MarkdownTheme;
+	showWarning(message: string): void;
+	legacy: {
 		settings(): MaybePromise;
 		scopedModels(): MaybePromise;
 		model(searchTerm: string | undefined): MaybePromise;
@@ -30,7 +53,6 @@ export interface InteractiveSlashCommandContext {
 		changelog(): MaybePromise;
 		hotkeys(): MaybePromise;
 		activity(): MaybePromise;
-		help(): MaybePromise;
 		skills(): MaybePromise;
 		plugins(): MaybePromise;
 		fork(): MaybePromise;
@@ -39,19 +61,10 @@ export interface InteractiveSlashCommandContext {
 		logout(): MaybePromise;
 		newSession(): MaybePromise;
 		clear(): MaybePromise;
-		compact(instructions: string | undefined): MaybePromise;
-		freeze(label: string | undefined): MaybePromise;
-		checkpoints(): MaybePromise;
-		mode(text: string): MaybePromise;
-		cave(text: string): MaybePromise;
-		ponytail(text: string): MaybePromise;
-		tokens(): MaybePromise;
-		cost(): MaybePromise;
 		savings(arg: string): MaybePromise;
 		reload(): MaybePromise;
 		hooks(args: string): MaybePromise;
 		debug(): MaybePromise;
-		arminSaysHi(): MaybePromise;
 		resume(target: string | undefined): MaybePromise;
 		quit(): MaybePromise;
 		mcp(text: string): MaybePromise;
@@ -72,6 +85,7 @@ export interface InteractiveSlashCommandContext {
 		btw(question: string): MaybePromise;
 	};
 }
+
 export abstract class InteractiveSlashCommand {
 	abstract readonly name: string;
 	abstract condition(text: string): boolean;

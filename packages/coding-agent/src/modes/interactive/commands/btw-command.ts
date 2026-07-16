@@ -14,6 +14,6 @@ export class BtwCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.mode.btw(args(text, "/btw")));
+		await clearAnd(context, () => context.legacy.btw(args(text, "/btw")));
 	}
 }

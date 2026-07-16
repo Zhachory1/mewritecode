@@ -50,7 +50,6 @@ import { maybeNotifyUpdateAvailable } from "../../cli/update.js";
 import {
 	APP_NAME,
 	CHANGELOG_URL,
-	COMPRESSION_MODE_NAME,
 	getAgentDir,
 	getAuthPath,
 	getDebugLogPath,
@@ -113,10 +112,8 @@ import {
 	isUnwiredBuiltinCommand,
 	type RepomapChatState,
 	runArchitectCommand,
-	runCostCommand,
 	runRecipeSlashCommand,
 	runRepomapCommand,
-	runTokensCommand,
 } from "../../core/slash-commands.js";
 import type { SourceInfo } from "../../core/source-info.js";
 import type { TruncationResult } from "../../core/tools/truncate.js";
@@ -141,7 +138,6 @@ import {
 } from "./commands/index.js";
 import { ActionBarComponent } from "./components/action-bar.js";
 import { showApprovalPrompt } from "./components/approval-prompt.js";
-import { ArminComponent } from "./components/armin.js";
 import { AssistantMessageComponent } from "./components/assistant-message.js";
 import { loadBannerLogo } from "./components/banner.js";
 import { BashExecutionComponent } from "./components/bash-execution.js";
@@ -2412,7 +2408,24 @@ export class InteractiveMode {
 	private createInteractiveSlashCommandContext(): InteractiveSlashCommandContext {
 		return {
 			editor: { setText: (value) => this.editor.setText(value) },
-			mode: {
+			ui: this.ui,
+			chatContainer: this.chatContainer,
+			statusContainer: this.statusContainer,
+			session: this.session,
+			sessionManager: this.sessionManager,
+			settingsManager: this.settingsManager,
+			freezeCheckpoints: this.freezeCheckpoints,
+			stopLoadingAndClearStatus: () => {
+				if (this.loadingAnimation) {
+					this.loadingAnimation.stop();
+					this.loadingAnimation = undefined;
+				}
+				this.statusContainer.clear();
+			},
+			buildHotkeysMarkdown: () => this.buildHotkeysMarkdown(),
+			getMarkdownTheme: () => this.getMarkdownThemeWithSettings(),
+			showWarning: (message) => this.showWarning(message),
+			legacy: {
 				settings: () => this.showSettingsSelector(),
 				scopedModels: async () => this.showModelsSelector(),
 				model: async (searchTerm) => this.handleModelCommand(searchTerm),
@@ -2425,7 +2438,7 @@ export class InteractiveMode {
 				changelog: () => this.handleChangelogCommand(),
 				hotkeys: () => this.handleHotkeysCommand(),
 				activity: () => this.toggleActivityOverlay(),
-				help: () => this.handleHelpCommand(),
+
 				skills: () => this.handleSkillsCommand(),
 				plugins: () => this.handleSkillsCommand("marketplace"),
 				fork: () => this.showUserMessageSelector(),
@@ -2445,19 +2458,11 @@ export class InteractiveMode {
 				logout: () => this.showOAuthSelector("logout"),
 				newSession: async () => this.handleClearCommand(),
 				clear: async () => this.handleClearCommand(),
-				compact: async (instructions) => this.handleCompactCommand(instructions),
-				freeze: async (label) => this.handleFreezeCommand(label),
-				checkpoints: () => this.handleCheckpointsCommand(),
-				mode: (commandText) => this.handleCaveCommand(commandText),
-				cave: (commandText) => this.handleCaveCommand(commandText),
-				ponytail: (commandText) => this.handlePonytailCommand(commandText),
-				tokens: () => this.handleTokensCommand(),
-				cost: () => this.handleCostCommand(),
 				savings: async (arg) => this.handleSavingsCommand(arg),
 				reload: async () => this.handleReloadCommand(),
 				hooks: async (args) => this.handleHooksCommand(args),
 				debug: () => this.handleDebugCommand(),
-				arminSaysHi: () => this.handleArminSaysHi(),
+
 				resume: async (target) => {
 					if (target) {
 						await this.handleResumeCommand(target);
@@ -5628,31 +5633,6 @@ export class InteractiveMode {
 		this.ui.requestRender();
 	}
 
-	private handleHelpCommand(): void {
-		let commands = `
-**Commands**
-| Command | Description |
-|---------|-------------|
-`;
-		for (const c of BUILTIN_SLASH_COMMANDS.filter((c) => c.wired)) {
-			commands += `| \`/${c.name}\` | ${c.description} |\n`;
-		}
-		// Built-ins only — skill, project, and extension commands aren't listed
-		// here. Keep the surface honest: point at `/` autocomplete for the rest.
-		commands += `\n_Your skill, project, and extension commands aren't shown above — press \`/\` to browse everything._\n`;
-
-		const hotkeys = this.buildHotkeysMarkdown();
-
-		this.chatContainer.addChild(new Spacer(1));
-		this.chatContainer.addChild(new DynamicBorder());
-		this.chatContainer.addChild(new Text(theme.bold(theme.fg("accent", "Help")), 1, 0));
-		this.chatContainer.addChild(new Spacer(1));
-		this.chatContainer.addChild(new Markdown(commands.trim(), 1, 1, this.getMarkdownThemeWithSettings()));
-		this.chatContainer.addChild(new Markdown(hotkeys.trim(), 1, 1, this.getMarkdownThemeWithSettings()));
-		this.chatContainer.addChild(new DynamicBorder());
-		this.ui.requestRender();
-	}
-
 	private handleSkillsCommand(initialFilter?: SkillSourceTag): void {
 		const categories = this.buildSkillCategories();
 		this.showSelector((done) => {
@@ -5779,12 +5759,6 @@ export class InteractiveMode {
 		this.ui.requestRender();
 	}
 
-	private handleArminSaysHi(): void {
-		this.chatContainer.addChild(new Spacer(1));
-		this.chatContainer.addChild(new ArminComponent(this.ui));
-		this.ui.requestRender();
-	}
-
 	private handleDaxnuts(): void {
 		this.chatContainer.addChild(new Spacer(1));
 		this.chatContainer.addChild(new DaxnutsComponent(this.ui));
@@ -5883,262 +5857,6 @@ export class InteractiveMode {
 		}
 
 		this.bashComponent = undefined;
-		this.ui.requestRender();
-	}
-
-	private async handleCompactCommand(customInstructions?: string): Promise<void> {
-		const entries = this.sessionManager.getEntries();
-		const messageCount = entries.filter((e) => e.type === "message").length;
-
-		if (messageCount < 2) {
-			this.showWarning("Nothing to compact (no messages yet)");
-			return;
-		}
-
-		if (this.loadingAnimation) {
-			this.loadingAnimation.stop();
-			this.loadingAnimation = undefined;
-		}
-		this.statusContainer.clear();
-
-		try {
-			await this.session.compact(customInstructions);
-		} catch {
-			// Ignore, will be emitted as an event
-		}
-	}
-
-	private async handleFreezeCommand(label?: string): Promise<void> {
-		const entries = this.sessionManager.getEntries();
-		const messageCount = entries.filter((e) => e.type === "message").length;
-
-		if (messageCount < 2) {
-			this.showWarning("Nothing to freeze (no messages yet)");
-			return;
-		}
-
-		const statsBefore = this.session.getSessionStats();
-		const tokensBefore = statsBefore.tokens.total;
-
-		const caveInstructions =
-			"Only preserve: active task, open files, pending decisions, unresolved errors. Drop: completed work, tangents, tool call histories.";
-		const customInstructions = label ? `${caveInstructions} Label: ${label}` : caveInstructions;
-
-		if (this.loadingAnimation) {
-			this.loadingAnimation.stop();
-			this.loadingAnimation = undefined;
-		}
-		this.statusContainer.clear();
-
-		try {
-			await this.session.compact(customInstructions);
-			const statsAfter = this.session.getSessionStats();
-			const tokensAfter = statsAfter.tokens.total;
-			const saved = tokensBefore - tokensAfter;
-			const savedPct = tokensBefore > 0 ? Math.round((saved / tokensBefore) * 100) : 0;
-
-			this.freezeCheckpoints.push({
-				label,
-				tokensBefore,
-				tokensAfter,
-				savedAt: new Date().toISOString(),
-			});
-
-			this.chatContainer.addChild(new Spacer(1));
-			const msg =
-				saved > 0
-					? `Mammoth frozen${label ? ` [${label}]` : ""}. Saved ${saved.toLocaleString()} tokens (-${savedPct}%).`
-					: `Mammoth frozen${label ? ` [${label}]` : ""}.`;
-			this.chatContainer.addChild(new Text(theme.fg("accent", msg), 1, 0));
-			this.ui.requestRender();
-		} catch {
-			// Ignore, will be emitted as an event
-		}
-	}
-
-	private handleCheckpointsCommand(): void {
-		if (this.freezeCheckpoints.length === 0) {
-			this.chatContainer.addChild(new Spacer(1));
-			this.chatContainer.addChild(
-				new Text(theme.fg("muted", "No freeze checkpoints yet. Use /freeze to create one."), 1, 0),
-			);
-			this.ui.requestRender();
-			return;
-		}
-
-		const lines: string[] = [theme.fg("accent", "Freeze Checkpoints")];
-		for (let i = 0; i < this.freezeCheckpoints.length; i++) {
-			const cp = this.freezeCheckpoints[i]!;
-			const saved = cp.tokensBefore - cp.tokensAfter;
-			const pct = cp.tokensBefore > 0 ? Math.round((saved / cp.tokensBefore) * 100) : 0;
-			const labelStr = cp.label ? ` [${cp.label}]` : "";
-			const timeStr = new Date(cp.savedAt).toLocaleTimeString();
-			lines.push(`  #${i + 1}${labelStr}  ${timeStr}  ${saved.toLocaleString()} tokens saved (-${pct}%)`);
-		}
-
-		this.chatContainer.addChild(new Spacer(1));
-		this.chatContainer.addChild(new Text(lines.join("\n"), 1, 0));
-		this.ui.requestRender();
-	}
-
-	private handleCaveCommand(text: string): void {
-		const arg = text
-			.replace(/^\/(?:cave|mode)\s*/, "")
-			.trim()
-			.toLowerCase();
-
-		if (!arg) {
-			// No argument: show current cave mode state
-			const state = this.session.getCaveModeSessionState();
-			const status = state.enabled ? `on (intensity: ${state.intensity})` : "off";
-			this.chatContainer.addChild(new Spacer(1));
-			this.chatContainer.addChild(new Text(theme.fg("muted", `${COMPRESSION_MODE_NAME}: ${status}`), 1, 0));
-			this.ui.requestRender();
-			return;
-		}
-
-		if (arg === "on") {
-			this.session.setCaveModeSessionIntensity(this.settingsManager.getCaveModeIntensity());
-			this.chatContainer.addChild(new Spacer(1));
-			this.chatContainer.addChild(new Text(theme.fg("muted", `${COMPRESSION_MODE_NAME}: on (session)`), 1, 0));
-			this.ui.requestRender();
-			return;
-		}
-
-		if (arg === "off") {
-			this.session.setCaveModeSessionDisabled();
-			this.chatContainer.addChild(new Spacer(1));
-			this.chatContainer.addChild(new Text(theme.fg("muted", `${COMPRESSION_MODE_NAME}: off (session)`), 1, 0));
-			this.ui.requestRender();
-			return;
-		}
-
-		if (arg === "lite" || arg === "full" || arg === "ultra") {
-			this.session.setCaveModeSessionIntensity(arg);
-			this.chatContainer.addChild(new Spacer(1));
-			this.chatContainer.addChild(
-				new Text(theme.fg("muted", `${COMPRESSION_MODE_NAME}: on, intensity set to ${arg} (session)`), 1, 0),
-			);
-			this.ui.requestRender();
-			return;
-		}
-
-		if (arg === "stats") {
-			this.handleCaveStatsCommand();
-			return;
-		}
-
-		this.showWarning(`/mode: unknown argument '${arg}'. Usage: /mode [on|off|lite|full|ultra|stats]`);
-	}
-
-	private handlePonytailCommand(text: string): void {
-		const arg = text
-			.replace(/^\/ponytail\s*/, "")
-			.trim()
-			.toLowerCase();
-
-		if (!arg || arg === "status") {
-			const state = this.session.getPonytailSessionState();
-			const status = state.enabled ? `on (intensity: ${state.intensity})` : "off";
-			this.chatContainer.addChild(new Spacer(1));
-			this.chatContainer.addChild(new Text(theme.fg("muted", `Ponytail: ${status}`), 1, 0));
-			this.ui.requestRender();
-			return;
-		}
-
-		if (arg === "on") {
-			this.session.setPonytailSessionIntensity(this.settingsManager.getPonytailIntensity());
-			this.chatContainer.addChild(new Spacer(1));
-			this.chatContainer.addChild(new Text(theme.fg("muted", "Ponytail: on (session)"), 1, 0));
-			this.ui.requestRender();
-			return;
-		}
-
-		if (arg === "off" || arg === "stop") {
-			this.session.setPonytailSessionDisabled();
-			this.chatContainer.addChild(new Spacer(1));
-			this.chatContainer.addChild(new Text(theme.fg("muted", "Ponytail: off (session)"), 1, 0));
-			this.ui.requestRender();
-			return;
-		}
-
-		if (arg === "lite" || arg === "full" || arg === "ultra") {
-			this.session.setPonytailSessionIntensity(arg);
-			this.chatContainer.addChild(new Spacer(1));
-			this.chatContainer.addChild(
-				new Text(theme.fg("muted", `Ponytail: on, intensity set to ${arg} (session)`), 1, 0),
-			);
-			this.ui.requestRender();
-			return;
-		}
-
-		this.showWarning(`/ponytail: unknown argument '${arg}'. Usage: /ponytail [on|off|lite|full|ultra|status]`);
-	}
-
-	private handleCaveStatsCommand(): void {
-		const state = this.session.getCaveModeSessionState();
-		const stats = this.session.getSessionStats();
-		const contextUsage = stats.contextUsage;
-
-		const lines: string[] = [];
-		lines.push(theme.fg("accent", `${COMPRESSION_MODE_NAME} Stats`));
-		lines.push(`  Mode: ${state.enabled ? "on" : "off"}`);
-		lines.push(`  Intensity: ${state.intensity}`);
-		lines.push(`  Tool compression: ${this.settingsManager.getCaveModeToolCompression() ? "on" : "off"}`);
-		lines.push("");
-		lines.push(theme.fg("accent", "Session Tokens"));
-		lines.push(`  Input: ${stats.tokens.input.toLocaleString()}`);
-		lines.push(`  Output: ${stats.tokens.output.toLocaleString()}`);
-		lines.push(`  Cache read: ${stats.tokens.cacheRead.toLocaleString()}`);
-		lines.push(`  Cache write: ${stats.tokens.cacheWrite.toLocaleString()}`);
-		lines.push(`  Total: ${stats.tokens.total.toLocaleString()}`);
-		lines.push(`  Cost: $${stats.cost.toFixed(4)}`);
-		if (contextUsage) {
-			const pct = contextUsage.percent != null ? `${Math.round(contextUsage.percent)}%` : "unknown";
-			const tokens = contextUsage.tokens != null ? contextUsage.tokens.toLocaleString() : "unknown";
-			lines.push("");
-			lines.push(theme.fg("accent", "Context Window"));
-			lines.push(`  Used: ${tokens} / ${contextUsage.contextWindow.toLocaleString()} (${pct})`);
-		}
-
-		this.chatContainer.addChild(new Spacer(1));
-		this.chatContainer.addChild(new Text(lines.join("\n"), 1, 0));
-		this.ui.requestRender();
-	}
-
-	// WS19: /tokens command — per-source-bucket token breakdown
-	private handleTokensCommand(): void {
-		const stats = this.session.getSessionStats();
-		const result = runTokensCommand({
-			stats: {
-				inputTokens: stats.tokens.input,
-				outputTokens: stats.tokens.output,
-				cacheReadTokens: stats.tokens.cacheRead,
-				cacheWriteTokens: stats.tokens.cacheWrite,
-				dollars: stats.cost,
-			},
-		});
-		this.chatContainer.addChild(new Spacer(1));
-		this.chatContainer.addChild(new Text(result.lines.join("\n"), 1, 0));
-		this.ui.requestRender();
-	}
-
-	// WS19: /cost command — session + today + this-week totals
-	private handleCostCommand(): void {
-		const stats = this.session.getSessionStats();
-		const pricingKnown = stats.cost > 0;
-		const result = runCostCommand({
-			stats: {
-				inputTokens: stats.tokens.input,
-				outputTokens: stats.tokens.output,
-				cacheReadTokens: stats.tokens.cacheRead,
-				cacheWriteTokens: stats.tokens.cacheWrite,
-				dollars: stats.cost,
-				pricingKnown,
-			},
-		});
-		this.chatContainer.addChild(new Spacer(1));
-		this.chatContainer.addChild(new Text(result.lines.join("\n"), 1, 0));
 		this.ui.requestRender();
 	}
 

@@ -12,7 +12,7 @@ export class NameCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		context.mode.name(text);
+		context.legacy.name(text);
 		context.editor.setText("");
 	}
 }

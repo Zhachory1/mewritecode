@@ -8,7 +8,7 @@ export class HotkeysCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(_text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		context.mode.hotkeys();
+		context.legacy.hotkeys();
 		context.editor.setText("");
 	}
 }

@@ -57,21 +57,51 @@ const SAMPLE_INPUTS: Record<string, string> = {
 };
 
 function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
-	const mode = new Proxy(
+	const legacy = new Proxy(
 		{},
 		{
 			get(_target, prop: string) {
 				return (...args: unknown[]) => calls.push(`${prop}:${args.map(String).join("|")}`);
 			},
 		},
-	) as InteractiveSlashCommandContext["mode"];
+	) as InteractiveSlashCommandContext["legacy"];
 	return {
 		editor: {
 			setText: (value: string) => {
 				calls.push(`setEditorText:${value}`);
 			},
 		},
-		mode,
+		ui: { requestRender: () => calls.push("requestRender:") } as never,
+		chatContainer: {
+			addChild: (value: unknown) => calls.push(`chatContainer.addChild:${value?.constructor?.name ?? "unknown"}`),
+		} as never,
+		statusContainer: { clear: () => calls.push("statusContainer.clear:") } as never,
+		session: {
+			compact: async (instructions?: string) => calls.push(`session.compact:${instructions ?? ""}`),
+			getCaveModeSessionState: () => ({ enabled: true, intensity: "full" }),
+			getPonytailSessionState: () => ({ enabled: true, intensity: "full" }),
+			getSessionStats: () => ({
+				tokens: { input: 1, output: 2, cacheRead: 3, cacheWrite: 4, total: 10 },
+				cost: 0.01,
+				contextUsage: undefined,
+			}),
+			setCaveModeSessionIntensity: (value: string) => calls.push(`session.setCaveModeSessionIntensity:${value}`),
+			setCaveModeSessionDisabled: () => calls.push("session.setCaveModeSessionDisabled:"),
+			setPonytailSessionIntensity: (value: string) => calls.push(`session.setPonytailSessionIntensity:${value}`),
+			setPonytailSessionDisabled: () => calls.push("session.setPonytailSessionDisabled:"),
+		} as never,
+		sessionManager: { getEntries: () => [{ type: "message" }, { type: "message" }] } as never,
+		settingsManager: {
+			getCaveModeIntensity: () => "full",
+			getCaveModeToolCompression: () => true,
+			getPonytailIntensity: () => "full",
+		} as never,
+		freezeCheckpoints: [],
+		stopLoadingAndClearStatus: () => calls.push("stopLoadingAndClearStatus:"),
+		buildHotkeysMarkdown: () => "hotkeys",
+		getMarkdownTheme: () => ({}) as never,
+		showWarning: (message) => calls.push(`showWarning:${message}`),
+		legacy,
 	};
 }
 
@@ -104,8 +134,8 @@ describe("InteractiveSlashCommandRouter", () => {
 		expect(await r.handleCommand("/context setup docs docs/")).toBe(true);
 
 		expect(calls).toContain("model:claude");
-		expect(calls).toContain("compact:keep decisions");
-		expect(calls).toContain("freeze:release prep");
+		expect(calls).toContain("session.compact:keep decisions");
+		expect(calls.some((call) => call.startsWith("session.compact:Only preserve:"))).toBe(true);
 		expect(calls).toContain("queue:clear");
 		expect(calls).toContain("contextSetup:docs docs/");
 	});
@@ -117,13 +147,13 @@ describe("InteractiveSlashCommandRouter", () => {
 		expect(await r.handleCommand("/clear")).toBe(true);
 		expect(await r.handleCommand("/new")).toBe(true);
 		expect(await r.handleCommand("/plugins")).toBe(true);
-		expect(await r.handleCommand("/cave stats")).toBe(true);
+		expect(r.canHandle("/cave stats")).toBe(true);
 		expect(await r.handleCommand("/exporter")).toBe(true);
 		expect(await r.handleCommand("/import-foo")).toBe(true);
 
 		expect(calls).toContain("clear:");
 		expect(calls).toContain("plugins:");
-		expect(calls).toContain("cave:/cave stats");
+		expect(r.canHandle("/mode full")).toBe(true);
 		expect(calls).toContain("export:/exporter");
 		expect(calls).toContain("import:/import-foo");
 	});
@@ -153,7 +183,7 @@ describe("InteractiveSlashCommandRouter", () => {
 
 		const compactCalls: string[] = [];
 		expect(await router(compactCalls).handleCommand("/compact keep decisions")).toBe(true);
-		expect(compactCalls).toEqual(["setEditorText:", "compact:keep decisions"]);
+		expect(compactCalls).toEqual(["setEditorText:", "stopLoadingAndClearStatus:", "session.compact:keep decisions"]);
 
 		const loginCalls: string[] = [];
 		expect(await router(loginCalls).handleCommand("/login anthropic")).toBe(true);

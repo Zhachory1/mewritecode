@@ -14,6 +14,6 @@ export class HooksCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.mode.hooks(args(text, "/hooks")));
+		await clearAnd(context, () => context.legacy.hooks(args(text, "/hooks")));
 	}
 }

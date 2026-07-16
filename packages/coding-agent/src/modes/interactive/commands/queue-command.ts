@@ -14,6 +14,6 @@ export class QueueCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.mode.queue(args(text, "/queue")));
+		await clearAnd(context, () => context.legacy.queue(args(text, "/queue")));
 	}
 }

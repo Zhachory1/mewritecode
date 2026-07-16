@@ -14,6 +14,22 @@ export class CompactCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.mode.compact(arg(text, "/compact")));
+		await clearAnd(context, async () => {
+			const entries = context.sessionManager.getEntries();
+			const messageCount = entries.filter((entry) => entry.type === "message").length;
+
+			if (messageCount < 2) {
+				context.showWarning("Nothing to compact (no messages yet)");
+				return;
+			}
+
+			context.stopLoadingAndClearStatus();
+
+			try {
+				await context.session.compact(arg(text, "/compact"));
+			} catch {
+				// Compaction errors are already emitted through the session event stream.
+			}
+		});
 	}
 }

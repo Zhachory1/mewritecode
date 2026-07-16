@@ -14,6 +14,6 @@ export class ActCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.mode.act(args(text, "/act")));
+		await clearAnd(context, () => context.legacy.act(args(text, "/act")));
 	}
 }

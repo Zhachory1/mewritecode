@@ -13,6 +13,6 @@ export class McpCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.mode.mcp(text));
+		await clearAnd(context, () => context.legacy.mcp(text));
 	}
 }

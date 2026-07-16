@@ -8,7 +8,7 @@ export class DebugCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(_text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		context.mode.debug();
+		context.legacy.debug();
 		context.editor.setText("");
 	}
 }

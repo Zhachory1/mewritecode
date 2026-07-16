@@ -13,6 +13,6 @@ export class ClearCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(_text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.mode.clear());
+		await clearAnd(context, () => context.legacy.clear());
 	}
 }
