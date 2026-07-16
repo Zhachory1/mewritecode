@@ -77,7 +77,16 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 		} as never,
 		statusContainer: { clear: () => calls.push("statusContainer.clear:") } as never,
 		session: {
+			chatMode: "edit",
+			sessionId: "session-1",
+			approvalMode: false,
+			isStreaming: true,
 			compact: async (instructions?: string) => calls.push(`session.compact:${instructions ?? ""}`),
+			prompt: async (prompt: string, options?: { streamingBehavior?: string }) =>
+				calls.push(`session.prompt:${prompt}:${options?.streamingBehavior ?? ""}`),
+			setChatMode: (mode: string) => calls.push(`session.setChatMode:${mode}`),
+			setApprovalMode: (enabled: boolean) => calls.push(`session.setApprovalMode:${enabled}`),
+			getContextEngineStatusLines: () => ["ContextEngine: enabled"],
 			getCaveModeSessionState: () => ({ enabled: true, intensity: "full" }),
 			getPonytailSessionState: () => ({ enabled: true, intensity: "full" }),
 			getLastAssistantText: () => "",
@@ -91,8 +100,14 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 			setPonytailSessionIntensity: (value: string) => calls.push(`session.setPonytailSessionIntensity:${value}`),
 			setPonytailSessionDisabled: () => calls.push("session.setPonytailSessionDisabled:"),
 		} as never,
-		sessionManager: { getEntries: () => [{ type: "message" }, { type: "message" }] } as never,
+		sessionManager: {
+			getCwd: () => "/repo",
+			getEntries: () => [{ type: "message" }, { type: "message" }],
+		} as never,
 		settingsManager: {
+			getContextSetupSettings: () => ({}),
+			setContextSetupSettings: (value: unknown) =>
+				calls.push(`settings.setContextSetupSettings:${JSON.stringify(value)}`),
 			getCaveModeIntensity: () => "full",
 			getCaveModeToolCompression: () => true,
 			getPonytailIntensity: () => "full",
@@ -101,6 +116,9 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 		stopLoadingAndClearStatus: () => calls.push("stopLoadingAndClearStatus:"),
 		buildHotkeysMarkdown: () => "hotkeys",
 		getMarkdownTheme: () => ({}) as never,
+		appendSlashOutput: (text, isError) => calls.push(`appendSlashOutput:${isError}:${text}`),
+		refreshChatModeFooter: () => calls.push("refreshChatModeFooter:"),
+		refreshApprovalFooter: () => calls.push("refreshApprovalFooter:"),
 		showError: (message) => calls.push(`showError:${message}`),
 		showStatus: (message) => calls.push(`showStatus:${message}`),
 		showWarning: (message) => calls.push(`showWarning:${message}`),
@@ -141,7 +159,27 @@ describe("InteractiveSlashCommandRouter", () => {
 		expect(calls).toContain("session.compact:keep decisions");
 		expect(calls.some((call) => call.startsWith("session.compact:Only preserve:"))).toBe(true);
 		expect(calls).toContain("queue:clear");
-		expect(calls).toContain("contextSetup:docs docs/");
+		expect(calls.some((call) => call.includes("Unknown /context setup subcommand: docs"))).toBe(true);
+	});
+
+	it("runs plan, act, approval, and context command bodies through context primitives", async () => {
+		const calls: string[] = [];
+		const r = router(calls);
+
+		expect(await r.handleCommand("/plan investigate auth")).toBe(true);
+		expect(await r.handleCommand("/act ship it")).toBe(true);
+		expect(await r.handleCommand("/approval on")).toBe(true);
+		expect(await r.handleCommand("/context status")).toBe(true);
+		expect(await r.handleCommand("/context learn")).toBe(true);
+		expect(await r.handleCommand("/context setup skip")).toBe(true);
+
+		expect(calls).toContain("session.setChatMode:plan");
+		expect(calls.some((call) => call.startsWith("session.prompt:investigate auth:steer"))).toBe(true);
+		expect(calls.some((call) => call.startsWith("appendSlashOutput:false:"))).toBe(true);
+		expect(calls.some((call) => call.includes("ContextEngine: enabled"))).toBe(true);
+		expect(calls.some((call) => call.includes("settings.setContextSetupSettings"))).toBe(true);
+		expect(calls).toContain("refreshChatModeFooter:");
+		expect(calls).toContain("refreshApprovalFooter:");
 	});
 
 	it("keeps known aliases and legacy broad-prefix commands explicit", async () => {

@@ -1,3 +1,4 @@
+import { runActCommand } from "../../../core/slash-commands/act.js";
 import {
 	args,
 	clearAnd,
@@ -14,6 +15,16 @@ export class ActCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.legacy.act(args(text, "/act")));
+		await clearAnd(context, () => {
+			const result = runActCommand(args(text, "/act"), {
+				setChatMode: (mode) => context.session.setChatMode(mode),
+				sessionId: context.session.sessionId,
+				enqueueFollowUp: (prompt) => {
+					void context.session.prompt(prompt, { streamingBehavior: "followUp" });
+				},
+			});
+			context.appendSlashOutput(result.output, result.exitCode !== 0);
+			context.refreshChatModeFooter();
+		});
 	}
 }
