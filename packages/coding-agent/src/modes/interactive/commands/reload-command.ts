@@ -1,6 +1,7 @@
 import type { Component } from "@zhachory1/mewrite-tui";
 import { BorderedLoader } from "../components/bordered-loader.js";
 import { AUTO_THEME_NAME, setRegisteredThemes, setTheme, theme } from "../theme/theme.js";
+import { setupExtensionShortcuts } from "./command-helpers.js";
 import {
 	clearAnd,
 	exact,
@@ -46,17 +47,23 @@ async function reloadInteractiveSession(context: InteractiveSlashCommandContext)
 		await context.session.reload();
 		context.keybindings.reload();
 		setRegisteredThemes(context.session.resourceLoader.getThemes().themes);
-		context.setHideThinkingBlock(context.settingsManager.getHideThinkingBlock());
 		const themeName = context.settingsManager.getTheme() || AUTO_THEME_NAME;
 		const themeResult = setTheme(themeName, true);
 		if (!themeResult.success) {
 			context.showError(`Failed to load theme "${themeName}": ${themeResult.error}\nFell back to dark theme.`);
 		}
-		context.applyEditorDisplaySettings();
+		const editorPaddingX = context.settingsManager.getEditorPaddingX();
+		const autocompleteMaxVisible = context.settingsManager.getAutocompleteMaxVisible();
+		context.defaultEditor.setPaddingX?.(editorPaddingX);
+		context.defaultEditor.setAutocompleteMaxVisible?.(autocompleteMaxVisible);
+		if (context.editor !== context.defaultEditor) {
+			context.editor.setPaddingX?.(editorPaddingX);
+			context.editor.setAutocompleteMaxVisible?.(autocompleteMaxVisible);
+		}
 		context.ui.setShowHardwareCursor(context.settingsManager.getShowHardwareCursor());
 		context.ui.setClearOnShrink(context.settingsManager.getClearOnShrink());
 		context.setupAutocomplete();
-		context.setupExtensionShortcuts();
+		setupExtensionShortcuts(context);
 		context.rebuildChatFromMessages();
 		dismissLoader(context.editor as Component);
 		context.showLoadedResources({ force: false, showDiagnosticsWhenQuiet: true });

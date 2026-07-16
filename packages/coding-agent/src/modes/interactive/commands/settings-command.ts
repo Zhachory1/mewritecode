@@ -21,7 +21,7 @@ function showSettingsSelector(context: InteractiveSlashCommandContext): void {
 				availableThinkingLevels: context.session.getAvailableThinkingLevels(),
 				currentTheme: context.settingsManager.getTheme() || AUTO_THEME_NAME,
 				availableThemes: getAvailableThemes(),
-				hideThinkingBlock: context.getHideThinkingBlock(),
+				hideThinkingBlock: context.settingsManager.getHideThinkingBlock(),
 				showChangelogOnStartup: context.settingsManager.getShowChangelogOnStartup(),
 				collapseChangelog: context.settingsManager.getCollapseChangelog(),
 				doubleEscapeAction: context.settingsManager.getDoubleEscapeAction(),
@@ -41,7 +41,7 @@ function showSettingsSelector(context: InteractiveSlashCommandContext): void {
 			{
 				onAutoCompactChange: (enabled) => {
 					context.session.setAutoCompactionEnabled(enabled);
-					context.setFooterAutoCompactEnabled(enabled);
+					context.footer.setAutoCompactEnabled(enabled);
 				},
 				onShowImagesChange: (enabled) => {
 					context.settingsManager.setShowImages(enabled);
@@ -73,7 +73,7 @@ function showSettingsSelector(context: InteractiveSlashCommandContext): void {
 				},
 				onThinkingLevelChange: (level) => {
 					context.session.setThinkingLevel(level);
-					context.invalidateFooter();
+					context.footer.invalidate();
 					context.updateEditorBorderColor();
 				},
 				onThemeChange: (themeName) => {
@@ -92,7 +92,6 @@ function showSettingsSelector(context: InteractiveSlashCommandContext): void {
 					}
 				},
 				onHideThinkingBlockChange: (hidden) => {
-					context.setHideThinkingBlock(hidden);
 					context.settingsManager.setHideThinkingBlock(hidden);
 					for (const child of context.chatContainer.children) {
 						if (child instanceof AssistantMessageComponent) {
@@ -122,11 +121,17 @@ function showSettingsSelector(context: InteractiveSlashCommandContext): void {
 				},
 				onEditorPaddingXChange: (padding) => {
 					context.settingsManager.setEditorPaddingX(padding);
-					context.applyEditorDisplaySettings();
+					context.defaultEditor.setPaddingX?.(padding);
+					if (context.editor !== context.defaultEditor) {
+						context.editor.setPaddingX?.(padding);
+					}
 				},
 				onAutocompleteMaxVisibleChange: (maxVisible) => {
 					context.settingsManager.setAutocompleteMaxVisible(maxVisible);
-					context.applyEditorDisplaySettings();
+					context.defaultEditor.setAutocompleteMaxVisible?.(maxVisible);
+					if (context.editor !== context.defaultEditor) {
+						context.editor.setAutocompleteMaxVisible?.(maxVisible);
+					}
 				},
 				onClearOnShrinkChange: (enabled) => {
 					context.settingsManager.setClearOnShrink(enabled);

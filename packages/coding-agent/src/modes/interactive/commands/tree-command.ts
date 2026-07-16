@@ -63,9 +63,9 @@ export class TreeCommand extends InteractiveSlashCommand {
 						}
 
 						let summaryLoader: Loader | undefined;
-						const originalOnEscape = context.getDefaultEditorEscape();
+						const originalOnEscape = context.defaultEditor.onEscape;
 						if (wantsSummary) {
-							context.setDefaultEditorEscape(() => context.session.abortBranchSummary());
+							context.defaultEditor.onEscape = () => context.session.abortBranchSummary();
 							context.chatContainer.addChild(new Spacer(1));
 							summaryLoader = new Loader(
 								context.ui,
@@ -104,7 +104,7 @@ export class TreeCommand extends InteractiveSlashCommand {
 								summaryLoader.stop();
 								context.statusContainer.clear();
 							}
-							context.setDefaultEditorEscape(originalOnEscape);
+							context.defaultEditor.onEscape = originalOnEscape;
 						}
 					},
 					() => {

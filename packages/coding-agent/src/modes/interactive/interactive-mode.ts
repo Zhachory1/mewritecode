@@ -13,7 +13,6 @@ import type {
 	AutocompleteItem,
 	EditorComponent,
 	EditorTheme,
-	KeyId,
 	MarkdownTheme,
 	OverlayHandle,
 	OverlayOptions,
@@ -32,7 +31,6 @@ import {
 	fuzzyFilter,
 	Loader,
 	Markdown,
-	matchesKey,
 	notify,
 	ProcessTerminal,
 	renderStatusLineDefault,
@@ -68,7 +66,6 @@ import { formatSavingsLine, formatSessionEndSummary } from "../../core/cost-form
 import { getAllTimeSavingsBytes, persistSessionSavings } from "../../core/cost-persistence.js";
 import { NoUsableAuthError } from "../../core/errors.js";
 import type {
-	ExtensionContext,
 	ExtensionRunner,
 	ExtensionUIContext,
 	ExtensionUIDialogOptions,
@@ -96,6 +93,7 @@ import { extensionForImageMimeType, readClipboardImage } from "../../utils/clipb
 import { parseGitUrl } from "../../utils/git.js";
 import { ensureTool } from "../../utils/tools-manager.js";
 import { deriveDetail, detailOf, kindOf, labelOf } from "./activity-helpers.js";
+import { setupExtensionShortcuts as setupExtensionShortcutsForContext } from "./commands/command-helpers.js";
 import { renderDebugCommand } from "./commands/debug-command.js";
 import {
 	createDefaultInteractiveSlashCommands,
@@ -300,9 +298,6 @@ export class InteractiveMode {
 	// Tool output expansion state
 	private toolOutputExpanded = false;
 
-	// Thinking block visibility state
-	private hideThinkingBlock = false;
-
 	// Skill commands: command name -> skill file path
 	private skillCommands = new Map<string, string>();
 
@@ -441,6 +436,7 @@ export class InteractiveMode {
 		this.widgetContainerBelow = new Container();
 		this.keybindings = KeybindingsManager.create();
 		setKeybindings(this.keybindings);
+		this.slashCommandRouter = new InteractiveSlashCommandRouter(createDefaultInteractiveSlashCommands());
 		const editorPaddingX = this.settingsManager.getEditorPaddingX();
 		const autocompleteMaxVisible = this.settingsManager.getAutocompleteMaxVisible();
 		this.defaultEditor = new CustomEditor(this.ui, getEditorTheme(), this.keybindings, {
@@ -449,10 +445,6 @@ export class InteractiveMode {
 			placeholder: "Type a task, or / for commands · F1 help",
 		});
 		this.editor = this.defaultEditor;
-		this.slashCommandRouter = new InteractiveSlashCommandRouter(
-			this.createInteractiveSlashCommandContext(),
-			createDefaultInteractiveSlashCommands(),
-		);
 		this.editorContainer = new Container();
 		this.editorContainer.addChild(this.editor as Component);
 		this.footerDataProvider = new FooterDataProvider(this.sessionManager.getCwd());
@@ -460,9 +452,6 @@ export class InteractiveMode {
 		this.footer.setAutoCompactEnabled(this.session.autoCompactionEnabled);
 		this.contextMeter = new ContextMeterComponent(this.session);
 		this.actionBar = new ActionBarComponent(() => this.getActionBarState());
-
-		// Load hide thinking block setting
-		this.hideThinkingBlock = this.settingsManager.getHideThinkingBlock();
 
 		// Register themes from resource loader and initialize
 		setRegisteredThemes(this.session.resourceLoader.getThemes().themes);
@@ -1463,7 +1452,7 @@ export class InteractiveMode {
 			return;
 		}
 
-		this.setupExtensionShortcuts(extensionRunner);
+		setupExtensionShortcutsForContext(this.createInteractiveSlashCommandContext({ clearEditor: false }));
 		this.showLoadedResources({ force: false });
 		this.showStartupNoticesIfNeeded();
 	}
@@ -1473,7 +1462,6 @@ export class InteractiveMode {
 		this.footer.setAutoCompactEnabled(this.session.autoCompactionEnabled);
 		this.contextMeter.setSession(this.session);
 		this.footerDataProvider.setCwd(this.sessionManager.getCwd());
-		this.hideThinkingBlock = this.settingsManager.getHideThinkingBlock();
 		this.ui.setShowHardwareCursor(this.settingsManager.getShowHardwareCursor());
 		this.ui.setClearOnShrink(this.settingsManager.getClearOnShrink());
 		const editorPaddingX = this.settingsManager.getEditorPaddingX();
@@ -1552,59 +1540,6 @@ export class InteractiveMode {
 	 */
 	private getRegisteredToolDefinition(toolName: string) {
 		return this.session.getToolDefinition(toolName);
-	}
-
-	/**
-	 * Set up keyboard shortcuts registered by extensions.
-	 */
-	private setupExtensionShortcuts(extensionRunner: ExtensionRunner): void {
-		const shortcuts = extensionRunner.getShortcuts(this.keybindings.getEffectiveConfig());
-		if (shortcuts.size === 0) return;
-
-		// Create a context for shortcut handlers
-		const createContext = (): ExtensionContext => ({
-			ui: this.createExtensionUIContext(),
-			hasUI: true,
-			cwd: this.sessionManager.getCwd(),
-			sessionManager: this.sessionManager,
-			modelRegistry: this.session.modelRegistry,
-			model: this.session.model,
-			isIdle: () => !this.session.isStreaming,
-			signal: this.session.agent.signal,
-			abort: () => this.session.abort(),
-			hasPendingMessages: () => this.session.pendingMessageCount > 0,
-			shutdown: () => {
-				this.shutdownRequested = true;
-			},
-			getContextUsage: () => this.session.getContextUsage(),
-			compact: (options) => {
-				void (async () => {
-					try {
-						const result = await this.session.compact(options?.customInstructions);
-						options?.onComplete?.(result);
-					} catch (error) {
-						const err = error instanceof Error ? error : new Error(String(error));
-						options?.onError?.(err);
-					}
-				})();
-			},
-			getSystemPrompt: () => this.session.systemPrompt,
-		});
-
-		// Set up the extension shortcut handler on the default editor
-		this.defaultEditor.onExtensionShortcut = (data: string) => {
-			for (const [shortcutStr, shortcut] of shortcuts) {
-				// Cast to KeyId - extension shortcuts use the same format
-				if (matchesKey(data, shortcutStr as KeyId)) {
-					// Run handler async, don't block input
-					Promise.resolve(shortcut.handler(createContext())).catch((err) => {
-						this.showError(`Shortcut handler error: ${err instanceof Error ? err.message : String(err)}`);
-					});
-					return true;
-				}
-			}
-			return false;
-		};
 	}
 
 	/**
@@ -2352,123 +2287,65 @@ export class InteractiveMode {
 	private createInteractiveSlashCommandContext(
 		options: { clearEditor?: boolean } = {},
 	): InteractiveSlashCommandContext {
-		const mode = this;
 		const shouldClearEditor = options.clearEditor ?? true;
 		return {
-			get editor() {
-				return mode.editor;
-			},
+			editor: this.editor,
+			defaultEditor: this.defaultEditor,
 			clearEditor: () => {
-				if (shouldClearEditor) mode.editor.setText("");
+				if (shouldClearEditor) this.editor.setText("");
 			},
-			ui: mode.ui,
-			chatContainer: mode.chatContainer,
-			statusContainer: mode.statusContainer,
-			editorContainer: mode.editorContainer,
-			keybindings: mode.keybindings,
-			runtimeHost: mode.runtimeHost,
-			get session() {
-				return mode.session;
-			},
-			get sessionManager() {
-				return mode.sessionManager;
-			},
-			get settingsManager() {
-				return mode.settingsManager;
-			},
-			freezeCheckpoints: mode.freezeCheckpoints,
-			getCommandQueue: () => mode.commandQueue,
-			clearCommandQueue: () => {
-				const count = mode.commandQueue.length;
-				mode.commandQueue = [];
-				return count;
-			},
-			renderCurrentSessionState: () => mode.renderCurrentSessionState(),
-			handleRuntimeSessionChange: () => mode.handleRuntimeSessionChange(),
-			handleFatalRuntimeError: (prefix, error) => mode.handleFatalRuntimeError(prefix, error),
-			repomapChatState: mode.repomapChatState,
-			getArchitectState: () => mode.architectState,
-			setArchitectState: (state) => {
-				mode.architectState = state;
-			},
-			updatePendingMessagesDisplay: () => mode.updatePendingMessagesDisplay(),
-			stopLoadingAndClearStatus: () => {
-				if (mode.loadingAnimation) {
-					mode.loadingAnimation.stop();
-					mode.loadingAnimation = undefined;
-				}
-				mode.statusContainer.clear();
-			},
-			buildHotkeysMarkdown: () => mode.buildHotkeysMarkdown(),
-			getMarkdownTheme: () => mode.getMarkdownThemeWithSettings(),
-			showError: (message) => mode.showError(message),
-			showStatus: (message) => mode.showStatus(message),
-			showWarning: (message) => mode.showWarning(message),
-			showOAuthSelector: (action) => mode.showOAuthSelector(action),
-			showLoginDialog: (provider) => mode.showLoginDialog(provider),
-			showSelector: (factory) => mode.showSelector(factory),
-			toggleActivityOverlay: () => mode.toggleActivityOverlay(),
-			shutdown: () => mode.shutdown(),
-			appendSlashOutput: (text, isError) => mode.appendSlashOutput(text, isError),
-			refreshChatModeFooter: () => mode._refreshChatModeFooter(),
-			refreshApprovalFooter: () => mode._refreshApprovalFooter(),
-			updateTerminalTitle: () => mode.updateTerminalTitle(),
-			invalidateFooter: () => mode.footer.invalidate(),
-			updateEditorBorderColor: () => mode.updateEditorBorderColor(),
-			checkDaxnutsEasterEgg: (model) => mode.checkDaxnutsEasterEgg(model),
-			updateAvailableProviderCount: async () => {
-				let models = mode.session.scopedModels.map((scoped) => scoped.model);
-				if (models.length === 0) {
-					try {
-						models = await mode.session.modelRegistry.getAvailable();
-					} catch {
-						models = [];
-					}
-				}
-				mode.footerDataProvider.setAvailableProviderCount(new Set(models.map((model) => model.provider)).size);
-			},
-			disposeMountedToolRows: () => mode.disposeMountedToolRows(),
-			renderInitialMessages: () => mode.renderInitialMessages(),
-			getDefaultEditorEscape: () => mode.defaultEditor.onEscape,
-			setDefaultEditorEscape: (handler) => {
-				mode.defaultEditor.onEscape = handler;
-			},
-			showExtensionSelector: (title, options) => mode.showExtensionSelector(title, options),
-			showExtensionEditor: (title) => mode.showExtensionEditor(title),
-			showExtensionConfirm: (title, message, opts) => mode.showExtensionConfirm(title, message, opts),
-			promptForMissingSessionCwd: (error) => mode.promptForMissingSessionCwd(error),
-			resetExtensionUI: () => mode.resetExtensionUI(),
-			setupAutocomplete: () => mode.setupAutocomplete(mode.fdPath),
-			setupExtensionShortcuts: () => {
-				const runner = mode.session.extensionRunner;
-				if (runner) mode.setupExtensionShortcuts(runner);
-			},
-			rebuildChatFromMessages: () => mode.rebuildChatFromMessages(),
-			showLoadedResources: (options) => mode.showLoadedResources(options),
-			getHideThinkingBlock: () => mode.hideThinkingBlock,
-			setHideThinkingBlock: (hidden) => {
-				mode.hideThinkingBlock = hidden;
-			},
-			setFooterAutoCompactEnabled: (enabled) => mode.footer.setAutoCompactEnabled(enabled),
-			applyEditorDisplaySettings: () => {
-				const editorPaddingX = mode.settingsManager.getEditorPaddingX();
-				const autocompleteMaxVisible = mode.settingsManager.getAutocompleteMaxVisible();
-				mode.defaultEditor.setPaddingX(editorPaddingX);
-				mode.defaultEditor.setAutocompleteMaxVisible(autocompleteMaxVisible);
-				if (mode.editor !== mode.defaultEditor) {
-					mode.editor.setPaddingX?.(editorPaddingX);
-					mode.editor.setAutocompleteMaxVisible?.(autocompleteMaxVisible);
-				}
-			},
+			ui: this.ui,
+			chatContainer: this.chatContainer,
+			statusContainer: this.statusContainer,
+			editorContainer: this.editorContainer,
+			footer: this.footer,
+			footerDataProvider: this.footerDataProvider,
+			loadingAnimation: this.loadingAnimation,
+			keybindings: this.keybindings,
+			runtimeHost: this.runtimeHost,
+			session: this.session,
+			sessionManager: this.sessionManager,
+			settingsManager: this.settingsManager,
+			freezeCheckpoints: this.freezeCheckpoints,
+			commandQueue: this.commandQueue,
+			repomapChatState: this.repomapChatState,
+			architectState: this.architectState,
+			extensionUi: this.createExtensionUIContext(),
+			renderCurrentSessionState: () => this.renderCurrentSessionState(),
+			handleRuntimeSessionChange: () => this.handleRuntimeSessionChange(),
+			handleFatalRuntimeError: (prefix, error) => this.handleFatalRuntimeError(prefix, error),
+			updatePendingMessagesDisplay: () => this.updatePendingMessagesDisplay(),
+			buildHotkeysMarkdown: () => this.buildHotkeysMarkdown(),
+			getMarkdownTheme: () => this.getMarkdownThemeWithSettings(),
+			showError: (message) => this.showError(message),
+			showStatus: (message) => this.showStatus(message),
+			showWarning: (message) => this.showWarning(message),
+			showOAuthSelector: (action) => this.showOAuthSelector(action),
+			showLoginDialog: (provider) => this.showLoginDialog(provider),
+			showSelector: (factory) => this.showSelector(factory),
+			toggleActivityOverlay: () => this.toggleActivityOverlay(),
+			shutdown: () => this.shutdown(),
+			appendSlashOutput: (text, isError) => this.appendSlashOutput(text, isError),
+			refreshChatModeFooter: () => this._refreshChatModeFooter(),
+			refreshApprovalFooter: () => this._refreshApprovalFooter(),
+			updateTerminalTitle: () => this.updateTerminalTitle(),
+			updateEditorBorderColor: () => this.updateEditorBorderColor(),
+			checkDaxnutsEasterEgg: (model) => this.checkDaxnutsEasterEgg(model),
+			disposeMountedToolRows: () => this.disposeMountedToolRows(),
+			renderInitialMessages: () => this.renderInitialMessages(),
+			showExtensionSelector: (title, options) => this.showExtensionSelector(title, options),
+			showExtensionEditor: (title) => this.showExtensionEditor(title),
+			showExtensionConfirm: (title, message, opts) => this.showExtensionConfirm(title, message, opts),
+			promptForMissingSessionCwd: (error) => this.promptForMissingSessionCwd(error),
+			resetExtensionUI: () => this.resetExtensionUI(),
+			setupAutocomplete: () => this.setupAutocomplete(this.fdPath),
+			rebuildChatFromMessages: () => this.rebuildChatFromMessages(),
+			showLoadedResources: (options) => this.showLoadedResources(options),
 		};
 	}
 
 	private runSlashCommand(text: string, options: { clearEditor?: boolean } = {}): Promise<boolean> {
-		const router = new InteractiveSlashCommandRouter(
-			this.createInteractiveSlashCommandContext(options),
-			createDefaultInteractiveSlashCommands(),
-		);
-		return router.handleCommand(text);
+		return this.slashCommandRouter.handleCommand(text, this.createInteractiveSlashCommandContext(options));
 	}
 
 	private handleSlashShortcut(text: string): void {
@@ -2493,7 +2370,7 @@ export class InteractiveMode {
 			}
 
 			// Handle commands
-			if (await this.slashCommandRouter.handleCommand(text)) {
+			if (await this.runSlashCommand(text)) {
 				return;
 			}
 
@@ -2679,7 +2556,7 @@ export class InteractiveMode {
 				} else if (event.message.role === "assistant") {
 					this.streamingComponent = new AssistantMessageComponent(
 						undefined,
-						this.hideThinkingBlock,
+						this.settingsManager.getHideThinkingBlock(),
 						this.getMarkdownThemeWithSettings(),
 						this.hiddenThinkingLabel,
 					);
@@ -3211,7 +3088,7 @@ export class InteractiveMode {
 			case "assistant": {
 				const assistantComponent = new AssistantMessageComponent(
 					message,
-					this.hideThinkingBlock,
+					this.settingsManager.getHideThinkingBlock(),
 					this.getMarkdownThemeWithSettings(),
 					this.hiddenThinkingLabel,
 				);
@@ -3644,8 +3521,8 @@ export class InteractiveMode {
 	}
 
 	private toggleThinkingBlockVisibility(): void {
-		this.hideThinkingBlock = !this.hideThinkingBlock;
-		this.settingsManager.setHideThinkingBlock(this.hideThinkingBlock);
+		const nextHidden = !this.settingsManager.getHideThinkingBlock();
+		this.settingsManager.setHideThinkingBlock(nextHidden);
 
 		// Rebuild chat from session messages. `rebuildChatFromMessages()` disposes
 		// mounted tool rows then clears internally; a caller-side clear first would
@@ -3655,12 +3532,12 @@ export class InteractiveMode {
 
 		// If streaming, re-add the streaming component with updated visibility and re-render
 		if (this.streamingComponent && this.streamingMessage) {
-			this.streamingComponent.setHideThinkingBlock(this.hideThinkingBlock);
+			this.streamingComponent.setHideThinkingBlock(this.settingsManager.getHideThinkingBlock());
 			this.streamingComponent.updateContent(this.streamingMessage);
 			this.chatContainer.addChild(this.streamingComponent);
 		}
 
-		this.showStatus(`Thinking blocks: ${this.hideThinkingBlock ? "hidden" : "visible"}`);
+		this.showStatus(`Thinking blocks: ${this.settingsManager.getHideThinkingBlock() ? "hidden" : "visible"}`);
 	}
 
 	private openExternalEditor(): void {

@@ -1,3 +1,4 @@
+import { stopLoadingAndClearStatus } from "./command-helpers.js";
 import {
 	arg,
 	clearAnd,
@@ -23,7 +24,7 @@ export class CompactCommand extends InteractiveSlashCommand {
 				return;
 			}
 
-			context.stopLoadingAndClearStatus();
+			stopLoadingAndClearStatus(context);
 
 			try {
 				await context.session.compact(arg(text, "/compact"));

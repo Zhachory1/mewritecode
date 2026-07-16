@@ -14,11 +14,12 @@
  * 5. Add a sample to `test/interactive-slash-command.test.ts` so registry and router stay in sync.
  */
 import type { Model, OAuthProviderId } from "@zhachory1/mewrite-ai";
-import type { Component, Container, EditorComponent, MarkdownTheme, TUI } from "@zhachory1/mewrite-tui";
+import type { Component, Container, EditorComponent, Loader, MarkdownTheme, TUI } from "@zhachory1/mewrite-tui";
 import type { AgentSession } from "../../../core/agent-session.js";
 import type { AgentSessionRuntime } from "../../../core/agent-session-runtime.js";
 import type { ArchitectModeState } from "../../../core/chat-modes/architect.js";
-import type { ExtensionUIDialogOptions } from "../../../core/extensions/index.js";
+import type { ExtensionUIContext, ExtensionUIDialogOptions } from "../../../core/extensions/index.js";
+import type { FooterDataProvider } from "../../../core/footer-data-provider.js";
 import type { KeybindingsManager } from "../../../core/keybindings.js";
 import type { MissingSessionCwdError } from "../../../core/session-cwd.js";
 import type { SessionManager } from "../../../core/session-manager.js";
@@ -37,27 +38,31 @@ export interface FreezeCheckpoint {
 
 export interface InteractiveSlashCommandContext {
 	editor: EditorComponent;
+	defaultEditor: EditorComponent & {
+		onEscape?: (() => void) | undefined;
+		onExtensionShortcut?: ((data: string) => boolean | undefined) | undefined;
+	};
 	clearEditor(): void;
 	ui: TUI;
 	chatContainer: Container;
 	statusContainer: Container;
 	editorContainer: Container;
+	footer: Component & { invalidate(): void; setAutoCompactEnabled(enabled: boolean): void };
+	footerDataProvider: FooterDataProvider;
+	loadingAnimation: Loader | undefined;
 	keybindings: KeybindingsManager;
 	runtimeHost: AgentSessionRuntime;
 	session: AgentSession;
 	sessionManager: SessionManager;
 	settingsManager: SettingsManager;
 	freezeCheckpoints: FreezeCheckpoint[];
-	getCommandQueue(): readonly string[];
-	clearCommandQueue(): number;
+	commandQueue: string[];
+	repomapChatState: RepomapChatState;
+	architectState: ArchitectModeState;
 	renderCurrentSessionState(): void;
 	handleRuntimeSessionChange(): Promise<void>;
 	handleFatalRuntimeError(prefix: string, error: unknown): Promise<never>;
-	repomapChatState: RepomapChatState;
-	getArchitectState(): ArchitectModeState;
-	setArchitectState(state: ArchitectModeState): void;
 	updatePendingMessagesDisplay(): void;
-	stopLoadingAndClearStatus(): void;
 	buildHotkeysMarkdown(): string;
 	getMarkdownTheme(): MarkdownTheme;
 	showError(message: string): void;
@@ -72,31 +77,23 @@ export interface InteractiveSlashCommandContext {
 	refreshChatModeFooter(): void;
 	refreshApprovalFooter(): void;
 	updateTerminalTitle(): void;
-	invalidateFooter(): void;
 	updateEditorBorderColor(): void;
 	checkDaxnutsEasterEgg(model: Model<any>): void;
-	updateAvailableProviderCount(): Promise<void>;
 	disposeMountedToolRows(): void;
 	renderInitialMessages(): void;
-	getDefaultEditorEscape(): (() => void) | undefined;
-	setDefaultEditorEscape(handler: (() => void) | undefined): void;
+	extensionUi: ExtensionUIContext;
 	showExtensionSelector(title: string, options: string[]): Promise<string | undefined>;
 	showExtensionEditor(title: string): Promise<string | undefined>;
 	showExtensionConfirm(title: string, message: string, opts?: ExtensionUIDialogOptions): Promise<boolean>;
 	promptForMissingSessionCwd(error: MissingSessionCwdError): Promise<string | undefined>;
 	resetExtensionUI(): void;
 	setupAutocomplete(): void;
-	setupExtensionShortcuts(): void;
 	rebuildChatFromMessages(): void;
 	showLoadedResources(options?: {
 		extensions?: Array<{ path: string; sourceInfo?: SourceInfo }>;
 		force?: boolean;
 		showDiagnosticsWhenQuiet?: boolean;
 	}): void;
-	getHideThinkingBlock(): boolean;
-	setHideThinkingBlock(hidden: boolean): void;
-	setFooterAutoCompactEnabled(enabled: boolean): void;
-	applyEditorDisplaySettings(): void;
 }
 
 export abstract class InteractiveSlashCommand {
@@ -106,21 +103,18 @@ export abstract class InteractiveSlashCommand {
 }
 
 export class InteractiveSlashCommandRouter {
-	constructor(
-		private readonly context: InteractiveSlashCommandContext,
-		private readonly commands: readonly InteractiveSlashCommand[],
-	) {}
+	constructor(private readonly commands: readonly InteractiveSlashCommand[]) {}
 
 	canHandle(text: string): boolean {
 		const trimmed = text.trim();
 		return this.commands.some((command) => command.condition(trimmed));
 	}
 
-	async handleCommand(text: string): Promise<boolean> {
+	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<boolean> {
 		const trimmed = text.trim();
 		for (const command of this.commands) {
 			if (command.condition(trimmed)) {
-				await command.handleCommand(trimmed, this.context);
+				await command.handleCommand(trimmed, context);
 				return true;
 			}
 		}

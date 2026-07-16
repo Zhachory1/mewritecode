@@ -1,5 +1,6 @@
 import { Spacer, Text } from "@zhachory1/mewrite-tui";
 import { theme } from "../theme/theme.js";
+import { stopLoadingAndClearStatus } from "./command-helpers.js";
 import {
 	clearAnd,
 	exact,
@@ -8,9 +9,9 @@ import {
 } from "./interactive-slash-command.js";
 
 async function startNewSession(context: InteractiveSlashCommandContext): Promise<void> {
-	context.stopLoadingAndClearStatus();
-	if (context.getCommandQueue().length > 0) {
-		context.clearCommandQueue();
+	stopLoadingAndClearStatus(context);
+	if (context.commandQueue.length > 0) {
+		context.commandQueue.length = 0;
 		context.updatePendingMessagesDisplay();
 	}
 	try {
