@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { BUILTIN_SLASH_COMMANDS } from "../src/core/slash-commands.js";
 import {
-	type InteractiveSlashCommandHandlers,
+	createDefaultInteractiveSlashCommands,
+	type InteractiveSlashCommandContext,
 	InteractiveSlashCommandRouter,
-} from "../src/modes/interactive/interactive-slash-command.js";
+} from "../src/modes/interactive/commands/index.js";
 
 const SAMPLE_INPUTS: Record<string, string> = {
 	help: "/help",
@@ -55,7 +56,7 @@ const SAMPLE_INPUTS: Record<string, string> = {
 	quit: "/quit",
 };
 
-function recordingHandlers(calls: string[]): InteractiveSlashCommandHandlers {
+function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 	return new Proxy(
 		{
 			setEditorText: (value: string) => {
@@ -68,11 +69,11 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandHandlers {
 				return (...args: unknown[]) => calls.push(`${prop}:${args.map(String).join("|")}`);
 			},
 		},
-	) as unknown as InteractiveSlashCommandHandlers;
+	) as unknown as InteractiveSlashCommandContext;
 }
 
 function router(calls: string[] = []): InteractiveSlashCommandRouter {
-	return new InteractiveSlashCommandRouter(recordingHandlers(calls));
+	return new InteractiveSlashCommandRouter(recordingHandlers(calls), createDefaultInteractiveSlashCommands());
 }
 
 describe("InteractiveSlashCommandRouter", () => {
@@ -118,8 +119,8 @@ describe("InteractiveSlashCommandRouter", () => {
 		expect(await r.handleCommand("/import-foo")).toBe(true);
 
 		expect(calls).toContain("clear:");
-		expect(calls).toContain("skills:marketplace");
-		expect(calls).toContain("caveMode:/cave stats");
+		expect(calls).toContain("plugins:");
+		expect(calls).toContain("cave:/cave stats");
 		expect(calls).toContain("export:/exporter");
 		expect(calls).toContain("import:/import-foo");
 	});

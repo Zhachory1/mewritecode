@@ -134,6 +134,11 @@ import {
 	labelOf,
 	parseLoginCommand,
 } from "./activity-helpers.js";
+import {
+	createDefaultInteractiveSlashCommands,
+	type InteractiveSlashCommandContext,
+	InteractiveSlashCommandRouter,
+} from "./commands/index.js";
 import { ActionBarComponent } from "./components/action-bar.js";
 import { showApprovalPrompt } from "./components/approval-prompt.js";
 import { ArminComponent } from "./components/armin.js";
@@ -182,7 +187,6 @@ import {
 	evaluateFireStarter,
 	evaluateTribalSignal,
 } from "./context-drift-widgets.js";
-import { type InteractiveSlashCommandHandlers, InteractiveSlashCommandRouter } from "./interactive-slash-command.js";
 import { resolveSessionReference } from "./session-reference.js";
 import {
 	AUTO_THEME_NAME,
@@ -285,6 +289,7 @@ export class InteractiveMode {
 	private statusContainer: Container;
 	private defaultEditor: CustomEditor;
 	private editor: EditorComponent;
+	private slashCommandRouter: InteractiveSlashCommandRouter;
 	private autocompleteProvider: CombinedAutocompleteProvider | undefined;
 	private fdPath: string | undefined;
 	private editorContainer: Container;
@@ -504,6 +509,10 @@ export class InteractiveMode {
 			placeholder: "Type a task, or / for commands · F1 help",
 		});
 		this.editor = this.defaultEditor;
+		this.slashCommandRouter = new InteractiveSlashCommandRouter(
+			this.createInteractiveSlashCommandContext(),
+			createDefaultInteractiveSlashCommands(),
+		);
 		this.editorContainer = new Container();
 		this.editorContainer.addChild(this.editor as Component);
 		this.footerDataProvider = new FooterDataProvider(this.sessionManager.getCwd());
@@ -2400,7 +2409,7 @@ export class InteractiveMode {
 		}
 	}
 
-	private createInteractiveSlashCommandHandlers(): InteractiveSlashCommandHandlers {
+	private createInteractiveSlashCommandContext(): InteractiveSlashCommandContext {
 		return {
 			setEditorText: (value) => this.editor.setText(value),
 			settings: () => this.showSettingsSelector(),
@@ -2416,7 +2425,8 @@ export class InteractiveMode {
 			hotkeys: () => this.handleHotkeysCommand(),
 			activity: () => this.toggleActivityOverlay(),
 			help: () => this.handleHelpCommand(),
-			skills: (mode) => this.handleSkillsCommand(mode),
+			skills: () => this.handleSkillsCommand(),
+			plugins: () => this.handleSkillsCommand("marketplace"),
 			fork: () => this.showUserMessageSelector(),
 			tree: () => this.showTreeSelector(),
 			login: async (commandText) => {
@@ -2432,11 +2442,13 @@ export class InteractiveMode {
 				}
 			},
 			logout: () => this.showOAuthSelector("logout"),
+			newSession: async () => this.handleClearCommand(),
 			clear: async () => this.handleClearCommand(),
 			compact: async (instructions) => this.handleCompactCommand(instructions),
 			freeze: async (label) => this.handleFreezeCommand(label),
 			checkpoints: () => this.handleCheckpointsCommand(),
-			caveMode: (commandText) => this.handleCaveCommand(commandText),
+			mode: (commandText) => this.handleCaveCommand(commandText),
+			cave: (commandText) => this.handleCaveCommand(commandText),
 			ponytail: (commandText) => this.handlePonytailCommand(commandText),
 			tokens: () => this.handleTokensCommand(),
 			cost: () => this.handleCostCommand(),
@@ -2490,8 +2502,7 @@ export class InteractiveMode {
 			}
 
 			// Handle commands
-			const slashRouter = new InteractiveSlashCommandRouter(this.createInteractiveSlashCommandHandlers());
-			if (await slashRouter.handleCommand(text)) {
+			if (await this.slashCommandRouter.handleCommand(text)) {
 				return;
 			}
 

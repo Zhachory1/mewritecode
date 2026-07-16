@@ -4,9 +4,10 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { BUILTIN_SLASH_COMMANDS } from "../src/core/slash-commands.js";
 import {
-	type InteractiveSlashCommandHandlers,
+	createDefaultInteractiveSlashCommands,
+	type InteractiveSlashCommandContext,
 	InteractiveSlashCommandRouter,
-} from "../src/modes/interactive/interactive-slash-command.js";
+} from "../src/modes/interactive/commands/index.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const interactiveModePath = resolve(here, "../src/modes/interactive/interactive-mode.ts");
@@ -72,7 +73,7 @@ const noopHandlers = new Proxy(
 			return () => {};
 		},
 	},
-) as unknown as InteractiveSlashCommandHandlers;
+) as unknown as InteractiveSlashCommandContext;
 
 describe("slash command dispatcher", () => {
 	it("every BUILTIN_SLASH_COMMAND is handled by the interactive router", () => {
@@ -81,7 +82,7 @@ describe("slash command dispatcher", () => {
 		);
 		expect(missingSamples).toEqual([]);
 
-		const router = new InteractiveSlashCommandRouter(noopHandlers);
+		const router = new InteractiveSlashCommandRouter(noopHandlers, createDefaultInteractiveSlashCommands());
 		const unhandled = BUILTIN_SLASH_COMMANDS.filter(
 			(cmd) => cmd.wired && !router.canHandle(SAMPLE_INPUTS[cmd.name]),
 		).map((cmd) => cmd.name);
