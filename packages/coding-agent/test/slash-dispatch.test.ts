@@ -75,7 +75,10 @@ const noopHandlers: InteractiveSlashCommandContext = {
 	stopLoadingAndClearStatus: () => {},
 	buildHotkeysMarkdown: () => "",
 	getMarkdownTheme: () => ({}) as never,
+	showError: () => {},
+	showStatus: () => {},
 	showWarning: () => {},
+	updateTerminalTitle: () => {},
 	legacy: new Proxy(
 		{},
 		{
