@@ -48,7 +48,3 @@ Some areas where contributions are especially welcome:
 - **Themes** — create and share custom terminal themes
 - **Documentation** — improve docs, fix typos, add examples
 - **Benchmarks** — add new compression fixtures or improve measurement
-
-## Questions?
-
-Open an issue or ask on [Discord](https://discord.com/invite/nKXTsAcmbT).
