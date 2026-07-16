@@ -1,3 +1,17 @@
+/**
+ * Interactive slash-command router.
+ *
+ * This module owns the ordered condition+callback table for built-in slash
+ * commands in the TUI. `InteractiveMode` still owns UI/session methods, but it
+ * passes those methods in as callbacks so command matching, argument parsing,
+ * and editor-clearing order live in one place.
+ *
+ * To add a built-in interactive command:
+ * 1. Add it to `BUILTIN_SLASH_COMMANDS` in `core/slash-commands.ts`.
+ * 2. Add a callback to `InteractiveSlashCommandHandlers` when new behavior is needed.
+ * 3. Register one ordered entry in `registerDefaults()` with its match predicate and callback.
+ * 4. Add a sample in `test/interactive-slash-command.test.ts`; that keeps the registry and router in sync.
+ */
 type MaybePromise = void | Promise<void>;
 
 export interface InteractiveSlashCommandHandlers {
@@ -98,6 +112,12 @@ export class InteractiveSlashCommandRouter {
 		return run();
 	}
 
+	/**
+	 * Registration order is command precedence. Keep broad-prefix commands
+	 * (`/export*`, `/import*`) in their legacy positions and put narrower nested
+	 * commands (`/context learn`, `/context setup`) before any future broad
+	 * `/context` catch-all.
+	 */
 	private registerDefaults(): void {
 		this.add({
 			name: "settings",
@@ -372,11 +392,13 @@ export class InteractiveSlashCommandRouter {
 		});
 	}
 
+	/** Return whether this router owns the input without running callbacks. Used by tests and wiring guards. */
 	canHandle(text: string): boolean {
 		const trimmed = text.trim();
 		return this.commands.some((command) => command.matches(trimmed));
 	}
 
+	/** Run the first matching command. Returns false so unknown slash text can fall through to extension/prompt handling. */
 	async handleCommand(text: string): Promise<boolean> {
 		const trimmed = text.trim();
 		for (const command of this.commands) {
