@@ -13,11 +13,14 @@
 import { createInterface } from "node:readline";
 import chalk from "chalk";
 import { CaveClient, DEFAULT_DAEMON_HOST, DEFAULT_DAEMON_PORT } from "../core/daemon/index.js";
+import { findWorker, normalizeWorkerBaseUrl, redactWorkerText, type WorkerEntry } from "../core/worker-registry.js";
 
 interface AttachArgs {
 	host: string;
 	port: number;
+	baseUrl?: string;
 	token?: string;
+	workerName?: string;
 	sessionId?: string;
 	noInput: boolean;
 	help?: boolean;
@@ -41,6 +44,9 @@ function parseAttachArgs(args: string[]): AttachArgs {
 				break;
 			case "--token":
 				out.token = args[++i];
+				break;
+			case "--worker":
+				out.workerName = args[++i];
 				break;
 			case "--no-input":
 				out.noInput = true;
@@ -67,6 +73,7 @@ Options:
   --host <ip>      Daemon host (default 127.0.0.1, env CAVE_DAEMON_HOST)
   --port <n>       Daemon port (default 7421, env CAVE_DAEMON_PORT)
   --token <s>      Bearer token (env CAVE_DAEMON_TOKEN)
+  --worker <name>  Load daemon URL/token from ~/.mewrite/workers.json
   --no-input       Read-only attach (don't forward stdin)
   -h, --help       Show this help`);
 }
@@ -89,12 +96,31 @@ export async function runAttach(args: string[]): Promise<number> {
 		printHelp();
 		return 1;
 	}
-	const client = new CaveClient({ host: parsed.host, port: parsed.port, token: parsed.token });
+	let worker: WorkerEntry | undefined;
+	if (parsed.workerName) {
+		worker = findWorker(parsed.workerName);
+		if (!worker) {
+			console.error(chalk.red(`Error: worker ${parsed.workerName} not found`));
+			return 1;
+		}
+		try {
+			parsed.baseUrl = normalizeWorkerBaseUrl(worker.url);
+		} catch {
+			console.error(chalk.red(`Error: worker ${parsed.workerName} has invalid URL`));
+			return 1;
+		}
+		parsed.token = worker.token;
+	}
+	const client = new CaveClient(
+		parsed.baseUrl
+			? { baseUrl: parsed.baseUrl, token: parsed.token }
+			: { host: parsed.host, port: parsed.port, token: parsed.token },
+	);
 	// Confirm the session exists before opening WS so the error is friendlier.
 	try {
 		await client.getSession(parsed.sessionId);
 	} catch (err) {
-		const msg = err instanceof Error ? err.message : String(err);
+		const msg = redactWorkerText(err instanceof Error ? err.message : String(err), worker);
 		if (msg.includes("ECONNREFUSED")) {
 			console.error(chalk.yellow(`No daemon listening on ${parsed.host}:${parsed.port}.`));
 			console.error(chalk.dim(`Start one with: mewrite serve`));

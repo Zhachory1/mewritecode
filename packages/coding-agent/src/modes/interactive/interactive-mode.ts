@@ -117,6 +117,7 @@ import {
 } from "../../core/slash-commands.js";
 import type { SourceInfo } from "../../core/source-info.js";
 import type { TruncationResult } from "../../core/tools/truncate.js";
+import { dispatchWorkerPrompt, parseWorkerPrompt, WorkerDispatchError } from "../../core/worker-dispatch.js";
 import { resolveCurrentCaveInvocation } from "../../utils/cave-invocation.js";
 import { getChangelogPath, getNewEntries, parseChangelog } from "../../utils/changelog.js";
 import { copyToClipboard } from "../../utils/clipboard.js";
@@ -2539,6 +2540,10 @@ export class InteractiveMode {
 					this.updateEditorBorderColor();
 					return;
 				}
+			}
+
+			if (await this.handleWorkerPromptCommand(text)) {
+				return;
 			}
 
 			// Queue input during compaction (extension commands execute immediately)
@@ -5098,6 +5103,32 @@ export class InteractiveMode {
 	 * rendered dimmed inline. V1: no model override, no cancellation polish, no
 	 * automatic context-isolation for the next turn.
 	 */
+	private async handleWorkerPromptCommand(text: string): Promise<boolean> {
+		const parsed = parseWorkerPrompt(text);
+		if (!parsed.ok) {
+			if (parsed.reason === "not-worker") return false;
+			this.showError("Worker prompt needs text. Usage: &<prompt>");
+			return true;
+		}
+
+		try {
+			const result = await dispatchWorkerPrompt({
+				prompt: parsed.prompt,
+				cwd: this.sessionManager.getCwd(),
+			});
+			this.editor.addToHistory?.(text);
+			this.editor.setText("");
+			this.showStatus(
+				`Dispatched to worker ${result.workerName}: ${result.sessionId}. Attach with: ${result.attachCommand}`,
+			);
+		} catch (error) {
+			this.editor.setText(text);
+			const message = error instanceof WorkerDispatchError || error instanceof Error ? error.message : String(error);
+			this.showError(message);
+		}
+		return true;
+	}
+
 	private async handleBtwSlashCommand(question: string): Promise<void> {
 		const q = question.trim();
 		if (!q) {

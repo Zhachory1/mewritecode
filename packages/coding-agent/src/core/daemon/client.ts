@@ -40,7 +40,7 @@ export class CaveClient {
 	constructor(opts: ClientOptions = {}) {
 		const host = opts.host ?? DEFAULT_DAEMON_HOST;
 		const port = opts.port ?? DEFAULT_DAEMON_PORT;
-		this.baseUrl = opts.baseUrl ?? `http://${host}:${port}`;
+		this.baseUrl = (opts.baseUrl ?? `http://${host}:${port}`).replace(/\/+$/, "");
 		this.wsUrl = this.baseUrl.replace(/^http/, "ws");
 		this.token = opts.token;
 	}

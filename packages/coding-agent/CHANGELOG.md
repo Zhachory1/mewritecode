@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added interactive `&prompt` worker dispatch with worker-aware attach hints and token-redacted remote dispatch errors ([#13](https://github.com/Zhachory1/mewritecode/issues/13)).
 - Added a ContextEngine compression router that marks high-noise log, CI/test output, trace, tool JSON, RAG JSON, and generated-report bundles as `lossy-ok` while keeping code, diffs, configs, citations, and memory facts exact by default ([#51](https://github.com/Zhachory1/mewritecode/issues/51)).
 - Added bundled ship workflow agents (`ship-implementation-lead`, `ship-spec-checker`, `ship-test-writer`, `ship-doc-writer`, and `ship-occams-principles`) so disciplined `/ship` workflows can use them by default ([#52](https://github.com/Zhachory1/mewritecode/issues/52)).
 
