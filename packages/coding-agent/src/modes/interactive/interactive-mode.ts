@@ -50,7 +50,6 @@ import { maybeNotifyUpdateAvailable } from "../../cli/update.js";
 import {
 	APP_NAME,
 	CHANGELOG_URL,
-	COMPRESSION_MODE_NAME,
 	getAgentDir,
 	getAuthPath,
 	getDebugLogPath,
@@ -113,10 +112,8 @@ import {
 	isUnwiredBuiltinCommand,
 	type RepomapChatState,
 	runArchitectCommand,
-	runCostCommand,
 	runRecipeSlashCommand,
 	runRepomapCommand,
-	runTokensCommand,
 } from "../../core/slash-commands.js";
 import type { SourceInfo } from "../../core/source-info.js";
 import type { TruncationResult } from "../../core/tools/truncate.js";
@@ -134,9 +131,13 @@ import {
 	labelOf,
 	parseLoginCommand,
 } from "./activity-helpers.js";
+import {
+	createDefaultInteractiveSlashCommands,
+	type InteractiveSlashCommandContext,
+	InteractiveSlashCommandRouter,
+} from "./commands/index.js";
 import { ActionBarComponent } from "./components/action-bar.js";
 import { showApprovalPrompt } from "./components/approval-prompt.js";
-import { ArminComponent } from "./components/armin.js";
 import { AssistantMessageComponent } from "./components/assistant-message.js";
 import { loadBannerLogo } from "./components/banner.js";
 import { BashExecutionComponent } from "./components/bash-execution.js";
@@ -284,6 +285,7 @@ export class InteractiveMode {
 	private statusContainer: Container;
 	private defaultEditor: CustomEditor;
 	private editor: EditorComponent;
+	private slashCommandRouter: InteractiveSlashCommandRouter;
 	private autocompleteProvider: CombinedAutocompleteProvider | undefined;
 	private fdPath: string | undefined;
 	private editorContainer: Container;
@@ -503,6 +505,10 @@ export class InteractiveMode {
 			placeholder: "Type a task, or / for commands · F1 help",
 		});
 		this.editor = this.defaultEditor;
+		this.slashCommandRouter = new InteractiveSlashCommandRouter(
+			this.createInteractiveSlashCommandContext(),
+			createDefaultInteractiveSlashCommands(),
+		);
 		this.editorContainer = new Container();
 		this.editorContainer.addChild(this.editor as Component);
 		this.footerDataProvider = new FooterDataProvider(this.sessionManager.getCwd());
@@ -2399,6 +2405,92 @@ export class InteractiveMode {
 		}
 	}
 
+	private createInteractiveSlashCommandContext(): InteractiveSlashCommandContext {
+		return {
+			editor: { setText: (value) => this.editor.setText(value) },
+			ui: this.ui,
+			chatContainer: this.chatContainer,
+			statusContainer: this.statusContainer,
+			session: this.session,
+			sessionManager: this.sessionManager,
+			settingsManager: this.settingsManager,
+			freezeCheckpoints: this.freezeCheckpoints,
+			stopLoadingAndClearStatus: () => {
+				if (this.loadingAnimation) {
+					this.loadingAnimation.stop();
+					this.loadingAnimation = undefined;
+				}
+				this.statusContainer.clear();
+			},
+			buildHotkeysMarkdown: () => this.buildHotkeysMarkdown(),
+			getMarkdownTheme: () => this.getMarkdownThemeWithSettings(),
+			showWarning: (message) => this.showWarning(message),
+			legacy: {
+				settings: () => this.showSettingsSelector(),
+				scopedModels: async () => this.showModelsSelector(),
+				model: async (searchTerm) => this.handleModelCommand(searchTerm),
+				export: async (commandText) => this.handleExportCommand(commandText),
+				import: async (commandText) => this.handleImportCommand(commandText),
+				share: async () => this.handleShareCommand(),
+				copy: async () => this.handleCopyCommand(),
+				name: (commandText) => this.handleNameCommand(commandText),
+				session: () => this.handleSessionCommand(),
+				changelog: () => this.handleChangelogCommand(),
+				hotkeys: () => this.handleHotkeysCommand(),
+				activity: () => this.toggleActivityOverlay(),
+
+				skills: () => this.handleSkillsCommand(),
+				plugins: () => this.handleSkillsCommand("marketplace"),
+				fork: () => this.showUserMessageSelector(),
+				tree: () => this.showTreeSelector(),
+				login: async (commandText) => {
+					const providers = this.session.modelRegistry.authStorage.getOAuthProviders();
+					const parsed = parseLoginCommand(commandText, providers);
+					if (parsed.kind === "selector") {
+						await this.showOAuthSelector("login");
+					} else if (parsed.kind === "provider") {
+						await this.showLoginDialog(parsed.provider);
+					} else {
+						const names = formatProviderChoices(providers);
+						this.showError(`Unknown provider "${parsed.provider}". Try: ${names || "(none)"}`);
+					}
+				},
+				logout: () => this.showOAuthSelector("logout"),
+				newSession: async () => this.handleClearCommand(),
+				clear: async () => this.handleClearCommand(),
+				savings: async (arg) => this.handleSavingsCommand(arg),
+				reload: async () => this.handleReloadCommand(),
+				hooks: async (args) => this.handleHooksCommand(args),
+				debug: () => this.handleDebugCommand(),
+
+				resume: async (target) => {
+					if (target) {
+						await this.handleResumeCommand(target);
+					} else {
+						this.showSessionSelector();
+					}
+				},
+				quit: async () => this.shutdown(),
+				mcp: async (commandText) => this.handleMcpSlashCommand(commandText),
+				memory: async (commandText) => this.handleMemorySlashCommand(commandText),
+				repomap: async (args) => this.handleRepomapSlashCommand(args),
+				architect: async (args) => this.handleArchitectSlashCommand(args),
+				recipe: async (commandText) => this.handleRecipeSlashCommand(commandText),
+				checkpoint: async (args) => this.handleCheckpointSlashCommand(args),
+				rollback: async (args) => this.handleRollbackSlashCommand(args),
+				goal: async (args) => this.handleGoalSlashCommand(args),
+				plan: (args) => this.handlePlanSlashCommand(args),
+				act: (args) => this.handleActSlashCommand(args),
+				approval: (args) => this.handleApprovalSlashCommand(args),
+				queue: (args) => this.handleQueueSlashCommand(args),
+				contextStatus: () => this.handleContextSlashCommand(),
+				contextLearn: () => this.handleContextLearnSlashCommand(),
+				contextSetup: (args) => this.handleContextSetupSlashCommand(args),
+				btw: (question) => void this.handleBtwSlashCommand(question),
+			},
+		};
+	}
+
 	private setupEditorSubmitHandler(): void {
 		this.defaultEditor.onSubmit = async (text: string) => {
 			promptTimingMark("submit");
@@ -2417,287 +2509,7 @@ export class InteractiveMode {
 			}
 
 			// Handle commands
-			if (text === "/settings") {
-				this.showSettingsSelector();
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/scoped-models") {
-				this.editor.setText("");
-				await this.showModelsSelector();
-				return;
-			}
-			if (text === "/model" || text.startsWith("/model ")) {
-				const searchTerm = text.startsWith("/model ") ? text.slice(7).trim() : undefined;
-				this.editor.setText("");
-				await this.handleModelCommand(searchTerm);
-				return;
-			}
-			if (text.startsWith("/export")) {
-				await this.handleExportCommand(text);
-				this.editor.setText("");
-				return;
-			}
-			if (text.startsWith("/import")) {
-				await this.handleImportCommand(text);
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/share") {
-				await this.handleShareCommand();
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/copy") {
-				await this.handleCopyCommand();
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/name" || text.startsWith("/name ")) {
-				this.handleNameCommand(text);
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/session") {
-				this.handleSessionCommand();
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/changelog") {
-				this.handleChangelogCommand();
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/hotkeys") {
-				this.handleHotkeysCommand();
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/activity") {
-				this.editor.setText("");
-				this.toggleActivityOverlay();
-				return;
-			}
-			if (text === "/help") {
-				this.editor.setText("");
-				this.handleHelpCommand();
-				return;
-			}
-			if (text === "/skills" || text === "/plugins") {
-				this.editor.setText("");
-				this.handleSkillsCommand(text === "/plugins" ? "marketplace" : undefined);
-				return;
-			}
-			if (text === "/fork") {
-				this.showUserMessageSelector();
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/tree") {
-				this.showTreeSelector();
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/login" || text.startsWith("/login ")) {
-				this.editor.setText("");
-				const providers = this.session.modelRegistry.authStorage.getOAuthProviders();
-				const parsed = parseLoginCommand(text, providers);
-				if (parsed.kind === "selector") {
-					await this.showOAuthSelector("login");
-				} else if (parsed.kind === "provider") {
-					await this.showLoginDialog(parsed.provider);
-				} else {
-					const names = formatProviderChoices(providers);
-					this.showError(`Unknown provider "${parsed.provider}". Try: ${names || "(none)"}`);
-				}
-				return;
-			}
-			if (text === "/logout") {
-				this.showOAuthSelector("logout");
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/new" || text === "/clear") {
-				this.editor.setText("");
-				await this.handleClearCommand();
-				return;
-			}
-			if (text === "/compact" || text.startsWith("/compact ")) {
-				const customInstructions = text.startsWith("/compact ") ? text.slice(9).trim() : undefined;
-				this.editor.setText("");
-				await this.handleCompactCommand(customInstructions);
-				return;
-			}
-			if (text === "/freeze" || text.startsWith("/freeze ")) {
-				const label = text.startsWith("/freeze ") ? text.slice(8).trim() : undefined;
-				this.editor.setText("");
-				await this.handleFreezeCommand(label);
-				return;
-			}
-			if (text === "/checkpoints") {
-				this.editor.setText("");
-				this.handleCheckpointsCommand();
-				return;
-			}
-			if (text === "/mode" || text.startsWith("/mode ") || text === "/cave" || text.startsWith("/cave ")) {
-				this.editor.setText("");
-				this.handleCaveCommand(text);
-				return;
-			}
-			if (text === "/ponytail" || text.startsWith("/ponytail ")) {
-				this.editor.setText("");
-				this.handlePonytailCommand(text);
-				return;
-			}
-			if (text === "/tokens") {
-				this.editor.setText("");
-				this.handleTokensCommand();
-				return;
-			}
-			if (text === "/cost") {
-				this.editor.setText("");
-				this.handleCostCommand();
-				return;
-			}
-			if (text === "/savings" || text.startsWith("/savings ")) {
-				this.editor.setText("");
-				await this.handleSavingsCommand(text.slice("/savings".length).trim());
-				return;
-			}
-			if (text === "/reload") {
-				this.editor.setText("");
-				await this.handleReloadCommand();
-				return;
-			}
-			if (text === "/hooks" || text.startsWith("/hooks ")) {
-				const args = text.startsWith("/hooks ") ? text.slice(7) : "";
-				this.editor.setText("");
-				await this.handleHooksCommand(args);
-				return;
-			}
-			if (text === "/debug") {
-				this.handleDebugCommand();
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/arminsayshi") {
-				this.handleArminSaysHi();
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/resume" || text.startsWith("/resume ")) {
-				const target = text.startsWith("/resume ") ? text.slice(8).trim() : undefined;
-				this.editor.setText("");
-				if (target) {
-					await this.handleResumeCommand(target);
-				} else {
-					this.showSessionSelector();
-				}
-				return;
-			}
-			if (text === "/quit") {
-				this.editor.setText("");
-				await this.shutdown();
-				return;
-			}
-			if (text === "/mcp" || text.startsWith("/mcp ")) {
-				this.editor.setText("");
-				await this.handleMcpSlashCommand(text);
-				return;
-			}
-			if (text === "/memory" || text.startsWith("/memory ")) {
-				this.editor.setText("");
-				await this.handleMemorySlashCommand(text);
-				return;
-			}
-			if (text === "/repomap" || text.startsWith("/repomap ")) {
-				const args = text.startsWith("/repomap ") ? text.slice(9) : "";
-				this.editor.setText("");
-				await this.handleRepomapSlashCommand(args);
-				return;
-			}
-			if (text === "/architect" || text.startsWith("/architect ")) {
-				const args = text.startsWith("/architect ") ? text.slice(11) : "";
-				this.editor.setText("");
-				await this.handleArchitectSlashCommand(args);
-				return;
-			}
-			if (text === "/recipe" || text.startsWith("/recipe ")) {
-				this.editor.setText("");
-				await this.handleRecipeSlashCommand(text);
-				return;
-			}
-			if (text === "/checkpoint" || text.startsWith("/checkpoint ")) {
-				const args = text.startsWith("/checkpoint ") ? text.slice(12) : "";
-				this.editor.setText("");
-				await this.handleCheckpointSlashCommand(args);
-				return;
-			}
-			if (text === "/rollback" || text.startsWith("/rollback ")) {
-				const args = text.startsWith("/rollback ") ? text.slice(10) : "";
-				this.editor.setText("");
-				await this.handleRollbackSlashCommand(args);
-				return;
-			}
-			if (text === "/goal" || text.startsWith("/goal ")) {
-				const args = text.startsWith("/goal ") ? text.slice(6) : "";
-				this.editor.setText("");
-				await this.handleGoalSlashCommand(args);
-				return;
-			}
-			if (text === "/plan" || text.startsWith("/plan ")) {
-				const args = text.startsWith("/plan ") ? text.slice(6) : "";
-				this.editor.setText("");
-				this.handlePlanSlashCommand(args);
-				return;
-			}
-			if (text === "/act" || text.startsWith("/act ")) {
-				const args = text.startsWith("/act ") ? text.slice(5) : "";
-				this.editor.setText("");
-				this.handleActSlashCommand(args);
-				return;
-			}
-			if (text === "/approval" || text.startsWith("/approval ")) {
-				const args = text.startsWith("/approval ") ? text.slice(10) : "";
-				this.editor.setText("");
-				this.handleApprovalSlashCommand(args);
-				return;
-			}
-			if (text === "/queue" || text.startsWith("/queue ")) {
-				const args = text.startsWith("/queue ") ? text.slice(7).trim() : "";
-				this.editor.setText("");
-				this.handleQueueSlashCommand(args);
-				return;
-			}
-			if (
-				text === "/context" ||
-				text === "/context status" ||
-				text === "/context memory status" ||
-				text === "/context doctor"
-			) {
-				this.editor.setText("");
-				this.handleContextSlashCommand();
-				return;
-			}
-			if (text === "/context learn" || text === "/context learn --preview") {
-				this.editor.setText("");
-				this.handleContextLearnSlashCommand();
-				return;
-			}
-			if (text === "/context setup" || text.startsWith("/context setup ")) {
-				const args = text.startsWith("/context setup ") ? text.slice(15).trim() : "";
-				this.editor.setText("");
-				this.handleContextSetupSlashCommand(args);
-				return;
-			}
-			// /btw <question> — side-question (#61). Dispatched BEFORE the
-			// isStreaming guard so it works mid-turn without disturbing the running
-			// agent. The handler fires its own completion against the current
-			// conversation and renders the answer dimmed in the chat scroll.
-			if (text === "/btw" || text.startsWith("/btw ")) {
-				const question = text.startsWith("/btw ") ? text.slice(5).trim() : "";
-				this.editor.setText("");
-				void this.handleBtwSlashCommand(question);
+			if (await this.slashCommandRouter.handleCommand(text)) {
 				return;
 			}
 
@@ -5821,31 +5633,6 @@ export class InteractiveMode {
 		this.ui.requestRender();
 	}
 
-	private handleHelpCommand(): void {
-		let commands = `
-**Commands**
-| Command | Description |
-|---------|-------------|
-`;
-		for (const c of BUILTIN_SLASH_COMMANDS.filter((c) => c.wired)) {
-			commands += `| \`/${c.name}\` | ${c.description} |\n`;
-		}
-		// Built-ins only — skill, project, and extension commands aren't listed
-		// here. Keep the surface honest: point at `/` autocomplete for the rest.
-		commands += `\n_Your skill, project, and extension commands aren't shown above — press \`/\` to browse everything._\n`;
-
-		const hotkeys = this.buildHotkeysMarkdown();
-
-		this.chatContainer.addChild(new Spacer(1));
-		this.chatContainer.addChild(new DynamicBorder());
-		this.chatContainer.addChild(new Text(theme.bold(theme.fg("accent", "Help")), 1, 0));
-		this.chatContainer.addChild(new Spacer(1));
-		this.chatContainer.addChild(new Markdown(commands.trim(), 1, 1, this.getMarkdownThemeWithSettings()));
-		this.chatContainer.addChild(new Markdown(hotkeys.trim(), 1, 1, this.getMarkdownThemeWithSettings()));
-		this.chatContainer.addChild(new DynamicBorder());
-		this.ui.requestRender();
-	}
-
 	private handleSkillsCommand(initialFilter?: SkillSourceTag): void {
 		const categories = this.buildSkillCategories();
 		this.showSelector((done) => {
@@ -5972,12 +5759,6 @@ export class InteractiveMode {
 		this.ui.requestRender();
 	}
 
-	private handleArminSaysHi(): void {
-		this.chatContainer.addChild(new Spacer(1));
-		this.chatContainer.addChild(new ArminComponent(this.ui));
-		this.ui.requestRender();
-	}
-
 	private handleDaxnuts(): void {
 		this.chatContainer.addChild(new Spacer(1));
 		this.chatContainer.addChild(new DaxnutsComponent(this.ui));
@@ -6076,262 +5857,6 @@ export class InteractiveMode {
 		}
 
 		this.bashComponent = undefined;
-		this.ui.requestRender();
-	}
-
-	private async handleCompactCommand(customInstructions?: string): Promise<void> {
-		const entries = this.sessionManager.getEntries();
-		const messageCount = entries.filter((e) => e.type === "message").length;
-
-		if (messageCount < 2) {
-			this.showWarning("Nothing to compact (no messages yet)");
-			return;
-		}
-
-		if (this.loadingAnimation) {
-			this.loadingAnimation.stop();
-			this.loadingAnimation = undefined;
-		}
-		this.statusContainer.clear();
-
-		try {
-			await this.session.compact(customInstructions);
-		} catch {
-			// Ignore, will be emitted as an event
-		}
-	}
-
-	private async handleFreezeCommand(label?: string): Promise<void> {
-		const entries = this.sessionManager.getEntries();
-		const messageCount = entries.filter((e) => e.type === "message").length;
-
-		if (messageCount < 2) {
-			this.showWarning("Nothing to freeze (no messages yet)");
-			return;
-		}
-
-		const statsBefore = this.session.getSessionStats();
-		const tokensBefore = statsBefore.tokens.total;
-
-		const caveInstructions =
-			"Only preserve: active task, open files, pending decisions, unresolved errors. Drop: completed work, tangents, tool call histories.";
-		const customInstructions = label ? `${caveInstructions} Label: ${label}` : caveInstructions;
-
-		if (this.loadingAnimation) {
-			this.loadingAnimation.stop();
-			this.loadingAnimation = undefined;
-		}
-		this.statusContainer.clear();
-
-		try {
-			await this.session.compact(customInstructions);
-			const statsAfter = this.session.getSessionStats();
-			const tokensAfter = statsAfter.tokens.total;
-			const saved = tokensBefore - tokensAfter;
-			const savedPct = tokensBefore > 0 ? Math.round((saved / tokensBefore) * 100) : 0;
-
-			this.freezeCheckpoints.push({
-				label,
-				tokensBefore,
-				tokensAfter,
-				savedAt: new Date().toISOString(),
-			});
-
-			this.chatContainer.addChild(new Spacer(1));
-			const msg =
-				saved > 0
-					? `Mammoth frozen${label ? ` [${label}]` : ""}. Saved ${saved.toLocaleString()} tokens (-${savedPct}%).`
-					: `Mammoth frozen${label ? ` [${label}]` : ""}.`;
-			this.chatContainer.addChild(new Text(theme.fg("accent", msg), 1, 0));
-			this.ui.requestRender();
-		} catch {
-			// Ignore, will be emitted as an event
-		}
-	}
-
-	private handleCheckpointsCommand(): void {
-		if (this.freezeCheckpoints.length === 0) {
-			this.chatContainer.addChild(new Spacer(1));
-			this.chatContainer.addChild(
-				new Text(theme.fg("muted", "No freeze checkpoints yet. Use /freeze to create one."), 1, 0),
-			);
-			this.ui.requestRender();
-			return;
-		}
-
-		const lines: string[] = [theme.fg("accent", "Freeze Checkpoints")];
-		for (let i = 0; i < this.freezeCheckpoints.length; i++) {
-			const cp = this.freezeCheckpoints[i]!;
-			const saved = cp.tokensBefore - cp.tokensAfter;
-			const pct = cp.tokensBefore > 0 ? Math.round((saved / cp.tokensBefore) * 100) : 0;
-			const labelStr = cp.label ? ` [${cp.label}]` : "";
-			const timeStr = new Date(cp.savedAt).toLocaleTimeString();
-			lines.push(`  #${i + 1}${labelStr}  ${timeStr}  ${saved.toLocaleString()} tokens saved (-${pct}%)`);
-		}
-
-		this.chatContainer.addChild(new Spacer(1));
-		this.chatContainer.addChild(new Text(lines.join("\n"), 1, 0));
-		this.ui.requestRender();
-	}
-
-	private handleCaveCommand(text: string): void {
-		const arg = text
-			.replace(/^\/(?:cave|mode)\s*/, "")
-			.trim()
-			.toLowerCase();
-
-		if (!arg) {
-			// No argument: show current cave mode state
-			const state = this.session.getCaveModeSessionState();
-			const status = state.enabled ? `on (intensity: ${state.intensity})` : "off";
-			this.chatContainer.addChild(new Spacer(1));
-			this.chatContainer.addChild(new Text(theme.fg("muted", `${COMPRESSION_MODE_NAME}: ${status}`), 1, 0));
-			this.ui.requestRender();
-			return;
-		}
-
-		if (arg === "on") {
-			this.session.setCaveModeSessionIntensity(this.settingsManager.getCaveModeIntensity());
-			this.chatContainer.addChild(new Spacer(1));
-			this.chatContainer.addChild(new Text(theme.fg("muted", `${COMPRESSION_MODE_NAME}: on (session)`), 1, 0));
-			this.ui.requestRender();
-			return;
-		}
-
-		if (arg === "off") {
-			this.session.setCaveModeSessionDisabled();
-			this.chatContainer.addChild(new Spacer(1));
-			this.chatContainer.addChild(new Text(theme.fg("muted", `${COMPRESSION_MODE_NAME}: off (session)`), 1, 0));
-			this.ui.requestRender();
-			return;
-		}
-
-		if (arg === "lite" || arg === "full" || arg === "ultra") {
-			this.session.setCaveModeSessionIntensity(arg);
-			this.chatContainer.addChild(new Spacer(1));
-			this.chatContainer.addChild(
-				new Text(theme.fg("muted", `${COMPRESSION_MODE_NAME}: on, intensity set to ${arg} (session)`), 1, 0),
-			);
-			this.ui.requestRender();
-			return;
-		}
-
-		if (arg === "stats") {
-			this.handleCaveStatsCommand();
-			return;
-		}
-
-		this.showWarning(`/mode: unknown argument '${arg}'. Usage: /mode [on|off|lite|full|ultra|stats]`);
-	}
-
-	private handlePonytailCommand(text: string): void {
-		const arg = text
-			.replace(/^\/ponytail\s*/, "")
-			.trim()
-			.toLowerCase();
-
-		if (!arg || arg === "status") {
-			const state = this.session.getPonytailSessionState();
-			const status = state.enabled ? `on (intensity: ${state.intensity})` : "off";
-			this.chatContainer.addChild(new Spacer(1));
-			this.chatContainer.addChild(new Text(theme.fg("muted", `Ponytail: ${status}`), 1, 0));
-			this.ui.requestRender();
-			return;
-		}
-
-		if (arg === "on") {
-			this.session.setPonytailSessionIntensity(this.settingsManager.getPonytailIntensity());
-			this.chatContainer.addChild(new Spacer(1));
-			this.chatContainer.addChild(new Text(theme.fg("muted", "Ponytail: on (session)"), 1, 0));
-			this.ui.requestRender();
-			return;
-		}
-
-		if (arg === "off" || arg === "stop") {
-			this.session.setPonytailSessionDisabled();
-			this.chatContainer.addChild(new Spacer(1));
-			this.chatContainer.addChild(new Text(theme.fg("muted", "Ponytail: off (session)"), 1, 0));
-			this.ui.requestRender();
-			return;
-		}
-
-		if (arg === "lite" || arg === "full" || arg === "ultra") {
-			this.session.setPonytailSessionIntensity(arg);
-			this.chatContainer.addChild(new Spacer(1));
-			this.chatContainer.addChild(
-				new Text(theme.fg("muted", `Ponytail: on, intensity set to ${arg} (session)`), 1, 0),
-			);
-			this.ui.requestRender();
-			return;
-		}
-
-		this.showWarning(`/ponytail: unknown argument '${arg}'. Usage: /ponytail [on|off|lite|full|ultra|status]`);
-	}
-
-	private handleCaveStatsCommand(): void {
-		const state = this.session.getCaveModeSessionState();
-		const stats = this.session.getSessionStats();
-		const contextUsage = stats.contextUsage;
-
-		const lines: string[] = [];
-		lines.push(theme.fg("accent", `${COMPRESSION_MODE_NAME} Stats`));
-		lines.push(`  Mode: ${state.enabled ? "on" : "off"}`);
-		lines.push(`  Intensity: ${state.intensity}`);
-		lines.push(`  Tool compression: ${this.settingsManager.getCaveModeToolCompression() ? "on" : "off"}`);
-		lines.push("");
-		lines.push(theme.fg("accent", "Session Tokens"));
-		lines.push(`  Input: ${stats.tokens.input.toLocaleString()}`);
-		lines.push(`  Output: ${stats.tokens.output.toLocaleString()}`);
-		lines.push(`  Cache read: ${stats.tokens.cacheRead.toLocaleString()}`);
-		lines.push(`  Cache write: ${stats.tokens.cacheWrite.toLocaleString()}`);
-		lines.push(`  Total: ${stats.tokens.total.toLocaleString()}`);
-		lines.push(`  Cost: $${stats.cost.toFixed(4)}`);
-		if (contextUsage) {
-			const pct = contextUsage.percent != null ? `${Math.round(contextUsage.percent)}%` : "unknown";
-			const tokens = contextUsage.tokens != null ? contextUsage.tokens.toLocaleString() : "unknown";
-			lines.push("");
-			lines.push(theme.fg("accent", "Context Window"));
-			lines.push(`  Used: ${tokens} / ${contextUsage.contextWindow.toLocaleString()} (${pct})`);
-		}
-
-		this.chatContainer.addChild(new Spacer(1));
-		this.chatContainer.addChild(new Text(lines.join("\n"), 1, 0));
-		this.ui.requestRender();
-	}
-
-	// WS19: /tokens command — per-source-bucket token breakdown
-	private handleTokensCommand(): void {
-		const stats = this.session.getSessionStats();
-		const result = runTokensCommand({
-			stats: {
-				inputTokens: stats.tokens.input,
-				outputTokens: stats.tokens.output,
-				cacheReadTokens: stats.tokens.cacheRead,
-				cacheWriteTokens: stats.tokens.cacheWrite,
-				dollars: stats.cost,
-			},
-		});
-		this.chatContainer.addChild(new Spacer(1));
-		this.chatContainer.addChild(new Text(result.lines.join("\n"), 1, 0));
-		this.ui.requestRender();
-	}
-
-	// WS19: /cost command — session + today + this-week totals
-	private handleCostCommand(): void {
-		const stats = this.session.getSessionStats();
-		const pricingKnown = stats.cost > 0;
-		const result = runCostCommand({
-			stats: {
-				inputTokens: stats.tokens.input,
-				outputTokens: stats.tokens.output,
-				cacheReadTokens: stats.tokens.cacheRead,
-				cacheWriteTokens: stats.tokens.cacheWrite,
-				dollars: stats.cost,
-				pricingKnown,
-			},
-		});
-		this.chatContainer.addChild(new Spacer(1));
-		this.chatContainer.addChild(new Text(result.lines.join("\n"), 1, 0));
 		this.ui.requestRender();
 	}
 
