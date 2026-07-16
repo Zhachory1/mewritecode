@@ -70,7 +70,6 @@ export interface InteractiveSlashCommandContext {
 		logout(): MaybePromise;
 		newSession(): MaybePromise;
 		clear(): MaybePromise;
-		savings(arg: string): MaybePromise;
 		reload(): MaybePromise;
 		debug(): MaybePromise;
 		resume(target: string | undefined): MaybePromise;
