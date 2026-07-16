@@ -67,8 +67,10 @@ const noopHandlers: InteractiveSlashCommandContext = {
 	editor: { setText: () => {}, getText: () => "" } as never,
 	clearEditor: () => {},
 	ui: { requestRender: () => {} } as never,
-	chatContainer: { addChild: () => {} } as never,
+	chatContainer: { addChild: () => {}, children: [] } as never,
 	statusContainer: { clear: () => {} } as never,
+	editorContainer: { clear: () => {}, addChild: () => {} } as never,
+	keybindings: { reload: () => {} } as never,
 	runtimeHost: {} as never,
 	session: {} as never,
 	sessionManager: {} as never,
@@ -110,14 +112,17 @@ const noopHandlers: InteractiveSlashCommandContext = {
 	setDefaultEditorEscape: () => {},
 	showExtensionSelector: async () => "No summary",
 	showExtensionEditor: async () => undefined,
-	legacy: new Proxy(
-		{},
-		{
-			get() {
-				return () => {};
-			},
-		},
-	) as InteractiveSlashCommandContext["legacy"],
+	showExtensionConfirm: async () => true,
+	promptForMissingSessionCwd: async () => undefined,
+	resetExtensionUI: () => {},
+	setupAutocomplete: () => {},
+	setupExtensionShortcuts: () => {},
+	rebuildChatFromMessages: () => {},
+	showLoadedResources: () => {},
+	getHideThinkingBlock: () => false,
+	setHideThinkingBlock: () => {},
+	setFooterAutoCompactEnabled: () => {},
+	applyEditorDisplaySettings: () => {},
 };
 
 describe("slash command dispatcher", () => {

@@ -51,7 +51,6 @@ import {
 	CHANGELOG_URL,
 	getAgentDir,
 	getAuthPath,
-	getShareViewerUrl,
 	getUpdateInstruction,
 	PACKAGE_NAME,
 	VERSION,
@@ -82,8 +81,8 @@ import { createCompactionSummaryMessage } from "../../core/messages.js";
 import { findInitialModel } from "../../core/model-resolver.js";
 import { DefaultPackageManager } from "../../core/package-manager.js";
 import type { ResourceDiagnostic } from "../../core/resource-loader.js";
-import { formatMissingSessionCwdPrompt, MissingSessionCwdError } from "../../core/session-cwd.js";
-import { type SessionContext, SessionManager } from "../../core/session-manager.js";
+import { formatMissingSessionCwdPrompt, type MissingSessionCwdError } from "../../core/session-cwd.js";
+import type { SessionContext } from "../../core/session-manager.js";
 import {
 	BUILTIN_SLASH_COMMANDS,
 	emptyRepomapChatState,
@@ -109,7 +108,6 @@ import { showApprovalPrompt } from "./components/approval-prompt.js";
 import { AssistantMessageComponent } from "./components/assistant-message.js";
 import { loadBannerLogo } from "./components/banner.js";
 import { BashExecutionComponent } from "./components/bash-execution.js";
-import { BorderedLoader } from "./components/bordered-loader.js";
 import { BranchSummaryMessageComponent } from "./components/branch-summary-message.js";
 import { CompactionSummaryMessageComponent } from "./components/compaction-summary-message.js";
 import { showConfirmPrompt } from "./components/confirm-prompt.js";
@@ -127,16 +125,7 @@ import { keyText } from "./components/keybinding-hints.js";
 import { LoginDialogComponent } from "./components/login-dialog.js";
 import { OAuthSelectorComponent } from "./components/oauth-selector.js";
 import { type QueuedItem, showQueuedMessages } from "./components/queued-messages.js";
-import { SessionSelectorComponent } from "./components/session-selector.js";
-import { SettingsSelectorComponent } from "./components/settings-selector.js";
 import { SkillInvocationMessageComponent } from "./components/skill-invocation-message.js";
-import {
-	type SkillAction,
-	type SkillCategory,
-	type SkillEntry,
-	type SkillSourceTag,
-	SkillsHubComponent,
-} from "./components/skills-hub.js";
 import { StartupHeaderComponent } from "./components/startup-header.js";
 import { ToolExecutionComponent } from "./components/tool-execution.js";
 import { ToolGroupShellComponent } from "./components/tool-shelf.js";
@@ -147,10 +136,7 @@ import {
 	evaluateFireStarter,
 	evaluateTribalSignal,
 } from "./context-drift-widgets.js";
-import { resolveSessionReference } from "./session-reference.js";
 import {
-	AUTO_THEME_NAME,
-	getAvailableThemes,
 	getAvailableThemesWithPaths,
 	getEditorTheme,
 	getMarkdownTheme,
@@ -177,12 +163,6 @@ interface Expandable {
 
 function isExpandable(obj: unknown): obj is Expandable {
 	return typeof obj === "object" && obj !== null && "setExpanded" in obj && typeof obj.setExpanded === "function";
-}
-
-function mapSkillScope(scope: string): SkillSourceTag {
-	if (scope === "user") return "user";
-	if (scope === "project") return "project";
-	return "bundled";
 }
 
 /**
@@ -1455,11 +1435,11 @@ export class InteractiveMode {
 					return { cancelled: false };
 				},
 				switchSession: async (sessionPath) => {
-					await this.handleResumeSession(sessionPath);
+					await this.runSlashCommand(`/resume ${sessionPath}`, { clearEditor: false });
 					return { cancelled: false };
 				},
 				reload: async () => {
-					await this.handleReloadCommand();
+					await this.runSlashCommand("/reload", { clearEditor: false });
 				},
 			},
 			shutdownHandler: () => {
@@ -2327,7 +2307,7 @@ export class InteractiveMode {
 		this.defaultEditor.onAction("app.session.new", () => this.handleSlashShortcut("/new"));
 		this.defaultEditor.onAction("app.session.tree", () => this.handleSlashShortcut("/tree"));
 		this.defaultEditor.onAction("app.session.fork", () => this.handleSlashShortcut("/fork"));
-		this.defaultEditor.onAction("app.session.resume", () => this.showSessionSelector());
+		this.defaultEditor.onAction("app.session.resume", () => this.handleSlashShortcut("/resume"));
 		this.defaultEditor.onAction("app.help", () => this.toggleHelpOverlay());
 		this.defaultEditor.onAction("app.subagent.toggle", () => this.handleSlashShortcut("/activity"));
 		this.defaultEditor.onAction("app.message.editQueue", () => this.openQueuedMessagesEditor());
@@ -2384,6 +2364,8 @@ export class InteractiveMode {
 			ui: mode.ui,
 			chatContainer: mode.chatContainer,
 			statusContainer: mode.statusContainer,
+			editorContainer: mode.editorContainer,
+			keybindings: mode.keybindings,
 			runtimeHost: mode.runtimeHost,
 			get session() {
 				return mode.session;
@@ -2453,32 +2435,44 @@ export class InteractiveMode {
 			},
 			showExtensionSelector: (title, options) => mode.showExtensionSelector(title, options),
 			showExtensionEditor: (title) => mode.showExtensionEditor(title),
-			legacy: {
-				settings: () => mode.showSettingsSelector(),
-				import: async (commandText) => mode.handleImportCommand(commandText),
-				share: async () => mode.handleShareCommand(),
-
-				skills: () => mode.handleSkillsCommand(),
-				plugins: () => mode.handleSkillsCommand("marketplace"),
-				reload: async () => mode.handleReloadCommand(),
-
-				resume: async (target) => {
-					if (target) {
-						await mode.handleResumeCommand(target);
-					} else {
-						mode.showSessionSelector();
-					}
-				},
+			showExtensionConfirm: (title, message, opts) => mode.showExtensionConfirm(title, message, opts),
+			promptForMissingSessionCwd: (error) => mode.promptForMissingSessionCwd(error),
+			resetExtensionUI: () => mode.resetExtensionUI(),
+			setupAutocomplete: () => mode.setupAutocomplete(mode.fdPath),
+			setupExtensionShortcuts: () => {
+				const runner = mode.session.extensionRunner;
+				if (runner) mode.setupExtensionShortcuts(runner);
+			},
+			rebuildChatFromMessages: () => mode.rebuildChatFromMessages(),
+			showLoadedResources: (options) => mode.showLoadedResources(options),
+			getHideThinkingBlock: () => mode.hideThinkingBlock,
+			setHideThinkingBlock: (hidden) => {
+				mode.hideThinkingBlock = hidden;
+			},
+			setFooterAutoCompactEnabled: (enabled) => mode.footer.setAutoCompactEnabled(enabled),
+			applyEditorDisplaySettings: () => {
+				const editorPaddingX = mode.settingsManager.getEditorPaddingX();
+				const autocompleteMaxVisible = mode.settingsManager.getAutocompleteMaxVisible();
+				mode.defaultEditor.setPaddingX(editorPaddingX);
+				mode.defaultEditor.setAutocompleteMaxVisible(autocompleteMaxVisible);
+				if (mode.editor !== mode.defaultEditor) {
+					mode.editor.setPaddingX?.(editorPaddingX);
+					mode.editor.setAutocompleteMaxVisible?.(autocompleteMaxVisible);
+				}
 			},
 		};
 	}
 
-	private handleSlashShortcut(text: string): void {
+	private runSlashCommand(text: string, options: { clearEditor?: boolean } = {}): Promise<boolean> {
 		const router = new InteractiveSlashCommandRouter(
-			this.createInteractiveSlashCommandContext({ clearEditor: false }),
+			this.createInteractiveSlashCommandContext(options),
 			createDefaultInteractiveSlashCommands(),
 		);
-		void router.handleCommand(text);
+		return router.handleCommand(text);
+	}
+
+	private handleSlashShortcut(text: string): void {
+		void this.runSlashCommand(text, { clearEditor: false });
 	}
 
 	private setupEditorSubmitHandler(): void {
@@ -3986,185 +3980,6 @@ export class InteractiveMode {
 		this.ui.requestRender();
 	}
 
-	private showSettingsSelector(): void {
-		this.showSelector((done) => {
-			const contextEngineSettings = this.settingsManager.getContextEngineSettings();
-			const selector = new SettingsSelectorComponent(
-				{
-					autoCompact: this.session.autoCompactionEnabled,
-					showImages: this.settingsManager.getShowImages(),
-					autoResizeImages: this.settingsManager.getImageAutoResize(),
-					blockImages: this.settingsManager.getBlockImages(),
-					enableSkillCommands: this.settingsManager.getEnableSkillCommands(),
-					steeringMode: this.session.steeringMode,
-					followUpMode: this.session.followUpMode,
-					transport: this.settingsManager.getTransport(),
-					thinkingLevel: this.session.thinkingLevel,
-					availableThinkingLevels: this.session.getAvailableThinkingLevels(),
-					currentTheme: this.settingsManager.getTheme() || AUTO_THEME_NAME,
-					availableThemes: getAvailableThemes(),
-					hideThinkingBlock: this.hideThinkingBlock,
-					showChangelogOnStartup: this.settingsManager.getShowChangelogOnStartup(),
-					collapseChangelog: this.settingsManager.getCollapseChangelog(),
-					doubleEscapeAction: this.settingsManager.getDoubleEscapeAction(),
-					treeFilterMode: this.settingsManager.getTreeFilterMode(),
-					showHardwareCursor: this.settingsManager.getShowHardwareCursor(),
-					editorPaddingX: this.settingsManager.getEditorPaddingX(),
-					autocompleteMaxVisible: this.settingsManager.getAutocompleteMaxVisible(),
-					quietStartup: this.settingsManager.getQuietStartup(),
-					clearOnShrink: this.settingsManager.getClearOnShrink(),
-					caveModeEnabled: this.settingsManager.getCaveModeEnabled(),
-					caveModeIntensity: this.settingsManager.getCaveModeIntensity(),
-					caveModeToolCompression: this.settingsManager.getCaveModeToolCompression(),
-					ponytailEnabled: this.settingsManager.getPonytailEnabled(),
-					ponytailIntensity: this.settingsManager.getPonytailIntensity(),
-					headroomEnabled: contextEngineSettings.compression.headroom.enabled,
-				},
-				{
-					onAutoCompactChange: (enabled) => {
-						this.session.setAutoCompactionEnabled(enabled);
-						this.footer.setAutoCompactEnabled(enabled);
-					},
-					onShowImagesChange: (enabled) => {
-						this.settingsManager.setShowImages(enabled);
-						for (const child of this.chatContainer.children) {
-							if (child instanceof ToolExecutionComponent) {
-								child.setShowImages(enabled);
-							}
-						}
-					},
-					onAutoResizeImagesChange: (enabled) => {
-						this.settingsManager.setImageAutoResize(enabled);
-					},
-					onBlockImagesChange: (blocked) => {
-						this.settingsManager.setBlockImages(blocked);
-					},
-					onEnableSkillCommandsChange: (enabled) => {
-						this.settingsManager.setEnableSkillCommands(enabled);
-						this.setupAutocomplete(this.fdPath);
-					},
-					onSteeringModeChange: (mode) => {
-						this.session.setSteeringMode(mode);
-					},
-					onFollowUpModeChange: (mode) => {
-						this.session.setFollowUpMode(mode);
-					},
-					onTransportChange: (transport) => {
-						this.settingsManager.setTransport(transport);
-						this.session.agent.transport = transport;
-					},
-					onThinkingLevelChange: (level) => {
-						this.session.setThinkingLevel(level);
-						this.footer.invalidate();
-						this.updateEditorBorderColor();
-					},
-					onThemeChange: (themeName) => {
-						const result = setTheme(themeName, true);
-						this.settingsManager.setTheme(themeName);
-						this.ui.invalidate();
-						if (!result.success) {
-							this.showError(`Failed to load theme "${themeName}": ${result.error}\nFell back to dark theme.`);
-						}
-					},
-					onThemePreview: (themeName) => {
-						const result = setTheme(themeName, true);
-						if (result.success) {
-							this.ui.invalidate();
-							this.ui.requestRender();
-						}
-					},
-					onHideThinkingBlockChange: (hidden) => {
-						this.hideThinkingBlock = hidden;
-						this.settingsManager.setHideThinkingBlock(hidden);
-						for (const child of this.chatContainer.children) {
-							if (child instanceof AssistantMessageComponent) {
-								child.setHideThinkingBlock(hidden);
-							}
-						}
-						// `rebuildChatFromMessages()` disposes mounted tool rows then
-						// clears internally; a caller-side clear first would empty
-						// `children` before that dispose runs, leaking the live
-						// ToolExecutionComponent intervals.
-						this.rebuildChatFromMessages();
-					},
-					onShowChangelogOnStartupChange: (show) => {
-						this.settingsManager.setShowChangelogOnStartup(show);
-					},
-					onCollapseChangelogChange: (collapsed) => {
-						this.settingsManager.setCollapseChangelog(collapsed);
-					},
-					onQuietStartupChange: (enabled) => {
-						this.settingsManager.setQuietStartup(enabled);
-					},
-					onDoubleEscapeActionChange: (action) => {
-						this.settingsManager.setDoubleEscapeAction(action);
-					},
-					onTreeFilterModeChange: (mode) => {
-						this.settingsManager.setTreeFilterMode(mode);
-					},
-					onShowHardwareCursorChange: (enabled) => {
-						this.settingsManager.setShowHardwareCursor(enabled);
-						this.ui.setShowHardwareCursor(enabled);
-					},
-					onEditorPaddingXChange: (padding) => {
-						this.settingsManager.setEditorPaddingX(padding);
-						this.defaultEditor.setPaddingX(padding);
-						if (this.editor !== this.defaultEditor && this.editor.setPaddingX !== undefined) {
-							this.editor.setPaddingX(padding);
-						}
-					},
-					onAutocompleteMaxVisibleChange: (maxVisible) => {
-						this.settingsManager.setAutocompleteMaxVisible(maxVisible);
-						this.defaultEditor.setAutocompleteMaxVisible(maxVisible);
-						if (this.editor !== this.defaultEditor && this.editor.setAutocompleteMaxVisible !== undefined) {
-							this.editor.setAutocompleteMaxVisible(maxVisible);
-						}
-					},
-					onClearOnShrinkChange: (enabled) => {
-						this.settingsManager.setClearOnShrink(enabled);
-						this.ui.setClearOnShrink(enabled);
-					},
-					onCaveModeEnabledChange: (enabled) => {
-						this.settingsManager.setCaveModeEnabled(enabled);
-						if (enabled) {
-							this.session.setCaveModeSessionIntensity(this.settingsManager.getCaveModeIntensity());
-						} else {
-							this.session.setCaveModeSessionDisabled();
-						}
-					},
-					onCaveModeIntensityChange: (intensity) => {
-						this.settingsManager.setCaveModeIntensity(intensity);
-						this.session.setCaveModeSessionIntensity(intensity);
-					},
-					onCaveModeToolCompressionChange: (enabled) => {
-						this.settingsManager.setCaveModeToolCompression(enabled);
-						this.session.setCaveModeSessionToolCompression(enabled);
-					},
-					onPonytailEnabledChange: (enabled) => {
-						this.settingsManager.setPonytailEnabled(enabled);
-						if (enabled) {
-							this.session.setPonytailSessionIntensity(this.settingsManager.getPonytailIntensity());
-						} else {
-							this.session.setPonytailSessionDisabled();
-						}
-					},
-					onPonytailIntensityChange: (intensity) => {
-						this.settingsManager.setPonytailIntensity(intensity);
-						this.session.setPonytailSessionIntensity(intensity);
-					},
-					onHeadroomEnabledChange: (enabled) => {
-						this.settingsManager.setHeadroomEnabled(enabled);
-					},
-					onCancel: () => {
-						done();
-						this.ui.requestRender();
-					},
-				},
-			);
-			return { component: selector, focus: selector.getSettingsList() };
-		});
-	}
-
 	private async getModelCandidates(): Promise<Model<any>[]> {
 		if (this.session.scopedModels.length > 0) {
 			return this.session.scopedModels.map((scoped) => scoped.model);
@@ -4183,93 +3998,6 @@ export class InteractiveMode {
 		const models = await this.getModelCandidates();
 		const uniqueProviders = new Set(models.map((m) => m.provider));
 		this.footerDataProvider.setAvailableProviderCount(uniqueProviders.size);
-	}
-
-	private showSessionSelector(): void {
-		this.showSelector((done) => {
-			const selector = new SessionSelectorComponent(
-				(onProgress) =>
-					SessionManager.list(this.sessionManager.getCwd(), this.sessionManager.getSessionDir(), onProgress),
-				SessionManager.listAll,
-				async (sessionPath) => {
-					done();
-					await this.handleResumeSession(sessionPath);
-				},
-				() => {
-					done();
-					this.ui.requestRender();
-				},
-				() => {
-					void this.shutdown();
-				},
-				() => this.ui.requestRender(),
-				{
-					renameSession: async (sessionFilePath: string, nextName: string | undefined) => {
-						const next = (nextName ?? "").trim();
-						if (!next) return;
-						const mgr = SessionManager.open(sessionFilePath);
-						mgr.appendSessionInfo(next);
-					},
-					showRenameHint: true,
-					keybindings: this.keybindings,
-				},
-
-				this.sessionManager.getSessionFile(),
-			);
-			return { component: selector, focus: selector };
-		});
-	}
-
-	private async handleResumeCommand(target: string): Promise<void> {
-		const resolved = await resolveSessionReference(
-			target,
-			this.sessionManager.getCwd(),
-			this.sessionManager.getSessionDir(),
-		);
-		switch (resolved.type) {
-			case "path":
-			case "local":
-			case "global":
-				await this.handleResumeSession(resolved.path);
-				return;
-			case "not_found":
-				this.showError(`No session found matching '${resolved.arg}'`);
-				return;
-		}
-	}
-
-	private async handleResumeSession(sessionPath: string): Promise<void> {
-		if (this.loadingAnimation) {
-			this.loadingAnimation.stop();
-			this.loadingAnimation = undefined;
-		}
-		this.statusContainer.clear();
-		try {
-			const result = await this.runtimeHost.switchSession(sessionPath);
-			if (result.cancelled) {
-				return;
-			}
-			await this.handleRuntimeSessionChange();
-			this.renderCurrentSessionState();
-			this.showStatus("Resumed session");
-		} catch (error: unknown) {
-			if (error instanceof MissingSessionCwdError) {
-				const selectedCwd = await this.promptForMissingSessionCwd(error);
-				if (!selectedCwd) {
-					this.showStatus("Resume cancelled");
-					return;
-				}
-				const result = await this.runtimeHost.switchSession(sessionPath, selectedCwd);
-				if (result.cancelled) {
-					return;
-				}
-				await this.handleRuntimeSessionChange();
-				this.renderCurrentSessionState();
-				this.showStatus("Resumed session in current cwd");
-				return;
-			}
-			await this.handleFatalRuntimeError("Failed to resume session", error);
-		}
 	}
 
 	/**
@@ -4582,225 +4310,6 @@ export class InteractiveMode {
 		return isUnwiredBuiltinCommand(head);
 	}
 
-	private async handleReloadCommand(): Promise<void> {
-		if (this.session.isStreaming) {
-			this.showWarning("Wait for the current response to finish before reloading.");
-			return;
-		}
-		if (this.session.isCompacting) {
-			this.showWarning("Wait for compaction to finish before reloading.");
-			return;
-		}
-
-		this.resetExtensionUI();
-
-		const loader = new BorderedLoader(
-			this.ui,
-			theme,
-			"Reloading keybindings, extensions, skills, prompts, themes...",
-			{
-				cancellable: false,
-			},
-		);
-		const previousEditor = this.editor;
-		this.editorContainer.clear();
-		this.editorContainer.addChild(loader);
-		this.ui.setFocus(loader);
-		this.ui.requestRender();
-
-		const dismissLoader = (editor: Component) => {
-			loader.dispose();
-			this.editorContainer.clear();
-			this.editorContainer.addChild(editor);
-			this.ui.setFocus(editor);
-			this.ui.requestRender();
-		};
-
-		try {
-			await this.session.reload();
-			this.keybindings.reload();
-			setRegisteredThemes(this.session.resourceLoader.getThemes().themes);
-			this.hideThinkingBlock = this.settingsManager.getHideThinkingBlock();
-			const themeName = this.settingsManager.getTheme() || AUTO_THEME_NAME;
-			const themeResult = setTheme(themeName, true);
-			if (!themeResult.success) {
-				this.showError(`Failed to load theme "${themeName}": ${themeResult.error}\nFell back to dark theme.`);
-			}
-			const editorPaddingX = this.settingsManager.getEditorPaddingX();
-			const autocompleteMaxVisible = this.settingsManager.getAutocompleteMaxVisible();
-			this.defaultEditor.setPaddingX(editorPaddingX);
-			this.defaultEditor.setAutocompleteMaxVisible(autocompleteMaxVisible);
-			if (this.editor !== this.defaultEditor) {
-				this.editor.setPaddingX?.(editorPaddingX);
-				this.editor.setAutocompleteMaxVisible?.(autocompleteMaxVisible);
-			}
-			this.ui.setShowHardwareCursor(this.settingsManager.getShowHardwareCursor());
-			this.ui.setClearOnShrink(this.settingsManager.getClearOnShrink());
-			this.setupAutocomplete(this.fdPath);
-			const runner = this.session.extensionRunner;
-			if (runner) {
-				this.setupExtensionShortcuts(runner);
-			}
-			this.rebuildChatFromMessages();
-			dismissLoader(this.editor as Component);
-			this.showLoadedResources({
-				force: false,
-				showDiagnosticsWhenQuiet: true,
-			});
-			const modelsJsonError = this.session.modelRegistry.getError();
-			if (modelsJsonError) {
-				this.showError(`models.json error: ${modelsJsonError}`);
-			}
-			this.showStatus("Reloaded keybindings, extensions, skills, prompts, themes");
-		} catch (error) {
-			dismissLoader(previousEditor as Component);
-			this.showError(`Reload failed: ${error instanceof Error ? error.message : String(error)}`);
-		}
-	}
-
-	private async handleImportCommand(text: string): Promise<void> {
-		const parts = text.split(/\s+/);
-		if (parts.length < 2 || !parts[1]) {
-			this.showError("Usage: /import <path.jsonl>");
-			return;
-		}
-		const inputPath = parts[1];
-
-		const confirmed = await this.showExtensionConfirm("Import session", `Replace current session with ${inputPath}?`);
-		if (!confirmed) {
-			this.showStatus("Import cancelled");
-			return;
-		}
-
-		try {
-			if (this.loadingAnimation) {
-				this.loadingAnimation.stop();
-				this.loadingAnimation = undefined;
-			}
-			this.statusContainer.clear();
-			const result = await this.runtimeHost.importFromJsonl(inputPath);
-			if (result.cancelled) {
-				this.showStatus("Import cancelled");
-				return;
-			}
-			await this.handleRuntimeSessionChange();
-			this.renderCurrentSessionState();
-			this.showStatus(`Session imported from: ${inputPath}`);
-		} catch (error: unknown) {
-			if (error instanceof MissingSessionCwdError) {
-				const selectedCwd = await this.promptForMissingSessionCwd(error);
-				if (!selectedCwd) {
-					this.showStatus("Import cancelled");
-					return;
-				}
-				const result = await this.runtimeHost.importFromJsonl(inputPath, selectedCwd);
-				if (result.cancelled) {
-					this.showStatus("Import cancelled");
-					return;
-				}
-				await this.handleRuntimeSessionChange();
-				this.renderCurrentSessionState();
-				this.showStatus(`Session imported from: ${inputPath}`);
-				return;
-			}
-			await this.handleFatalRuntimeError("Failed to import session", error);
-		}
-	}
-
-	private async handleShareCommand(): Promise<void> {
-		// Check if gh is available and logged in
-		try {
-			const authResult = spawnSync("gh", ["auth", "status"], { encoding: "utf-8" });
-			if (authResult.status !== 0) {
-				this.showError("GitHub CLI is not logged in. Run 'gh auth login' first.");
-				return;
-			}
-		} catch {
-			this.showError("GitHub CLI (gh) is not installed. Install it from https://cli.github.com/");
-			return;
-		}
-
-		// Export to a temp file
-		const tmpFile = path.join(os.tmpdir(), "session.html");
-		try {
-			await this.session.exportToHtml(tmpFile);
-		} catch (error: unknown) {
-			this.showError(`Failed to export session: ${error instanceof Error ? error.message : "Unknown error"}`);
-			return;
-		}
-
-		// Show cancellable loader, replacing the editor
-		const loader = new BorderedLoader(this.ui, theme, "Creating gist...");
-		this.editorContainer.clear();
-		this.editorContainer.addChild(loader);
-		this.ui.setFocus(loader);
-		this.ui.requestRender();
-
-		const restoreEditor = () => {
-			loader.dispose();
-			this.editorContainer.clear();
-			this.editorContainer.addChild(this.editor);
-			this.ui.setFocus(this.editor);
-			try {
-				fs.unlinkSync(tmpFile);
-			} catch {
-				// Ignore cleanup errors
-			}
-		};
-
-		// Create a secret gist asynchronously
-		let proc: ReturnType<typeof spawn> | null = null;
-
-		loader.onAbort = () => {
-			proc?.kill();
-			restoreEditor();
-			this.showStatus("Share cancelled");
-		};
-
-		try {
-			const result = await new Promise<{ stdout: string; stderr: string; code: number | null }>((resolve) => {
-				proc = spawn("gh", ["gist", "create", "--public=false", tmpFile]);
-				let stdout = "";
-				let stderr = "";
-				proc.stdout?.on("data", (data) => {
-					stdout += data.toString();
-				});
-				proc.stderr?.on("data", (data) => {
-					stderr += data.toString();
-				});
-				proc.on("close", (code) => resolve({ stdout, stderr, code }));
-			});
-
-			if (loader.signal.aborted) return;
-
-			restoreEditor();
-
-			if (result.code !== 0) {
-				const errorMsg = result.stderr?.trim() || "Unknown error";
-				this.showError(`Failed to create gist: ${errorMsg}`);
-				return;
-			}
-
-			// Extract gist ID from the URL returned by gh
-			// gh returns something like: https://gist.github.com/username/GIST_ID
-			const gistUrl = result.stdout?.trim();
-			const gistId = gistUrl?.split("/").pop();
-			if (!gistId) {
-				this.showError("Failed to parse gist ID from gh output");
-				return;
-			}
-
-			// Create the preview URL
-			const previewUrl = getShareViewerUrl(gistId);
-			this.showStatus(`Share URL: ${previewUrl}\nGist: ${gistUrl}`);
-		} catch (error: unknown) {
-			if (!loader.signal.aborted) {
-				restoreEditor();
-				this.showError(`Failed to create gist: ${error instanceof Error ? error.message : "Unknown error"}`);
-			}
-		}
-	}
-
 	/**
 	 * Capitalize keybinding for display (e.g., "ctrl+c" -> "Ctrl+C").
 	 */
@@ -4939,72 +4448,6 @@ export class InteractiveMode {
 		}
 
 		return hotkeys;
-	}
-
-	private handleSkillsCommand(initialFilter?: SkillSourceTag): void {
-		const categories = this.buildSkillCategories();
-		this.showSelector((done) => {
-			const component = new SkillsHubComponent({
-				categories,
-				onAction: (action: SkillAction) => {
-					done();
-					this.handleSkillAction(action);
-				},
-				onClose: () => done(),
-			});
-			void initialFilter;
-			return { component, focus: component };
-		});
-	}
-
-	private buildSkillCategories(): SkillCategory[] {
-		const skills = this.session.resourceLoader.getSkills().skills;
-		const buckets: Record<SkillSourceTag, SkillEntry[]> = {
-			bundled: [],
-			user: [],
-			project: [],
-			marketplace: [],
-		};
-		for (const skill of skills) {
-			const tag = mapSkillScope(skill.sourceInfo.scope);
-			buckets[tag].push({
-				name: skill.name,
-				description: skill.description,
-				source: tag,
-				location: skill.filePath,
-			});
-		}
-		return [
-			{ id: "bundled", label: "Bundled", skills: buckets.bundled },
-			{ id: "user", label: "User", skills: buckets.user },
-			{ id: "project", label: "Project", skills: buckets.project },
-			{ id: "marketplace", label: "Marketplace", skills: buckets.marketplace },
-		];
-	}
-
-	private handleSkillAction(action: SkillAction): void {
-		if (action.type === "inspect") {
-			const skill = action.skill;
-			const lines = [
-				`### ${skill.name}`,
-				"",
-				skill.description ? `**Description:** ${skill.description}` : "",
-				`**Source:** ${skill.source}`,
-				skill.location ? `**Path:** \`${skill.location}\`` : "",
-			]
-				.filter(Boolean)
-				.join("\n");
-			this.chatContainer.addChild(new Spacer(1));
-			this.chatContainer.addChild(new Markdown(lines, 1, 0, this.getMarkdownThemeWithSettings()));
-			this.ui.requestRender();
-			return;
-		}
-		// install — placeholder until a marketplace registry exists.
-		if (action.skill.source === "marketplace") {
-			this.showStatus(`Marketplace install not implemented yet for ${action.skill.name}`);
-			return;
-		}
-		this.showStatus(`${action.skill.name} is already a ${action.skill.source} skill (no install needed)`);
 	}
 
 	private handleDaxnuts(): void {

@@ -60,14 +60,6 @@ const SAMPLE_INPUTS: Record<string, string> = {
 };
 
 function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
-	const legacy = new Proxy(
-		{},
-		{
-			get(_target, prop: string) {
-				return (...args: unknown[]) => calls.push(`${prop}:${args.map(String).join("|")}`);
-			},
-		},
-	) as InteractiveSlashCommandContext["legacy"];
 	let commandQueue = ["/first", "/second"];
 	return {
 		editor: {
@@ -80,11 +72,25 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 		ui: { requestRender: () => calls.push("requestRender:") } as never,
 		chatContainer: {
 			addChild: (value: unknown) => calls.push(`chatContainer.addChild:${value?.constructor?.name ?? "unknown"}`),
+			children: [],
 		} as never,
 		statusContainer: { clear: () => calls.push("statusContainer.clear:") } as never,
+		editorContainer: {
+			clear: () => calls.push("editorContainer.clear:"),
+			addChild: () => calls.push("editorContainer.addChild:"),
+		} as never,
+		keybindings: { reload: () => calls.push("keybindings.reload:") } as never,
 		runtimeHost: {
 			newSession: async () => {
 				calls.push("runtimeHost.newSession:");
+				return { cancelled: false };
+			},
+			switchSession: async (sessionPath: string, cwd?: string) => {
+				calls.push(`runtimeHost.switchSession:${sessionPath}:${cwd ?? ""}`);
+				return { cancelled: false };
+			},
+			importFromJsonl: async (inputPath: string, cwd?: string) => {
+				calls.push(`runtimeHost.importFromJsonl:${inputPath}:${cwd ?? ""}`);
 				return { cancelled: false };
 			},
 		} as never,
@@ -127,9 +133,12 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 			setCaveModeSessionDisabled: () => calls.push("session.setCaveModeSessionDisabled:"),
 			setPonytailSessionIntensity: (value: string) => calls.push(`session.setPonytailSessionIntensity:${value}`),
 			setPonytailSessionDisabled: () => calls.push("session.setPonytailSessionDisabled:"),
+			resourceLoader: { getSkills: () => ({ skills: [] }) },
 		} as never,
 		sessionManager: {
 			getCwd: () => "/repo",
+			getSessionDir: () => "/sessions",
+			getSessionFile: () => "/sessions/current.jsonl",
 			getEntries: () => [{ type: "message" }, { type: "message" }],
 		} as never,
 		settingsManager: {
@@ -194,7 +203,17 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 		setDefaultEditorEscape: () => calls.push("setDefaultEditorEscape:"),
 		showExtensionSelector: async () => "No summary",
 		showExtensionEditor: async () => undefined,
-		legacy,
+		showExtensionConfirm: async () => true,
+		promptForMissingSessionCwd: async () => undefined,
+		resetExtensionUI: () => calls.push("resetExtensionUI:"),
+		setupAutocomplete: () => calls.push("setupAutocomplete:"),
+		setupExtensionShortcuts: () => calls.push("setupExtensionShortcuts:"),
+		rebuildChatFromMessages: () => calls.push("rebuildChatFromMessages:"),
+		showLoadedResources: () => calls.push("showLoadedResources:"),
+		getHideThinkingBlock: () => false,
+		setHideThinkingBlock: (hidden) => calls.push(`setHideThinkingBlock:${hidden}`),
+		setFooterAutoCompactEnabled: (enabled) => calls.push(`setFooterAutoCompactEnabled:${enabled}`),
+		applyEditorDisplaySettings: () => calls.push("applyEditorDisplaySettings:"),
 	};
 }
 
@@ -265,10 +284,10 @@ describe("InteractiveSlashCommandRouter", () => {
 		expect(await r.handleCommand("/exporter")).toBe(true);
 		expect(await r.handleCommand("/import-foo")).toBe(true);
 
-		expect(calls).toContain("plugins:");
+		expect(calls).toContain("showSelector:");
 		expect(r.canHandle("/mode full")).toBe(true);
 		expect(calls.some((call) => call.includes("Session exported to"))).toBe(true);
-		expect(calls).toContain("import:/import-foo");
+		expect(calls).toContain("showError:Usage: /import <path.jsonl>");
 	});
 
 	it("runs /new and /clear command bodies through runtime primitives", async () => {

@@ -18,9 +18,13 @@ import type { Component, Container, EditorComponent, MarkdownTheme, TUI } from "
 import type { AgentSession } from "../../../core/agent-session.js";
 import type { AgentSessionRuntime } from "../../../core/agent-session-runtime.js";
 import type { ArchitectModeState } from "../../../core/chat-modes/architect.js";
+import type { ExtensionUIDialogOptions } from "../../../core/extensions/index.js";
+import type { KeybindingsManager } from "../../../core/keybindings.js";
+import type { MissingSessionCwdError } from "../../../core/session-cwd.js";
 import type { SessionManager } from "../../../core/session-manager.js";
 import type { SettingsManager } from "../../../core/settings-manager.js";
 import type { RepomapChatState } from "../../../core/slash-commands.js";
+import type { SourceInfo } from "../../../core/source-info.js";
 
 type MaybePromise = void | Promise<void>;
 
@@ -37,6 +41,8 @@ export interface InteractiveSlashCommandContext {
 	ui: TUI;
 	chatContainer: Container;
 	statusContainer: Container;
+	editorContainer: Container;
+	keybindings: KeybindingsManager;
 	runtimeHost: AgentSessionRuntime;
 	session: AgentSession;
 	sessionManager: SessionManager;
@@ -76,15 +82,21 @@ export interface InteractiveSlashCommandContext {
 	setDefaultEditorEscape(handler: (() => void) | undefined): void;
 	showExtensionSelector(title: string, options: string[]): Promise<string | undefined>;
 	showExtensionEditor(title: string): Promise<string | undefined>;
-	legacy: {
-		settings(): MaybePromise;
-		import(text: string): MaybePromise;
-		share(): MaybePromise;
-		skills(): MaybePromise;
-		plugins(): MaybePromise;
-		reload(): MaybePromise;
-		resume(target: string | undefined): MaybePromise;
-	};
+	showExtensionConfirm(title: string, message: string, opts?: ExtensionUIDialogOptions): Promise<boolean>;
+	promptForMissingSessionCwd(error: MissingSessionCwdError): Promise<string | undefined>;
+	resetExtensionUI(): void;
+	setupAutocomplete(): void;
+	setupExtensionShortcuts(): void;
+	rebuildChatFromMessages(): void;
+	showLoadedResources(options?: {
+		extensions?: Array<{ path: string; sourceInfo?: SourceInfo }>;
+		force?: boolean;
+		showDiagnosticsWhenQuiet?: boolean;
+	}): void;
+	getHideThinkingBlock(): boolean;
+	setHideThinkingBlock(hidden: boolean): void;
+	setFooterAutoCompactEnabled(enabled: boolean): void;
+	applyEditorDisplaySettings(): void;
 }
 
 export abstract class InteractiveSlashCommand {
