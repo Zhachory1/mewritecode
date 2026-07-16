@@ -182,7 +182,7 @@ import {
 	evaluateFireStarter,
 	evaluateTribalSignal,
 } from "./context-drift-widgets.js";
-import { handleInteractiveSlashCommand, type InteractiveSlashCommandHandlers } from "./interactive-slash-command.js";
+import { type InteractiveSlashCommandHandlers, InteractiveSlashCommandRouter } from "./interactive-slash-command.js";
 import { resolveSessionReference } from "./session-reference.js";
 import {
 	AUTO_THEME_NAME,
@@ -2490,7 +2490,8 @@ export class InteractiveMode {
 			}
 
 			// Handle commands
-			if (await handleInteractiveSlashCommand(text, this.createInteractiveSlashCommandHandlers())) {
+			const slashRouter = new InteractiveSlashCommandRouter(this.createInteractiveSlashCommandHandlers());
+			if (await slashRouter.handleCommand(text)) {
 				return;
 			}
 

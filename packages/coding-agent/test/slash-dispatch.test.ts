@@ -3,7 +3,10 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { BUILTIN_SLASH_COMMANDS } from "../src/core/slash-commands.js";
-import { classifyInteractiveSlashCommand } from "../src/modes/interactive/interactive-slash-command.js";
+import {
+	type InteractiveSlashCommandHandlers,
+	InteractiveSlashCommandRouter,
+} from "../src/modes/interactive/interactive-slash-command.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const interactiveModePath = resolve(here, "../src/modes/interactive/interactive-mode.ts");
@@ -59,17 +62,30 @@ const SAMPLE_INPUTS: Record<string, string> = {
 	quit: "/quit",
 };
 
+const noopHandlers = new Proxy(
+	{
+		setEditorText: () => {},
+	},
+	{
+		get(target, prop: string) {
+			if (prop in target) return target[prop as keyof typeof target];
+			return () => {};
+		},
+	},
+) as unknown as InteractiveSlashCommandHandlers;
+
 describe("slash command dispatcher", () => {
-	it("every BUILTIN_SLASH_COMMAND is classified for interactive dispatch", () => {
+	it("every BUILTIN_SLASH_COMMAND is handled by the interactive router", () => {
 		const missingSamples = BUILTIN_SLASH_COMMANDS.filter((cmd) => cmd.wired && !SAMPLE_INPUTS[cmd.name]).map(
 			(cmd) => cmd.name,
 		);
 		expect(missingSamples).toEqual([]);
 
-		const unclassified = BUILTIN_SLASH_COMMANDS.filter(
-			(cmd) => cmd.wired && classifyInteractiveSlashCommand(SAMPLE_INPUTS[cmd.name]) === null,
+		const router = new InteractiveSlashCommandRouter(noopHandlers);
+		const unhandled = BUILTIN_SLASH_COMMANDS.filter(
+			(cmd) => cmd.wired && !router.canHandle(SAMPLE_INPUTS[cmd.name]),
 		).map((cmd) => cmd.name);
-		expect(unclassified).toEqual([]);
+		expect(unhandled).toEqual([]);
 	});
 
 	it("dispatcher has an unknown-slash fallback that flags unwired built-ins", () => {

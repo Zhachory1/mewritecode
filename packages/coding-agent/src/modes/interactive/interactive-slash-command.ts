@@ -1,54 +1,3 @@
-export type InteractiveSlashCommand =
-	| { kind: "settings" }
-	| { kind: "scoped-models" }
-	| { kind: "model"; searchTerm?: string }
-	| { kind: "export"; text: string }
-	| { kind: "import"; text: string }
-	| { kind: "share" }
-	| { kind: "copy" }
-	| { kind: "name"; text: string }
-	| { kind: "session" }
-	| { kind: "changelog" }
-	| { kind: "hotkeys" }
-	| { kind: "activity" }
-	| { kind: "help" }
-	| { kind: "skills"; mode?: "marketplace" }
-	| { kind: "fork" }
-	| { kind: "tree" }
-	| { kind: "login"; text: string }
-	| { kind: "logout" }
-	| { kind: "clear" }
-	| { kind: "compact"; instructions?: string }
-	| { kind: "freeze"; label?: string }
-	| { kind: "checkpoints" }
-	| { kind: "cave-mode"; text: string }
-	| { kind: "ponytail"; text: string }
-	| { kind: "tokens" }
-	| { kind: "cost" }
-	| { kind: "savings"; arg: string }
-	| { kind: "reload" }
-	| { kind: "hooks"; args: string }
-	| { kind: "debug" }
-	| { kind: "arminsayshi" }
-	| { kind: "resume"; target?: string }
-	| { kind: "quit" }
-	| { kind: "mcp"; text: string }
-	| { kind: "memory"; text: string }
-	| { kind: "repomap"; args: string }
-	| { kind: "architect"; args: string }
-	| { kind: "recipe"; text: string }
-	| { kind: "checkpoint"; args: string }
-	| { kind: "rollback"; args: string }
-	| { kind: "goal"; args: string }
-	| { kind: "plan"; args: string }
-	| { kind: "act"; args: string }
-	| { kind: "approval"; args: string }
-	| { kind: "queue"; args: string }
-	| { kind: "context-status" }
-	| { kind: "context-learn" }
-	| { kind: "context-setup"; args: string }
-	| { kind: "btw"; question: string };
-
 type MaybePromise = void | Promise<void>;
 
 export interface InteractiveSlashCommandHandlers {
@@ -104,6 +53,12 @@ export interface InteractiveSlashCommandHandlers {
 	btw(question: string): MaybePromise;
 }
 
+interface InteractiveSlashCommandRegistration {
+	name: string;
+	matches(text: string): boolean;
+	run(text: string): MaybePromise;
+}
+
 function arg(text: string, command: string): string | undefined {
 	if (text === command) return undefined;
 	const prefix = `${command} `;
@@ -115,290 +70,321 @@ function args(text: string, command: string): string {
 	return arg(text, command) ?? "";
 }
 
-export function classifyInteractiveSlashCommand(text: string): InteractiveSlashCommand | null {
-	const trimmed = text.trim();
-	if (!trimmed.startsWith("/")) return null;
-
-	if (trimmed === "/settings") return { kind: "settings" };
-	if (trimmed === "/scoped-models") return { kind: "scoped-models" };
-	if (trimmed === "/model" || trimmed.startsWith("/model "))
-		return { kind: "model", searchTerm: arg(trimmed, "/model") };
-	if (trimmed.startsWith("/export")) return { kind: "export", text: trimmed };
-	if (trimmed.startsWith("/import")) return { kind: "import", text: trimmed };
-	if (trimmed === "/share") return { kind: "share" };
-	if (trimmed === "/copy") return { kind: "copy" };
-	if (trimmed === "/name" || trimmed.startsWith("/name ")) return { kind: "name", text: trimmed };
-	if (trimmed === "/session") return { kind: "session" };
-	if (trimmed === "/changelog") return { kind: "changelog" };
-	if (trimmed === "/hotkeys") return { kind: "hotkeys" };
-	if (trimmed === "/activity") return { kind: "activity" };
-	if (trimmed === "/help") return { kind: "help" };
-	if (trimmed === "/skills" || trimmed === "/plugins") {
-		return { kind: "skills", mode: trimmed === "/plugins" ? "marketplace" : undefined };
-	}
-	if (trimmed === "/fork") return { kind: "fork" };
-	if (trimmed === "/tree") return { kind: "tree" };
-	if (trimmed === "/login" || trimmed.startsWith("/login ")) return { kind: "login", text: trimmed };
-	if (trimmed === "/logout") return { kind: "logout" };
-	if (trimmed === "/new" || trimmed === "/clear") return { kind: "clear" };
-	if (trimmed === "/compact" || trimmed.startsWith("/compact "))
-		return { kind: "compact", instructions: arg(trimmed, "/compact") };
-	if (trimmed === "/freeze" || trimmed.startsWith("/freeze "))
-		return { kind: "freeze", label: arg(trimmed, "/freeze") };
-	if (trimmed === "/checkpoints") return { kind: "checkpoints" };
-	if (trimmed === "/mode" || trimmed.startsWith("/mode ") || trimmed === "/cave" || trimmed.startsWith("/cave "))
-		return { kind: "cave-mode", text: trimmed };
-	if (trimmed === "/ponytail" || trimmed.startsWith("/ponytail ")) return { kind: "ponytail", text: trimmed };
-	if (trimmed === "/tokens") return { kind: "tokens" };
-	if (trimmed === "/cost") return { kind: "cost" };
-	if (trimmed === "/savings" || trimmed.startsWith("/savings "))
-		return { kind: "savings", arg: args(trimmed, "/savings") };
-	if (trimmed === "/reload") return { kind: "reload" };
-	if (trimmed === "/hooks" || trimmed.startsWith("/hooks ")) return { kind: "hooks", args: args(trimmed, "/hooks") };
-	if (trimmed === "/debug") return { kind: "debug" };
-	if (trimmed === "/arminsayshi") return { kind: "arminsayshi" };
-	if (trimmed === "/resume" || trimmed.startsWith("/resume "))
-		return { kind: "resume", target: arg(trimmed, "/resume") };
-	if (trimmed === "/quit") return { kind: "quit" };
-	if (trimmed === "/mcp" || trimmed.startsWith("/mcp ")) return { kind: "mcp", text: trimmed };
-	if (trimmed === "/memory" || trimmed.startsWith("/memory ")) return { kind: "memory", text: trimmed };
-	if (trimmed === "/repomap" || trimmed.startsWith("/repomap "))
-		return { kind: "repomap", args: args(trimmed, "/repomap") };
-	if (trimmed === "/architect" || trimmed.startsWith("/architect "))
-		return { kind: "architect", args: args(trimmed, "/architect") };
-	if (trimmed === "/recipe" || trimmed.startsWith("/recipe ")) return { kind: "recipe", text: trimmed };
-	if (trimmed === "/checkpoint" || trimmed.startsWith("/checkpoint "))
-		return { kind: "checkpoint", args: args(trimmed, "/checkpoint") };
-	if (trimmed === "/rollback" || trimmed.startsWith("/rollback "))
-		return { kind: "rollback", args: args(trimmed, "/rollback") };
-	if (trimmed === "/goal" || trimmed.startsWith("/goal ")) return { kind: "goal", args: args(trimmed, "/goal") };
-	if (trimmed === "/plan" || trimmed.startsWith("/plan ")) return { kind: "plan", args: args(trimmed, "/plan") };
-	if (trimmed === "/act" || trimmed.startsWith("/act ")) return { kind: "act", args: args(trimmed, "/act") };
-	if (trimmed === "/approval" || trimmed.startsWith("/approval "))
-		return { kind: "approval", args: args(trimmed, "/approval") };
-	if (trimmed === "/queue" || trimmed.startsWith("/queue ")) return { kind: "queue", args: args(trimmed, "/queue") };
-	if (
-		trimmed === "/context" ||
-		trimmed === "/context status" ||
-		trimmed === "/context memory status" ||
-		trimmed === "/context doctor"
-	)
-		return { kind: "context-status" };
-	if (trimmed === "/context learn" || trimmed === "/context learn --preview") return { kind: "context-learn" };
-	if (trimmed === "/context setup" || trimmed.startsWith("/context setup "))
-		return { kind: "context-setup", args: args(trimmed, "/context setup") };
-	if (trimmed === "/btw" || trimmed.startsWith("/btw ")) return { kind: "btw", question: args(trimmed, "/btw") };
-
-	return null;
+function exact(command: string): (text: string) => boolean {
+	return (text) => text === command;
 }
 
-export async function handleInteractiveSlashCommand(
-	text: string,
-	handlers: InteractiveSlashCommandHandlers,
-): Promise<boolean> {
-	const command = classifyInteractiveSlashCommand(text);
-	if (!command) return false;
+function exactOrArg(command: string): (text: string) => boolean {
+	return (text) => text === command || text.startsWith(`${command} `);
+}
 
-	switch (command.kind) {
-		case "settings":
-			handlers.settings();
-			handlers.setEditorText("");
-			return true;
-		case "scoped-models":
-			handlers.setEditorText("");
-			await handlers.scopedModels();
-			return true;
-		case "model":
-			handlers.setEditorText("");
-			await handlers.model(command.searchTerm);
-			return true;
-		case "export":
-			await handlers.export(command.text);
-			handlers.setEditorText("");
-			return true;
-		case "import":
-			await handlers.import(command.text);
-			handlers.setEditorText("");
-			return true;
-		case "share":
-			await handlers.share();
-			handlers.setEditorText("");
-			return true;
-		case "copy":
-			await handlers.copy();
-			handlers.setEditorText("");
-			return true;
-		case "name":
-			handlers.name(command.text);
-			handlers.setEditorText("");
-			return true;
-		case "session":
-			handlers.session();
-			handlers.setEditorText("");
-			return true;
-		case "changelog":
-			handlers.changelog();
-			handlers.setEditorText("");
-			return true;
-		case "hotkeys":
-			handlers.hotkeys();
-			handlers.setEditorText("");
-			return true;
-		case "activity":
-			handlers.setEditorText("");
-			handlers.activity();
-			return true;
-		case "help":
-			handlers.setEditorText("");
-			handlers.help();
-			return true;
-		case "skills":
-			handlers.setEditorText("");
-			handlers.skills(command.mode);
-			return true;
-		case "fork":
-			handlers.fork();
-			handlers.setEditorText("");
-			return true;
-		case "tree":
-			handlers.tree();
-			handlers.setEditorText("");
-			return true;
-		case "login":
-			handlers.setEditorText("");
-			await handlers.login(command.text);
-			return true;
-		case "logout":
-			handlers.logout();
-			handlers.setEditorText("");
-			return true;
-		case "clear":
-			handlers.setEditorText("");
-			await handlers.clear();
-			return true;
-		case "compact":
-			handlers.setEditorText("");
-			await handlers.compact(command.instructions);
-			return true;
-		case "freeze":
-			handlers.setEditorText("");
-			await handlers.freeze(command.label);
-			return true;
-		case "checkpoints":
-			handlers.setEditorText("");
-			handlers.checkpoints();
-			return true;
-		case "cave-mode":
-			handlers.setEditorText("");
-			handlers.caveMode(command.text);
-			return true;
-		case "ponytail":
-			handlers.setEditorText("");
-			handlers.ponytail(command.text);
-			return true;
-		case "tokens":
-			handlers.setEditorText("");
-			handlers.tokens();
-			return true;
-		case "cost":
-			handlers.setEditorText("");
-			handlers.cost();
-			return true;
-		case "savings":
-			handlers.setEditorText("");
-			await handlers.savings(command.arg);
-			return true;
-		case "reload":
-			handlers.setEditorText("");
-			await handlers.reload();
-			return true;
-		case "hooks":
-			handlers.setEditorText("");
-			await handlers.hooks(command.args);
-			return true;
-		case "debug":
-			handlers.debug();
-			handlers.setEditorText("");
-			return true;
-		case "arminsayshi":
-			handlers.arminSaysHi();
-			handlers.setEditorText("");
-			return true;
-		case "resume":
-			handlers.setEditorText("");
-			await handlers.resume(command.target);
-			return true;
-		case "quit":
-			handlers.setEditorText("");
-			await handlers.quit();
-			return true;
-		case "mcp":
-			handlers.setEditorText("");
-			await handlers.mcp(command.text);
-			return true;
-		case "memory":
-			handlers.setEditorText("");
-			await handlers.memory(command.text);
-			return true;
-		case "repomap":
-			handlers.setEditorText("");
-			await handlers.repomap(command.args);
-			return true;
-		case "architect":
-			handlers.setEditorText("");
-			await handlers.architect(command.args);
-			return true;
-		case "recipe":
-			handlers.setEditorText("");
-			await handlers.recipe(command.text);
-			return true;
-		case "checkpoint":
-			handlers.setEditorText("");
-			await handlers.checkpoint(command.args);
-			return true;
-		case "rollback":
-			handlers.setEditorText("");
-			await handlers.rollback(command.args);
-			return true;
-		case "goal":
-			handlers.setEditorText("");
-			await handlers.goal(command.args);
-			return true;
-		case "plan":
-			handlers.setEditorText("");
-			handlers.plan(command.args);
-			return true;
-		case "act":
-			handlers.setEditorText("");
-			handlers.act(command.args);
-			return true;
-		case "approval":
-			handlers.setEditorText("");
-			handlers.approval(command.args);
-			return true;
-		case "queue":
-			handlers.setEditorText("");
-			handlers.queue(command.args);
-			return true;
-		case "context-status":
-			handlers.setEditorText("");
-			handlers.contextStatus();
-			return true;
-		case "context-learn":
-			handlers.setEditorText("");
-			handlers.contextLearn();
-			return true;
-		case "context-setup":
-			handlers.setEditorText("");
-			handlers.contextSetup(command.args);
-			return true;
-		case "btw":
-			handlers.setEditorText("");
-			handlers.btw(command.question);
-			return true;
-		default: {
-			const _exhaustive: never = command;
-			return _exhaustive;
+function broadPrefix(command: string): (text: string) => boolean {
+	return (text) => text.startsWith(command);
+}
+
+export class InteractiveSlashCommandRouter {
+	private readonly commands: InteractiveSlashCommandRegistration[] = [];
+
+	constructor(private readonly handlers: InteractiveSlashCommandHandlers) {
+		this.registerDefaults();
+	}
+
+	private add(command: InteractiveSlashCommandRegistration): void {
+		this.commands.push(command);
+	}
+
+	private clearAnd(run: () => MaybePromise): MaybePromise {
+		this.handlers.setEditorText("");
+		return run();
+	}
+
+	private registerDefaults(): void {
+		this.add({
+			name: "settings",
+			matches: exact("/settings"),
+			run: () => {
+				this.handlers.settings();
+				this.handlers.setEditorText("");
+			},
+		});
+		this.add({
+			name: "scoped-models",
+			matches: exact("/scoped-models"),
+			run: () => this.clearAnd(() => this.handlers.scopedModels()),
+		});
+		this.add({
+			name: "model",
+			matches: exactOrArg("/model"),
+			run: (text) => this.clearAnd(() => this.handlers.model(arg(text, "/model"))),
+		});
+		this.add({
+			name: "export",
+			matches: broadPrefix("/export"),
+			run: async (text) => {
+				await this.handlers.export(text);
+				this.handlers.setEditorText("");
+			},
+		});
+		this.add({
+			name: "import",
+			matches: broadPrefix("/import"),
+			run: async (text) => {
+				await this.handlers.import(text);
+				this.handlers.setEditorText("");
+			},
+		});
+		this.add({
+			name: "share",
+			matches: exact("/share"),
+			run: async () => {
+				await this.handlers.share();
+				this.handlers.setEditorText("");
+			},
+		});
+		this.add({
+			name: "copy",
+			matches: exact("/copy"),
+			run: async () => {
+				await this.handlers.copy();
+				this.handlers.setEditorText("");
+			},
+		});
+		this.add({
+			name: "name",
+			matches: exactOrArg("/name"),
+			run: (text) => {
+				this.handlers.name(text);
+				this.handlers.setEditorText("");
+			},
+		});
+		this.add({
+			name: "session",
+			matches: exact("/session"),
+			run: () => {
+				this.handlers.session();
+				this.handlers.setEditorText("");
+			},
+		});
+		this.add({
+			name: "changelog",
+			matches: exact("/changelog"),
+			run: () => {
+				this.handlers.changelog();
+				this.handlers.setEditorText("");
+			},
+		});
+		this.add({
+			name: "hotkeys",
+			matches: exact("/hotkeys"),
+			run: () => {
+				this.handlers.hotkeys();
+				this.handlers.setEditorText("");
+			},
+		});
+		this.add({
+			name: "activity",
+			matches: exact("/activity"),
+			run: () => this.clearAnd(() => this.handlers.activity()),
+		});
+		this.add({ name: "help", matches: exact("/help"), run: () => this.clearAnd(() => this.handlers.help()) });
+		this.add({
+			name: "skills",
+			matches: (text) => text === "/skills" || text === "/plugins",
+			run: (text) => this.clearAnd(() => this.handlers.skills(text === "/plugins" ? "marketplace" : undefined)),
+		});
+		this.add({
+			name: "fork",
+			matches: exact("/fork"),
+			run: () => {
+				this.handlers.fork();
+				this.handlers.setEditorText("");
+			},
+		});
+		this.add({
+			name: "tree",
+			matches: exact("/tree"),
+			run: () => {
+				this.handlers.tree();
+				this.handlers.setEditorText("");
+			},
+		});
+		this.add({
+			name: "login",
+			matches: exactOrArg("/login"),
+			run: (text) => this.clearAnd(() => this.handlers.login(text)),
+		});
+		this.add({
+			name: "logout",
+			matches: exact("/logout"),
+			run: () => {
+				this.handlers.logout();
+				this.handlers.setEditorText("");
+			},
+		});
+		this.add({
+			name: "clear",
+			matches: (text) => text === "/new" || text === "/clear",
+			run: () => this.clearAnd(() => this.handlers.clear()),
+		});
+		this.add({
+			name: "compact",
+			matches: exactOrArg("/compact"),
+			run: (text) => this.clearAnd(() => this.handlers.compact(arg(text, "/compact"))),
+		});
+		this.add({
+			name: "freeze",
+			matches: exactOrArg("/freeze"),
+			run: (text) => this.clearAnd(() => this.handlers.freeze(arg(text, "/freeze"))),
+		});
+		this.add({
+			name: "checkpoints",
+			matches: exact("/checkpoints"),
+			run: () => this.clearAnd(() => this.handlers.checkpoints()),
+		});
+		this.add({
+			name: "mode",
+			matches: (text) => exactOrArg("/mode")(text) || exactOrArg("/cave")(text),
+			run: (text) => this.clearAnd(() => this.handlers.caveMode(text)),
+		});
+		this.add({
+			name: "ponytail",
+			matches: exactOrArg("/ponytail"),
+			run: (text) => this.clearAnd(() => this.handlers.ponytail(text)),
+		});
+		this.add({ name: "tokens", matches: exact("/tokens"), run: () => this.clearAnd(() => this.handlers.tokens()) });
+		this.add({ name: "cost", matches: exact("/cost"), run: () => this.clearAnd(() => this.handlers.cost()) });
+		this.add({
+			name: "savings",
+			matches: exactOrArg("/savings"),
+			run: (text) => this.clearAnd(() => this.handlers.savings(args(text, "/savings"))),
+		});
+		this.add({ name: "reload", matches: exact("/reload"), run: () => this.clearAnd(() => this.handlers.reload()) });
+		this.add({
+			name: "hooks",
+			matches: exactOrArg("/hooks"),
+			run: (text) => this.clearAnd(() => this.handlers.hooks(args(text, "/hooks"))),
+		});
+		this.add({
+			name: "debug",
+			matches: exact("/debug"),
+			run: () => {
+				this.handlers.debug();
+				this.handlers.setEditorText("");
+			},
+		});
+		this.add({
+			name: "arminsayshi",
+			matches: exact("/arminsayshi"),
+			run: () => {
+				this.handlers.arminSaysHi();
+				this.handlers.setEditorText("");
+			},
+		});
+		this.add({
+			name: "resume",
+			matches: exactOrArg("/resume"),
+			run: (text) => this.clearAnd(() => this.handlers.resume(arg(text, "/resume"))),
+		});
+		this.add({ name: "quit", matches: exact("/quit"), run: () => this.clearAnd(() => this.handlers.quit()) });
+		this.add({
+			name: "mcp",
+			matches: exactOrArg("/mcp"),
+			run: (text) => this.clearAnd(() => this.handlers.mcp(text)),
+		});
+		this.add({
+			name: "memory",
+			matches: exactOrArg("/memory"),
+			run: (text) => this.clearAnd(() => this.handlers.memory(text)),
+		});
+		this.add({
+			name: "repomap",
+			matches: exactOrArg("/repomap"),
+			run: (text) => this.clearAnd(() => this.handlers.repomap(args(text, "/repomap"))),
+		});
+		this.add({
+			name: "architect",
+			matches: exactOrArg("/architect"),
+			run: (text) => this.clearAnd(() => this.handlers.architect(args(text, "/architect"))),
+		});
+		this.add({
+			name: "recipe",
+			matches: exactOrArg("/recipe"),
+			run: (text) => this.clearAnd(() => this.handlers.recipe(text)),
+		});
+		this.add({
+			name: "checkpoint",
+			matches: exactOrArg("/checkpoint"),
+			run: (text) => this.clearAnd(() => this.handlers.checkpoint(args(text, "/checkpoint"))),
+		});
+		this.add({
+			name: "rollback",
+			matches: exactOrArg("/rollback"),
+			run: (text) => this.clearAnd(() => this.handlers.rollback(args(text, "/rollback"))),
+		});
+		this.add({
+			name: "goal",
+			matches: exactOrArg("/goal"),
+			run: (text) => this.clearAnd(() => this.handlers.goal(args(text, "/goal"))),
+		});
+		this.add({
+			name: "plan",
+			matches: exactOrArg("/plan"),
+			run: (text) => this.clearAnd(() => this.handlers.plan(args(text, "/plan"))),
+		});
+		this.add({
+			name: "act",
+			matches: exactOrArg("/act"),
+			run: (text) => this.clearAnd(() => this.handlers.act(args(text, "/act"))),
+		});
+		this.add({
+			name: "approval",
+			matches: exactOrArg("/approval"),
+			run: (text) => this.clearAnd(() => this.handlers.approval(args(text, "/approval"))),
+		});
+		this.add({
+			name: "queue",
+			matches: exactOrArg("/queue"),
+			run: (text) => this.clearAnd(() => this.handlers.queue(args(text, "/queue"))),
+		});
+		this.add({
+			name: "context",
+			matches: (text) =>
+				text === "/context" ||
+				text === "/context status" ||
+				text === "/context memory status" ||
+				text === "/context doctor",
+			run: () => this.clearAnd(() => this.handlers.contextStatus()),
+		});
+		this.add({
+			name: "context-learn",
+			matches: (text) => text === "/context learn" || text === "/context learn --preview",
+			run: () => this.clearAnd(() => this.handlers.contextLearn()),
+		});
+		this.add({
+			name: "context-setup",
+			matches: exactOrArg("/context setup"),
+			run: (text) => this.clearAnd(() => this.handlers.contextSetup(args(text, "/context setup"))),
+		});
+		this.add({
+			name: "btw",
+			matches: exactOrArg("/btw"),
+			run: (text) => this.clearAnd(() => this.handlers.btw(args(text, "/btw"))),
+		});
+	}
+
+	canHandle(text: string): boolean {
+		const trimmed = text.trim();
+		return this.commands.some((command) => command.matches(trimmed));
+	}
+
+	async handleCommand(text: string): Promise<boolean> {
+		const trimmed = text.trim();
+		for (const command of this.commands) {
+			if (command.matches(trimmed)) {
+				await command.run(trimmed);
+				return true;
+			}
 		}
+		return false;
 	}
 }

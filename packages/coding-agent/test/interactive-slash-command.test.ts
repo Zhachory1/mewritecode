@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { BUILTIN_SLASH_COMMANDS } from "../src/core/slash-commands.js";
 import {
-	classifyInteractiveSlashCommand,
-	handleInteractiveSlashCommand,
 	type InteractiveSlashCommandHandlers,
+	InteractiveSlashCommandRouter,
 } from "../src/modes/interactive/interactive-slash-command.js";
 
 const SAMPLE_INPUTS: Record<string, string> = {
@@ -72,45 +71,61 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandHandlers {
 	) as unknown as InteractiveSlashCommandHandlers;
 }
 
-describe("classifyInteractiveSlashCommand", () => {
-	it("classifies every wired built-in slash command", () => {
+function router(calls: string[] = []): InteractiveSlashCommandRouter {
+	return new InteractiveSlashCommandRouter(recordingHandlers(calls));
+}
+
+describe("InteractiveSlashCommandRouter", () => {
+	it("handles every wired built-in slash command", () => {
 		const missing = BUILTIN_SLASH_COMMANDS.filter((command) => command.wired && !SAMPLE_INPUTS[command.name]).map(
 			(command) => command.name,
 		);
 		expect(missing).toEqual([]);
 
-		for (const command of BUILTIN_SLASH_COMMANDS.filter((command) => command.wired)) {
-			expect(classifyInteractiveSlashCommand(SAMPLE_INPUTS[command.name]), command.name).not.toBeNull();
-		}
+		const r = router();
+		const unhandled = BUILTIN_SLASH_COMMANDS.filter(
+			(command) => command.wired && !r.canHandle(SAMPLE_INPUTS[command.name]),
+		).map((command) => command.name);
+		expect(unhandled).toEqual([]);
 	});
 
-	it("preserves parsed arguments for commands that need them", () => {
-		expect(classifyInteractiveSlashCommand("/model claude")).toEqual({ kind: "model", searchTerm: "claude" });
-		expect(classifyInteractiveSlashCommand("/compact   keep decisions  ")).toEqual({
-			kind: "compact",
-			instructions: "keep decisions",
-		});
-		expect(classifyInteractiveSlashCommand("/freeze   release prep  ")).toEqual({
-			kind: "freeze",
-			label: "release prep",
-		});
-		expect(classifyInteractiveSlashCommand("/queue clear")).toEqual({ kind: "queue", args: "clear" });
-		expect(classifyInteractiveSlashCommand("/context setup docs docs/")).toEqual({
-			kind: "context-setup",
-			args: "docs docs/",
-		});
+	it("passes parsed arguments to handlers", async () => {
+		const calls: string[] = [];
+		const r = router(calls);
+
+		expect(await r.handleCommand("/model claude")).toBe(true);
+		expect(await r.handleCommand("/compact   keep decisions  ")).toBe(true);
+		expect(await r.handleCommand("/freeze   release prep  ")).toBe(true);
+		expect(await r.handleCommand("/queue clear")).toBe(true);
+		expect(await r.handleCommand("/context setup docs docs/")).toBe(true);
+
+		expect(calls).toContain("model:claude");
+		expect(calls).toContain("compact:keep decisions");
+		expect(calls).toContain("freeze:release prep");
+		expect(calls).toContain("queue:clear");
+		expect(calls).toContain("contextSetup:docs docs/");
 	});
 
-	it("keeps known aliases and legacy broad-prefix commands explicit", () => {
-		expect(classifyInteractiveSlashCommand("/clear")).toEqual({ kind: "clear" });
-		expect(classifyInteractiveSlashCommand("/new")).toEqual({ kind: "clear" });
-		expect(classifyInteractiveSlashCommand("/plugins")).toEqual({ kind: "skills", mode: "marketplace" });
-		expect(classifyInteractiveSlashCommand("/cave stats")).toEqual({ kind: "cave-mode", text: "/cave stats" });
-		expect(classifyInteractiveSlashCommand("/exporter")).toEqual({ kind: "export", text: "/exporter" });
-		expect(classifyInteractiveSlashCommand("/import-foo")).toEqual({ kind: "import", text: "/import-foo" });
+	it("keeps known aliases and legacy broad-prefix commands explicit", async () => {
+		const calls: string[] = [];
+		const r = router(calls);
+
+		expect(await r.handleCommand("/clear")).toBe(true);
+		expect(await r.handleCommand("/new")).toBe(true);
+		expect(await r.handleCommand("/plugins")).toBe(true);
+		expect(await r.handleCommand("/cave stats")).toBe(true);
+		expect(await r.handleCommand("/exporter")).toBe(true);
+		expect(await r.handleCommand("/import-foo")).toBe(true);
+
+		expect(calls).toContain("clear:");
+		expect(calls).toContain("skills:marketplace");
+		expect(calls).toContain("caveMode:/cave stats");
+		expect(calls).toContain("export:/exporter");
+		expect(calls).toContain("import:/import-foo");
 	});
 
-	it("returns null for unknown or boundary-mismatched slash text", () => {
+	it("returns false for unknown or boundary-mismatched slash text", async () => {
+		const r = router();
 		for (const input of [
 			"plain prompt",
 			"",
@@ -123,30 +138,21 @@ describe("classifyInteractiveSlashCommand", () => {
 			"/loginx",
 			"/some-extension",
 		]) {
-			expect(classifyInteractiveSlashCommand(input), input).toBeNull();
+			expect(await r.handleCommand(input), input).toBe(false);
 		}
 	});
 
-	it("dispatches through handlers with preserved editor clearing order", async () => {
+	it("preserves editor clearing order", async () => {
 		const logoutCalls: string[] = [];
-		expect(await handleInteractiveSlashCommand("/logout", recordingHandlers(logoutCalls))).toBe(true);
+		expect(await router(logoutCalls).handleCommand("/logout")).toBe(true);
 		expect(logoutCalls).toEqual(["logout:", "setEditorText:"]);
 
 		const compactCalls: string[] = [];
-		expect(await handleInteractiveSlashCommand("/compact keep decisions", recordingHandlers(compactCalls))).toBe(
-			true,
-		);
+		expect(await router(compactCalls).handleCommand("/compact keep decisions")).toBe(true);
 		expect(compactCalls).toEqual(["setEditorText:", "compact:keep decisions"]);
 
 		const loginCalls: string[] = [];
-		expect(await handleInteractiveSlashCommand("/login anthropic", recordingHandlers(loginCalls))).toBe(true);
+		expect(await router(loginCalls).handleCommand("/login anthropic")).toBe(true);
 		expect(loginCalls).toEqual(["setEditorText:", "login:/login anthropic"]);
-	});
-
-	it("does not handle non-slash or unknown slash commands", async () => {
-		const calls: string[] = [];
-		expect(await handleInteractiveSlashCommand("hello", recordingHandlers(calls))).toBe(false);
-		expect(await handleInteractiveSlashCommand("/unknown", recordingHandlers(calls))).toBe(false);
-		expect(calls).toEqual([]);
 	});
 });
