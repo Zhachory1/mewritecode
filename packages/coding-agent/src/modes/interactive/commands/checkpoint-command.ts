@@ -14,6 +14,6 @@ export class CheckpointCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.checkpoint(args(text, "/checkpoint")));
+		await clearAnd(context, () => context.mode.checkpoint(args(text, "/checkpoint")));
 	}
 }

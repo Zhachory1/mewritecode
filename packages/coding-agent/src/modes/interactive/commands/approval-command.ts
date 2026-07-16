@@ -14,6 +14,6 @@ export class ApprovalCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.approval(args(text, "/approval")));
+		await clearAnd(context, () => context.mode.approval(args(text, "/approval")));
 	}
 }

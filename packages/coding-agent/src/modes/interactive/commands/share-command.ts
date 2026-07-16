@@ -8,7 +8,7 @@ export class ShareCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(_text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await context.share();
-		context.setEditorText("");
+		await context.mode.share();
+		context.editor.setText("");
 	}
 }

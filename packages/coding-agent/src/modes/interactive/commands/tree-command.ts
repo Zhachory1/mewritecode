@@ -8,7 +8,7 @@ export class TreeCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(_text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		context.tree();
-		context.setEditorText("");
+		context.mode.tree();
+		context.editor.setText("");
 	}
 }

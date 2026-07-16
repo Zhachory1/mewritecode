@@ -14,6 +14,6 @@ export class FreezeCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.freeze(arg(text, "/freeze")));
+		await clearAnd(context, () => context.mode.freeze(arg(text, "/freeze")));
 	}
 }

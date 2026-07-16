@@ -13,6 +13,6 @@ export class SkillsCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(_text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.skills());
+		await clearAnd(context, () => context.mode.skills());
 	}
 }

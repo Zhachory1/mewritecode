@@ -16,61 +16,62 @@
 type MaybePromise = void | Promise<void>;
 
 export interface InteractiveSlashCommandContext {
-	setEditorText(value: string): void;
-	settings(): MaybePromise;
-	scopedModels(): MaybePromise;
-	model(searchTerm: string | undefined): MaybePromise;
-	export(text: string): MaybePromise;
-	import(text: string): MaybePromise;
-	share(): MaybePromise;
-	copy(): MaybePromise;
-	name(text: string): MaybePromise;
-	session(): MaybePromise;
-	changelog(): MaybePromise;
-	hotkeys(): MaybePromise;
-	activity(): MaybePromise;
-	help(): MaybePromise;
-	skills(): MaybePromise;
-	plugins(): MaybePromise;
-	fork(): MaybePromise;
-	tree(): MaybePromise;
-	login(text: string): MaybePromise;
-	logout(): MaybePromise;
-	newSession(): MaybePromise;
-	clear(): MaybePromise;
-	compact(instructions: string | undefined): MaybePromise;
-	freeze(label: string | undefined): MaybePromise;
-	checkpoints(): MaybePromise;
-	mode(text: string): MaybePromise;
-	cave(text: string): MaybePromise;
-	ponytail(text: string): MaybePromise;
-	tokens(): MaybePromise;
-	cost(): MaybePromise;
-	savings(arg: string): MaybePromise;
-	reload(): MaybePromise;
-	hooks(args: string): MaybePromise;
-	debug(): MaybePromise;
-	arminSaysHi(): MaybePromise;
-	resume(target: string | undefined): MaybePromise;
-	quit(): MaybePromise;
-	mcp(text: string): MaybePromise;
-	memory(text: string): MaybePromise;
-	repomap(args: string): MaybePromise;
-	architect(args: string): MaybePromise;
-	recipe(text: string): MaybePromise;
-	checkpoint(args: string): MaybePromise;
-	rollback(args: string): MaybePromise;
-	goal(args: string): MaybePromise;
-	plan(args: string): MaybePromise;
-	act(args: string): MaybePromise;
-	approval(args: string): MaybePromise;
-	queue(args: string): MaybePromise;
-	contextStatus(): MaybePromise;
-	contextLearn(): MaybePromise;
-	contextSetup(args: string): MaybePromise;
-	btw(question: string): MaybePromise;
+	editor: { setText(value: string): void };
+	mode: {
+		settings(): MaybePromise;
+		scopedModels(): MaybePromise;
+		model(searchTerm: string | undefined): MaybePromise;
+		export(text: string): MaybePromise;
+		import(text: string): MaybePromise;
+		share(): MaybePromise;
+		copy(): MaybePromise;
+		name(text: string): MaybePromise;
+		session(): MaybePromise;
+		changelog(): MaybePromise;
+		hotkeys(): MaybePromise;
+		activity(): MaybePromise;
+		help(): MaybePromise;
+		skills(): MaybePromise;
+		plugins(): MaybePromise;
+		fork(): MaybePromise;
+		tree(): MaybePromise;
+		login(text: string): MaybePromise;
+		logout(): MaybePromise;
+		newSession(): MaybePromise;
+		clear(): MaybePromise;
+		compact(instructions: string | undefined): MaybePromise;
+		freeze(label: string | undefined): MaybePromise;
+		checkpoints(): MaybePromise;
+		mode(text: string): MaybePromise;
+		cave(text: string): MaybePromise;
+		ponytail(text: string): MaybePromise;
+		tokens(): MaybePromise;
+		cost(): MaybePromise;
+		savings(arg: string): MaybePromise;
+		reload(): MaybePromise;
+		hooks(args: string): MaybePromise;
+		debug(): MaybePromise;
+		arminSaysHi(): MaybePromise;
+		resume(target: string | undefined): MaybePromise;
+		quit(): MaybePromise;
+		mcp(text: string): MaybePromise;
+		memory(text: string): MaybePromise;
+		repomap(args: string): MaybePromise;
+		architect(args: string): MaybePromise;
+		recipe(text: string): MaybePromise;
+		checkpoint(args: string): MaybePromise;
+		rollback(args: string): MaybePromise;
+		goal(args: string): MaybePromise;
+		plan(args: string): MaybePromise;
+		act(args: string): MaybePromise;
+		approval(args: string): MaybePromise;
+		queue(args: string): MaybePromise;
+		contextStatus(): MaybePromise;
+		contextLearn(): MaybePromise;
+		contextSetup(args: string): MaybePromise;
+		btw(question: string): MaybePromise;
+	};
 }
-
 export abstract class InteractiveSlashCommand {
 	abstract readonly name: string;
 	abstract condition(text: string): boolean;
@@ -124,6 +125,6 @@ export function args(text: string, command: string): string {
 }
 
 export async function clearAnd(context: InteractiveSlashCommandContext, run: () => MaybePromise): Promise<void> {
-	context.setEditorText("");
+	context.editor.setText("");
 	await run();
 }

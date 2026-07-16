@@ -63,17 +63,17 @@ const SAMPLE_INPUTS: Record<string, string> = {
 	quit: "/quit",
 };
 
-const noopHandlers = new Proxy(
-	{
-		setEditorText: () => {},
-	},
-	{
-		get(target, prop: string) {
-			if (prop in target) return target[prop as keyof typeof target];
-			return () => {};
+const noopHandlers: InteractiveSlashCommandContext = {
+	editor: { setText: () => {} },
+	mode: new Proxy(
+		{},
+		{
+			get() {
+				return () => {};
+			},
 		},
-	},
-) as unknown as InteractiveSlashCommandContext;
+	) as InteractiveSlashCommandContext["mode"],
+};
 
 describe("slash command dispatcher", () => {
 	it("every BUILTIN_SLASH_COMMAND is handled by the interactive router", () => {

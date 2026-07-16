@@ -14,6 +14,6 @@ export class ResumeCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.resume(arg(text, "/resume")));
+		await clearAnd(context, () => context.mode.resume(arg(text, "/resume")));
 	}
 }

@@ -13,6 +13,6 @@ export class PluginsCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(_text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.plugins());
+		await clearAnd(context, () => context.mode.plugins());
 	}
 }

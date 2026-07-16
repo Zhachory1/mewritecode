@@ -14,6 +14,6 @@ export class ModelCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.model(arg(text, "/model")));
+		await clearAnd(context, () => context.mode.model(arg(text, "/model")));
 	}
 }

@@ -12,7 +12,7 @@ export class ImportCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await context.import(text);
-		context.setEditorText("");
+		await context.mode.import(text);
+		context.editor.setText("");
 	}
 }

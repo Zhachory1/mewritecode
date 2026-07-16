@@ -13,6 +13,6 @@ export class MemoryCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.memory(text));
+		await clearAnd(context, () => context.mode.memory(text));
 	}
 }

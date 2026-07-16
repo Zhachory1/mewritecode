@@ -57,19 +57,22 @@ const SAMPLE_INPUTS: Record<string, string> = {
 };
 
 function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
-	return new Proxy(
+	const mode = new Proxy(
+		{},
 		{
-			setEditorText: (value: string) => {
-				calls.push(`setEditorText:${value}`);
-			},
-		},
-		{
-			get(target, prop: string) {
-				if (prop in target) return target[prop as keyof typeof target];
+			get(_target, prop: string) {
 				return (...args: unknown[]) => calls.push(`${prop}:${args.map(String).join("|")}`);
 			},
 		},
-	) as unknown as InteractiveSlashCommandContext;
+	) as InteractiveSlashCommandContext["mode"];
+	return {
+		editor: {
+			setText: (value: string) => {
+				calls.push(`setEditorText:${value}`);
+			},
+		},
+		mode,
+	};
 }
 
 function router(calls: string[] = []): InteractiveSlashCommandRouter {

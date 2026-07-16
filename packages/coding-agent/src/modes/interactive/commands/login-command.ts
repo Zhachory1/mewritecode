@@ -13,6 +13,6 @@ export class LoginCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.login(text));
+		await clearAnd(context, () => context.mode.login(text));
 	}
 }

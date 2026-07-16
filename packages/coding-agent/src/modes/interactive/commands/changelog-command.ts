@@ -8,7 +8,7 @@ export class ChangelogCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(_text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		context.changelog();
-		context.setEditorText("");
+		context.mode.changelog();
+		context.editor.setText("");
 	}
 }

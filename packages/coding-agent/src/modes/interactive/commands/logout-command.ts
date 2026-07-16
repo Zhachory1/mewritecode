@@ -8,7 +8,7 @@ export class LogoutCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(_text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		context.logout();
-		context.setEditorText("");
+		context.mode.logout();
+		context.editor.setText("");
 	}
 }

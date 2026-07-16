@@ -8,7 +8,7 @@ export class SettingsCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(_text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		context.settings();
-		context.setEditorText("");
+		context.mode.settings();
+		context.editor.setText("");
 	}
 }

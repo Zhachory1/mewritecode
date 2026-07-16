@@ -14,6 +14,6 @@ export class ArchitectCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.architect(args(text, "/architect")));
+		await clearAnd(context, () => context.mode.architect(args(text, "/architect")));
 	}
 }

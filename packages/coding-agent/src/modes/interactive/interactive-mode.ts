@@ -2411,76 +2411,78 @@ export class InteractiveMode {
 
 	private createInteractiveSlashCommandContext(): InteractiveSlashCommandContext {
 		return {
-			setEditorText: (value) => this.editor.setText(value),
-			settings: () => this.showSettingsSelector(),
-			scopedModels: async () => this.showModelsSelector(),
-			model: async (searchTerm) => this.handleModelCommand(searchTerm),
-			export: async (commandText) => this.handleExportCommand(commandText),
-			import: async (commandText) => this.handleImportCommand(commandText),
-			share: async () => this.handleShareCommand(),
-			copy: async () => this.handleCopyCommand(),
-			name: (commandText) => this.handleNameCommand(commandText),
-			session: () => this.handleSessionCommand(),
-			changelog: () => this.handleChangelogCommand(),
-			hotkeys: () => this.handleHotkeysCommand(),
-			activity: () => this.toggleActivityOverlay(),
-			help: () => this.handleHelpCommand(),
-			skills: () => this.handleSkillsCommand(),
-			plugins: () => this.handleSkillsCommand("marketplace"),
-			fork: () => this.showUserMessageSelector(),
-			tree: () => this.showTreeSelector(),
-			login: async (commandText) => {
-				const providers = this.session.modelRegistry.authStorage.getOAuthProviders();
-				const parsed = parseLoginCommand(commandText, providers);
-				if (parsed.kind === "selector") {
-					await this.showOAuthSelector("login");
-				} else if (parsed.kind === "provider") {
-					await this.showLoginDialog(parsed.provider);
-				} else {
-					const names = formatProviderChoices(providers);
-					this.showError(`Unknown provider "${parsed.provider}". Try: ${names || "(none)"}`);
-				}
+			editor: { setText: (value) => this.editor.setText(value) },
+			mode: {
+				settings: () => this.showSettingsSelector(),
+				scopedModels: async () => this.showModelsSelector(),
+				model: async (searchTerm) => this.handleModelCommand(searchTerm),
+				export: async (commandText) => this.handleExportCommand(commandText),
+				import: async (commandText) => this.handleImportCommand(commandText),
+				share: async () => this.handleShareCommand(),
+				copy: async () => this.handleCopyCommand(),
+				name: (commandText) => this.handleNameCommand(commandText),
+				session: () => this.handleSessionCommand(),
+				changelog: () => this.handleChangelogCommand(),
+				hotkeys: () => this.handleHotkeysCommand(),
+				activity: () => this.toggleActivityOverlay(),
+				help: () => this.handleHelpCommand(),
+				skills: () => this.handleSkillsCommand(),
+				plugins: () => this.handleSkillsCommand("marketplace"),
+				fork: () => this.showUserMessageSelector(),
+				tree: () => this.showTreeSelector(),
+				login: async (commandText) => {
+					const providers = this.session.modelRegistry.authStorage.getOAuthProviders();
+					const parsed = parseLoginCommand(commandText, providers);
+					if (parsed.kind === "selector") {
+						await this.showOAuthSelector("login");
+					} else if (parsed.kind === "provider") {
+						await this.showLoginDialog(parsed.provider);
+					} else {
+						const names = formatProviderChoices(providers);
+						this.showError(`Unknown provider "${parsed.provider}". Try: ${names || "(none)"}`);
+					}
+				},
+				logout: () => this.showOAuthSelector("logout"),
+				newSession: async () => this.handleClearCommand(),
+				clear: async () => this.handleClearCommand(),
+				compact: async (instructions) => this.handleCompactCommand(instructions),
+				freeze: async (label) => this.handleFreezeCommand(label),
+				checkpoints: () => this.handleCheckpointsCommand(),
+				mode: (commandText) => this.handleCaveCommand(commandText),
+				cave: (commandText) => this.handleCaveCommand(commandText),
+				ponytail: (commandText) => this.handlePonytailCommand(commandText),
+				tokens: () => this.handleTokensCommand(),
+				cost: () => this.handleCostCommand(),
+				savings: async (arg) => this.handleSavingsCommand(arg),
+				reload: async () => this.handleReloadCommand(),
+				hooks: async (args) => this.handleHooksCommand(args),
+				debug: () => this.handleDebugCommand(),
+				arminSaysHi: () => this.handleArminSaysHi(),
+				resume: async (target) => {
+					if (target) {
+						await this.handleResumeCommand(target);
+					} else {
+						this.showSessionSelector();
+					}
+				},
+				quit: async () => this.shutdown(),
+				mcp: async (commandText) => this.handleMcpSlashCommand(commandText),
+				memory: async (commandText) => this.handleMemorySlashCommand(commandText),
+				repomap: async (args) => this.handleRepomapSlashCommand(args),
+				architect: async (args) => this.handleArchitectSlashCommand(args),
+				recipe: async (commandText) => this.handleRecipeSlashCommand(commandText),
+				checkpoint: async (args) => this.handleCheckpointSlashCommand(args),
+				rollback: async (args) => this.handleRollbackSlashCommand(args),
+				goal: async (args) => this.handleGoalSlashCommand(args),
+				plan: (args) => this.handlePlanSlashCommand(args),
+				act: (args) => this.handleActSlashCommand(args),
+				approval: (args) => this.handleApprovalSlashCommand(args),
+				queue: (args) => this.handleQueueSlashCommand(args),
+				contextStatus: () => this.handleContextSlashCommand(),
+				contextLearn: () => this.handleContextLearnSlashCommand(),
+				contextSetup: (args) => this.handleContextSetupSlashCommand(args),
+				btw: (question) => void this.handleBtwSlashCommand(question),
 			},
-			logout: () => this.showOAuthSelector("logout"),
-			newSession: async () => this.handleClearCommand(),
-			clear: async () => this.handleClearCommand(),
-			compact: async (instructions) => this.handleCompactCommand(instructions),
-			freeze: async (label) => this.handleFreezeCommand(label),
-			checkpoints: () => this.handleCheckpointsCommand(),
-			mode: (commandText) => this.handleCaveCommand(commandText),
-			cave: (commandText) => this.handleCaveCommand(commandText),
-			ponytail: (commandText) => this.handlePonytailCommand(commandText),
-			tokens: () => this.handleTokensCommand(),
-			cost: () => this.handleCostCommand(),
-			savings: async (arg) => this.handleSavingsCommand(arg),
-			reload: async () => this.handleReloadCommand(),
-			hooks: async (args) => this.handleHooksCommand(args),
-			debug: () => this.handleDebugCommand(),
-			arminSaysHi: () => this.handleArminSaysHi(),
-			resume: async (target) => {
-				if (target) {
-					await this.handleResumeCommand(target);
-				} else {
-					this.showSessionSelector();
-				}
-			},
-			quit: async () => this.shutdown(),
-			mcp: async (commandText) => this.handleMcpSlashCommand(commandText),
-			memory: async (commandText) => this.handleMemorySlashCommand(commandText),
-			repomap: async (args) => this.handleRepomapSlashCommand(args),
-			architect: async (args) => this.handleArchitectSlashCommand(args),
-			recipe: async (commandText) => this.handleRecipeSlashCommand(commandText),
-			checkpoint: async (args) => this.handleCheckpointSlashCommand(args),
-			rollback: async (args) => this.handleRollbackSlashCommand(args),
-			goal: async (args) => this.handleGoalSlashCommand(args),
-			plan: (args) => this.handlePlanSlashCommand(args),
-			act: (args) => this.handleActSlashCommand(args),
-			approval: (args) => this.handleApprovalSlashCommand(args),
-			queue: (args) => this.handleQueueSlashCommand(args),
-			contextStatus: () => this.handleContextSlashCommand(),
-			contextLearn: () => this.handleContextLearnSlashCommand(),
-			contextSetup: (args) => this.handleContextSetupSlashCommand(args),
-			btw: (question) => void this.handleBtwSlashCommand(question),
 		};
 	}
 

@@ -8,7 +8,7 @@ export class ArminSaysHiCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(_text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		context.arminSaysHi();
-		context.setEditorText("");
+		context.mode.arminSaysHi();
+		context.editor.setText("");
 	}
 }

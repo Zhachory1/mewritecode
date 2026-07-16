@@ -13,6 +13,6 @@ export class NewCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(_text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.newSession());
+		await clearAnd(context, () => context.mode.newSession());
 	}
 }

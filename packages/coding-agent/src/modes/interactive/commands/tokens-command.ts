@@ -13,6 +13,6 @@ export class TokensCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(_text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.tokens());
+		await clearAnd(context, () => context.mode.tokens());
 	}
 }

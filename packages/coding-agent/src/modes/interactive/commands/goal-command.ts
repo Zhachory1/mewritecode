@@ -14,6 +14,6 @@ export class GoalCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.goal(args(text, "/goal")));
+		await clearAnd(context, () => context.mode.goal(args(text, "/goal")));
 	}
 }
