@@ -111,7 +111,6 @@ import {
 	type InteractiveSlashCommandContext,
 	InteractiveSlashCommandRouter,
 } from "./commands/index.js";
-import { renderDebugCommand } from "./commands/debug-command.js";
 import { ActionBarComponent } from "./components/action-bar.js";
 import { showApprovalPrompt } from "./components/approval-prompt.js";
 import { AssistantMessageComponent } from "./components/assistant-message.js";
