@@ -41,7 +41,7 @@ export class SessionCommand extends InteractiveSlashCommand {
 			info += `${theme.fg("dim", "Total:")} ${stats.cost.toFixed(4)}`;
 		}
 
-		context.editor.setText("");
+		context.clearEditor();
 		context.chatContainer.addChild(new Spacer(1));
 		context.chatContainer.addChild(new Text(info, 1, 0));
 		context.ui.requestRender();

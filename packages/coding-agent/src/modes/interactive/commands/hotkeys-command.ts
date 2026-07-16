@@ -12,7 +12,7 @@ export class HotkeysCommand extends InteractiveSlashCommand {
 
 	handleCommand(_text: string, context: InteractiveSlashCommandContext): void {
 		const hotkeys = context.buildHotkeysMarkdown();
-		context.editor.setText("");
+		context.clearEditor();
 		context.chatContainer.addChild(new Spacer(1));
 		context.chatContainer.addChild(new DynamicBorder());
 		context.chatContainer.addChild(new Text(theme.bold(theme.fg("accent", "Keyboard Shortcuts")), 1, 0));

@@ -13,7 +13,8 @@
  * 4. Register the class in `commands/index.ts` in the correct precedence order.
  * 5. Add a sample to `test/interactive-slash-command.test.ts` so registry and router stay in sync.
  */
-import type { Container, MarkdownTheme, TUI } from "@zhachory1/mewrite-tui";
+import type { Model, OAuthProviderId } from "@zhachory1/mewrite-ai";
+import type { Component, Container, EditorComponent, MarkdownTheme, TUI } from "@zhachory1/mewrite-tui";
 import type { AgentSession } from "../../../core/agent-session.js";
 import type { AgentSessionRuntime } from "../../../core/agent-session-runtime.js";
 import type { ArchitectModeState } from "../../../core/chat-modes/architect.js";
@@ -31,7 +32,8 @@ export interface FreezeCheckpoint {
 }
 
 export interface InteractiveSlashCommandContext {
-	editor: { setText(value: string): void; addToHistory?(value: string): void };
+	editor: EditorComponent;
+	clearEditor(): void;
 	ui: TUI;
 	chatContainer: Container;
 	statusContainer: Container;
@@ -55,26 +57,33 @@ export interface InteractiveSlashCommandContext {
 	showError(message: string): void;
 	showStatus(message: string): void;
 	showWarning(message: string): void;
+	showOAuthSelector(action: "login" | "logout"): MaybePromise;
+	showLoginDialog(provider: OAuthProviderId): MaybePromise;
+	showSelector(factory: (done: () => void) => { component: Component; focus: Component }): void;
+	toggleActivityOverlay(): void;
+	shutdown(): MaybePromise;
 	appendSlashOutput(text: string, isError: boolean): void;
 	refreshChatModeFooter(): void;
 	refreshApprovalFooter(): void;
 	updateTerminalTitle(): void;
+	invalidateFooter(): void;
+	updateEditorBorderColor(): void;
+	checkDaxnutsEasterEgg(model: Model<any>): void;
+	updateAvailableProviderCount(): Promise<void>;
+	disposeMountedToolRows(): void;
+	renderInitialMessages(): void;
+	getDefaultEditorEscape(): (() => void) | undefined;
+	setDefaultEditorEscape(handler: (() => void) | undefined): void;
+	showExtensionSelector(title: string, options: string[]): Promise<string | undefined>;
+	showExtensionEditor(title: string): Promise<string | undefined>;
 	legacy: {
 		settings(): MaybePromise;
-		scopedModels(): MaybePromise;
-		model(searchTerm: string | undefined): MaybePromise;
 		import(text: string): MaybePromise;
 		share(): MaybePromise;
-		activity(): MaybePromise;
 		skills(): MaybePromise;
 		plugins(): MaybePromise;
-		fork(): MaybePromise;
-		tree(): MaybePromise;
-		login(text: string): MaybePromise;
-		logout(): MaybePromise;
 		reload(): MaybePromise;
 		resume(target: string | undefined): MaybePromise;
-		quit(): MaybePromise;
 	};
 }
 
@@ -131,6 +140,6 @@ export function args(text: string, command: string): string {
 }
 
 export async function clearAnd(context: InteractiveSlashCommandContext, run: () => MaybePromise): Promise<void> {
-	context.editor.setText("");
+	context.clearEditor();
 	await run();
 }

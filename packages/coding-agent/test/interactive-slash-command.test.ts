@@ -74,7 +74,9 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 			setText: (value: string) => {
 				calls.push(`setEditorText:${value}`);
 			},
-		},
+			getText: () => "",
+		} as never,
+		clearEditor: () => calls.push("clearEditor:"),
 		ui: { requestRender: () => calls.push("requestRender:") } as never,
 		chatContainer: {
 			addChild: (value: unknown) => calls.push(`chatContainer.addChild:${value?.constructor?.name ?? "unknown"}`),
@@ -87,6 +89,15 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 			},
 		} as never,
 		session: {
+			modelRegistry: {
+				authStorage: {
+					getOAuthProviders: () => [{ id: "anthropic", aliases: ["claude"] }],
+				},
+				refresh: () => calls.push("modelRegistry.refresh:"),
+				refreshPricingFromSource: async () => calls.push("modelRegistry.refreshPricingFromSource:"),
+				getAvailable: async () => [{ provider: "anthropic", id: "claude", name: "Claude" }],
+			},
+			scopedModels: [],
 			chatMode: "edit",
 			sessionId: "session-1",
 			approvalMode: false,
@@ -96,6 +107,9 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 			compact: async (instructions?: string) => calls.push(`session.compact:${instructions ?? ""}`),
 			prompt: async (prompt: string, options?: { streamingBehavior?: string }) =>
 				calls.push(`session.prompt:${prompt}:${options?.streamingBehavior ?? ""}`),
+			setModel: async (model: { provider: string; id: string }) =>
+				calls.push(`session.setModel:${model.provider}/${model.id}`),
+			setScopedModels: (models: unknown[]) => calls.push(`session.setScopedModels:${models.length}`),
 			askSidecar: async (question: string) => `answer to ${question}`,
 			memoryProvider: async () => undefined,
 			setChatMode: (mode: string) => calls.push(`session.setChatMode:${mode}`),
@@ -154,7 +168,32 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 		showError: (message) => calls.push(`showError:${message}`),
 		showStatus: (message) => calls.push(`showStatus:${message}`),
 		showWarning: (message) => calls.push(`showWarning:${message}`),
+		showOAuthSelector: (action) => {
+			calls.push(`showOAuthSelector:${action}`);
+		},
+		showLoginDialog: (provider) => {
+			calls.push(`showLoginDialog:${provider}`);
+		},
+		showSelector: () => {
+			calls.push("showSelector:");
+		},
+		toggleActivityOverlay: () => calls.push("toggleActivityOverlay:"),
+		shutdown: async () => {
+			calls.push("shutdown:");
+		},
 		updateTerminalTitle: () => calls.push("updateTerminalTitle:"),
+		invalidateFooter: () => calls.push("invalidateFooter:"),
+		updateEditorBorderColor: () => calls.push("updateEditorBorderColor:"),
+		checkDaxnutsEasterEgg: (model) => calls.push(`checkDaxnutsEasterEgg:${model.provider}/${model.id}`),
+		updateAvailableProviderCount: async () => {
+			calls.push("updateAvailableProviderCount:");
+		},
+		disposeMountedToolRows: () => calls.push("disposeMountedToolRows:"),
+		renderInitialMessages: () => calls.push("renderInitialMessages:"),
+		getDefaultEditorEscape: () => undefined,
+		setDefaultEditorEscape: () => calls.push("setDefaultEditorEscape:"),
+		showExtensionSelector: async () => "No summary",
+		showExtensionEditor: async () => undefined,
 		legacy,
 	};
 }
@@ -187,7 +226,7 @@ describe("InteractiveSlashCommandRouter", () => {
 		expect(await r.handleCommand("/queue clear")).toBe(true);
 		expect(await r.handleCommand("/context setup docs docs/")).toBe(true);
 
-		expect(calls).toContain("model:claude");
+		expect(calls).toContain("session.setModel:anthropic/claude");
 		expect(calls).toContain("session.compact:keep decisions");
 		expect(calls.some((call) => call.startsWith("session.compact:Only preserve:"))).toBe(true);
 		expect(calls).toContain("updatePendingMessagesDisplay:");
@@ -265,15 +304,26 @@ describe("InteractiveSlashCommandRouter", () => {
 	it("preserves editor clearing order", async () => {
 		const logoutCalls: string[] = [];
 		expect(await router(logoutCalls).handleCommand("/logout")).toBe(true);
-		expect(logoutCalls).toEqual(["logout:", "setEditorText:"]);
+		expect(logoutCalls).toEqual(["showOAuthSelector:logout", "clearEditor:"]);
 
 		const compactCalls: string[] = [];
 		expect(await router(compactCalls).handleCommand("/compact keep decisions")).toBe(true);
-		expect(compactCalls).toEqual(["setEditorText:", "stopLoadingAndClearStatus:", "session.compact:keep decisions"]);
+		expect(compactCalls).toEqual(["clearEditor:", "stopLoadingAndClearStatus:", "session.compact:keep decisions"]);
 
 		const loginCalls: string[] = [];
 		expect(await router(loginCalls).handleCommand("/login anthropic")).toBe(true);
-		expect(loginCalls).toEqual(["setEditorText:", "login:/login anthropic"]);
+		expect(loginCalls).toEqual(["clearEditor:", "showLoginDialog:anthropic"]);
+	});
+
+	it("runs migrated activity and quit commands through context primitives", async () => {
+		const calls: string[] = [];
+		const r = router(calls);
+
+		expect(await r.handleCommand("/activity")).toBe(true);
+		expect(await r.handleCommand("/quit")).toBe(true);
+
+		expect(calls).toContain("toggleActivityOverlay:");
+		expect(calls).toContain("shutdown:");
 	});
 
 	it("uses live queue accessors instead of a captured queue reference", async () => {
@@ -301,6 +351,6 @@ describe("InteractiveSlashCommandRouter", () => {
 	it("clears the editor before reporting that /copy has no assistant message", async () => {
 		const calls: string[] = [];
 		expect(await router(calls).handleCommand("/copy")).toBe(true);
-		expect(calls.slice(0, 2)).toEqual(["setEditorText:", "showError:No agent messages to copy yet."]);
+		expect(calls.slice(0, 2)).toEqual(["clearEditor:", "showError:No agent messages to copy yet."]);
 	});
 });

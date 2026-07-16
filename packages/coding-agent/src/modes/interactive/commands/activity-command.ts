@@ -13,6 +13,6 @@ export class ActivityCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(_text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.legacy.activity());
+		await clearAnd(context, () => context.toggleActivityOverlay());
 	}
 }

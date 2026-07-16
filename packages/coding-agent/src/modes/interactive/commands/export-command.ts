@@ -25,6 +25,6 @@ export class ExportCommand extends InteractiveSlashCommand {
 		} catch (error: unknown) {
 			context.showError(`Failed to export session: ${error instanceof Error ? error.message : "Unknown error"}`);
 		}
-		context.editor.setText("");
+		context.clearEditor();
 	}
 }

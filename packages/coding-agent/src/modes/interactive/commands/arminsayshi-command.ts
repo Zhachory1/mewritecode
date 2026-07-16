@@ -12,7 +12,7 @@ export class ArminSaysHiCommand extends InteractiveSlashCommand {
 	handleCommand(_text: string, context: InteractiveSlashCommandContext): void {
 		context.chatContainer.addChild(new Spacer(1));
 		context.chatContainer.addChild(new ArminComponent(context.ui));
-		context.editor.setText("");
+		context.clearEditor();
 		context.ui.requestRender();
 	}
 }

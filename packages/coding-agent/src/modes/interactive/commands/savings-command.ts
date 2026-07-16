@@ -17,7 +17,7 @@ export class SavingsCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		context.editor.setText("");
+		context.clearEditor();
 		const commandArg = args(text, "/savings");
 		const totals = context.session.getSavings();
 
