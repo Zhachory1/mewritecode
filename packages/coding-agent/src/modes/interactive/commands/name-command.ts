@@ -1,3 +1,5 @@
+import { Spacer, Text } from "@zhachory1/mewrite-tui";
+import { theme } from "../theme/theme.js";
 import {
 	exactOrArg,
 	InteractiveSlashCommand,
@@ -11,8 +13,25 @@ export class NameCommand extends InteractiveSlashCommand {
 		return exactOrArg("/name", text);
 	}
 
-	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		context.legacy.name(text);
+	handleCommand(text: string, context: InteractiveSlashCommandContext): void {
+		const name = text.replace(/^\/name\s*/, "").trim();
 		context.editor.setText("");
+		if (!name) {
+			const currentName = context.sessionManager.getSessionName();
+			if (currentName) {
+				context.chatContainer.addChild(new Spacer(1));
+				context.chatContainer.addChild(new Text(theme.fg("dim", `Session name: ${currentName}`), 1, 0));
+			} else {
+				context.showWarning("Usage: /name <name>");
+			}
+			context.ui.requestRender();
+			return;
+		}
+
+		context.sessionManager.appendSessionInfo(name);
+		context.updateTerminalTitle();
+		context.chatContainer.addChild(new Spacer(1));
+		context.chatContainer.addChild(new Text(theme.fg("dim", `Session name set: ${name}`), 1, 0));
+		context.ui.requestRender();
 	}
 }

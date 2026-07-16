@@ -80,6 +80,7 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 			compact: async (instructions?: string) => calls.push(`session.compact:${instructions ?? ""}`),
 			getCaveModeSessionState: () => ({ enabled: true, intensity: "full" }),
 			getPonytailSessionState: () => ({ enabled: true, intensity: "full" }),
+			getLastAssistantText: () => "",
 			getSessionStats: () => ({
 				tokens: { input: 1, output: 2, cacheRead: 3, cacheWrite: 4, total: 10 },
 				cost: 0.01,
@@ -100,7 +101,10 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 		stopLoadingAndClearStatus: () => calls.push("stopLoadingAndClearStatus:"),
 		buildHotkeysMarkdown: () => "hotkeys",
 		getMarkdownTheme: () => ({}) as never,
+		showError: (message) => calls.push(`showError:${message}`),
+		showStatus: (message) => calls.push(`showStatus:${message}`),
 		showWarning: (message) => calls.push(`showWarning:${message}`),
+		updateTerminalTitle: () => calls.push("updateTerminalTitle:"),
 		legacy,
 	};
 }
@@ -188,5 +192,11 @@ describe("InteractiveSlashCommandRouter", () => {
 		const loginCalls: string[] = [];
 		expect(await router(loginCalls).handleCommand("/login anthropic")).toBe(true);
 		expect(loginCalls).toEqual(["setEditorText:", "login:/login anthropic"]);
+	});
+
+	it("clears the editor before reporting that /copy has no assistant message", async () => {
+		const calls: string[] = [];
+		expect(await router(calls).handleCommand("/copy")).toBe(true);
+		expect(calls.slice(0, 2)).toEqual(["setEditorText:", "showError:No agent messages to copy yet."]);
 	});
 });

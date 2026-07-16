@@ -39,7 +39,10 @@ export interface InteractiveSlashCommandContext {
 	stopLoadingAndClearStatus(): void;
 	buildHotkeysMarkdown(): string;
 	getMarkdownTheme(): MarkdownTheme;
+	showError(message: string): void;
+	showStatus(message: string): void;
 	showWarning(message: string): void;
+	updateTerminalTitle(): void;
 	legacy: {
 		settings(): MaybePromise;
 		scopedModels(): MaybePromise;
@@ -47,11 +50,6 @@ export interface InteractiveSlashCommandContext {
 		export(text: string): MaybePromise;
 		import(text: string): MaybePromise;
 		share(): MaybePromise;
-		copy(): MaybePromise;
-		name(text: string): MaybePromise;
-		session(): MaybePromise;
-		changelog(): MaybePromise;
-		hotkeys(): MaybePromise;
 		activity(): MaybePromise;
 		skills(): MaybePromise;
 		plugins(): MaybePromise;
