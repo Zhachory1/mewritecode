@@ -15,8 +15,10 @@
  */
 import type { Container, MarkdownTheme, TUI } from "@zhachory1/mewrite-tui";
 import type { AgentSession } from "../../../core/agent-session.js";
+import type { ArchitectModeState } from "../../../core/chat-modes/architect.js";
 import type { SessionManager } from "../../../core/session-manager.js";
 import type { SettingsManager } from "../../../core/settings-manager.js";
+import type { RepomapChatState } from "../../../core/slash-commands.js";
 
 type MaybePromise = void | Promise<void>;
 
@@ -36,6 +38,12 @@ export interface InteractiveSlashCommandContext {
 	sessionManager: SessionManager;
 	settingsManager: SettingsManager;
 	freezeCheckpoints: FreezeCheckpoint[];
+	getCommandQueue(): readonly string[];
+	clearCommandQueue(): number;
+	repomapChatState: RepomapChatState;
+	getArchitectState(): ArchitectModeState;
+	setArchitectState(state: ArchitectModeState): void;
+	updatePendingMessagesDisplay(): void;
 	stopLoadingAndClearStatus(): void;
 	buildHotkeysMarkdown(): string;
 	getMarkdownTheme(): MarkdownTheme;
@@ -64,19 +72,9 @@ export interface InteractiveSlashCommandContext {
 		clear(): MaybePromise;
 		savings(arg: string): MaybePromise;
 		reload(): MaybePromise;
-		hooks(args: string): MaybePromise;
 		debug(): MaybePromise;
 		resume(target: string | undefined): MaybePromise;
 		quit(): MaybePromise;
-		mcp(text: string): MaybePromise;
-		memory(text: string): MaybePromise;
-		repomap(args: string): MaybePromise;
-		architect(args: string): MaybePromise;
-		recipe(text: string): MaybePromise;
-		checkpoint(args: string): MaybePromise;
-		rollback(args: string): MaybePromise;
-		goal(args: string): MaybePromise;
-		queue(args: string): MaybePromise;
 		btw(question: string): MaybePromise;
 	};
 }

@@ -1,3 +1,4 @@
+import { runRollbackCommand } from "../../../core/slash-commands/rollback.js";
 import {
 	args,
 	clearAnd,
@@ -14,6 +15,11 @@ export class RollbackCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.legacy.rollback(args(text, "/rollback")));
+		await clearAnd(context, async () => {
+			const result = await runRollbackCommand(args(text, "/rollback"), {
+				projectRoot: context.sessionManager.getCwd(),
+			});
+			context.appendSlashOutput(result.output, result.exitCode !== 0);
+		});
 	}
 }

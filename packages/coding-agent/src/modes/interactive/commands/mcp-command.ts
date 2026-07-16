@@ -1,3 +1,4 @@
+import { runMcpSlashCommand } from "../../../core/slash-commands/mcp.js";
 import {
 	clearAnd,
 	exactOrArg,
@@ -13,6 +14,9 @@ export class McpCommand extends InteractiveSlashCommand {
 	}
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, () => context.legacy.mcp(text));
+		await clearAnd(context, async () => {
+			const result = await runMcpSlashCommand(text, { cwd: context.sessionManager.getCwd() });
+			context.appendSlashOutput(result.lines.join("\n"), result.errors > 0);
+		});
 	}
 }
