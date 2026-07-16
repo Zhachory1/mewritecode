@@ -69,12 +69,7 @@ import { type ArchitectModeState, defaultArchitectState } from "../../core/chat-
 import { splitOnThen } from "../../core/command-queue.js";
 import { formatContextSetupNotice, shouldShowContextSetupNotice } from "../../core/context-setup.js";
 import { formatSavingsLine, formatSessionEndSummary } from "../../core/cost-formatter.js";
-import {
-	getAllTimeSavingsBytes,
-	getThisWeekSavingsBytes,
-	persistSessionSavings,
-	readCostTotals,
-} from "../../core/cost-persistence.js";
+import { getAllTimeSavingsBytes, persistSessionSavings } from "../../core/cost-persistence.js";
 import { NoUsableAuthError } from "../../core/errors.js";
 import type {
 	ExtensionContext,
@@ -91,7 +86,6 @@ import { DefaultPackageManager } from "../../core/package-manager.js";
 import type { ResourceDiagnostic } from "../../core/resource-loader.js";
 import { formatMissingSessionCwdPrompt, MissingSessionCwdError } from "../../core/session-cwd.js";
 import { type SessionContext, SessionManager } from "../../core/session-manager.js";
-import { formatSavingsReport, formatSavingsShare, runSavingsCommand } from "../../core/slash-commands/savings.js";
 import {
 	BUILTIN_SLASH_COMMANDS,
 	emptyRepomapChatState,
@@ -102,7 +96,6 @@ import type { SourceInfo } from "../../core/source-info.js";
 import type { TruncationResult } from "../../core/tools/truncate.js";
 import { dispatchWorkerPrompt, parseWorkerPrompt, WorkerDispatchError } from "../../core/worker-dispatch.js";
 import { getChangelogPath, getNewEntries, parseChangelog } from "../../utils/changelog.js";
-import { copyToClipboard } from "../../utils/clipboard.js";
 import { extensionForImageMimeType, readClipboardImage } from "../../utils/clipboard-image.js";
 import { parseGitUrl } from "../../utils/git.js";
 import { ensureTool } from "../../utils/tools-manager.js";
@@ -2464,7 +2457,6 @@ export class InteractiveMode {
 				logout: () => mode.showOAuthSelector("logout"),
 				newSession: async () => mode.handleClearCommand(),
 				clear: async () => mode.handleClearCommand(),
-				savings: async (arg) => mode.handleSavingsCommand(arg),
 				reload: async () => mode.handleReloadCommand(),
 				debug: () => mode.handleDebugCommand(),
 
@@ -5553,55 +5545,6 @@ export class InteractiveMode {
 		}
 
 		this.bashComponent = undefined;
-		this.ui.requestRender();
-	}
-
-	// Savings Meter (DD §10): /savings — context bytes eliminated this
-	// session (dedup + compression + compaction) + cumulative. `--report` prints a
-	// cumulative all-time readout from ~/.cave/cost-totals.json (bytes durable; $
-	// estimated). `--share` copies a bytes+% one-liner (no $, no cache-reuse).
-	private async handleSavingsCommand(arg: string): Promise<void> {
-		const totals = this.session.getSavings();
-
-		if (arg === "--report" || arg === "report") {
-			// Cumulative, real-usage readout of the ALREADY-PERSISTED savings
-			// aggregate (~/.cave/cost-totals.json). Bytes are durable; the $ is an
-			// estimate at the current model input rate, else a documented default.
-			const DEFAULT_ASSUMED_RATE_PER_MTOK = 3; // ~blended input rate ($/Mtok).
-			const modelRate = this.session.model?.cost?.input ?? 0;
-			const assumedRatePerMTok = modelRate > 0 ? modelRate : DEFAULT_ASSUMED_RATE_PER_MTOK;
-			const file = readCostTotals();
-			const reportLines = formatSavingsReport(file.savings, { assumedRatePerMTok });
-			this.chatContainer.addChild(new Spacer(1));
-			this.chatContainer.addChild(new Text(reportLines.join("\n"), 1, 0));
-			this.ui.requestRender();
-			return;
-		}
-
-		if (arg === "--share") {
-			const share = formatSavingsShare(totals);
-			let copied = false;
-			try {
-				await copyToClipboard(share);
-				copied = true;
-			} catch {
-				copied = false;
-			}
-			this.chatContainer.addChild(new Spacer(1));
-			this.chatContainer.addChild(new Text(`${share}${copied ? "\n(copied to clipboard)" : ""}`, 1, 0));
-			this.ui.requestRender();
-			return;
-		}
-
-		const pricingKnown = (this.session.model?.cost?.input ?? 0) > 0;
-		const result = runSavingsCommand({
-			totals,
-			pricingKnown,
-			cumulativeWeekBytes: getThisWeekSavingsBytes(),
-			cumulativeAllTimeBytes: getAllTimeSavingsBytes(),
-		});
-		this.chatContainer.addChild(new Spacer(1));
-		this.chatContainer.addChild(new Text(result.lines.join("\n"), 1, 0));
 		this.ui.requestRender();
 	}
 
