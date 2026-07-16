@@ -68,6 +68,7 @@ const noopHandlers: InteractiveSlashCommandContext = {
 	ui: { requestRender: () => {} } as never,
 	chatContainer: { addChild: () => {} } as never,
 	statusContainer: { clear: () => {} } as never,
+	runtimeHost: {} as never,
 	session: {} as never,
 	sessionManager: {} as never,
 	settingsManager: {} as never,
@@ -78,6 +79,11 @@ const noopHandlers: InteractiveSlashCommandContext = {
 	getArchitectState: () => ({}) as never,
 	setArchitectState: () => {},
 	updatePendingMessagesDisplay: () => {},
+	renderCurrentSessionState: () => {},
+	handleRuntimeSessionChange: async () => {},
+	handleFatalRuntimeError: async (_prefix, error) => {
+		throw error;
+	},
 	stopLoadingAndClearStatus: () => {},
 	buildHotkeysMarkdown: () => "",
 	getMarkdownTheme: () => ({}) as never,

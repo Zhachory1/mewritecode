@@ -1,10 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { BUILTIN_SLASH_COMMANDS } from "../src/core/slash-commands.js";
 import {
 	createDefaultInteractiveSlashCommands,
 	type InteractiveSlashCommandContext,
 	InteractiveSlashCommandRouter,
 } from "../src/modes/interactive/commands/index.js";
+import { initTheme } from "../src/modes/interactive/theme/theme.js";
+
+beforeAll(() => initTheme("dark"));
 
 const SAMPLE_INPUTS: Record<string, string> = {
 	help: "/help",
@@ -77,6 +80,12 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 			addChild: (value: unknown) => calls.push(`chatContainer.addChild:${value?.constructor?.name ?? "unknown"}`),
 		} as never,
 		statusContainer: { clear: () => calls.push("statusContainer.clear:") } as never,
+		runtimeHost: {
+			newSession: async () => {
+				calls.push("runtimeHost.newSession:");
+				return { cancelled: false };
+			},
+		} as never,
 		session: {
 			chatMode: "edit",
 			sessionId: "session-1",
@@ -128,6 +137,14 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 		getArchitectState: () => ({}) as never,
 		setArchitectState: (value) => calls.push(`setArchitectState:${JSON.stringify(value)}`),
 		updatePendingMessagesDisplay: () => calls.push("updatePendingMessagesDisplay:"),
+		renderCurrentSessionState: () => calls.push("renderCurrentSessionState:"),
+		handleRuntimeSessionChange: async () => {
+			calls.push("handleRuntimeSessionChange:");
+		},
+		handleFatalRuntimeError: async (prefix, error) => {
+			calls.push(`handleFatalRuntimeError:${prefix}:${error instanceof Error ? error.message : String(error)}`);
+			throw error;
+		},
 		stopLoadingAndClearStatus: () => calls.push("stopLoadingAndClearStatus:"),
 		buildHotkeysMarkdown: () => "hotkeys",
 		getMarkdownTheme: () => ({}) as never,
@@ -202,18 +219,29 @@ describe("InteractiveSlashCommandRouter", () => {
 		const calls: string[] = [];
 		const r = router(calls);
 
-		expect(await r.handleCommand("/clear")).toBe(true);
-		expect(await r.handleCommand("/new")).toBe(true);
+		expect(r.canHandle("/clear")).toBe(true);
+		expect(r.canHandle("/new")).toBe(true);
 		expect(await r.handleCommand("/plugins")).toBe(true);
 		expect(r.canHandle("/cave stats")).toBe(true);
 		expect(await r.handleCommand("/exporter")).toBe(true);
 		expect(await r.handleCommand("/import-foo")).toBe(true);
 
-		expect(calls).toContain("clear:");
 		expect(calls).toContain("plugins:");
 		expect(r.canHandle("/mode full")).toBe(true);
 		expect(calls.some((call) => call.includes("Session exported to"))).toBe(true);
 		expect(calls).toContain("import:/import-foo");
+	});
+
+	it("runs /new and /clear command bodies through runtime primitives", async () => {
+		const calls: string[] = [];
+		const r = router(calls);
+
+		expect(await r.handleCommand("/clear")).toBe(true);
+		expect(await r.handleCommand("/new")).toBe(true);
+
+		expect(calls.filter((call) => call === "runtimeHost.newSession:")).toHaveLength(2);
+		expect(calls.filter((call) => call === "handleRuntimeSessionChange:")).toHaveLength(2);
+		expect(calls.filter((call) => call === "renderCurrentSessionState:")).toHaveLength(2);
 	});
 
 	it("returns false for unknown or boundary-mismatched slash text", async () => {

@@ -2335,7 +2335,9 @@ export class InteractiveMode {
 		this.defaultEditor.onAction("app.editor.external", () => this.openExternalEditor());
 		this.defaultEditor.onAction("app.message.followUp", () => this.handleFollowUp());
 		this.defaultEditor.onAction("app.message.dequeue", () => this.handleDequeue());
-		this.defaultEditor.onAction("app.session.new", () => this.handleClearCommand());
+		this.defaultEditor.onAction("app.session.new", () => {
+			void this.slashCommandRouter.handleCommand("/new");
+		});
 		this.defaultEditor.onAction("app.session.tree", () => this.showTreeSelector());
 		this.defaultEditor.onAction("app.session.fork", () => this.showUserMessageSelector());
 		this.defaultEditor.onAction("app.session.resume", () => this.showSessionSelector());
@@ -2390,6 +2392,7 @@ export class InteractiveMode {
 			ui: mode.ui,
 			chatContainer: mode.chatContainer,
 			statusContainer: mode.statusContainer,
+			runtimeHost: mode.runtimeHost,
 			get session() {
 				return mode.session;
 			},
@@ -2406,6 +2409,9 @@ export class InteractiveMode {
 				mode.commandQueue = [];
 				return count;
 			},
+			renderCurrentSessionState: () => mode.renderCurrentSessionState(),
+			handleRuntimeSessionChange: () => mode.handleRuntimeSessionChange(),
+			handleFatalRuntimeError: (prefix, error) => mode.handleFatalRuntimeError(prefix, error),
 			repomapChatState: mode.repomapChatState,
 			getArchitectState: () => mode.architectState,
 			setArchitectState: (state) => {
@@ -2453,8 +2459,6 @@ export class InteractiveMode {
 					}
 				},
 				logout: () => mode.showOAuthSelector("logout"),
-				newSession: async () => mode.handleClearCommand(),
-				clear: async () => mode.handleClearCommand(),
 				reload: async () => mode.handleReloadCommand(),
 
 				resume: async (target) => {
@@ -5333,33 +5337,6 @@ export class InteractiveMode {
 			return;
 		}
 		this.showStatus(`${action.skill.name} is already a ${action.skill.source} skill (no install needed)`);
-	}
-
-	private async handleClearCommand(): Promise<void> {
-		if (this.loadingAnimation) {
-			this.loadingAnimation.stop();
-			this.loadingAnimation = undefined;
-		}
-		this.statusContainer.clear();
-		// Issue #5: a /clear is a reset; drop any /then-chained tail that
-		// was queued in the prior session so it doesn't carry over.
-		if (this.commandQueue.length > 0) {
-			this.commandQueue = [];
-			this.updatePendingMessagesDisplay();
-		}
-		try {
-			const result = await this.runtimeHost.newSession();
-			if (result.cancelled) {
-				return;
-			}
-			await this.handleRuntimeSessionChange();
-			this.renderCurrentSessionState();
-			this.chatContainer.addChild(new Spacer(1));
-			this.chatContainer.addChild(new Text(`${theme.fg("accent", "✓ New session started")}`, 1, 1));
-			this.ui.requestRender();
-		} catch (error: unknown) {
-			await this.handleFatalRuntimeError("Failed to create session", error);
-		}
 	}
 
 	private handleDaxnuts(): void {
