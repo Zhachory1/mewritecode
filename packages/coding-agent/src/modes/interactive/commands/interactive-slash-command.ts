@@ -15,6 +15,7 @@
  */
 import type { Container, MarkdownTheme, TUI } from "@zhachory1/mewrite-tui";
 import type { AgentSession } from "../../../core/agent-session.js";
+import type { AgentSessionRuntime } from "../../../core/agent-session-runtime.js";
 import type { ArchitectModeState } from "../../../core/chat-modes/architect.js";
 import type { SessionManager } from "../../../core/session-manager.js";
 import type { SettingsManager } from "../../../core/settings-manager.js";
@@ -34,12 +35,16 @@ export interface InteractiveSlashCommandContext {
 	ui: TUI;
 	chatContainer: Container;
 	statusContainer: Container;
+	runtimeHost: AgentSessionRuntime;
 	session: AgentSession;
 	sessionManager: SessionManager;
 	settingsManager: SettingsManager;
 	freezeCheckpoints: FreezeCheckpoint[];
 	getCommandQueue(): readonly string[];
 	clearCommandQueue(): number;
+	renderCurrentSessionState(): void;
+	handleRuntimeSessionChange(): Promise<void>;
+	handleFatalRuntimeError(prefix: string, error: unknown): Promise<never>;
 	repomapChatState: RepomapChatState;
 	getArchitectState(): ArchitectModeState;
 	setArchitectState(state: ArchitectModeState): void;
@@ -67,8 +72,6 @@ export interface InteractiveSlashCommandContext {
 		tree(): MaybePromise;
 		login(text: string): MaybePromise;
 		logout(): MaybePromise;
-		newSession(): MaybePromise;
-		clear(): MaybePromise;
 		reload(): MaybePromise;
 		resume(target: string | undefined): MaybePromise;
 		quit(): MaybePromise;

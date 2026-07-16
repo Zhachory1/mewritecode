@@ -15,8 +15,8 @@ export class BtwCommand extends InteractiveSlashCommand {
 		return exactOrArg("/btw", text);
 	}
 
-	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
-		await clearAnd(context, async () => {
+	handleCommand(text: string, context: InteractiveSlashCommandContext): void {
+		void clearAnd(context, () => {
 			const question = args(text, "/btw").trim();
 			if (!question) {
 				context.showError("/btw needs a question. Usage: /btw <question>.");
@@ -29,14 +29,16 @@ export class BtwCommand extends InteractiveSlashCommand {
 			context.chatContainer.addChild(pending);
 			context.ui.requestRender();
 
-			try {
-				const answer = await context.session.askSidecar(question);
-				pending.setText(theme.fg("dim", `↪ btw: ${answer || "(empty response)"}`));
-			} catch (err) {
-				const msg = err instanceof Error ? err.message : String(err);
-				pending.setText(theme.fg("warning", `↪ btw: error — ${msg}`));
-			}
-			context.ui.requestRender();
+			void context.session
+				.askSidecar(question)
+				.then((answer) => {
+					pending.setText(theme.fg("dim", `↪ btw: ${answer || "(empty response)"}`));
+				})
+				.catch((err: unknown) => {
+					const msg = err instanceof Error ? err.message : String(err);
+					pending.setText(theme.fg("warning", `↪ btw: error — ${msg}`));
+				})
+				.finally(() => context.ui.requestRender());
 		});
 	}
 }
