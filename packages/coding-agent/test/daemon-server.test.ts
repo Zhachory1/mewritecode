@@ -10,7 +10,7 @@
  *   - `caveman attach` end-to-end (mocked LLM via the default echo runner)
  *   - bearer token auth
  */
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -164,6 +164,83 @@ describe("WS9 daemon — REST routing", () => {
 			headers: { origin: "http://evil.example" },
 		});
 		expect(response.status).toBe(403);
+	});
+
+	it("lists and reads files under the session cwd", async () => {
+		const cwd = mkdtempSync(join(tmpdir(), "cave-daemon-files-"));
+		try {
+			mkdirSync(join(cwd, "src"));
+			writeFileSync(join(cwd, "README.md"), "hello\n", "utf8");
+			writeFileSync(join(cwd, "src", "app.ts"), "export const ok = true;\n", "utf8");
+			writeFileSync(join(cwd, ".env"), "SECRET=1\n", "utf8");
+			const session = await f.client.createSession({ cwd });
+
+			const tree = await fetch(`http://127.0.0.1:${f.handle.port}/v1/sessions/${session.id}/files/tree`);
+			expect(tree.status).toBe(200);
+			const body = (await tree.json()) as { entries: Array<{ name: string; type: string }> };
+			expect(body.entries.map((entry) => entry.name)).toEqual(["src", "README.md"]);
+
+			const read = await fetch(
+				`http://127.0.0.1:${f.handle.port}/v1/sessions/${session.id}/files/read?path=src%2Fapp.ts`,
+			);
+			expect(read.status).toBe(200);
+			await expect(read.json()).resolves.toMatchObject({ path: "src/app.ts", text: "export const ok = true;\n" });
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
+	it("rejects unsafe file paths", async () => {
+		const cwd = mkdtempSync(join(tmpdir(), "cave-daemon-files-"));
+		const outside = mkdtempSync(join(tmpdir(), "cave-daemon-outside-"));
+		try {
+			writeFileSync(join(cwd, "ok.txt"), "ok", "utf8");
+			writeFileSync(join(outside, "secret.txt"), "secret", "utf8");
+			symlinkSync(outside, join(cwd, "outside-link"));
+			mkdirSync(join(cwd, ".git"));
+			mkdirSync(join(cwd, ".aws"));
+			writeFileSync(join(cwd, ".env.production"), "SECRET=1\n", "utf8");
+			writeFileSync(join(cwd, ".git", "config"), "[remote]\n", "utf8");
+			writeFileSync(join(cwd, ".aws", "credentials"), "secret\n", "utf8");
+			symlinkSync(join(cwd, ".aws"), join(cwd, "aws-dir-link"));
+			symlinkSync(join(cwd, ".aws", "credentials"), join(cwd, "creds-link"));
+			writeFileSync(join(cwd, "private.pem"), "secret\n", "utf8");
+			writeFileSync(join(cwd, "binary.bin"), Buffer.from([0, 1, 2]));
+			writeFileSync(join(cwd, "bad-utf8.txt"), Buffer.from([0xc3, 0x28]));
+			writeFileSync(join(cwd, "large.txt"), Buffer.alloc(1024 * 1024 + 1, "a"));
+			const session = await f.client.createSession({ cwd });
+			const base = `http://127.0.0.1:${f.handle.port}/v1/sessions/${session.id}/files/read`;
+			const treeBase = `http://127.0.0.1:${f.handle.port}/v1/sessions/${session.id}/files/tree`;
+
+			await expect(fetch(`${base}?path=..%2Fsecret.txt`).then((r) => r.status)).resolves.toBe(400);
+			await expect(fetch(`${base}?path=%2Ftmp%2Fsecret.txt`).then((r) => r.status)).resolves.toBe(400);
+			await expect(fetch(`${base}?path=outside-link%2Fsecret.txt`).then((r) => r.status)).resolves.toBe(403);
+			await expect(fetch(`${base}?path=.env.production`).then((r) => r.status)).resolves.toBe(403);
+			await expect(fetch(`${base}?path=.git%2Fconfig`).then((r) => r.status)).resolves.toBe(403);
+			await expect(fetch(`${base}?path=.aws%2Fcredentials`).then((r) => r.status)).resolves.toBe(403);
+			await expect(fetch(`${base}?path=creds-link`).then((r) => r.status)).resolves.toBe(403);
+			await expect(fetch(`${treeBase}?path=aws-dir-link`).then((r) => r.status)).resolves.toBe(403);
+			await expect(fetch(`${base}?path=private.pem`).then((r) => r.status)).resolves.toBe(403);
+			await expect(fetch(`${base}?path=binary.bin`).then((r) => r.status)).resolves.toBe(415);
+			await expect(fetch(`${base}?path=bad-utf8.txt`).then((r) => r.status)).resolves.toBe(415);
+			await expect(fetch(`${base}?path=large.txt`).then((r) => r.status)).resolves.toBe(413);
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+			rmSync(outside, { recursive: true, force: true });
+		}
+	});
+
+	it("rejects oversized directory listings", async () => {
+		const cwd = mkdtempSync(join(tmpdir(), "cave-daemon-files-"));
+		try {
+			for (let i = 0; i < 1001; i++) writeFileSync(join(cwd, `f-${i}.txt`), "x", "utf8");
+			const session = await f.client.createSession({ cwd });
+			await expect(
+				fetch(`http://127.0.0.1:${f.handle.port}/v1/sessions/${session.id}/files/tree`).then((r) => r.status),
+			).resolves.toBe(413);
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+		}
 	});
 });
 

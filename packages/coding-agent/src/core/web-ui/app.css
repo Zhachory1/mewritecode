@@ -87,7 +87,43 @@ h2 {
 	border: 1px solid #30363d;
 	border-radius: 8px;
 	background: #010409;
-	white-space: pre-wrap;
+	white-space: pre;
+	overflow: auto;
+}
+
+.file-tree {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	font-size: 14px;
+}
+
+.file-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	border: 0;
+	border-radius: 6px;
+	background: transparent;
+	color: #e6edf3;
+	padding: 6px 8px;
+	font: inherit;
+	font-weight: 400;
+	text-align: left;
+}
+
+.file-row:hover,
+.file-row.selected {
+	background: #21262d;
+}
+
+.file-row.directory {
+	color: #79c0ff;
+}
+
+.file-row.file {
+	color: #e6edf3;
 }
 
 .chat {
@@ -152,7 +188,7 @@ h2 {
 	font: inherit;
 }
 
-button {
+#send {
 	align-self: stretch;
 	border: 0;
 	border-radius: 8px;
@@ -163,7 +199,7 @@ button {
 	cursor: pointer;
 }
 
-button:disabled {
+#send:disabled {
 	cursor: not-allowed;
 	opacity: 0.55;
 }

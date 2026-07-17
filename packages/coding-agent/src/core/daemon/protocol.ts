@@ -34,6 +34,27 @@ export interface Transcript {
 	messages: MessageRecord[];
 }
 
+export interface FileTreeEntry {
+	name: string;
+	path: string;
+	type: "file" | "directory";
+	size?: number;
+}
+
+export interface FileTreeResponse {
+	sessionId: string;
+	path: string;
+	entries: FileTreeEntry[];
+}
+
+export interface ReadFileResponse {
+	sessionId: string;
+	path: string;
+	text: string;
+	size: number;
+	encoding: "utf8";
+}
+
 export interface CreateSessionRequest {
 	cwd?: string;
 	title?: string;
