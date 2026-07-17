@@ -5,7 +5,6 @@ import { describe, expect, it } from "vitest";
 import { BUILTIN_SLASH_COMMANDS } from "../src/core/slash-commands.js";
 import {
 	createDefaultInteractiveSlashCommands,
-	type InteractiveSlashCommandContext,
 	InteractiveSlashCommandRouter,
 } from "../src/modes/interactive/commands/index.js";
 
@@ -63,68 +62,6 @@ const SAMPLE_INPUTS: Record<string, string> = {
 	quit: "/quit",
 };
 
-const noopHandlers: InteractiveSlashCommandContext = {
-	editor: { setText: () => {}, getText: () => "" } as never,
-	clearEditor: () => {},
-	ui: { requestRender: () => {} } as never,
-	chatContainer: { addChild: () => {}, children: [] } as never,
-	statusContainer: { clear: () => {} } as never,
-	editorContainer: { clear: () => {}, addChild: () => {} } as never,
-	keybindings: { reload: () => {} } as never,
-	runtimeHost: {} as never,
-	session: {} as never,
-	sessionManager: {} as never,
-	settingsManager: {} as never,
-	freezeCheckpoints: [],
-	getCommandQueue: () => [],
-	clearCommandQueue: () => 0,
-	repomapChatState: {} as never,
-	getArchitectState: () => ({}) as never,
-	setArchitectState: () => {},
-	updatePendingMessagesDisplay: () => {},
-	renderCurrentSessionState: () => {},
-	handleRuntimeSessionChange: async () => {},
-	handleFatalRuntimeError: async (_prefix, error) => {
-		throw error;
-	},
-	stopLoadingAndClearStatus: () => {},
-	buildHotkeysMarkdown: () => "",
-	getMarkdownTheme: () => ({}) as never,
-	appendSlashOutput: () => {},
-	refreshChatModeFooter: () => {},
-	refreshApprovalFooter: () => {},
-	showError: () => {},
-	showStatus: () => {},
-	showWarning: () => {},
-	showOAuthSelector: () => {},
-	showLoginDialog: () => {},
-	showSelector: () => {},
-	toggleActivityOverlay: () => {},
-	shutdown: async () => {},
-	updateTerminalTitle: () => {},
-	invalidateFooter: () => {},
-	updateEditorBorderColor: () => {},
-	checkDaxnutsEasterEgg: () => {},
-	updateAvailableProviderCount: async () => {},
-	disposeMountedToolRows: () => {},
-	renderInitialMessages: () => {},
-	getDefaultEditorEscape: () => undefined,
-	setDefaultEditorEscape: () => {},
-	showExtensionSelector: async () => "No summary",
-	showExtensionEditor: async () => undefined,
-	showExtensionConfirm: async () => true,
-	promptForMissingSessionCwd: async () => undefined,
-	resetExtensionUI: () => {},
-	setupAutocomplete: () => {},
-	setupExtensionShortcuts: () => {},
-	rebuildChatFromMessages: () => {},
-	showLoadedResources: () => {},
-	getHideThinkingBlock: () => false,
-	setHideThinkingBlock: () => {},
-	setFooterAutoCompactEnabled: () => {},
-	applyEditorDisplaySettings: () => {},
-};
-
 describe("slash command dispatcher", () => {
 	it("every BUILTIN_SLASH_COMMAND is handled by the interactive router", () => {
 		const missingSamples = BUILTIN_SLASH_COMMANDS.filter((cmd) => cmd.wired && !SAMPLE_INPUTS[cmd.name]).map(
@@ -132,7 +69,7 @@ describe("slash command dispatcher", () => {
 		);
 		expect(missingSamples).toEqual([]);
 
-		const router = new InteractiveSlashCommandRouter(noopHandlers, createDefaultInteractiveSlashCommands());
+		const router = new InteractiveSlashCommandRouter(createDefaultInteractiveSlashCommands());
 		const unhandled = BUILTIN_SLASH_COMMANDS.filter(
 			(cmd) => cmd.wired && !router.canHandle(SAMPLE_INPUTS[cmd.name]),
 		).map((cmd) => cmd.name);
@@ -141,5 +78,18 @@ describe("slash command dispatcher", () => {
 
 	it("dispatcher has an unknown-slash fallback that flags unwired built-ins", () => {
 		expect(SOURCE).toMatch(/isUnwiredBuiltinSlash/);
+	});
+
+	it("interactive slash context passes direct services and recreates context per command", () => {
+		expect(SOURCE).toMatch(/editor: this\.editor/);
+		expect(SOURCE).toMatch(/editorContainer: this\.editorContainer/);
+		expect(SOURCE).not.toMatch(/displayState: this\.displayState/);
+		expect(SOURCE).toMatch(/clearEditor: \(\) => \{/);
+		expect(SOURCE).toMatch(/if \(shouldClearEditor\) this\.editor\.setText\(""\);/);
+		expect(SOURCE).toMatch(/private slashCommandRouter: InteractiveSlashCommandRouter/);
+		expect(SOURCE).toMatch(/new InteractiveSlashCommandRouter\(createDefaultInteractiveSlashCommands\(\)\)/);
+		expect(SOURCE).toMatch(
+			/slashCommandRouter\.handleCommand\(text, this\.createInteractiveSlashCommandContext\(options\)\)/,
+		);
 	});
 });

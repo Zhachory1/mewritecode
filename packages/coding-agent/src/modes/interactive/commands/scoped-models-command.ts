@@ -1,5 +1,6 @@
 import { resolveModelScope } from "../../../core/model-resolver.js";
 import { ScopedModelsSelectorComponent } from "../components/scoped-models-selector.js";
+import { updateAvailableProviderCount } from "./command-helpers.js";
 import {
 	clearAnd,
 	exact,
@@ -52,7 +53,7 @@ export class ScopedModelsCommand extends InteractiveSlashCommand {
 				} else {
 					context.session.setScopedModels([]);
 				}
-				await context.updateAvailableProviderCount();
+				await updateAvailableProviderCount(context);
 				context.ui.requestRender();
 			};
 

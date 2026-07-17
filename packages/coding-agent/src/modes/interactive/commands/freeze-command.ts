@@ -1,5 +1,6 @@
 import { Spacer, Text } from "@zhachory1/mewrite-tui";
 import { theme } from "../theme/theme.js";
+import { stopLoadingAndClearStatus } from "./command-helpers.js";
 import {
 	arg,
 	clearAnd,
@@ -33,7 +34,7 @@ export class FreezeCommand extends InteractiveSlashCommand {
 			const tokensBefore = statsBefore.tokens.total;
 			const customInstructions = label ? `${FREEZE_INSTRUCTIONS} Label: ${label}` : FREEZE_INSTRUCTIONS;
 
-			context.stopLoadingAndClearStatus();
+			stopLoadingAndClearStatus(context);
 
 			try {
 				await context.session.compact(customInstructions);

@@ -17,7 +17,8 @@ export class QueueCommand extends InteractiveSlashCommand {
 		await clearAnd(context, () => {
 			const subcommand = args(text, "/queue").trim();
 			if (subcommand === "clear") {
-				const count = context.clearCommandQueue();
+				const count = context.commandQueue.length;
+				context.commandQueue.length = 0;
 				context.updatePendingMessagesDisplay();
 				context.appendSlashOutput(
 					count === 0 ? "Queue already empty." : `Cleared ${count} queued command${count === 1 ? "" : "s"}.`,
@@ -26,7 +27,7 @@ export class QueueCommand extends InteractiveSlashCommand {
 				return;
 			}
 			if (subcommand === "" || subcommand === "list") {
-				const queue = context.getCommandQueue();
+				const queue = context.commandQueue;
 				if (queue.length === 0) {
 					context.appendSlashOutput("Queue is empty. Chain commands with: /a /then /b.", false);
 					return;

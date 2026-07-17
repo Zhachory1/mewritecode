@@ -16,8 +16,8 @@ export class ArchitectCommand extends InteractiveSlashCommand {
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
 		await clearAnd(context, async () => {
-			const result = await runArchitectCommand(args(text, "/architect"), { state: context.getArchitectState() });
-			context.setArchitectState(result.state);
+			const result = await runArchitectCommand(args(text, "/architect"), { state: context.architectState });
+			Object.assign(context.architectState, result.state);
 			context.appendSlashOutput(result.output, result.exitCode !== 0);
 		});
 	}

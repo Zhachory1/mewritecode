@@ -2,6 +2,7 @@ import { MissingSessionCwdError } from "../../../core/session-cwd.js";
 import { SessionManager } from "../../../core/session-manager.js";
 import { SessionSelectorComponent } from "../components/session-selector.js";
 import { resolveSessionReference } from "../session-reference.js";
+import { stopLoadingAndClearStatus } from "./command-helpers.js";
 import {
 	arg,
 	clearAnd,
@@ -11,7 +12,7 @@ import {
 } from "./interactive-slash-command.js";
 
 async function resumeSession(context: InteractiveSlashCommandContext, sessionPath: string): Promise<void> {
-	context.stopLoadingAndClearStatus();
+	stopLoadingAndClearStatus(context);
 	try {
 		const result = await context.runtimeHost.switchSession(sessionPath);
 		if (result.cancelled) return;

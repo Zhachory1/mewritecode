@@ -60,13 +60,17 @@ const SAMPLE_INPUTS: Record<string, string> = {
 };
 
 function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
-	let commandQueue = ["/first", "/second"];
+	const commandQueue = ["/first", "/second"];
 	return {
 		editor: {
 			setText: (value: string) => {
 				calls.push(`setEditorText:${value}`);
 			},
 			getText: () => "",
+		} as never,
+		defaultEditor: {
+			setPaddingX: (value: number) => calls.push(`defaultEditor.setPaddingX:${value}`),
+			setAutocompleteMaxVisible: (value: number) => calls.push(`defaultEditor.setAutocompleteMaxVisible:${value}`),
 		} as never,
 		clearEditor: () => calls.push("clearEditor:"),
 		ui: { requestRender: () => calls.push("requestRender:") } as never,
@@ -79,6 +83,15 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 			clear: () => calls.push("editorContainer.clear:"),
 			addChild: () => calls.push("editorContainer.addChild:"),
 		} as never,
+		footer: {
+			invalidate: () => calls.push("footer.invalidate:"),
+			setAutoCompactEnabled: (enabled: boolean) => calls.push(`footer.setAutoCompactEnabled:${enabled}`),
+		} as never,
+		footerDataProvider: {
+			setAvailableProviderCount: (count: number) =>
+				calls.push(`footerDataProvider.setAvailableProviderCount:${count}`),
+		} as never,
+		loadingAnimation: undefined,
 		keybindings: { reload: () => calls.push("keybindings.reload:") } as never,
 		runtimeHost: {
 			newSession: async () => {
@@ -150,15 +163,9 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 			getPonytailIntensity: () => "full",
 		} as never,
 		freezeCheckpoints: [],
-		getCommandQueue: () => commandQueue,
-		clearCommandQueue: () => {
-			const count = commandQueue.length;
-			commandQueue = [];
-			return count;
-		},
+		commandQueue,
 		repomapChatState: {} as never,
-		getArchitectState: () => ({}) as never,
-		setArchitectState: (value) => calls.push(`setArchitectState:${JSON.stringify(value)}`),
+		architectState: {} as never,
 		updatePendingMessagesDisplay: () => calls.push("updatePendingMessagesDisplay:"),
 		renderCurrentSessionState: () => calls.push("renderCurrentSessionState:"),
 		handleRuntimeSessionChange: async () => {
@@ -168,7 +175,6 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 			calls.push(`handleFatalRuntimeError:${prefix}:${error instanceof Error ? error.message : String(error)}`);
 			throw error;
 		},
-		stopLoadingAndClearStatus: () => calls.push("stopLoadingAndClearStatus:"),
 		buildHotkeysMarkdown: () => "hotkeys",
 		getMarkdownTheme: () => ({}) as never,
 		appendSlashOutput: (text, isError) => calls.push(`appendSlashOutput:${isError}:${text}`),
@@ -191,34 +197,32 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 			calls.push("shutdown:");
 		},
 		updateTerminalTitle: () => calls.push("updateTerminalTitle:"),
-		invalidateFooter: () => calls.push("invalidateFooter:"),
 		updateEditorBorderColor: () => calls.push("updateEditorBorderColor:"),
 		checkDaxnutsEasterEgg: (model) => calls.push(`checkDaxnutsEasterEgg:${model.provider}/${model.id}`),
-		updateAvailableProviderCount: async () => {
-			calls.push("updateAvailableProviderCount:");
-		},
 		disposeMountedToolRows: () => calls.push("disposeMountedToolRows:"),
 		renderInitialMessages: () => calls.push("renderInitialMessages:"),
-		getDefaultEditorEscape: () => undefined,
-		setDefaultEditorEscape: () => calls.push("setDefaultEditorEscape:"),
 		showExtensionSelector: async () => "No summary",
 		showExtensionEditor: async () => undefined,
+		extensionUi: {} as never,
 		showExtensionConfirm: async () => true,
 		promptForMissingSessionCwd: async () => undefined,
 		resetExtensionUI: () => calls.push("resetExtensionUI:"),
 		setupAutocomplete: () => calls.push("setupAutocomplete:"),
-		setupExtensionShortcuts: () => calls.push("setupExtensionShortcuts:"),
 		rebuildChatFromMessages: () => calls.push("rebuildChatFromMessages:"),
 		showLoadedResources: () => calls.push("showLoadedResources:"),
-		getHideThinkingBlock: () => false,
-		setHideThinkingBlock: (hidden) => calls.push(`setHideThinkingBlock:${hidden}`),
-		setFooterAutoCompactEnabled: (enabled) => calls.push(`setFooterAutoCompactEnabled:${enabled}`),
-		applyEditorDisplaySettings: () => calls.push("applyEditorDisplaySettings:"),
 	};
 }
 
-function router(calls: string[] = []): InteractiveSlashCommandRouter {
-	return new InteractiveSlashCommandRouter(recordingHandlers(calls), createDefaultInteractiveSlashCommands());
+function router(calls: string[] = []): {
+	canHandle(text: string): boolean;
+	handleCommand(text: string): Promise<boolean>;
+} {
+	const context = recordingHandlers(calls);
+	const slashRouter = new InteractiveSlashCommandRouter(createDefaultInteractiveSlashCommands());
+	return {
+		canHandle: (text: string) => slashRouter.canHandle(text),
+		handleCommand: (text: string) => slashRouter.handleCommand(text, context),
+	};
 }
 
 describe("InteractiveSlashCommandRouter", () => {
@@ -327,7 +331,7 @@ describe("InteractiveSlashCommandRouter", () => {
 
 		const compactCalls: string[] = [];
 		expect(await router(compactCalls).handleCommand("/compact keep decisions")).toBe(true);
-		expect(compactCalls).toEqual(["clearEditor:", "stopLoadingAndClearStatus:", "session.compact:keep decisions"]);
+		expect(compactCalls).toEqual(["clearEditor:", "statusContainer.clear:", "session.compact:keep decisions"]);
 
 		const loginCalls: string[] = [];
 		expect(await router(loginCalls).handleCommand("/login anthropic")).toBe(true);
@@ -364,7 +368,7 @@ describe("InteractiveSlashCommandRouter", () => {
 
 		expect(calls.some((call) => call.includes("/btw needs a question"))).toBe(true);
 		expect(calls.some((call) => call.includes("Memory backend unavailable"))).toBe(true);
-		expect(calls.some((call) => call.startsWith("setArchitectState:"))).toBe(true);
+		expect(calls.some((call) => call.includes("architect mode: OFF"))).toBe(true);
 	});
 
 	it("clears the editor before reporting that /copy has no assistant message", async () => {

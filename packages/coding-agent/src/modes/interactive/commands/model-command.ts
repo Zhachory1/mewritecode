@@ -39,7 +39,7 @@ function showModelSelector(context: InteractiveSlashCommandContext, initialSearc
 			async (model) => {
 				try {
 					await context.session.setModel(model);
-					context.invalidateFooter();
+					context.footer.invalidate();
 					context.updateEditorBorderColor();
 					done();
 					context.showStatus(`Model: ${model.id}`);
@@ -78,7 +78,7 @@ export class ModelCommand extends InteractiveSlashCommand {
 			if (model) {
 				try {
 					await context.session.setModel(model);
-					context.invalidateFooter();
+					context.footer.invalidate();
 					context.updateEditorBorderColor();
 					context.showStatus(`Model: ${model.id}`);
 					context.checkDaxnutsEasterEgg(model);

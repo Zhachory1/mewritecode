@@ -1,4 +1,5 @@
 import { MissingSessionCwdError } from "../../../core/session-cwd.js";
+import { stopLoadingAndClearStatus } from "./command-helpers.js";
 import {
 	broadPrefix,
 	InteractiveSlashCommand,
@@ -20,7 +21,7 @@ async function importSession(text: string, context: InteractiveSlashCommandConte
 	}
 
 	try {
-		context.stopLoadingAndClearStatus();
+		stopLoadingAndClearStatus(context);
 		const result = await context.runtimeHost.importFromJsonl(inputPath);
 		if (result.cancelled) {
 			context.showStatus("Import cancelled");

@@ -30,7 +30,7 @@ export function renderDebugCommand(context: InteractiveSlashCommandContext, opti
 	context.chatContainer.addChild(
 		new Text(`${theme.fg("accent", "✓ Debug log written")}\n${theme.fg("muted", debugLogPath)}`, 1, 1),
 	);
-	if (options.clearEditor) context.editor.setText("");
+	if (options.clearEditor) context.clearEditor();
 	context.ui.requestRender();
 }
 
