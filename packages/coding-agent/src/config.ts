@@ -146,6 +146,8 @@ function getRuntimeAssetPackageDir(): string {
 }
 
 function srcOrDistAssetPath(packageDir: string, ...segments: string[]): string {
+	const directPath = join(packageDir, ...segments);
+	if (existsSync(directPath)) return directPath;
 	const srcPath = join(packageDir, "src", ...segments);
 	if (existsSync(srcPath)) return srcPath;
 	const distPath = join(packageDir, "dist", ...segments);
