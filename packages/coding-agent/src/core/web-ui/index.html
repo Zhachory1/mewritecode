@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Me Write Code Web</title>
+		<link rel="stylesheet" href="/web/app.css" />
+	</head>
+	<body>
+		<div class="shell">
+			<header>
+				<div>
+					<strong>Me Write Code</strong>
+					<span id="status">connecting…</span>
+				</div>
+				<div id="session">no session</div>
+			</header>
+			<div id="banner" class="banner hidden"></div>
+			<main>
+				<aside class="pane files">
+					<h2>Files</h2>
+					<div class="placeholder">Read-only file browser lands in the next PR.</div>
+				</aside>
+				<section class="pane editor">
+					<h2>Editor</h2>
+					<pre id="editor">Select a file after the read-only file API lands.</pre>
+				</section>
+				<section class="pane chat">
+					<h2>Agent Chat</h2>
+					<div id="messages" class="messages"></div>
+					<form id="composer">
+						<textarea id="prompt" rows="3" placeholder="Ask Me Write Code…"></textarea>
+						<button id="send" type="submit">Send</button>
+					</form>
+				</section>
+			</main>
+		</div>
+		<script type="module" src="/web/app.js"></script>
+	</body>
+</html>

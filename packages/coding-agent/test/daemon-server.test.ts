@@ -14,6 +14,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { WebSocket } from "ws";
 import type { SessionStore } from "../src/core/daemon/index.js";
 import {
 	CaveClient,
@@ -67,6 +68,47 @@ describe("WS9 daemon — boot + health", () => {
 		expect(h.ok).toBe(true);
 		expect(h.version).toBe("test");
 		expect(h.uptimeSec).toBeGreaterThanOrEqual(0);
+		expect(h.capabilities).toEqual({ runnerKind: "echo", approvalSupported: false });
+	});
+
+	it("serves the local web UI shell", async () => {
+		const base = `http://127.0.0.1:${f.handle.port}`;
+		const html = await fetch(`${base}/`);
+		expect(html.status).toBe(200);
+		expect(html.headers.get("content-type")).toContain("text/html");
+		expect(await html.text()).toContain("Me Write Code");
+
+		const js = await fetch(`${base}/web/app.js`);
+		expect(js.status).toBe(200);
+		expect(js.headers.get("content-type")).toContain("text/javascript");
+	});
+
+	it("rejects non-loopback host headers when unauthenticated", async () => {
+		const response = await fetch(`http://127.0.0.1:${f.handle.port}/v1/health`, {
+			headers: {
+				host: `evil.example:${f.handle.port}`,
+				origin: `http://evil.example:${f.handle.port}`,
+			},
+		});
+		expect(response.status).toBe(403);
+	});
+
+	it("rejects non-loopback unauthenticated daemon startup", async () => {
+		const tmpDir = mkdtempSync(join(tmpdir(), "cave-daemon-host-"));
+		const store = openStore(join(tmpDir, "sessions.db"));
+		try {
+			await expect(
+				startDaemon({
+					host: "0.0.0.0",
+					port: 0,
+					store,
+					runnerFactory: createDefaultRunnerFactory({ tokensPerSecond: 2000 }),
+				}),
+			).rejects.toThrow(/token is required/);
+		} finally {
+			store.close();
+			rmSync(tmpDir, { recursive: true, force: true });
+		}
 	});
 });
 
@@ -115,6 +157,13 @@ describe("WS9 daemon — REST routing", () => {
 
 	it("rejects unknown routes with 404", async () => {
 		await expect(fetch(`http://127.0.0.1:${f.handle.port}/v1/nope`).then((r) => r.status)).resolves.toBe(404);
+	});
+
+	it("rejects unexpected browser origins for API requests", async () => {
+		const response = await fetch(`http://127.0.0.1:${f.handle.port}/v1/sessions`, {
+			headers: { origin: "http://evil.example" },
+		});
+		expect(response.status).toBe(403);
 	});
 });
 
@@ -207,6 +256,41 @@ describe("WS9 daemon — WebSocket streaming", () => {
 		session.close();
 	});
 
+	it("rejects unexpected browser origins for WebSocket streams", async () => {
+		const s = await f.client.createSession({});
+		await expect(
+			new Promise<void>((resolve, reject) => {
+				const ws = new WebSocket(`ws://127.0.0.1:${f.handle.port}/v1/sessions/${s.id}/stream`, {
+					headers: { origin: "http://evil.example" },
+				});
+				ws.once("open", () => {
+					ws.close();
+					reject(new Error("unexpected open"));
+				});
+				ws.once("error", () => resolve());
+			}),
+		).resolves.toBeUndefined();
+	});
+
+	it("rejects matching hostile host and origin for WebSocket streams", async () => {
+		const s = await f.client.createSession({});
+		await expect(
+			new Promise<void>((resolve, reject) => {
+				const ws = new WebSocket(`ws://127.0.0.1:${f.handle.port}/v1/sessions/${s.id}/stream`, {
+					headers: {
+						host: `evil.example:${f.handle.port}`,
+						origin: `http://evil.example:${f.handle.port}`,
+					},
+				});
+				ws.once("open", () => {
+					ws.close();
+					reject(new Error("unexpected open"));
+				});
+				ws.once("error", () => resolve());
+			}),
+		).resolves.toBeUndefined();
+	});
+
 	it("supports multiple clients attached to the same session", async () => {
 		const s = await f.client.createSession({});
 		const a = f.client.attach(s.id);
@@ -273,6 +357,30 @@ describe("WS9 daemon — bearer auth", () => {
 			const ok = new CaveClient({ host: f.handle.host, port: f.handle.port, token: "secret" });
 			const s = await ok.createSession({});
 			expect(s.id).toBeTruthy();
+		} finally {
+			await shutdown(f);
+		}
+	});
+
+	it("accepts bearer token through WebSocket subprotocols", async () => {
+		const f = await bootDaemon({ token: "secret" });
+		try {
+			const ok = new CaveClient({ host: f.handle.host, port: f.handle.port, token: "secret" });
+			const s = await ok.createSession({});
+			await expect(
+				new Promise<void>((resolve, reject) => {
+					const encoded = Buffer.from("secret", "utf8").toString("base64url");
+					const ws = new WebSocket(`ws://127.0.0.1:${f.handle.port}/v1/sessions/${s.id}/stream`, [
+						"mewrite-auth",
+						`mewrite-bearer.${encoded}`,
+					]);
+					ws.once("open", () => {
+						ws.close();
+						resolve();
+					});
+					ws.once("error", reject);
+				}),
+			).resolves.toBeUndefined();
 		} finally {
 			await shutdown(f);
 		}

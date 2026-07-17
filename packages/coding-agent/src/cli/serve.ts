@@ -63,16 +63,20 @@ function parseServeArgs(args: string[]): ServeArgs {
 function printHelp(): void {
 	console.log(`Usage: mewrite serve [options]
 
-Run the cave daemon (HTTP + WebSocket). Sessions persist to SQLite and
-survive process restarts; multiple clients can attach to the same session.
+Run the Me Write Code daemon (HTTP + WebSocket) and local web UI. Sessions
+persist to SQLite and survive process restarts; multiple clients can attach to
+the same session.
 
 Options:
   --host <ip>     Bind host (default 127.0.0.1)
   --port <n>      Bind port (default 7421)
-  --token <s>     Require Bearer <token> on every request
+  --token <s>     Require Bearer <token> on every API/WebSocket request
   --db <path>     SQLite session store (default ~/.cave/daemon/sessions.db)
   --pid <path>    Pid file (default ~/.cave/daemon/daemon.pid)
   -h, --help      Show this help
+
+Web UI:
+  GET  /                                     Experimental local browser UI
 
 Endpoints:
   GET  /v1/health                            Liveness
@@ -102,6 +106,11 @@ export async function runServe(args: string[]): Promise<number> {
 	if (parsed.help) {
 		printHelp();
 		return 0;
+	}
+	if (!parsed.token && !isLoopbackHost(parsed.host)) {
+		console.error(chalk.red("Error: --token is required when --host is not loopback."));
+		console.error(chalk.dim("Use the default 127.0.0.1 for local-only web UI, or pass --token <secret>."));
+		return 1;
 	}
 	if (existsSync(parsed.pidFile)) {
 		const existing = Number.parseInt(readFileSync(parsed.pidFile, "utf8").trim(), 10);
@@ -136,6 +145,7 @@ export async function runServe(args: string[]): Promise<number> {
 	writeFileSync(parsed.pidFile, String(process.pid), "utf8");
 
 	console.log(chalk.green(`mewrite serve listening on http://${handle.host}:${handle.port}`));
+	console.log(chalk.dim(`  web:  http://${handle.host}:${handle.port}/`));
 	console.log(chalk.dim(`  pid:  ${process.pid}`));
 	console.log(chalk.dim(`  db:   ${parsed.dbPath}`));
 	if (parsed.token) {
@@ -183,6 +193,11 @@ function processAlive(pid: number): boolean {
 	} catch {
 		return false;
 	}
+}
+
+function isLoopbackHost(host: string): boolean {
+	const h = host.toLowerCase();
+	return h === "127.0.0.1" || h === "localhost" || h === "::1" || h === "[::1]";
 }
 
 /**

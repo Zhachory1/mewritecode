@@ -204,7 +204,7 @@ components:
   schemas:
     Health:
       type: object
-      required: [ok, version, uptimeSec]
+      required: [ok, version, uptimeSec, capabilities]
       properties:
         ok:
           type: boolean
@@ -212,6 +212,15 @@ components:
           type: string
         uptimeSec:
           type: integer
+        capabilities:
+          type: object
+          required: [runnerKind, approvalSupported]
+          properties:
+            runnerKind:
+              type: string
+              enum: [echo, agent]
+            approvalSupported:
+              type: boolean
     SessionState:
       type: string
       enum: [idle, running, stopped, error]

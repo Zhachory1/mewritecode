@@ -274,6 +274,14 @@ export function getExportTemplateDir(): string {
 	return srcOrDistAssetPath(packageDir, "core", "export-html");
 }
 
+export function getWebUiDir(): string {
+	if (isBunBinary) {
+		return join(dirname(process.execPath), "web-ui");
+	}
+	const packageDir = getRuntimeAssetPackageDir();
+	return srcOrDistAssetPath(packageDir, "core", "web-ui");
+}
+
 /** Get path to package.json */
 export function getPackageJsonPath(): string {
 	return join(getPackageDir(), "package.json");

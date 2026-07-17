@@ -46,10 +46,18 @@ export interface SendMessageRequest {
 	worker?: string;
 }
 
+export type RunnerKind = "echo" | "agent";
+
+export interface HealthCapabilities {
+	runnerKind: RunnerKind;
+	approvalSupported: boolean;
+}
+
 export interface Health {
 	ok: true;
 	version: string;
 	uptimeSec: number;
+	capabilities: HealthCapabilities;
 }
 
 export interface WorkerRecord {
