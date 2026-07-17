@@ -2,11 +2,11 @@ import { Spacer } from "@zhachory1/mewrite-tui";
 import { ArminComponent } from "../components/armin.js";
 import { exact, InteractiveSlashCommand, type InteractiveSlashCommandContext } from "./interactive-slash-command.js";
 
-export class ArminSaysHiCommand extends InteractiveSlashCommand {
-	readonly name = "arminsayshi";
+export class ZhachSaysHiCommand extends InteractiveSlashCommand {
+	readonly name = "zhachsayshi";
 
 	condition(text: string): boolean {
-		return exact("/arminsayshi", text);
+		return exact("/zhachsayshi", text);
 	}
 
 	handleCommand(_text: string, context: InteractiveSlashCommandContext): void {

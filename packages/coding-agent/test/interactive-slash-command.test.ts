@@ -294,6 +294,14 @@ describe("InteractiveSlashCommandRouter", () => {
 		expect(calls).toContain("showError:Usage: /import <path.jsonl>");
 	});
 
+	it("renames the hidden greeting command to /zhachsayshi", async () => {
+		const calls: string[] = [];
+		const r = router(calls);
+
+		expect(await r.handleCommand("/zhachsayshi")).toBe(true);
+		expect(calls).toContain("clearEditor:");
+	});
+
 	it("runs /new and /clear command bodies through runtime primitives", async () => {
 		const calls: string[] = [];
 		const r = router(calls);
