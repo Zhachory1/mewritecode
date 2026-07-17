@@ -147,7 +147,7 @@ export async function runServe(args: string[]): Promise<number> {
 			store,
 			runnerFactory,
 			version: VERSION,
-			capabilities: { runnerKind: parsed.runner, approvalSupported: false },
+			capabilities: { runnerKind: parsed.runner, approvalSupported: parsed.runner === "agent" },
 		});
 	} catch (err) {
 		console.error(

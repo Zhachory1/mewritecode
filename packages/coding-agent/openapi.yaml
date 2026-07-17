@@ -486,6 +486,9 @@ components:
 #   notifications: { method: "token", params: { sessionId, text, role } }
 #                  { method: "tool", params: { sessionId, name, status } }
 #                  { method: "state", params: { sessionId, state } }
+#                  { method: "approval", params: { sessionId, approvalId, toolName, args, tier } }
 #                  { method: "done",  params: { sessionId } }
-#   requests:      { method: "send", params: { text } } → { result: { id } }
+#   requests:      { method: "client_capabilities", params: { approval } } → { result: { ok: true } }
+#                  { method: "send", params: { text } } → { result: { id } }
 #                  { method: "interrupt", params: {} } → { result: { ok: true } }
+#                  { method: "approval_decision", params: { approvalId, decision } } → { result: { ok: true } }

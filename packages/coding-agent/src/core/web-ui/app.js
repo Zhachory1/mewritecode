@@ -146,7 +146,10 @@ function connectSocket() {
 	const url = `${protocol}//${location.host}/v1/sessions/${encodeURIComponent(sessionId)}/stream`;
 	const protocols = token ? ["mewrite-auth", `mewrite-bearer.${base64Url(token)}`] : [];
 	socket = new WebSocket(url, protocols);
-	socket.addEventListener("open", () => setStatus("connected"));
+	socket.addEventListener("open", () => {
+		setStatus("connected");
+		socket.send(JSON.stringify({ jsonrpc: "2.0", id: rpcId++, method: "client_capabilities", params: { approval: true } }));
+	});
 	socket.addEventListener("close", () => setStatus("disconnected"));
 	socket.addEventListener("error", () => setStatus("socket error"));
 	socket.addEventListener("message", (event) => onSocketMessage(event.data));
@@ -168,11 +171,30 @@ function onSocketMessage(raw) {
 		setStatus(envelope.params?.state || "connected");
 		return;
 	}
+	if (envelope.method === "approval") {
+		handleApproval(envelope.params);
+		return;
+	}
 	if (envelope.method === "done") {
 		assistantMessage = undefined;
 		return;
 	}
 	if (envelope.error) addMessage("system", envelope.error.message || "request failed");
+}
+
+function handleApproval(params) {
+	const summary = JSON.stringify(params?.args ?? {}, null, 2);
+	const approved = window.confirm(`Approve ${params?.toolName || "tool"} (${params?.tier || "risk"})?\n\n${summary}`);
+	const decision = approved ? "once" : "deny";
+	if (!socket || socket.readyState !== WebSocket.OPEN) return;
+	socket.send(
+		JSON.stringify({
+			jsonrpc: "2.0",
+			id: rpcId++,
+			method: "approval_decision",
+			params: { approvalId: params?.approvalId, decision },
+		}),
+	);
 }
 
 formEl.addEventListener("submit", (event) => {

@@ -97,17 +97,34 @@ export interface RegisterWorkerRequest {
 	labels?: Record<string, string>;
 }
 
+export type ApprovalDecision = "once" | "session" | "deny";
+
+export interface ApprovalParams {
+	sessionId: string;
+	approvalId: string;
+	toolName: string;
+	args: unknown;
+	tier: string;
+}
+
+export interface ApprovalDecisionParams {
+	approvalId: string;
+	decision: ApprovalDecision;
+}
+
 // ---- JSON-RPC 2.0 over WebSocket ----
 //
 // Notifications (server → client):
 //   { jsonrpc: "2.0", method: "token", params: { sessionId, text, role } }
-//   { jsonrpc: "2.0", method: "tool",  params: { sessionId, name, status } }
-//   { jsonrpc: "2.0", method: "state", params: { sessionId, state } }
-//   { jsonrpc: "2.0", method: "done",  params: { sessionId } }
+//   { jsonrpc: "2.0", method: "tool",     params: { sessionId, name, status } }
+//   { jsonrpc: "2.0", method: "state",    params: { sessionId, state } }
+//   { jsonrpc: "2.0", method: "approval", params: { sessionId, approvalId, toolName, args, tier } }
+//   { jsonrpc: "2.0", method: "done",     params: { sessionId } }
 //
 // Requests (client → server):
-//   { jsonrpc: "2.0", id: 1, method: "send",      params: { text } }
-//   { jsonrpc: "2.0", id: 2, method: "interrupt", params: {} }
+//   { jsonrpc: "2.0", id: 1, method: "send",              params: { text } }
+//   { jsonrpc: "2.0", id: 2, method: "interrupt",         params: {} }
+//   { jsonrpc: "2.0", id: 3, method: "approval_decision", params: { approvalId, decision } }
 
 export type RpcId = string | number;
 

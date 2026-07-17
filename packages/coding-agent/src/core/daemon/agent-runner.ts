@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { AgentMessage } from "@zhachory1/mewrite-agent";
-import type { AgentSession, AgentSessionEvent } from "../agent-session.js";
+import type { AgentSession, AgentSessionEvent, ApprovalDecision, RequestApprovalFn } from "../agent-session.js";
 import { createAgentSession } from "../sdk.js";
 import type { MessageRecord, SessionRecord } from "./protocol.js";
 import type { AgentRunner, RunnerEmitter, RunnerFactory } from "./server.js";
@@ -10,6 +10,7 @@ interface AgentSessionLike {
 	prompt(text: string): Promise<void>;
 	abort?(): Promise<void>;
 	dispose?(): void;
+	setApprovalCallback?(cb: RequestApprovalFn | undefined): void;
 }
 
 export interface AgentBackedRunnerOptions {
@@ -31,6 +32,7 @@ class AgentBackedRunner implements AgentRunner {
 	private terminalEmitted = false;
 	private currentAssistantText = "";
 	private lastAssistantMessageText?: string;
+	private pendingApprovals = new Map<string, { resolve: (decision: ApprovalDecision) => void; cleanup: () => void }>();
 
 	constructor(
 		private readonly daemonSession: SessionRecord,
@@ -64,12 +66,14 @@ class AgentBackedRunner implements AgentRunner {
 
 	interrupt(): void {
 		this.cancelRequested = true;
+		this.cancelPendingApprovals();
 		void this.realizedSession?.abort?.().finally(() => this.emitTerminal("stopped"));
 	}
 
 	close(): void {
 		this.closed = true;
 		this.cancelRequested = true;
+		this.cancelPendingApprovals();
 		void this.realizedSession?.abort?.().finally(() => this.emitTerminal("stopped"));
 		this.unsubscribe?.();
 		this.unsubscribe = undefined;
@@ -96,12 +100,56 @@ class AgentBackedRunner implements AgentRunner {
 		if (!this.sessionPromise) {
 			this.sessionPromise = this.createSession(this.daemonSession).then((result) => {
 				this.realizedSession = result.session;
+				result.session.setApprovalCallback?.(this.requestApproval);
 				this.unsubscribe = result.session.subscribe((event) => this.onEvent(event));
 				return result.session;
 			});
 		}
 		return this.sessionPromise;
 	}
+
+	respondApproval(approvalId: string, decision: ApprovalDecision): void {
+		const pending = this.pendingApprovals.get(approvalId);
+		if (!pending) return;
+		this.pendingApprovals.delete(approvalId);
+		pending.cleanup();
+		pending.resolve(decision);
+	}
+
+	cancelApprovals(): void {
+		this.cancelPendingApprovals();
+	}
+
+	private requestApproval: RequestApprovalFn = (toolName, args, tier, signal) => {
+		const approvalId = randomUUID();
+		const delivered = this.emit({
+			type: "approval",
+			sessionId: this.daemonSession.id,
+			approvalId,
+			toolName,
+			args,
+			tier: String(tier),
+		});
+		if (!delivered) return Promise.resolve("deny");
+		return new Promise<ApprovalDecision>((resolve) => {
+			let settled = false;
+			const finish = (decision: ApprovalDecision) => {
+				if (settled) return;
+				settled = true;
+				this.pendingApprovals.delete(approvalId);
+				cleanup();
+				resolve(decision);
+			};
+			const timeout = setTimeout(() => finish("deny"), 5 * 60 * 1000);
+			const onAbort = () => finish("deny");
+			const cleanup = () => {
+				clearTimeout(timeout);
+				signal?.removeEventListener("abort", onAbort);
+			};
+			signal?.addEventListener("abort", onAbort, { once: true });
+			this.pendingApprovals.set(approvalId, { resolve: finish, cleanup });
+		});
+	};
 
 	private onEvent(event: AgentSessionEvent): void {
 		if (this.closed) return;
@@ -143,6 +191,14 @@ class AgentBackedRunner implements AgentRunner {
 			} else {
 				this.emitTerminal("idle");
 			}
+		}
+	}
+
+	private cancelPendingApprovals(): void {
+		for (const [approvalId, pending] of this.pendingApprovals) {
+			this.pendingApprovals.delete(approvalId);
+			pending.cleanup();
+			pending.resolve("deny");
 		}
 	}
 

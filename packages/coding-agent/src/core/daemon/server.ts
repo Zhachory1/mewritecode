@@ -16,6 +16,9 @@ import { isAbsolute, join, normalize, relative, resolve } from "node:path";
 import { WebSocket, WebSocketServer } from "ws";
 import { getWebUiDir } from "../../config.js";
 import {
+	type ApprovalDecision,
+	type ApprovalDecisionParams,
+	type ApprovalParams,
 	DEFAULT_DAEMON_HOST,
 	DEFAULT_DAEMON_PORT,
 	type DoneParams,
@@ -53,16 +56,19 @@ export interface AgentRunner {
 	send(text: string): Promise<MessageRecord>;
 	interrupt(): void;
 	close(): void;
+	respondApproval?(approvalId: string, decision: ApprovalDecision): void;
+	cancelApprovals?(): void;
 }
 
 export type RunnerEvent =
 	| { type: "token"; sessionId: string; text: string; role: Role }
 	| { type: "tool"; sessionId: string; name: string; status: "start" | "ok" | "err" }
 	| { type: "state"; sessionId: string; state: SessionRecord["state"] }
+	| { type: "approval"; sessionId: string; approvalId: string; toolName: string; args: unknown; tier: string }
 	| { type: "message"; message: MessageRecord }
 	| { type: "done"; sessionId: string };
 
-export type RunnerEmitter = (event: RunnerEvent) => void;
+export type RunnerEmitter = (event: RunnerEvent) => boolean;
 
 export type RunnerFactory = (session: SessionRecord, emit: RunnerEmitter) => AgentRunner;
 
@@ -87,6 +93,7 @@ interface AttachedClient {
 	ws: WebSocket;
 	sessionId: string;
 	pendingTokens: TokenParams[];
+	approvalCapable: boolean;
 	tickHandle?: NodeJS.Timeout;
 }
 
@@ -111,11 +118,14 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 		return (event) => {
 			if (event.type === "message") {
 				opts.store.appendMessage(event.message);
-				return;
+				return true;
 			}
 			const set = clients.get(sessionId);
-			if (!set || set.size === 0) return;
+			if (!set || set.size === 0) return false;
+			let delivered = false;
 			for (const c of set) {
+				if (event.type === "approval" && !c.approvalCapable) continue;
+				delivered = true;
 				if (event.type === "token") {
 					c.pendingTokens.push({ sessionId, text: event.text, role: event.role });
 					if (!c.tickHandle) {
@@ -125,11 +135,14 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 					send(c.ws, notification("tool", { sessionId, name: event.name, status: event.status } as ToolParams));
 				} else if (event.type === "state") {
 					send(c.ws, notification("state", { sessionId, state: event.state } as StateParams));
+				} else if (event.type === "approval") {
+					send(c.ws, notification("approval", event as ApprovalParams));
 				} else if (event.type === "done") {
 					flushTokens(c);
 					send(c.ws, notification("done", { sessionId } as DoneParams));
 				}
 			}
+			return delivered;
 		};
 	}
 
@@ -358,7 +371,7 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 	});
 
 	function attachClient(sessionId: string, session: SessionRecord, ws: WebSocket): void {
-		const client: AttachedClient = { ws, sessionId, pendingTokens: [] };
+		const client: AttachedClient = { ws, sessionId, pendingTokens: [], approvalCapable: false };
 		let set = clients.get(sessionId);
 		if (!set) {
 			set = new Set();
@@ -396,6 +409,19 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 					const runner = runners.get(sessionId);
 					runner?.interrupt();
 					send(ws, okResponse(req.id, { ok: true }));
+				} else if (req.method === "client_capabilities") {
+					const params = (req.params as { approval?: unknown } | undefined) ?? undefined;
+					client.approvalCapable = params?.approval === true;
+					send(ws, okResponse(req.id, { ok: true }));
+				} else if (req.method === "approval_decision") {
+					const params = (req.params as ApprovalDecisionParams | undefined) ?? undefined;
+					if (!params || typeof params.approvalId !== "string" || !isApprovalDecision(params.decision)) {
+						send(ws, errorResponse(req.id, -32602, "missing approval decision"));
+						return;
+					}
+					const runner = runners.get(sessionId);
+					runner?.respondApproval?.(params.approvalId, params.decision);
+					send(ws, okResponse(req.id, { ok: true }));
 				} else if (req.method === "ping") {
 					send(ws, okResponse(req.id, { pong: true }));
 				} else {
@@ -406,15 +432,16 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 			}
 		});
 
-		ws.on("close", () => {
+		const detach = () => {
 			set?.delete(client);
 			if (client.tickHandle) clearTimeout(client.tickHandle);
-		});
+			if (!set || ![...set].some((attached) => attached.approvalCapable)) {
+				runners.get(sessionId)?.cancelApprovals?.();
+			}
+		};
 
-		ws.on("error", () => {
-			set?.delete(client);
-			if (client.tickHandle) clearTimeout(client.tickHandle);
-		});
+		ws.on("close", detach);
+		ws.on("error", detach);
 	}
 
 	await new Promise<void>((resolve, reject) => {
@@ -534,6 +561,10 @@ function readBearerToken(req: IncomingMessage): string | undefined {
 	const auth = req.headers.authorization;
 	if (!auth || Array.isArray(auth)) return undefined;
 	return /^Bearer\s+(.+)$/.exec(auth)?.[1];
+}
+
+function isApprovalDecision(value: unknown): value is ApprovalDecision {
+	return value === "once" || value === "session" || value === "deny";
 }
 
 function readWebSocketProtocolToken(req: IncomingMessage): string | undefined {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AgentSessionEvent } from "../src/core/agent-session.js";
+import type { AgentSessionEvent, RequestApprovalFn } from "../src/core/agent-session.js";
 import { createAgentBackedRunnerFactory } from "../src/core/daemon/agent-runner.js";
 import type { AgentRunner, RunnerEmitter } from "../src/core/daemon/index.js";
 import type { SessionRecord } from "../src/core/daemon/protocol.js";
@@ -8,6 +8,7 @@ class FakeSession {
 	protected listener?: (event: AgentSessionEvent) => void;
 	aborted = false;
 	disposed = false;
+	approvalCallback?: RequestApprovalFn;
 
 	subscribe(listener: (event: AgentSessionEvent) => void): () => void {
 		this.listener = listener;
@@ -22,6 +23,10 @@ class FakeSession {
 
 	dispose(): void {
 		this.disposed = true;
+	}
+
+	setApprovalCallback(cb: RequestApprovalFn | undefined): void {
+		this.approvalCallback = cb;
 	}
 
 	async prompt(_text: string): Promise<void> {
@@ -69,6 +74,14 @@ class ErrorEndSession extends FakeSession {
 	}
 }
 
+class ApprovalSession extends FakeSession {
+	decision?: string;
+	override async prompt(_text: string): Promise<void> {
+		this.decision = await this.approvalCallback?.("write", { path: "file.txt" }, "write" as never);
+		this.listener?.({ type: "agent_end", messages: [] } as unknown as AgentSessionEvent);
+	}
+}
+
 class NeverEndingSession extends FakeSession {
 	release!: () => void;
 	override async prompt(_text: string): Promise<void> {
@@ -89,7 +102,10 @@ const sessionRecord: SessionRecord = {
 describe("agent-backed daemon runner", () => {
 	it("bridges session events to daemon runner events", async () => {
 		const events: unknown[] = [];
-		const emit: RunnerEmitter = (event) => events.push(event);
+		const emit: RunnerEmitter = (event) => {
+			events.push(event);
+			return true;
+		};
 		const runner: AgentRunner = createAgentBackedRunnerFactory({
 			createSession: async () => ({ session: new FakeSession() }),
 		})(sessionRecord, emit);
@@ -114,7 +130,10 @@ describe("agent-backed daemon runner", () => {
 
 	it("reports encoded agent failures as error terminal state", async () => {
 		const events: unknown[] = [];
-		const emit: RunnerEmitter = (event) => events.push(event);
+		const emit: RunnerEmitter = (event) => {
+			events.push(event);
+			return true;
+		};
 		const runner = createAgentBackedRunnerFactory({
 			createSession: async () => ({ session: new ErrorEndSession() }),
 		})(sessionRecord, emit);
@@ -136,7 +155,10 @@ describe("agent-backed daemon runner", () => {
 		const session = new NeverEndingSession();
 		const runner = createAgentBackedRunnerFactory({
 			createSession: async () => ({ session }),
-		})(sessionRecord, (event) => events.push(event));
+		})(sessionRecord, (event) => {
+			events.push(event);
+			return true;
+		});
 
 		await runner.send("first");
 		await expect(runner.send("second")).rejects.toThrow(/already processing/);
@@ -148,7 +170,10 @@ describe("agent-backed daemon runner", () => {
 		const session = new NeverEndingSession();
 		const runner = createAgentBackedRunnerFactory({
 			createSession: async () => ({ session }),
-		})(sessionRecord, (event) => events.push(event));
+		})(sessionRecord, (event) => {
+			events.push(event);
+			return true;
+		});
 
 		await runner.send("first");
 		await expect.poll(() => typeof session.release).toBe("function");
@@ -181,7 +206,10 @@ describe("agent-backed daemon runner", () => {
 					},
 				};
 			},
-		})(sessionRecord, (event) => events.push(event));
+		})(sessionRecord, (event) => {
+			events.push(event);
+			return true;
+		});
 
 		await runner.send("first");
 		runner.close();
@@ -190,5 +218,34 @@ describe("agent-backed daemon runner", () => {
 		await expect.poll(() => events.some((event) => (event as { state?: string }).state === "stopped")).toBe(true);
 		expect(prompted).toBe(false);
 		expect(session.disposed).toBe(true);
+	});
+
+	it("waits for browser approval decisions", async () => {
+		const events: unknown[] = [];
+		const session = new ApprovalSession();
+		const runner = createAgentBackedRunnerFactory({
+			createSession: async () => ({ session }),
+		})(sessionRecord, (event) => {
+			events.push(event);
+			return true;
+		});
+
+		await runner.send("approve");
+		await expect.poll(() => events.find((event) => (event as { type?: string }).type === "approval")).toBeTruthy();
+		const approval = events.find((event) => (event as { type?: string }).type === "approval") as {
+			approvalId: string;
+		};
+		runner.respondApproval?.(approval.approvalId, "once");
+		await expect.poll(() => session.decision).toBe("once");
+	});
+
+	it("denies approval when no browser client receives the request", async () => {
+		const session = new ApprovalSession();
+		const runner = createAgentBackedRunnerFactory({
+			createSession: async () => ({ session }),
+		})(sessionRecord, () => false);
+
+		await runner.send("approve");
+		await expect.poll(() => session.decision).toBe("deny");
 	});
 });
