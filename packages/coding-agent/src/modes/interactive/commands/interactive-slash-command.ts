@@ -71,7 +71,6 @@ export interface InteractiveSlashCommandContext {
 	showOAuthSelector(action: "login" | "logout"): MaybePromise;
 	showLoginDialog(provider: OAuthProviderId): MaybePromise;
 	showSelector(factory: (done: () => void) => { component: Component; focus: Component }): void;
-	toggleActivityOverlay(): void;
 	shutdown(): MaybePromise;
 	appendSlashOutput(text: string, isError: boolean): void;
 	refreshChatModeFooter(): void;

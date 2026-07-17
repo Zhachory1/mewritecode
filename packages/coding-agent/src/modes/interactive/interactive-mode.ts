@@ -34,7 +34,6 @@ import {
 	notify,
 	ProcessTerminal,
 	renderStatusLineDefault,
-	type SidePanelHandle,
 	Spacer,
 	setKeybindings,
 	Text,
@@ -304,13 +303,8 @@ export class InteractiveMode {
 	// Agent subscription unsubscribe function
 	private unsubscribe?: () => void;
 
-	// F2 activity monitor overlay, backed by the session's ActivityRegistry.
-	private activityOverlay: ActivityOverlay | undefined = undefined;
 	// Compact inline activity monitor shown under the running loader.
 	private activityStatus: ActivityOverlay | undefined = undefined;
-	private activityPanel: SidePanelHandle | null = null;
-	// Live-refresh ticker for the open panel (re-renders elapsed/stalled each second).
-	private activityTicker: ReturnType<typeof setInterval> | undefined = undefined;
 	// Unsubscribe handle for the registry → spinner-message refresh.
 	private activitySpinnerUnsub: (() => void) | undefined = undefined;
 	// Stable model-row id for the current assistant LLM call (per-call, not per-turn).
@@ -407,22 +401,15 @@ export class InteractiveMode {
 		this.version = VERSION;
 		this.ui = new TUI(new ProcessTerminal(), this.settingsManager.getShowHardwareCursor());
 		this.ui.setClearOnShrink(this.settingsManager.getClearOnShrink());
-		// Activity monitor (F2): reads the session's authoritative ActivityRegistry.
-		// The registry's ActivitySnapshot is structurally identical to the
-		// tui-local one, so a thin list()/subscribe() adapter is all that's needed.
 		const activityRegistry = this.session.activityRegistry;
 		const activityRegistryAdapter = {
 			list: () => activityRegistry.list() as ActivitySnapshot[],
 			subscribe: (fn: () => void) => activityRegistry.subscribe(fn),
 		};
-		this.activityOverlay = new ActivityOverlay({
-			registry: activityRegistryAdapter,
-		});
 		this.activityStatus = new ActivityOverlay({
 			registry: activityRegistryAdapter,
 			maxRows: 4,
 		});
-		this.activityOverlay.bindRedraw(() => this.ui.requestRender());
 		this.activityStatus.bindRedraw(() => this.ui.requestRender());
 		// Keep the spinner's blocking-leaf label fresh on every registry change
 		// (covers stall transitions / subagent chatter that arrive without a
@@ -1483,10 +1470,9 @@ export class InteractiveMode {
 		this.applyRuntimeSettings();
 		await this.bindCurrentSessionExtensions();
 		this.subscribeToAgent();
-		// B-1: rewire the activity spinner + F2 overlay to the NEW session's
-		// registry. After /new, /fork, or resume `this.session` points at a fresh
-		// AgentSession with its own ActivityRegistry; the old one is disposed.
-		// Without this, the spinner/overlay would keep reading the dead registry.
+		// B-1: rewire the activity spinner to the NEW session's registry. After
+		// /new, /fork, or resume `this.session` points at a fresh AgentSession with
+		// its own ActivityRegistry; the old one is disposed.
 		this.activitySpinnerUnsub?.();
 		const reg = this.session.activityRegistry;
 		this.activitySpinnerUnsub = reg.subscribe(() => this.refreshSpinnerMessage());
@@ -1494,7 +1480,6 @@ export class InteractiveMode {
 			list: () => reg.list() as ActivitySnapshot[],
 			subscribe: (fn: () => void) => reg.subscribe(fn),
 		};
-		this.activityOverlay?.setRegistry(activityRegistryAdapter);
 		this.activityStatus?.setRegistry(activityRegistryAdapter);
 		await this.updateAvailableProviderCount();
 		this.updateEditorBorderColor();
@@ -2246,7 +2231,6 @@ export class InteractiveMode {
 		this.defaultEditor.onAction("app.session.fork", () => this.handleSlashShortcut("/fork"));
 		this.defaultEditor.onAction("app.session.resume", () => this.handleSlashShortcut("/resume"));
 		this.defaultEditor.onAction("app.help", () => this.toggleHelpOverlay());
-		this.defaultEditor.onAction("app.subagent.toggle", () => this.handleSlashShortcut("/activity"));
 		this.defaultEditor.onAction("app.message.editQueue", () => this.openQueuedMessagesEditor());
 		this.defaultEditor.onAction("app.tools.shelfExpand", () => this.toggleLastToolShelf());
 
@@ -2325,7 +2309,6 @@ export class InteractiveMode {
 			showOAuthSelector: (action) => this.showOAuthSelector(action),
 			showLoginDialog: (provider) => this.showLoginDialog(provider),
 			showSelector: (factory) => this.showSelector(factory),
-			toggleActivityOverlay: () => this.toggleActivityOverlay(),
 			shutdown: () => this.shutdown(),
 			appendSlashOutput: (text, isError) => this.appendSlashOutput(text, isError),
 			refreshChatModeFooter: () => this._refreshChatModeFooter(),
@@ -3361,47 +3344,6 @@ export class InteractiveMode {
 		}
 	}
 
-	private toggleActivityOverlay(): void {
-		if (!this.activityOverlay) return;
-		if (this.activityPanel) {
-			this.hideActivityOverlay();
-			return;
-		}
-		// SHOW: keep finished rows visible (U-A3) and start a 1s ticker so the
-		// elapsed/stalled columns advance even when no registry event fires.
-		this.session.activityRegistry.setPruning(false);
-		if (this.activityTicker) clearInterval(this.activityTicker);
-		this.activityTicker = setInterval(() => {
-			// Self-guard (B6): another side panel (e.g. an extension modal) shares
-			// the single TUI side-panel slot. If it displaced/closed ours via a bare
-			// `hideSidePanel()`, our panel is gone but `this.activityPanel` + the
-			// ticker + pruning(false) would leak. Detect that and tear down cleanly.
-			if (!this.ui.hasSidePanel()) {
-				this.hideActivityOverlay();
-				return;
-			}
-			this.ui.requestRender();
-		}, 1000);
-		this.activityPanel = this.ui.showSidePanel(this.activityOverlay, { side: "right" });
-	}
-
-	/**
-	 * Tear down the activity panel. `SidePanelHandle.hide()` does NOT dispose the
-	 * overlay or stop our ticker, so the toggle (and any other close path) MUST
-	 * route through here to clear the interval and re-enable pruning (B6).
-	 */
-	private hideActivityOverlay(): void {
-		if (this.activityTicker) {
-			clearInterval(this.activityTicker);
-			this.activityTicker = undefined;
-		}
-		this.session.activityRegistry.setPruning(true);
-		if (this.activityPanel) {
-			this.activityPanel.hide();
-			this.activityPanel = null;
-		}
-	}
-
 	private toggleHelpOverlay(): void {
 		if (this.helpOverlay) {
 			this.helpOverlay.hide();
@@ -4374,18 +4316,8 @@ export class InteractiveMode {
 		this.clearExtensionTerminalInputListeners();
 		this.footer.dispose();
 		this.footerDataProvider.dispose();
-		// B6: always route through hideActivityOverlay() so the ticker is cleared
-		// AND pruning is re-enabled on shutdown if the panel was open. The fallback
-		// clears any orphan ticker even when the panel was already gone.
-		if (this.activityPanel) {
-			this.hideActivityOverlay();
-		} else if (this.activityTicker) {
-			clearInterval(this.activityTicker);
-			this.activityTicker = undefined;
-		}
 		this.activitySpinnerUnsub?.();
 		this.activitySpinnerUnsub = undefined;
-		this.activityOverlay?.dispose();
 		this.activityStatus?.dispose();
 		if (this.unsubscribe) {
 			this.unsubscribe();
