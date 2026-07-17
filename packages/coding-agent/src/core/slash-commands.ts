@@ -73,7 +73,7 @@ export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 	{ name: "session", description: "Show session info and stats", wired: true },
 	{ name: "changelog", description: "Show changelog entries", wired: true },
 	{ name: "hotkeys", description: "Show all keyboard shortcuts", wired: true },
-	{ name: "activity", description: "Toggle live activity monitor", wired: true },
+	{ name: "activity", description: "Toggle live activity monitor", wired: false },
 	{ name: "fork", description: "Create a new fork from a previous message", wired: true },
 	{ name: "tree", description: "Navigate session tree (switch branches)", wired: true },
 	{ name: "login", description: "Login with OAuth provider", wired: true },

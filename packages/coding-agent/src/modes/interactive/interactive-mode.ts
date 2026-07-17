@@ -520,10 +520,12 @@ export class InteractiveMode {
 
 	private setupAutocomplete(fdPath: string | undefined): void {
 		// Define commands for autocomplete
-		const slashCommands: SlashCommand[] = BUILTIN_SLASH_COMMANDS.map((command) => ({
-			name: command.name,
-			description: command.description,
-		}));
+		const slashCommands: SlashCommand[] = BUILTIN_SLASH_COMMANDS.filter((command) => command.wired).map(
+			(command) => ({
+				name: command.name,
+				description: command.description,
+			}),
+		);
 
 		const modelCommand = slashCommands.find((command) => command.name === "model");
 		if (modelCommand) {
