@@ -13,12 +13,16 @@
 					<strong>Me Write Code</strong>
 					<span id="status">connecting…</span>
 				</div>
+				<div id="cwd" title="Current working directory">cwd: …</div>
 				<div id="session">no session</div>
 			</header>
 			<div id="banner" class="banner hidden"></div>
-			<main>
+			<main id="layout">
 				<aside class="pane files">
-					<h2>Files</h2>
+					<div class="pane-title">
+						<h2>Files</h2>
+						<button class="pane-toggle" type="button" data-pane="files" title="Collapse files">‹</button>
+					</div>
 					<div id="file-tree" class="file-tree">loading…</div>
 				</aside>
 				<section class="pane editor">
@@ -26,8 +30,12 @@
 					<pre id="editor">Select a file from the tree.</pre>
 				</section>
 				<section class="pane chat">
-					<h2>Agent Chat</h2>
+					<div class="pane-title">
+						<h2>Agent Chat</h2>
+						<button class="pane-toggle" type="button" data-pane="chat" title="Collapse chat">›</button>
+					</div>
 					<div id="messages" class="messages"></div>
+					<div id="thinking" class="thinking hidden" aria-live="polite">Agent is thinking<span></span></div>
 					<form id="composer">
 						<textarea id="prompt" rows="3" placeholder="Ask Me Write Code…"></textarea>
 						<button id="send" type="submit">Send</button>

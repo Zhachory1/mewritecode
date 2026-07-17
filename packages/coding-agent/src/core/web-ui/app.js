@@ -1,21 +1,27 @@
 const statusEl = document.querySelector("#status");
 const sessionEl = document.querySelector("#session");
+const cwdEl = document.querySelector("#cwd");
 const bannerEl = document.querySelector("#banner");
+const layoutEl = document.querySelector("#layout");
 const fileTreeEl = document.querySelector("#file-tree");
 const editorTitleEl = document.querySelector("#editor-title");
 const editorEl = document.querySelector("#editor");
 const messagesEl = document.querySelector("#messages");
+const thinkingEl = document.querySelector("#thinking");
 const formEl = document.querySelector("#composer");
 const promptEl = document.querySelector("#prompt");
 const sendEl = document.querySelector("#send");
 
 let token = "";
 let sessionId = "";
-let currentTreePath = "";
 let selectedFile = "";
 let socket;
 let rpcId = 1;
 let assistantMessage;
+let waitingForAssistant = false;
+const treeNodes = new Map();
+
+treeNodes.set("", { entries: [], expanded: true, loaded: false, loading: false });
 
 function setStatus(text) {
 	statusEl.textContent = text;
@@ -24,6 +30,12 @@ function setStatus(text) {
 function setBanner(text) {
 	bannerEl.textContent = text;
 	bannerEl.classList.toggle("hidden", !text);
+}
+
+function setThinking(visible) {
+	waitingForAssistant = visible;
+	thinkingEl.classList.toggle("hidden", !visible);
+	sendEl.disabled = visible;
 }
 
 function addMessage(role, text = "") {
@@ -70,7 +82,9 @@ async function start() {
 		});
 		sessionId = session.id;
 		sessionEl.textContent = sessionId.slice(0, 8);
-		await loadTree("");
+		cwdEl.textContent = session.cwd || "cwd: unknown";
+		cwdEl.title = session.cwd || "Current working directory";
+		await expandDirectory("");
 		connectSocket();
 	} catch (error) {
 		setStatus("error");
@@ -78,39 +92,99 @@ async function start() {
 	}
 }
 
-async function loadTree(path) {
-	currentTreePath = path;
-	fileTreeEl.textContent = "loading…";
+async function expandDirectory(path) {
+	const node = treeNode(path);
+	if (node.loading) return;
+	node.error = undefined;
+	node.expanded = true;
+	if (node.loaded) {
+		renderTree();
+		return;
+	}
+	node.loading = true;
+	renderTree();
 	try {
 		const qs = new URLSearchParams();
 		if (path) qs.set("path", path);
 		const tree = await api(`/v1/sessions/${encodeURIComponent(sessionId)}/files/tree?${qs}`);
-		renderTree(tree.entries || []);
+		node.entries = tree.entries || [];
+		node.loaded = true;
 	} catch (error) {
-		fileTreeEl.textContent = error instanceof Error ? error.message : String(error);
+		node.error = error instanceof Error ? error.message : String(error);
+	} finally {
+		node.loading = false;
+		renderTree();
 	}
 }
 
-function renderTree(entries) {
+function collapseDirectory(path) {
+	const node = treeNode(path);
+	node.expanded = false;
+	renderTree();
+}
+
+function treeNode(path) {
+	if (!treeNodes.has(path)) treeNodes.set(path, { entries: [], expanded: false, loaded: false, loading: false });
+	return treeNodes.get(path);
+}
+
+function renderTree() {
 	fileTreeEl.textContent = "";
-	if (currentTreePath) {
-		fileTreeEl.append(fileButton("..", parentPath(currentTreePath), "directory"));
-	}
-	for (const entry of entries) {
-		fileTreeEl.append(fileButton(entry.name, entry.path, entry.type));
-	}
+	renderTreeEntries("", 0);
 	if (fileTreeEl.childElementCount === 0) fileTreeEl.textContent = "empty";
 }
 
-function fileButton(label, path, type) {
+function renderTreeEntries(path, depth) {
+	const node = treeNode(path);
+	if (node.loading && depth === 0) {
+		fileTreeEl.append(statusRow("loading…", depth));
+		return;
+	}
+	if (node.error) {
+		fileTreeEl.append(statusRow(node.error, depth));
+		return;
+	}
+	for (const entry of node.entries) {
+		fileTreeEl.append(fileButton(entry, depth));
+		if (entry.type === "directory") {
+			const child = treeNode(entry.path);
+			if (child.loading) fileTreeEl.append(statusRow("loading…", depth + 1));
+			else if (child.error) fileTreeEl.append(statusRow(child.error, depth + 1));
+			else if (child.expanded) renderTreeEntries(entry.path, depth + 1);
+		}
+	}
+}
+
+function statusRow(text, depth) {
+	const row = document.createElement("div");
+	row.className = "placeholder";
+	row.style.paddingLeft = `${depth * 16 + 8}px`;
+	row.textContent = text;
+	return row;
+}
+
+function fileButton(entry, depth) {
 	const button = document.createElement("button");
 	button.type = "button";
-	button.dataset.path = path;
-	button.className = `file-row ${type}${path === selectedFile ? " selected" : ""}`;
-	button.textContent = `${type === "directory" ? "▸" : "•"} ${label}`;
+	button.dataset.path = entry.path;
+	button.className = `file-row ${entry.type}${entry.path === selectedFile ? " selected" : ""}`;
+	button.style.paddingLeft = `${depth * 16 + 8}px`;
+	const twisty = document.createElement("span");
+	twisty.className = "twisty";
+	if (entry.type === "directory") twisty.textContent = treeNode(entry.path).expanded ? "▾" : "▸";
+	else twisty.textContent = "•";
+	const name = document.createElement("span");
+	name.className = "name";
+	name.textContent = entry.name;
+	button.append(twisty, name);
 	button.addEventListener("click", () => {
-		if (type === "directory") void loadTree(path);
-		else void openFile(path);
+		if (entry.type === "directory") {
+			const node = treeNode(entry.path);
+			if (node.expanded) collapseDirectory(entry.path);
+			else void expandDirectory(entry.path);
+		} else {
+			void openFile(entry.path);
+		}
 	});
 	return button;
 }
@@ -119,11 +193,11 @@ async function openFile(path) {
 	selectedFile = path;
 	editorTitleEl.textContent = path;
 	editorEl.textContent = "loading…";
+	renderTreeButtonsSelected();
 	try {
 		const qs = new URLSearchParams({ path });
 		const file = await api(`/v1/sessions/${encodeURIComponent(sessionId)}/files/read?${qs}`);
 		editorEl.textContent = file.text;
-		renderTreeButtonsSelected();
 	} catch (error) {
 		editorEl.textContent = error instanceof Error ? error.message : String(error);
 	}
@@ -135,12 +209,6 @@ function renderTreeButtonsSelected() {
 	}
 }
 
-function parentPath(path) {
-	const parts = path.split("/").filter(Boolean);
-	parts.pop();
-	return parts.join("/");
-}
-
 function connectSocket() {
 	const protocol = location.protocol === "https:" ? "wss:" : "ws:";
 	const url = `${protocol}//${location.host}/v1/sessions/${encodeURIComponent(sessionId)}/stream`;
@@ -150,14 +218,21 @@ function connectSocket() {
 		setStatus("connected");
 		socket.send(JSON.stringify({ jsonrpc: "2.0", id: rpcId++, method: "client_capabilities", params: { approval: true } }));
 	});
-	socket.addEventListener("close", () => setStatus("disconnected"));
-	socket.addEventListener("error", () => setStatus("socket error"));
+	socket.addEventListener("close", () => {
+		setStatus("disconnected");
+		setThinking(false);
+	});
+	socket.addEventListener("error", () => {
+		setStatus("socket error");
+		setThinking(false);
+	});
 	socket.addEventListener("message", (event) => onSocketMessage(event.data));
 }
 
 function onSocketMessage(raw) {
 	const envelope = JSON.parse(raw);
 	if (envelope.method === "token") {
+		if (waitingForAssistant) setThinking(false);
 		if (!assistantMessage) assistantMessage = addMessage(envelope.params?.role || "assistant");
 		assistantMessage.textContent += envelope.params?.text || "";
 		messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -177,9 +252,13 @@ function onSocketMessage(raw) {
 	}
 	if (envelope.method === "done") {
 		assistantMessage = undefined;
+		setThinking(false);
 		return;
 	}
-	if (envelope.error) addMessage("system", envelope.error.message || "request failed");
+	if (envelope.error) {
+		setThinking(false);
+		addMessage("system", envelope.error.message || "request failed");
+	}
 }
 
 function handleApproval(params) {
@@ -200,16 +279,24 @@ function handleApproval(params) {
 formEl.addEventListener("submit", (event) => {
 	event.preventDefault();
 	const text = promptEl.value.trim();
-	if (!text || !socket || socket.readyState !== WebSocket.OPEN) return;
+	if (!text || !socket || socket.readyState !== WebSocket.OPEN || waitingForAssistant) return;
 	promptEl.value = "";
 	addMessage("user", text);
-	sendEl.disabled = true;
+	setThinking(true);
 	socket.send(JSON.stringify({ jsonrpc: "2.0", id: rpcId++, method: "send", params: { text } }));
-	setTimeout(() => {
-		sendEl.disabled = false;
-		promptEl.focus();
-	}, 100);
 });
+
+for (const button of document.querySelectorAll(".pane-toggle")) {
+	button.addEventListener("click", () => togglePane(button.dataset.pane));
+}
+
+function togglePane(pane) {
+	if (pane !== "files" && pane !== "chat") return;
+	layoutEl.classList.toggle(`${pane}-collapsed`);
+	const collapsed = layoutEl.classList.contains(`${pane}-collapsed`);
+	const button = document.querySelector(`.pane-toggle[data-pane="${pane}"]`);
+	if (button) button.textContent = pane === "files" ? (collapsed ? "›" : "‹") : collapsed ? "‹" : "›";
+}
 
 function base64Url(value) {
 	const bytes = new TextEncoder().encode(value);
