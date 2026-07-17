@@ -134,6 +134,73 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Transcript"
+  /v1/sessions/{id}/files/tree:
+    get:
+      summary: List read-only file entries under the session cwd
+      operationId: listSessionFiles
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+        - in: query
+          name: path
+          required: false
+          schema:
+            type: string
+            default: ""
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileTree"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "413":
+          description: directory too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /v1/sessions/{id}/files/read:
+    get:
+      summary: Read a small UTF-8 file under the session cwd
+      operationId: readSessionFile
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+        - in: query
+          name: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadFile"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "413":
+          description: file too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "415":
+          description: binary file unsupported
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /v1/workers:
     get:
       summary: List registered remote workers (for `&prompt` handoff)
@@ -195,6 +262,18 @@ components:
         type: string
         format: uuid
   responses:
+    BadRequest:
+      description: bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: forbidden
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
     NotFound:
       description: not found
       content:
@@ -317,6 +396,48 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/MessageEnvelope"
+    FileTree:
+      type: object
+      required: [sessionId, path, entries]
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+        path:
+          type: string
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/FileTreeEntry"
+    FileTreeEntry:
+      type: object
+      required: [name, path, type]
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+        type:
+          type: string
+          enum: [file, directory]
+        size:
+          type: integer
+    ReadFile:
+      type: object
+      required: [sessionId, path, text, size, encoding]
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+        path:
+          type: string
+        text:
+          type: string
+        size:
+          type: integer
+        encoding:
+          type: string
+          enum: [utf8]
     Worker:
       type: object
       required: [name, url, registeredAt]

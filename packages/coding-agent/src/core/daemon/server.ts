@@ -9,19 +9,22 @@
 
 import { randomUUID } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { stat } from "node:fs/promises";
+import { lstat, readdir, readFile, realpath, stat } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { Socket } from "node:net";
-import { join, normalize } from "node:path";
+import { isAbsolute, join, normalize, relative, resolve } from "node:path";
 import { WebSocket, WebSocketServer } from "ws";
 import { getWebUiDir } from "../../config.js";
 import {
 	DEFAULT_DAEMON_HOST,
 	DEFAULT_DAEMON_PORT,
 	type DoneParams,
+	type FileTreeEntry,
+	type FileTreeResponse,
 	type Health,
 	type HealthCapabilities,
 	type MessageRecord,
+	type ReadFileResponse,
 	type RegisterWorkerRequest,
 	type Role,
 	type RpcEnvelope,
@@ -269,6 +272,14 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 				const messages = opts.store.getTranscript(id);
 				const t: Transcript = { sessionId: id, messages };
 				return json(res, 200, t);
+			}
+
+			if (sub === "/files/tree" && req.method === "GET") {
+				return handleFileTree(res, session, url.searchParams.get("path") ?? "");
+			}
+
+			if (sub === "/files/read" && req.method === "GET") {
+				return handleFileRead(res, session, url.searchParams.get("path") ?? "");
 			}
 		}
 
@@ -534,6 +545,103 @@ function readWebSocketProtocolToken(req: IncomingMessage): string | undefined {
 		}
 	}
 	return undefined;
+}
+
+const MAX_FILE_BYTES = 1024 * 1024;
+const MAX_TREE_ENTRIES = 1000;
+const DENIED_PATH_SEGMENTS = new Set([".git", ".ssh", ".aws", ".gcp", ".azure"]);
+const DENIED_FILE_NAMES = new Set([".npmrc", ".pypirc", ".envrc", "id_rsa", "id_ed25519", "id_ecdsa"]);
+const OMITTED_TREE_NAMES = new Set(["node_modules", "dist", "coverage", ".next"]);
+
+async function handleFileTree(res: ServerResponse, session: SessionRecord, requestPath: string): Promise<void> {
+	const resolved = await resolveSessionPath(session, requestPath);
+	if ("error" in resolved) return json(res, resolved.status, { error: resolved.error });
+	if (isDeniedPath(resolved.requestPath) || isDeniedPath(resolved.realRequestPath)) {
+		return json(res, 403, { error: "path denied" });
+	}
+	const s = await lstat(resolved.realPath);
+	if (!s.isDirectory()) return json(res, 400, { error: "path is not a directory" });
+	const dirents = await readdir(resolved.realPath, { withFileTypes: true });
+	if (dirents.length > MAX_TREE_ENTRIES) return json(res, 413, { error: "directory too large" });
+	const entries: FileTreeEntry[] = [];
+	for (const dirent of dirents) {
+		if (OMITTED_TREE_NAMES.has(dirent.name) || isDeniedPath(dirent.name) || dirent.isSymbolicLink()) continue;
+		if (!dirent.isDirectory() && !dirent.isFile()) continue;
+		const childPath = resolved.requestPath ? `${resolved.requestPath}/${dirent.name}` : dirent.name;
+		const childStat = dirent.isFile() ? await stat(join(resolved.realPath, dirent.name)) : undefined;
+		entries.push({
+			name: dirent.name,
+			path: childPath,
+			type: dirent.isDirectory() ? "directory" : "file",
+			size: childStat?.size,
+		});
+	}
+	entries.sort((a, b) => (a.type === b.type ? a.name.localeCompare(b.name) : a.type === "directory" ? -1 : 1));
+	const body: FileTreeResponse = { sessionId: session.id, path: resolved.requestPath, entries };
+	return json(res, 200, body);
+}
+
+async function handleFileRead(res: ServerResponse, session: SessionRecord, requestPath: string): Promise<void> {
+	const resolved = await resolveSessionPath(session, requestPath);
+	if ("error" in resolved) return json(res, resolved.status, { error: resolved.error });
+	const s = await lstat(resolved.realPath);
+	if (!s.isFile()) return json(res, 400, { error: "path is not a file" });
+	if (isDeniedPath(resolved.requestPath) || isDeniedPath(resolved.realRequestPath)) {
+		return json(res, 403, { error: "file denied" });
+	}
+	if (s.size > MAX_FILE_BYTES) return json(res, 413, { error: "file too large" });
+	const buffer = await readFile(resolved.realPath);
+	if (buffer.includes(0)) return json(res, 415, { error: "binary file unsupported" });
+	let textContent: string;
+	try {
+		textContent = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+	} catch {
+		return json(res, 415, { error: "utf8 file required" });
+	}
+	const body: ReadFileResponse = {
+		sessionId: session.id,
+		path: resolved.requestPath,
+		text: textContent,
+		size: s.size,
+		encoding: "utf8",
+	};
+	return json(res, 200, body);
+}
+
+function isDeniedPath(requestPath: string): boolean {
+	const parts = requestPath.split("/").filter(Boolean);
+	for (const part of parts) {
+		if (DENIED_PATH_SEGMENTS.has(part) || DENIED_FILE_NAMES.has(part)) return true;
+		if (part.startsWith(".env")) return true;
+		if (part.endsWith(".pem") || part.endsWith(".key")) return true;
+	}
+	return false;
+}
+
+async function resolveSessionPath(
+	session: SessionRecord,
+	requestPath: string,
+): Promise<
+	| { rootReal: string; realPath: string; requestPath: string; realRequestPath: string }
+	| { status: number; error: string }
+> {
+	const normalized = normalize(requestPath.trim()).replaceAll("\\", "/");
+	const relPath = normalized === "." ? "" : normalized.startsWith("./") ? normalized.slice(2) : normalized;
+	if (isAbsolute(requestPath) || isAbsolute(relPath) || relPath.startsWith("..") || relPath.includes("/../")) {
+		return { status: 400, error: "invalid path" };
+	}
+	try {
+		const rootReal = await realpath(session.cwd);
+		const target = resolve(rootReal, relPath || ".");
+		const realPath = await realpath(target);
+		const rawRealRelPath = relative(rootReal, realPath);
+		const realRelPath = rawRealRelPath.replaceAll("\\", "/");
+		const withinRoot = realPath === rootReal || (!rawRealRelPath.startsWith("..") && !isAbsolute(rawRealRelPath));
+		if (!withinRoot) return { status: 403, error: "path outside session root" };
+		return { rootReal, realPath, requestPath: relPath === "." ? "" : relPath, realRequestPath: realRelPath };
+	} catch {
+		return { status: 404, error: "path not found" };
+	}
 }
 
 async function readJson<T>(req: IncomingMessage): Promise<T | undefined> {
