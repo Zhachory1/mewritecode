@@ -76,6 +76,8 @@ export interface ActivityOverlayOptions {
 	registry?: ActivityOverlayRegistry;
 	theme?: ActivityOverlayTheme;
 	maxRows?: number;
+	/** Optional footer hint, e.g. "F2 to close". */
+	closeHint?: string;
 	/** Stalled rows past this many ms render the `· stalled Ns` marker. */
 	stallThresholdMs?: number;
 }
@@ -88,6 +90,7 @@ export class ActivityOverlay implements Component {
 	private registry: ActivityOverlayRegistry;
 	private theme: ActivityOverlayTheme;
 	private maxRows: number;
+	private closeHint: string | undefined;
 	private stallThresholdMs: number;
 	private unsubscribe?: () => void;
 	private redraw?: () => void;
@@ -96,6 +99,7 @@ export class ActivityOverlay implements Component {
 		this.registry = options.registry ?? NULL_ACTIVITY_REGISTRY;
 		this.theme = options.theme ?? IDENTITY;
 		this.maxRows = options.maxRows ?? 12;
+		this.closeHint = options.closeHint;
 		this.stallThresholdMs = options.stallThresholdMs ?? DEFAULT_STALL_THRESHOLD_MS;
 	}
 
@@ -127,10 +131,10 @@ export class ActivityOverlay implements Component {
 	render(width: number): string[] {
 		const snapshot = this.registry.list();
 		if (snapshot.length === 0) {
-			return [
-				this.theme.header(this.padRight("Activity", width)),
-				this.theme.muted(this.padRight(EMPTY_STATE, width)),
-			];
+			return this.withFooterHint(
+				[this.theme.header(this.padRight("Activity", width)), this.theme.muted(this.padRight(EMPTY_STATE, width))],
+				width,
+			);
 		}
 
 		const blockerId = this.blockerId(snapshot);
@@ -154,7 +158,12 @@ export class ActivityOverlay implements Component {
 		if (hiddenCount > 0) {
 			rows.push(this.theme.muted(this.padRight(`… +${hiddenCount} more`, width)));
 		}
-		return rows;
+		return this.withFooterHint(rows, width);
+	}
+
+	private withFooterHint(rows: string[], width: number): string[] {
+		if (!this.closeHint) return rows;
+		return [...rows, this.theme.muted(this.padRight(this.closeHint, width))];
 	}
 
 	private headerText(snapshot: ActivitySnapshot[]): string {

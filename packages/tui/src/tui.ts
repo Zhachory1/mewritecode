@@ -91,6 +91,8 @@ export interface SidePanelOptions {
 	width?: SizeValue;
 	/** Which side to place the panel. Default: "right" */
 	side?: "left" | "right";
+	/** Whether opening the panel should move keyboard focus into it. Default: true. */
+	focus?: boolean;
 }
 
 /**
@@ -426,13 +428,16 @@ export class TUI extends Container {
 
 	/** Show a side panel alongside the main content in a column layout. */
 	showSidePanel(component: Component, options?: SidePanelOptions): SidePanelHandle {
+		const panelOptions = options ?? {};
 		this.sidePanelEntry = {
 			component,
-			options: options ?? {},
+			options: panelOptions,
 			preFocus: this.focusedComponent,
 		};
-		this.setFocus(component);
-		this.terminal.hideCursor();
+		if (panelOptions.focus !== false) {
+			this.setFocus(component);
+			this.terminal.hideCursor();
+		}
 		this.requestRender();
 		return {
 			hide: () => this.hideSidePanel(),
@@ -1103,8 +1108,9 @@ export class TUI extends Container {
 		// Helper to clear scrollback and viewport and render all new lines
 		const fullRender = (clear: boolean): void => {
 			this.fullRedrawCount += 1;
+			const shouldClear = clear && !this.sidePanelEntry;
 			let buffer = "\x1b[?2026h"; // Begin synchronized output
-			if (clear) buffer += "\x1b[2J\x1b[H\x1b[3J"; // Clear screen, home, then clear scrollback
+			if (shouldClear) buffer += "\x1b[2J\x1b[H\x1b[3J"; // Clear screen, home, then clear scrollback
 			for (let i = 0; i < newLines.length; i++) {
 				if (i > 0) buffer += "\r\n";
 				buffer += newLines[i];
@@ -1114,7 +1120,7 @@ export class TUI extends Container {
 			this.cursorRow = Math.max(0, newLines.length - 1);
 			this.hardwareCursorRow = this.cursorRow;
 			// Reset max lines when clearing, otherwise track growth
-			if (clear) {
+			if (shouldClear) {
 				this.maxLinesRendered = newLines.length;
 			} else {
 				this.maxLinesRendered = Math.max(this.maxLinesRendered, newLines.length);
@@ -1158,10 +1164,16 @@ export class TUI extends Container {
 			return;
 		}
 
-		// Content shrunk below the working area and no overlays - re-render to clear empty rows
-		// (overlays need the padding, so only do this when no overlays are active)
+		// Content shrunk below the working area and no overlays/side panels - re-render to clear empty rows.
+		// Overlays and side panels need stable padding/layout; clearing here can wipe scrollback
+		// while passive panels (like the activity monitor) are open.
 		// Configurable via setClearOnShrink() or PI_CLEAR_ON_SHRINK=0 env var
-		if (this.clearOnShrink && newLines.length < this.maxLinesRendered && this.overlayStack.length === 0) {
+		if (
+			this.clearOnShrink &&
+			newLines.length < this.maxLinesRendered &&
+			this.overlayStack.length === 0 &&
+			!this.sidePanelEntry
+		) {
 			logRedraw(`clearOnShrink (maxLinesRendered=${this.maxLinesRendered})`);
 			fullRender(true);
 			return;

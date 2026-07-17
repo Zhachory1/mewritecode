@@ -14,11 +14,11 @@ describe("BUILTIN_SLASH_COMMANDS wired flag", () => {
 		expect(help?.wired).toBe(true);
 	});
 
-	test("only temporarily-disabled builtins are unwired", () => {
+	test("every currently-registered builtin is wired (none unwired today)", () => {
 		const unwired = BUILTIN_SLASH_COMMANDS.filter((c) => !c.wired).map((c) => c.name);
-		expect(unwired).toEqual(["activity"]);
+		expect(unwired).toEqual([]);
 		for (const c of BUILTIN_SLASH_COMMANDS) {
-			expect(isUnwiredBuiltinCommand(c.name)).toBe(c.name === "activity");
+			expect(isUnwiredBuiltinCommand(c.name)).toBe(false);
 		}
 	});
 

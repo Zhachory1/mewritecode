@@ -102,7 +102,7 @@ describe("InteractiveMode onboarding affordances", () => {
 		expect(choices).toContain("github-copilot (copilot, github)");
 	});
 
-	test("registers /help as wired and /activity as temporarily unwired", () => {
+	test("registers /help and /activity as wired built-in commands", () => {
 		expect(BUILTIN_SLASH_COMMANDS).toContainEqual({
 			name: "help",
 			description: "Show commands and keyboard shortcuts",
@@ -111,7 +111,7 @@ describe("InteractiveMode onboarding affordances", () => {
 		expect(BUILTIN_SLASH_COMMANDS).toContainEqual({
 			name: "activity",
 			description: "Toggle live activity monitor",
-			wired: false,
+			wired: true,
 		});
 	});
 

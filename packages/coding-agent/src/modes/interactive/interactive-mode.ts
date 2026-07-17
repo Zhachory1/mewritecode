@@ -417,6 +417,7 @@ export class InteractiveMode {
 		};
 		this.activityOverlay = new ActivityOverlay({
 			registry: activityRegistryAdapter,
+			closeHint: `${keyText("app.subagent.toggle")} to close`,
 		});
 		this.activityStatus = new ActivityOverlay({
 			registry: activityRegistryAdapter,
@@ -3382,7 +3383,7 @@ export class InteractiveMode {
 			}
 			this.ui.requestRender();
 		}, 1000);
-		this.activityPanel = this.ui.showSidePanel(this.activityOverlay, { side: "right" });
+		this.activityPanel = this.ui.showSidePanel(this.activityOverlay, { side: "right", focus: false });
 	}
 
 	/**

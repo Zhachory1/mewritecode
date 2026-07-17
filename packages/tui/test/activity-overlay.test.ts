@@ -50,6 +50,15 @@ describe("ActivityOverlay", () => {
 		assert.ok(lines.some((l) => l.includes("No activity — session idle.")));
 	});
 
+	it("renders optional close hint", () => {
+		const overlay = new ActivityOverlay({ registry: makeRegistry([]), closeHint: "F2 to close" });
+		const lines = overlay.render(40);
+		assert.ok(
+			lines.some((l) => l.includes("F2 to close")),
+			lines.join("\n"),
+		);
+	});
+
 	it("renders header counts: running + queued", () => {
 		const reg = makeRegistry([
 			snap({ id: "t1", kind: "tool", label: "bash", status: "running" }),
