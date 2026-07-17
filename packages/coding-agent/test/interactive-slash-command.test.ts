@@ -191,7 +191,6 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 		showSelector: () => {
 			calls.push("showSelector:");
 		},
-		toggleActivityOverlay: () => calls.push("toggleActivityOverlay:"),
 		shutdown: async () => {
 			calls.push("shutdown:");
 		},

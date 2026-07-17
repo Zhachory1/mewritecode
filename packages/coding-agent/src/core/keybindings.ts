@@ -40,7 +40,6 @@ export interface AppKeybindings {
 	"app.session.delete": true;
 	"app.session.deleteNoninvasive": true;
 	"app.help": true;
-	"app.subagent.toggle": true;
 	"app.message.editQueue": true;
 	"app.tools.shelfExpand": true;
 }
@@ -136,7 +135,6 @@ export const KEYBINDINGS = {
 		description: "Delete session when query is empty",
 	},
 	"app.help": { defaultKeys: "f1", description: "Show keyboard help" },
-	"app.subagent.toggle": { defaultKeys: "f2", description: "Toggle activity monitor" },
 	"app.message.editQueue": {
 		defaultKeys: "ctrl+q",
 		description: "Edit queued messages",
