@@ -25,7 +25,6 @@ const SAMPLE_INPUTS: Record<string, string> = {
 	session: "/session",
 	changelog: "/changelog",
 	hotkeys: "/hotkeys",
-	activity: "/activity",
 	fork: "/fork",
 	tree: "/tree",
 	login: "/login anthropic",

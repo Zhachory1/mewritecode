@@ -22,7 +22,6 @@ const SAMPLE_INPUTS: Record<string, string> = {
 	session: "/session",
 	changelog: "/changelog",
 	hotkeys: "/hotkeys",
-	activity: "/activity",
 	fork: "/fork",
 	tree: "/tree",
 	login: "/login anthropic",
@@ -318,6 +317,7 @@ describe("InteractiveSlashCommandRouter", () => {
 			"/compactness",
 			"/freeze-dry",
 			"/loginx",
+			"/activity",
 			"/some-extension",
 		]) {
 			expect(await r.handleCommand(input), input).toBe(false);
@@ -338,14 +338,12 @@ describe("InteractiveSlashCommandRouter", () => {
 		expect(loginCalls).toEqual(["clearEditor:", "showLoginDialog:anthropic"]);
 	});
 
-	it("runs migrated activity and quit commands through context primitives", async () => {
+	it("runs migrated quit command through context primitives", async () => {
 		const calls: string[] = [];
 		const r = router(calls);
 
-		expect(await r.handleCommand("/activity")).toBe(true);
 		expect(await r.handleCommand("/quit")).toBe(true);
 
-		expect(calls).toContain("toggleActivityOverlay:");
 		expect(calls).toContain("shutdown:");
 	});
 

@@ -1,5 +1,4 @@
 import { ActCommand } from "./act-command.js";
-import { ActivityCommand } from "./activity-command.js";
 import { ApprovalCommand } from "./approval-command.js";
 import { ArchitectCommand } from "./architect-command.js";
 import { ArminSaysHiCommand } from "./arminsayshi-command.js";
@@ -68,7 +67,6 @@ export function createDefaultInteractiveSlashCommands(): InteractiveSlashCommand
 		new SessionCommand(),
 		new ChangelogCommand(),
 		new HotkeysCommand(),
-		new ActivityCommand(),
 		new ForkCommand(),
 		new TreeCommand(),
 		new LoginCommand(),
