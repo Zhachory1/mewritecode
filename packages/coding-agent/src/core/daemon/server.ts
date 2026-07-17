@@ -8,14 +8,19 @@
  */
 
 import { randomUUID } from "node:crypto";
+import { createReadStream } from "node:fs";
+import { stat } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { Socket } from "node:net";
+import { join, normalize } from "node:path";
 import { WebSocket, WebSocketServer } from "ws";
+import { getWebUiDir } from "../../config.js";
 import {
 	DEFAULT_DAEMON_HOST,
 	DEFAULT_DAEMON_PORT,
 	type DoneParams,
 	type Health,
+	type HealthCapabilities,
 	type MessageRecord,
 	type RegisterWorkerRequest,
 	type Role,
@@ -84,8 +89,13 @@ interface AttachedClient {
 export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 	const host = opts.host ?? DEFAULT_DAEMON_HOST;
 	const port = opts.port ?? DEFAULT_DAEMON_PORT;
+	if (!opts.token && !isLoopbackName(host)) {
+		throw new Error("token is required when host is not loopback");
+	}
 	const startedAt = Date.now();
 	const version = opts.version ?? "0.0.0";
+	const capabilities: HealthCapabilities = { runnerKind: "echo", approvalSupported: false };
+	const webUiDir = getWebUiDir();
 
 	const runners = new Map<string, AgentRunner>();
 	const clients = new Map<string, Set<AttachedClient>>();
@@ -150,10 +160,12 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 
 	function authorize(req: IncomingMessage): boolean {
 		if (!opts.token) return true;
-		const auth = req.headers.authorization;
-		if (!auth || Array.isArray(auth)) return false;
-		const m = /^Bearer\s+(.+)$/.exec(auth);
-		return !!m && m[1] === opts.token;
+		return readBearerToken(req) === opts.token;
+	}
+
+	function authorizeWebSocket(req: IncomingMessage): boolean {
+		if (!opts.token) return true;
+		return readBearerToken(req) === opts.token || readWebSocketProtocolToken(req) === opts.token;
 	}
 
 	const httpServer = createServer(async (req, res) => {
@@ -170,10 +182,26 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 	});
 
 	async function handleHttp(req: IncomingMessage, res: ServerResponse): Promise<void> {
+		if (!isAllowedHost(req.headers.host, opts.token)) {
+			return json(res, 403, { error: "forbidden host" });
+		}
 		const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
 
+		if (req.method === "GET" && isWebUiPath(url.pathname)) {
+			return serveWebUi(res, webUiDir, url.pathname);
+		}
+
+		if (url.pathname.startsWith("/v1/") && !isAllowedOrigin(req, url, opts.token)) {
+			return json(res, 403, { error: "forbidden origin" });
+		}
+
 		if (url.pathname === "/v1/health" && req.method === "GET") {
-			const health: Health = { ok: true, version, uptimeSec: Math.floor((Date.now() - startedAt) / 1000) };
+			const health: Health = {
+				ok: true,
+				version,
+				uptimeSec: Math.floor((Date.now() - startedAt) / 1000),
+				capabilities,
+			};
 			return json(res, 200, health);
 		}
 
@@ -273,16 +301,31 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 		json(res, 404, { error: "not found" });
 	}
 
-	const wss = new WebSocketServer({ noServer: true });
+	const wss = new WebSocketServer({
+		noServer: true,
+		handleProtocols(protocols) {
+			return protocols.has("mewrite-auth") ? "mewrite-auth" : false;
+		},
+	});
 
 	httpServer.on("upgrade", (req: IncomingMessage, socket: Socket, head: Buffer) => {
+		if (!isAllowedHost(req.headers.host, opts.token)) {
+			socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
+			socket.destroy();
+			return;
+		}
 		const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
 		const m = /^\/v1\/sessions\/([^/]+)\/stream$/.exec(url.pathname);
 		if (!m) {
 			socket.destroy();
 			return;
 		}
-		if (!authorize(req)) {
+		if (!isAllowedOrigin(req, url, opts.token)) {
+			socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
+			socket.destroy();
+			return;
+		}
+		if (!authorizeWebSocket(req)) {
 			socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
 			socket.destroy();
 			return;
@@ -406,6 +449,91 @@ function json(res: ServerResponse, status: number, body: unknown): void {
 	res.statusCode = status;
 	res.setHeader("content-type", "application/json");
 	res.end(JSON.stringify(body));
+}
+
+function isWebUiPath(pathname: string): boolean {
+	return pathname === "/" || pathname.startsWith("/web/");
+}
+
+async function serveWebUi(res: ServerResponse, webUiDir: string, pathname: string): Promise<void> {
+	const rel = pathname === "/" ? "index.html" : normalize(pathname.replace(/^\/web\//, ""));
+	if (rel.startsWith("..") || rel.includes("/../")) return text(res, 400, "bad path");
+	const file = join(webUiDir, rel);
+	try {
+		const s = await stat(file);
+		if (!s.isFile()) return text(res, 404, "not found");
+		res.statusCode = 200;
+		res.setHeader("content-type", contentType(file));
+		createReadStream(file).pipe(res);
+	} catch {
+		text(res, 404, "not found");
+	}
+}
+
+function text(res: ServerResponse, status: number, body: string): void {
+	res.statusCode = status;
+	res.setHeader("content-type", "text/plain; charset=utf-8");
+	res.end(body);
+}
+
+function contentType(file: string): string {
+	if (file.endsWith(".html")) return "text/html; charset=utf-8";
+	if (file.endsWith(".css")) return "text/css; charset=utf-8";
+	if (file.endsWith(".js")) return "text/javascript; charset=utf-8";
+	if (file.endsWith(".svg")) return "image/svg+xml";
+	return "application/octet-stream";
+}
+
+function isAllowedHost(host: string | undefined, token: string | undefined): boolean {
+	if (token) return true;
+	if (!host) return false;
+	try {
+		return isLoopbackName(new URL(`http://${host}`).hostname);
+	} catch {
+		return false;
+	}
+}
+
+function isAllowedOrigin(req: IncomingMessage, url: URL, token: string | undefined): boolean {
+	const origin = req.headers.origin;
+	if (!origin) return true;
+	if (Array.isArray(origin)) return false;
+	try {
+		const parsed = new URL(origin);
+		return (
+			parsed.protocol === url.protocol &&
+			parsed.host === url.host &&
+			(token !== undefined || isLoopbackName(parsed.hostname))
+		);
+	} catch {
+		return false;
+	}
+}
+
+function isLoopbackName(name: string): boolean {
+	const host = name.toLowerCase();
+	return host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "[::1]";
+}
+
+function readBearerToken(req: IncomingMessage): string | undefined {
+	const auth = req.headers.authorization;
+	if (!auth || Array.isArray(auth)) return undefined;
+	return /^Bearer\s+(.+)$/.exec(auth)?.[1];
+}
+
+function readWebSocketProtocolToken(req: IncomingMessage): string | undefined {
+	const raw = req.headers["sec-websocket-protocol"];
+	if (!raw || Array.isArray(raw)) return undefined;
+	for (const part of raw.split(",")) {
+		const protocol = part.trim();
+		if (!protocol.startsWith("mewrite-bearer.")) continue;
+		try {
+			return Buffer.from(protocol.slice("mewrite-bearer.".length), "base64url").toString("utf8");
+		} catch {
+			return undefined;
+		}
+	}
+	return undefined;
 }
 
 async function readJson<T>(req: IncomingMessage): Promise<T | undefined> {

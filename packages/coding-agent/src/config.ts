@@ -146,6 +146,8 @@ function getRuntimeAssetPackageDir(): string {
 }
 
 function srcOrDistAssetPath(packageDir: string, ...segments: string[]): string {
+	const directPath = join(packageDir, ...segments);
+	if (existsSync(directPath)) return directPath;
 	const srcPath = join(packageDir, "src", ...segments);
 	if (existsSync(srcPath)) return srcPath;
 	const distPath = join(packageDir, "dist", ...segments);
@@ -272,6 +274,14 @@ export function getExportTemplateDir(): string {
 	}
 	const packageDir = getRuntimeAssetPackageDir();
 	return srcOrDistAssetPath(packageDir, "core", "export-html");
+}
+
+export function getWebUiDir(): string {
+	if (isBunBinary) {
+		return join(dirname(process.execPath), "web-ui");
+	}
+	const packageDir = getRuntimeAssetPackageDir();
+	return srcOrDistAssetPath(packageDir, "core", "web-ui");
 }
 
 /** Get path to package.json */

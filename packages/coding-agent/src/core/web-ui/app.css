@@ -1,0 +1,169 @@
+:root {
+	color-scheme: dark;
+	font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	background: #0d1117;
+	color: #e6edf3;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+}
+
+.shell {
+	height: 100vh;
+	display: flex;
+	flex-direction: column;
+}
+
+header {
+	height: 48px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0 16px;
+	border-bottom: 1px solid #30363d;
+	background: #161b22;
+}
+
+#status,
+#session {
+	color: #8b949e;
+	font-size: 13px;
+	margin-left: 10px;
+}
+
+.banner {
+	padding: 10px 16px;
+	background: #3b2e09;
+	border-bottom: 1px solid #9e6a03;
+	color: #f2cc60;
+	font-size: 14px;
+}
+
+.hidden {
+	display: none;
+}
+
+main {
+	min-height: 0;
+	flex: 1;
+	display: grid;
+	grid-template-columns: 260px minmax(360px, 1fr) 380px;
+}
+
+.pane {
+	min-width: 0;
+	min-height: 0;
+	padding: 14px;
+	border-right: 1px solid #30363d;
+	overflow: auto;
+}
+
+.pane:last-child {
+	border-right: 0;
+}
+
+h2 {
+	margin: 0 0 12px;
+	font-size: 13px;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: #8b949e;
+}
+
+.placeholder,
+#editor {
+	color: #8b949e;
+}
+
+#editor {
+	margin: 0;
+	padding: 14px;
+	min-height: calc(100% - 32px);
+	border: 1px solid #30363d;
+	border-radius: 8px;
+	background: #010409;
+	white-space: pre-wrap;
+}
+
+.chat {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.messages {
+	min-height: 0;
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	overflow: auto;
+}
+
+.message {
+	padding: 10px 12px;
+	border: 1px solid #30363d;
+	border-radius: 8px;
+	background: #161b22;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.message.user {
+	border-color: #1f6feb;
+}
+
+.message.assistant {
+	border-color: #238636;
+}
+
+.message.system {
+	color: #8b949e;
+}
+
+.role {
+	display: block;
+	margin-bottom: 6px;
+	font-size: 12px;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: #8b949e;
+}
+
+#composer {
+	display: flex;
+	gap: 8px;
+}
+
+#prompt {
+	min-width: 0;
+	flex: 1;
+	resize: vertical;
+	border: 1px solid #30363d;
+	border-radius: 8px;
+	background: #010409;
+	color: #e6edf3;
+	padding: 10px;
+	font: inherit;
+}
+
+button {
+	align-self: stretch;
+	border: 0;
+	border-radius: 8px;
+	background: #238636;
+	color: white;
+	padding: 0 16px;
+	font-weight: 700;
+	cursor: pointer;
+}
+
+button:disabled {
+	cursor: not-allowed;
+	opacity: 0.55;
+}
