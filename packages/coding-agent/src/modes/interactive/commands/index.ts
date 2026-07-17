@@ -2,7 +2,6 @@ import { ActCommand } from "./act-command.js";
 import { ActivityCommand } from "./activity-command.js";
 import { ApprovalCommand } from "./approval-command.js";
 import { ArchitectCommand } from "./architect-command.js";
-import { ArminSaysHiCommand } from "./arminsayshi-command.js";
 import { BtwCommand } from "./btw-command.js";
 import { CaveCommand } from "./cave-command.js";
 import { ChangelogCommand } from "./changelog-command.js";
@@ -51,6 +50,7 @@ import { ShareCommand } from "./share-command.js";
 import { SkillsCommand } from "./skills-command.js";
 import { TokensCommand } from "./tokens-command.js";
 import { TreeCommand } from "./tree-command.js";
+import { ZhachSaysHiCommand } from "./zhachsayshi-command.js";
 
 export { type InteractiveSlashCommandContext, InteractiveSlashCommandRouter } from "./interactive-slash-command.js";
 
@@ -87,7 +87,7 @@ export function createDefaultInteractiveSlashCommands(): InteractiveSlashCommand
 		new ReloadCommand(),
 		new HooksCommand(),
 		new DebugCommand(),
-		new ArminSaysHiCommand(),
+		new ZhachSaysHiCommand(),
 		new ResumeCommand(),
 		new QuitCommand(),
 		new McpCommand(),
