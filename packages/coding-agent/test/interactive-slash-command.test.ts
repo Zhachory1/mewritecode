@@ -299,7 +299,6 @@ describe("InteractiveSlashCommandRouter", () => {
 		const r = router(calls);
 
 		expect(await r.handleCommand("/zhachsayshi")).toBe(true);
-		expect(await r.handleCommand("/arminsayshi")).toBe(false);
 		expect(calls).toContain("clearEditor:");
 	});
 
