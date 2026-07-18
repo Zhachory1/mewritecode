@@ -73,6 +73,7 @@ export interface DaemonOptions {
 	store: SessionStore;
 	runnerFactory: RunnerFactory;
 	version?: string;
+	capabilities?: Partial<HealthCapabilities>;
 }
 
 export interface DaemonHandle {
@@ -97,7 +98,10 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 	}
 	const startedAt = Date.now();
 	const version = opts.version ?? "0.0.0";
-	const capabilities: HealthCapabilities = { runnerKind: "echo", approvalSupported: false };
+	const capabilities: HealthCapabilities = {
+		runnerKind: opts.capabilities?.runnerKind ?? "echo",
+		approvalSupported: opts.capabilities?.approvalSupported ?? false,
+	};
 	const webUiDir = getWebUiDir();
 
 	const runners = new Map<string, AgentRunner>();

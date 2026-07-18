@@ -6,6 +6,7 @@
  * here.
  */
 
+export { createAgentBackedRunnerFactory } from "./agent-runner.js";
 export { AttachedSession, CaveClient, type ClientOptions } from "./client.js";
 export * from "./protocol.js";
 export { createDefaultRunnerFactory } from "./runner.js";

@@ -11,12 +11,19 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import chalk from "chalk";
 import { getAgentDir, VERSION } from "../config.js";
-import { createDefaultRunnerFactory, type DaemonHandle, openStore, startDaemon } from "../core/daemon/index.js";
+import {
+	createAgentBackedRunnerFactory,
+	createDefaultRunnerFactory,
+	type DaemonHandle,
+	openStore,
+	startDaemon,
+} from "../core/daemon/index.js";
 
 interface ServeArgs {
 	host: string;
 	port: number;
 	token?: string;
+	runner: "echo" | "agent";
 	dbPath: string;
 	pidFile: string;
 	help?: boolean;
@@ -26,6 +33,7 @@ function parseServeArgs(args: string[]): ServeArgs {
 	const out: ServeArgs = {
 		host: "127.0.0.1",
 		port: 7421,
+		runner: "echo",
 		dbPath: join(getAgentDir(), "daemon", "sessions.db"),
 		pidFile: join(getAgentDir(), "daemon", "daemon.pid"),
 	};
@@ -41,6 +49,12 @@ function parseServeArgs(args: string[]): ServeArgs {
 			case "--token":
 				out.token = args[++i];
 				break;
+			case "--runner": {
+				const runner = args[++i];
+				if (runner !== "echo" && runner !== "agent") throw new Error("--runner must be echo or agent");
+				out.runner = runner;
+				break;
+			}
 			case "--db":
 				out.dbPath = args[++i] ?? out.dbPath;
 				break;
@@ -71,6 +85,7 @@ Options:
   --host <ip>     Bind host (default 127.0.0.1)
   --port <n>      Bind port (default 7421)
   --token <s>     Require Bearer <token> on every API/WebSocket request
+  --runner <mode> echo (default) or agent
   --db <path>     SQLite session store (default ~/.cave/daemon/sessions.db)
   --pid <path>    Pid file (default ~/.cave/daemon/daemon.pid)
   -h, --help      Show this help
@@ -122,7 +137,7 @@ export async function runServe(args: string[]): Promise<number> {
 	}
 
 	const store = openStore(parsed.dbPath);
-	const runnerFactory = createDefaultRunnerFactory();
+	const runnerFactory = parsed.runner === "agent" ? createAgentBackedRunnerFactory() : createDefaultRunnerFactory();
 	let handle: DaemonHandle;
 	try {
 		handle = await startDaemon({
@@ -132,6 +147,7 @@ export async function runServe(args: string[]): Promise<number> {
 			store,
 			runnerFactory,
 			version: VERSION,
+			capabilities: { runnerKind: parsed.runner, approvalSupported: false },
 		});
 	} catch (err) {
 		console.error(
@@ -148,6 +164,7 @@ export async function runServe(args: string[]): Promise<number> {
 	console.log(chalk.dim(`  web:  http://${handle.host}:${handle.port}/`));
 	console.log(chalk.dim(`  pid:  ${process.pid}`));
 	console.log(chalk.dim(`  db:   ${parsed.dbPath}`));
+	console.log(chalk.dim(`  runner: ${parsed.runner}`));
 	if (parsed.token) {
 		console.log(chalk.dim(`  auth: bearer (configured)`));
 	} else {
