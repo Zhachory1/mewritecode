@@ -9,7 +9,7 @@
 
 import { randomUUID } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { lstat, readdir, readFile, realpath, stat } from "node:fs/promises";
+import { lstat, readdir, readFile, realpath, stat, writeFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { Socket } from "node:net";
 import { isAbsolute, join, normalize, relative, resolve } from "node:path";
@@ -42,6 +42,8 @@ import {
 	type ToolParams,
 	type Transcript,
 	type WorkerRecord,
+	type WriteFileRequest,
+	type WriteFileResponse,
 } from "./protocol.js";
 import type { SessionStore } from "./store.js";
 
@@ -297,6 +299,12 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 
 			if (sub === "/files/read" && req.method === "GET") {
 				return handleFileRead(res, session, url.searchParams.get("path") ?? "");
+			}
+
+			if (sub === "/files/write" && req.method === "PUT") {
+				const body = await readJsonCapped<WriteFileRequest>(req, MAX_FILE_BYTES * 6 + 8192);
+				if (body.tooLarge) return json(res, 413, { error: "request too large" });
+				return handleFileWrite(res, session, body.value);
 			}
 		}
 
@@ -584,8 +592,20 @@ function readWebSocketProtocolToken(req: IncomingMessage): string | undefined {
 
 const MAX_FILE_BYTES = 1024 * 1024;
 const MAX_TREE_ENTRIES = 1000;
-const DENIED_PATH_SEGMENTS = new Set([".git", ".ssh", ".aws", ".gcp", ".azure"]);
-const DENIED_FILE_NAMES = new Set([".npmrc", ".pypirc", ".envrc", "id_rsa", "id_ed25519", "id_ecdsa"]);
+const WRITE_LOCKS = new Map<string, Promise<void>>();
+const DENIED_PATH_SEGMENTS = new Set([".git", ".ssh", ".aws", ".gcp", ".azure", ".kube", ".docker", ".gnupg"]);
+const DENIED_FILE_NAMES = new Set([
+	".npmrc",
+	".pypirc",
+	".envrc",
+	".netrc",
+	".gitconfig",
+	"credentials",
+	"config.json",
+	"id_rsa",
+	"id_ed25519",
+	"id_ecdsa",
+]);
 const OMITTED_TREE_NAMES = new Set(["node_modules", "dist", "coverage", ".next"]);
 
 async function handleFileTree(res: ServerResponse, session: SessionRecord, requestPath: string): Promise<void> {
@@ -638,9 +658,65 @@ async function handleFileRead(res: ServerResponse, session: SessionRecord, reque
 		path: resolved.requestPath,
 		text: textContent,
 		size: s.size,
+		mtimeMs: s.mtimeMs,
 		encoding: "utf8",
 	};
 	return json(res, 200, body);
+}
+
+async function handleFileWrite(
+	res: ServerResponse,
+	session: SessionRecord,
+	body: WriteFileRequest | undefined,
+): Promise<void> {
+	if (!body || typeof body.path !== "string" || typeof body.text !== "string") {
+		return json(res, 400, { error: "missing path/text" });
+	}
+	const resolved = await resolveSessionPath(session, body.path);
+	if ("error" in resolved) return json(res, resolved.status, { error: resolved.error });
+	return withWriteLock(resolved.realPath, async () => {
+		const s = await lstat(resolved.realPath);
+		if (!s.isFile()) return json(res, 400, { error: "path is not a file" });
+		if (isDeniedPath(resolved.requestPath) || isDeniedPath(resolved.realRequestPath)) {
+			return json(res, 403, { error: "file denied" });
+		}
+		if (typeof body.expectedMtimeMs !== "number" || typeof body.expectedSize !== "number") {
+			return json(res, 400, { error: "missing file precondition" });
+		}
+		if (body.expectedMtimeMs !== s.mtimeMs || body.expectedSize !== s.size) {
+			return json(res, 409, { error: "file changed on disk" });
+		}
+		const buffer = Buffer.from(body.text, "utf8");
+		if (buffer.includes(0)) return json(res, 415, { error: "binary file unsupported" });
+		if (buffer.byteLength > MAX_FILE_BYTES) return json(res, 413, { error: "file too large" });
+		await writeFile(resolved.realPath, buffer);
+		const next = await stat(resolved.realPath);
+		const response: WriteFileResponse = {
+			sessionId: session.id,
+			path: resolved.requestPath,
+			size: next.size,
+			mtimeMs: next.mtimeMs,
+			encoding: "utf8",
+		};
+		return json(res, 200, response);
+	});
+}
+
+async function withWriteLock<T>(path: string, fn: () => Promise<T>): Promise<T> {
+	const previous = WRITE_LOCKS.get(path) ?? Promise.resolve();
+	let release!: () => void;
+	const next = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+	const chain = previous.catch(() => {}).then(() => next);
+	WRITE_LOCKS.set(path, chain);
+	await previous.catch(() => {});
+	try {
+		return await fn();
+	} finally {
+		release();
+		if (WRITE_LOCKS.get(path) === chain) WRITE_LOCKS.delete(path);
+	}
 }
 
 function isDeniedPath(requestPath: string): boolean {
@@ -682,6 +758,22 @@ async function resolveSessionPath(
 async function readJson<T>(req: IncomingMessage): Promise<T | undefined> {
 	const chunks: Buffer[] = [];
 	for await (const c of req) chunks.push(c as Buffer);
+	return parseJsonChunks<T>(chunks);
+}
+
+async function readJsonCapped<T>(req: IncomingMessage, maxBytes: number): Promise<{ value?: T; tooLarge?: boolean }> {
+	const chunks: Buffer[] = [];
+	let total = 0;
+	for await (const c of req) {
+		const chunk = c as Buffer;
+		total += chunk.byteLength;
+		if (total > maxBytes) return { tooLarge: true };
+		chunks.push(chunk);
+	}
+	return { value: parseJsonChunks<T>(chunks) };
+}
+
+function parseJsonChunks<T>(chunks: Buffer[]): T | undefined {
 	if (chunks.length === 0) return undefined;
 	const text = Buffer.concat(chunks).toString("utf8");
 	if (!text.trim()) return undefined;

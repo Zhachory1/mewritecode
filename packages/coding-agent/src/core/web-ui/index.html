@@ -26,8 +26,14 @@
 					<div id="file-tree" class="file-tree">loading…</div>
 				</aside>
 				<section class="pane editor">
-					<h2 id="editor-title">Editor</h2>
-					<pre id="editor">Select a file from the tree.</pre>
+					<div class="pane-title editor-title-row">
+						<h2 id="editor-title">Editor</h2>
+						<div class="editor-actions">
+							<span id="dirty" class="dirty hidden">unsaved</span>
+							<button id="save" type="button" disabled>Save</button>
+						</div>
+					</div>
+					<textarea id="editor" spellcheck="false" disabled>Select a file from the tree.</textarea>
 				</section>
 				<section class="pane chat">
 					<div class="pane-title">

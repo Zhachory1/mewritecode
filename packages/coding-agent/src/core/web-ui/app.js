@@ -6,6 +6,8 @@ const layoutEl = document.querySelector("#layout");
 const fileTreeEl = document.querySelector("#file-tree");
 const editorTitleEl = document.querySelector("#editor-title");
 const editorEl = document.querySelector("#editor");
+const dirtyEl = document.querySelector("#dirty");
+const saveEl = document.querySelector("#save");
 const messagesEl = document.querySelector("#messages");
 const thinkingEl = document.querySelector("#thinking");
 const formEl = document.querySelector("#composer");
@@ -15,6 +17,9 @@ const sendEl = document.querySelector("#send");
 let token = "";
 let sessionId = "";
 let selectedFile = "";
+let openFileState;
+let openRequestId = 0;
+let saveInFlight = false;
 let socket;
 let rpcId = 1;
 let assistantMessage;
@@ -190,22 +195,85 @@ function fileButton(entry, depth) {
 }
 
 async function openFile(path) {
+	if (saveInFlight) {
+		window.alert("Wait for the current save to finish before switching files.");
+		return;
+	}
+	if (openFileState?.dirty && !window.confirm("Discard unsaved changes?")) return;
+	const requestId = ++openRequestId;
+	openFileState = undefined;
 	selectedFile = path;
 	editorTitleEl.textContent = path;
-	editorEl.textContent = "loading…";
+	editorEl.value = "loading…";
+	editorEl.disabled = true;
+	setDirty(false);
 	renderTreeButtonsSelected();
 	try {
 		const qs = new URLSearchParams({ path });
 		const file = await api(`/v1/sessions/${encodeURIComponent(sessionId)}/files/read?${qs}`);
-		editorEl.textContent = file.text;
+		if (requestId !== openRequestId) return;
+		openFileState = {
+			path,
+			text: file.text,
+			size: file.size,
+			mtimeMs: file.mtimeMs,
+			dirty: false,
+		};
+		editorEl.value = file.text;
+		editorEl.disabled = false;
+		setDirty(false);
 	} catch (error) {
-		editorEl.textContent = error instanceof Error ? error.message : String(error);
+		if (requestId !== openRequestId) return;
+		openFileState = undefined;
+		editorEl.value = error instanceof Error ? error.message : String(error);
 	}
 }
 
 function renderTreeButtonsSelected() {
 	for (const button of fileTreeEl.querySelectorAll(".file-row")) {
 		button.classList.toggle("selected", button.dataset.path === selectedFile);
+	}
+}
+
+function setDirty(dirty) {
+	if (openFileState) openFileState.dirty = dirty;
+	dirtyEl.classList.toggle("hidden", !dirty);
+	saveEl.disabled = saveInFlight || !dirty || !openFileState;
+}
+
+async function saveOpenFile() {
+	if (!openFileState || !openFileState.dirty || saveInFlight) return;
+	const snapshot = {
+		path: openFileState.path,
+		text: editorEl.value,
+		mtimeMs: openFileState.mtimeMs,
+		size: openFileState.size,
+	};
+	saveInFlight = true;
+	saveEl.disabled = true;
+	try {
+		const saved = await api(`/v1/sessions/${encodeURIComponent(sessionId)}/files/write`, {
+			method: "PUT",
+			body: JSON.stringify({
+				path: snapshot.path,
+				text: snapshot.text,
+				expectedMtimeMs: snapshot.mtimeMs,
+				expectedSize: snapshot.size,
+			}),
+		});
+		if (openFileState?.path === snapshot.path) {
+			openFileState.text = snapshot.text;
+			openFileState.size = saved.size;
+			openFileState.mtimeMs = saved.mtimeMs;
+			setDirty(editorEl.value !== snapshot.text);
+		}
+		addMessage("system", `saved ${snapshot.path}`);
+	} catch (error) {
+		if (openFileState?.path === snapshot.path) setDirty(true);
+		addMessage("system", error instanceof Error ? error.message : String(error));
+	} finally {
+		saveInFlight = false;
+		if (openFileState?.path === snapshot.path) setDirty(openFileState.dirty);
 	}
 }
 
@@ -275,6 +343,21 @@ function handleApproval(params) {
 		}),
 	);
 }
+
+editorEl.addEventListener("input", () => {
+	if (!openFileState) return;
+	setDirty(editorEl.value !== openFileState.text);
+});
+
+saveEl.addEventListener("click", () => {
+	void saveOpenFile();
+});
+
+window.addEventListener("beforeunload", (event) => {
+	if (!openFileState?.dirty && !saveInFlight) return;
+	event.preventDefault();
+	event.returnValue = "";
+});
 
 formEl.addEventListener("submit", (event) => {
 	event.preventDefault();

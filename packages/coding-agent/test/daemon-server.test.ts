@@ -10,7 +10,7 @@
  *   - `caveman attach` end-to-end (mocked LLM via the default echo runner)
  *   - bearer token auth
  */
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -224,6 +224,137 @@ describe("WS9 daemon — REST routing", () => {
 			await expect(fetch(`${base}?path=binary.bin`).then((r) => r.status)).resolves.toBe(415);
 			await expect(fetch(`${base}?path=bad-utf8.txt`).then((r) => r.status)).resolves.toBe(415);
 			await expect(fetch(`${base}?path=large.txt`).then((r) => r.status)).resolves.toBe(413);
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+			rmSync(outside, { recursive: true, force: true });
+		}
+	});
+
+	it("writes files under the session cwd with conflict checks", async () => {
+		const cwd = mkdtempSync(join(tmpdir(), "cave-daemon-files-"));
+		try {
+			const filePath = join(cwd, "edit.txt");
+			writeFileSync(filePath, "before\n", "utf8");
+			writeFileSync(join(cwd, "tokens.test.ts"), "const tokenCount = 1;\n", "utf8");
+			const session = await f.client.createSession({ cwd });
+			const read = await fetch(
+				`http://127.0.0.1:${f.handle.port}/v1/sessions/${session.id}/files/read?path=edit.txt`,
+			);
+			const snapshot = (await read.json()) as { mtimeMs: number; size: number };
+
+			const write = await fetch(`http://127.0.0.1:${f.handle.port}/v1/sessions/${session.id}/files/write`, {
+				method: "PUT",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					path: "edit.txt",
+					text: "after\n",
+					expectedMtimeMs: snapshot.mtimeMs,
+					expectedSize: snapshot.size,
+				}),
+			});
+			expect(write.status).toBe(200);
+			expect(readFileSync(filePath, "utf8")).toBe("after\n");
+
+			const conflict = await fetch(`http://127.0.0.1:${f.handle.port}/v1/sessions/${session.id}/files/write`, {
+				method: "PUT",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					path: "edit.txt",
+					text: "stale\n",
+					expectedMtimeMs: snapshot.mtimeMs,
+					expectedSize: snapshot.size,
+				}),
+			});
+			expect(conflict.status).toBe(409);
+
+			const tokenRead = await fetch(
+				`http://127.0.0.1:${f.handle.port}/v1/sessions/${session.id}/files/read?path=tokens.test.ts`,
+			);
+			const tokenSnapshot = (await tokenRead.json()) as { mtimeMs: number; size: number };
+			const quoteHeavyText = `const quoted = "${'\\"'.repeat(100_000)}";\n`;
+			const tokenWrite = await fetch(`http://127.0.0.1:${f.handle.port}/v1/sessions/${session.id}/files/write`, {
+				method: "PUT",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					path: "tokens.test.ts",
+					text: quoteHeavyText,
+					expectedMtimeMs: tokenSnapshot.mtimeMs,
+					expectedSize: tokenSnapshot.size,
+				}),
+			});
+			expect(tokenWrite.status).toBe(200);
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
+	it("serializes concurrent file writes with the same precondition", async () => {
+		const cwd = mkdtempSync(join(tmpdir(), "cave-daemon-files-"));
+		try {
+			const filePath = join(cwd, "edit.txt");
+			writeFileSync(filePath, "before\n", "utf8");
+			const session = await f.client.createSession({ cwd });
+			const read = await fetch(
+				`http://127.0.0.1:${f.handle.port}/v1/sessions/${session.id}/files/read?path=edit.txt`,
+			);
+			const snapshot = (await read.json()) as { mtimeMs: number; size: number };
+			const write = (text: string) =>
+				fetch(`http://127.0.0.1:${f.handle.port}/v1/sessions/${session.id}/files/write`, {
+					method: "PUT",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({
+						path: "edit.txt",
+						text,
+						expectedMtimeMs: snapshot.mtimeMs,
+						expectedSize: snapshot.size,
+					}),
+				}).then((r) => r.status);
+
+			const statuses = await Promise.all([write("first\n"), write("second\n")]);
+			expect(statuses.sort()).toEqual([200, 409]);
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
+	it("rejects unsafe file writes", async () => {
+		const cwd = mkdtempSync(join(tmpdir(), "cave-daemon-files-"));
+		const outside = mkdtempSync(join(tmpdir(), "cave-daemon-outside-"));
+		try {
+			writeFileSync(join(cwd, "ok.txt"), "ok", "utf8");
+			mkdirSync(join(cwd, ".aws"));
+			writeFileSync(join(cwd, ".aws", "credentials"), "secret", "utf8");
+			symlinkSync(join(outside, "secret.txt"), join(cwd, "outside-link"));
+			writeFileSync(join(outside, "secret.txt"), "secret", "utf8");
+			const session = await f.client.createSession({ cwd });
+			const url = `http://127.0.0.1:${f.handle.port}/v1/sessions/${session.id}/files/write`;
+			const read = await fetch(`http://127.0.0.1:${f.handle.port}/v1/sessions/${session.id}/files/read?path=ok.txt`);
+			const snapshot = (await read.json()) as { mtimeMs: number; size: number };
+			const write = (path: string, text = "x") =>
+				fetch(url, {
+					method: "PUT",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({
+						path,
+						text,
+						expectedMtimeMs: snapshot.mtimeMs,
+						expectedSize: snapshot.size,
+					}),
+				}).then((r) => r.status);
+			const writeWithoutPrecondition = () =>
+				fetch(url, {
+					method: "PUT",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ path: "ok.txt", text: "x" }),
+				}).then((r) => r.status);
+
+			await expect(writeWithoutPrecondition()).resolves.toBe(400);
+			await expect(write("../bad.txt")).resolves.toBe(400);
+			await expect(write("/tmp/bad.txt")).resolves.toBe(400);
+			await expect(write(".aws/credentials")).resolves.toBe(403);
+			await expect(write("outside-link")).resolves.toBe(403);
+			await expect(write("ok.txt", "\0")).resolves.toBe(415);
+			await expect(write("ok.txt", "a".repeat(1024 * 1024 + 1))).resolves.toBe(413);
 		} finally {
 			rmSync(cwd, { recursive: true, force: true });
 			rmSync(outside, { recursive: true, force: true });

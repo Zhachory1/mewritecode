@@ -158,12 +158,52 @@ main.chat-collapsed #thinking {
 #editor {
 	margin: 12px 0 0;
 	padding: 14px;
-	min-height: calc(100% - 32px);
+	width: 100%;
+	min-height: calc(100% - 44px);
 	border: 1px solid #30363d;
 	border-radius: 8px;
 	background: #010409;
+	color: #e6edf3;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+	font-size: 13px;
+	line-height: 1.45;
 	overflow: auto;
+	resize: none;
 	white-space: pre;
+}
+
+#editor:disabled {
+	color: #8b949e;
+}
+
+.editor-title-row {
+	margin-bottom: 0;
+}
+
+.editor-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.dirty {
+	color: #f2cc60;
+	font-size: 12px;
+}
+
+#save {
+	border: 0;
+	border-radius: 6px;
+	background: #238636;
+	color: white;
+	cursor: pointer;
+	font-weight: 700;
+	padding: 5px 10px;
+}
+
+#save:disabled {
+	cursor: not-allowed;
+	opacity: 0.55;
 }
 
 .file-tree {
