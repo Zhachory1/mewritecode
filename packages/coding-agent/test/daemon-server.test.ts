@@ -368,6 +368,90 @@ describe("WS9 daemon — WebSocket streaming", () => {
 		).resolves.toBeUndefined();
 	});
 
+	it("routes approval requests to approval-capable WebSocket clients", async () => {
+		const tmpDir = mkdtempSync(join(tmpdir(), "cave-daemon-approval-"));
+		const store = openStore(join(tmpDir, "sessions.db"));
+		let decision: string | undefined;
+		try {
+			const handle = await startDaemon({
+				host: "127.0.0.1",
+				port: 0,
+				store,
+				version: "test",
+				runnerFactory: (session, emit) => ({
+					async send(text) {
+						emit({
+							type: "approval",
+							sessionId: session.id,
+							approvalId: "approval-1",
+							toolName: "write",
+							args: { path: "file.txt" },
+							tier: "write",
+						});
+						return {
+							id: "m_user",
+							sessionId: session.id,
+							role: "user",
+							text,
+							createdAt: new Date().toISOString(),
+						};
+					},
+					interrupt() {},
+					close() {},
+					respondApproval(_approvalId, nextDecision) {
+						decision = nextDecision;
+					},
+				}),
+			});
+			try {
+				const client = new CaveClient({ host: handle.host, port: handle.port });
+				const session = await client.createSession({});
+				let ws: WebSocket | undefined;
+				await expect(
+					new Promise<void>((resolve, reject) => {
+						ws = new WebSocket(`ws://127.0.0.1:${handle.port}/v1/sessions/${session.id}/stream`);
+						let id = 1;
+						ws.once("open", () => {
+							ws.send(
+								JSON.stringify({
+									jsonrpc: "2.0",
+									id: id++,
+									method: "client_capabilities",
+									params: { approval: true },
+								}),
+							);
+							ws.send(JSON.stringify({ jsonrpc: "2.0", id: id++, method: "send", params: { text: "go" } }));
+						});
+						ws.on("message", (raw) => {
+							const envelope = JSON.parse(raw.toString()) as {
+								method?: string;
+								params?: { approvalId?: string };
+							};
+							if (envelope.method !== "approval") return;
+							ws.send(
+								JSON.stringify({
+									jsonrpc: "2.0",
+									id: id++,
+									method: "approval_decision",
+									params: { approvalId: envelope.params?.approvalId, decision: "once" },
+								}),
+							);
+							resolve();
+						});
+						ws.once("error", reject);
+					}),
+				).resolves.toBeUndefined();
+				await expect.poll(() => decision).toBe("once");
+				ws?.close();
+			} finally {
+				await handle.close();
+			}
+		} finally {
+			store.close();
+			rmSync(tmpDir, { recursive: true, force: true });
+		}
+	});
+
 	it("supports multiple clients attached to the same session", async () => {
 		const s = await f.client.createSession({});
 		const a = f.client.attach(s.id);
