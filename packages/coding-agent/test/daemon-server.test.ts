@@ -409,10 +409,11 @@ describe("WS9 daemon — WebSocket streaming", () => {
 				let ws: WebSocket | undefined;
 				await expect(
 					new Promise<void>((resolve, reject) => {
-						ws = new WebSocket(`ws://127.0.0.1:${handle.port}/v1/sessions/${session.id}/stream`);
+						const socket = new WebSocket(`ws://127.0.0.1:${handle.port}/v1/sessions/${session.id}/stream`);
+						ws = socket;
 						let id = 1;
-						ws.once("open", () => {
-							ws.send(
+						socket.once("open", () => {
+							socket.send(
 								JSON.stringify({
 									jsonrpc: "2.0",
 									id: id++,
@@ -420,15 +421,15 @@ describe("WS9 daemon — WebSocket streaming", () => {
 									params: { approval: true },
 								}),
 							);
-							ws.send(JSON.stringify({ jsonrpc: "2.0", id: id++, method: "send", params: { text: "go" } }));
+							socket.send(JSON.stringify({ jsonrpc: "2.0", id: id++, method: "send", params: { text: "go" } }));
 						});
-						ws.on("message", (raw) => {
+						socket.on("message", (raw) => {
 							const envelope = JSON.parse(raw.toString()) as {
 								method?: string;
 								params?: { approvalId?: string };
 							};
 							if (envelope.method !== "approval") return;
-							ws.send(
+							socket.send(
 								JSON.stringify({
 									jsonrpc: "2.0",
 									id: id++,
@@ -438,7 +439,7 @@ describe("WS9 daemon — WebSocket streaming", () => {
 							);
 							resolve();
 						});
-						ws.once("error", reject);
+						socket.once("error", reject);
 					}),
 				).resolves.toBeUndefined();
 				await expect.poll(() => decision).toBe("once");

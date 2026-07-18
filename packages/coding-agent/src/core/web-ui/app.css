@@ -21,19 +21,31 @@ body {
 
 header {
 	height: 48px;
-	display: flex;
+	display: grid;
+	grid-template-columns: 1fr minmax(160px, 45vw) auto;
 	align-items: center;
-	justify-content: space-between;
+	gap: 16px;
 	padding: 0 16px;
 	border-bottom: 1px solid #30363d;
 	background: #161b22;
 }
 
 #status,
-#session {
+#session,
+#cwd {
 	color: #8b949e;
 	font-size: 13px;
+}
+
+#status {
 	margin-left: 10px;
+}
+
+#cwd {
+	overflow: hidden;
+	text-align: center;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .banner {
@@ -52,7 +64,20 @@ main {
 	min-height: 0;
 	flex: 1;
 	display: grid;
-	grid-template-columns: 260px minmax(360px, 1fr) 380px;
+	grid-template-columns: 280px minmax(360px, 1fr) 380px;
+	transition: grid-template-columns 120ms ease;
+}
+
+main.files-collapsed {
+	grid-template-columns: 46px minmax(360px, 1fr) 380px;
+}
+
+main.chat-collapsed {
+	grid-template-columns: 280px minmax(360px, 1fr) 46px;
+}
+
+main.files-collapsed.chat-collapsed {
+	grid-template-columns: 46px minmax(360px, 1fr) 46px;
 }
 
 .pane {
@@ -67,12 +92,62 @@ main {
 	border-right: 0;
 }
 
+.pane-title {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	margin-bottom: 12px;
+}
+
 h2 {
-	margin: 0 0 12px;
+	margin: 0;
 	font-size: 13px;
 	letter-spacing: 0.08em;
 	text-transform: uppercase;
 	color: #8b949e;
+}
+
+.pane-toggle {
+	border: 1px solid #30363d;
+	border-radius: 6px;
+	background: #0d1117;
+	color: #8b949e;
+	cursor: pointer;
+	font: inherit;
+	line-height: 1;
+	padding: 4px 7px;
+}
+
+.pane-toggle:hover {
+	color: #e6edf3;
+	border-color: #8b949e;
+}
+
+main.files-collapsed .files,
+main.chat-collapsed .chat {
+	padding: 8px;
+	overflow: hidden;
+}
+
+main.files-collapsed .files .pane-title,
+main.chat-collapsed .chat .pane-title {
+	align-items: center;
+	flex-direction: column;
+}
+
+main.files-collapsed .files h2,
+main.chat-collapsed .chat h2 {
+	font-size: 11px;
+	letter-spacing: 0.04em;
+	writing-mode: vertical-rl;
+}
+
+main.files-collapsed #file-tree,
+main.chat-collapsed .messages,
+main.chat-collapsed #composer,
+main.chat-collapsed #thinking {
+	display: none;
 }
 
 .placeholder,
@@ -81,35 +156,35 @@ h2 {
 }
 
 #editor {
-	margin: 0;
+	margin: 12px 0 0;
 	padding: 14px;
 	min-height: calc(100% - 32px);
 	border: 1px solid #30363d;
 	border-radius: 8px;
 	background: #010409;
-	white-space: pre;
 	overflow: auto;
+	white-space: pre;
 }
 
 .file-tree {
 	display: flex;
 	flex-direction: column;
-	gap: 4px;
+	gap: 2px;
 	font-size: 14px;
 }
 
 .file-row {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: 6px;
 	width: 100%;
 	border: 0;
 	border-radius: 6px;
 	background: transparent;
 	color: #e6edf3;
-	padding: 6px 8px;
 	font: inherit;
 	font-weight: 400;
+	padding: 5px 8px;
 	text-align: left;
 }
 
@@ -124,6 +199,18 @@ h2 {
 
 .file-row.file {
 	color: #e6edf3;
+}
+
+.file-row .twisty {
+	width: 14px;
+	color: #8b949e;
+	text-align: center;
+}
+
+.file-row .name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .chat {
@@ -166,9 +253,40 @@ h2 {
 	display: block;
 	margin-bottom: 6px;
 	font-size: 12px;
-	text-transform: uppercase;
 	letter-spacing: 0.08em;
+	text-transform: uppercase;
 	color: #8b949e;
+}
+
+.thinking {
+	align-self: flex-start;
+	padding: 8px 10px;
+	border: 1px solid #30363d;
+	border-radius: 999px;
+	background: #0d1117;
+	color: #8b949e;
+	font-size: 13px;
+}
+
+.thinking span::after {
+	content: "";
+	animation: dots 1.2s steps(4, end) infinite;
+}
+
+@keyframes dots {
+	0% {
+		content: "";
+	}
+	25% {
+		content: ".";
+	}
+	50% {
+		content: "..";
+	}
+	75%,
+	100% {
+		content: "...";
+	}
 }
 
 #composer {
@@ -194,9 +312,9 @@ h2 {
 	border-radius: 8px;
 	background: #238636;
 	color: white;
-	padding: 0 16px;
-	font-weight: 700;
 	cursor: pointer;
+	font-weight: 700;
+	padding: 0 16px;
 }
 
 #send:disabled {
