@@ -22,6 +22,7 @@
 ### Fixed
 
 - Moved Caveman, Ponytail, tool-output compression, and Headroom context-compression toggles near the top of `/settings` with explicit labels.
+- Fixed daemon session state persistence so served web UI session lists keep runner state across reconnects.
 - Fixed extension loading for extensions that import the `@zhachory1/mewrite-ai/registry` package subpath.
 
 ## [1.0.12] - 2026-07-09

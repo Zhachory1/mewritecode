@@ -48,6 +48,34 @@ header {
 	white-space: nowrap;
 }
 
+.session-controls {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px;
+	min-width: 0;
+}
+
+#sessions {
+	max-width: 220px;
+	min-width: 120px;
+	border: 1px solid #30363d;
+	border-radius: 6px;
+	background: #010409;
+	color: #e6edf3;
+	padding: 5px 8px;
+}
+
+#new-session {
+	border: 0;
+	border-radius: 6px;
+	background: #1f6feb;
+	color: white;
+	cursor: pointer;
+	font-weight: 700;
+	padding: 6px 10px;
+}
+
 .banner {
 	padding: 10px 16px;
 	background: #3b2e09;
