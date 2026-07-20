@@ -122,6 +122,9 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 				opts.store.appendMessage(event.message);
 				return true;
 			}
+			if (event.type === "state") {
+				opts.store.updateSession(event.sessionId, { state: event.state });
+			}
 			const set = clients.get(sessionId);
 			if (!set || set.size === 0) return false;
 			let delivered = false;

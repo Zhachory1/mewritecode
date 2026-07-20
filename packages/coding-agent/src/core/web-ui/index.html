@@ -14,7 +14,11 @@
 					<span id="status">connecting…</span>
 				</div>
 				<div id="cwd" title="Current working directory">cwd: …</div>
-				<div id="session">no session</div>
+				<div class="session-controls">
+					<select id="sessions" aria-label="Session"></select>
+					<button id="new-session" type="button">New</button>
+					<div id="session">no session</div>
+				</div>
 			</header>
 			<div id="banner" class="banner hidden"></div>
 			<main id="layout">
