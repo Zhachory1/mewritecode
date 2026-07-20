@@ -1,5 +1,5 @@
 import { Agent, type ThinkingLevel } from "@zhachory1/mewrite-agent";
-import { getModel } from "@zhachory1/mewrite-ai";
+import { type Api, getModel, type Model } from "@zhachory1/mewrite-ai";
 import { describe, expect, it } from "vitest";
 import { AgentSession } from "../src/core/agent-session.js";
 import { AuthStorage } from "../src/core/auth-storage.js";
@@ -8,8 +8,8 @@ import { SessionManager } from "../src/core/session-manager.js";
 import { SettingsManager } from "../src/core/settings-manager.js";
 import { createTestResourceLoader } from "./utilities.js";
 
-const reasoningModel = getModel("anthropic", "claude-sonnet-4-5")!;
-const nonReasoningModel = getModel("anthropic", "claude-haiku-4-5")!;
+const reasoningModel: Model<Api> = getModel("anthropic", "claude-sonnet-4-5")!;
+const nonReasoningModel: Model<Api> = getModel("openai", "gpt-4o-mini")!;
 
 function createSession({
 	thinkingLevel = "high",
@@ -18,12 +18,13 @@ function createSession({
 }: {
 	thinkingLevel?: ThinkingLevel;
 	defaultThinkingLevel?: ThinkingLevel;
-	scopedModels?: Array<{ model: typeof reasoningModel; thinkingLevel?: ThinkingLevel }>;
+	scopedModels?: Array<{ model: Model<Api>; thinkingLevel?: ThinkingLevel }>;
 } = {}) {
 	const settingsManager = SettingsManager.inMemory({ defaultThinkingLevel });
 	const sessionManager = SessionManager.inMemory();
 	const authStorage = AuthStorage.inMemory();
 	authStorage.setRuntimeApiKey("anthropic", "test-key");
+	authStorage.setRuntimeApiKey("openai", "test-key");
 	const session = new AgentSession({
 		agent: new Agent({
 			getApiKey: () => "test-key",
