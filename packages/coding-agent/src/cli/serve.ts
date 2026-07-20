@@ -33,7 +33,7 @@ function parseServeArgs(args: string[]): ServeArgs {
 	const out: ServeArgs = {
 		host: "127.0.0.1",
 		port: 7421,
-		runner: "echo",
+		runner: "agent",
 		dbPath: join(getAgentDir(), "daemon", "sessions.db"),
 		pidFile: join(getAgentDir(), "daemon", "daemon.pid"),
 	};
@@ -85,7 +85,7 @@ Options:
   --host <ip>     Bind host (default 127.0.0.1)
   --port <n>      Bind port (default 7421)
   --token <s>     Require Bearer <token> on every API/WebSocket request
-  --runner <mode> echo (default) or agent
+  --runner <mode> agent (default) or echo
   --db <path>     SQLite session store (default ~/.cave/daemon/sessions.db)
   --pid <path>    Pid file (default ~/.cave/daemon/daemon.pid)
   -h, --help      Show this help
