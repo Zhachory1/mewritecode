@@ -201,6 +201,49 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /v1/sessions/{id}/files/write:
+    put:
+      summary: Write a small UTF-8 file under the session cwd
+      operationId: writeSessionFile
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WriteFileRequest"
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WriteFile"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: file changed on disk
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "413":
+          description: file too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "415":
+          description: binary file unsupported
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /v1/workers:
     get:
       summary: List registered remote workers (for `&prompt` handoff)
@@ -424,7 +467,7 @@ components:
           type: integer
     ReadFile:
       type: object
-      required: [sessionId, path, text, size, encoding]
+      required: [sessionId, path, text, size, mtimeMs, encoding]
       properties:
         sessionId:
           type: string
@@ -435,6 +478,36 @@ components:
           type: string
         size:
           type: integer
+        mtimeMs:
+          type: number
+        encoding:
+          type: string
+          enum: [utf8]
+    WriteFileRequest:
+      type: object
+      required: [path, text, expectedMtimeMs, expectedSize]
+      properties:
+        path:
+          type: string
+        text:
+          type: string
+        expectedMtimeMs:
+          type: number
+        expectedSize:
+          type: integer
+    WriteFile:
+      type: object
+      required: [sessionId, path, size, mtimeMs, encoding]
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+        path:
+          type: string
+        size:
+          type: integer
+        mtimeMs:
+          type: number
         encoding:
           type: string
           enum: [utf8]

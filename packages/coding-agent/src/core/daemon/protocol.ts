@@ -52,6 +52,22 @@ export interface ReadFileResponse {
 	path: string;
 	text: string;
 	size: number;
+	mtimeMs: number;
+	encoding: "utf8";
+}
+
+export interface WriteFileRequest {
+	path: string;
+	text: string;
+	expectedMtimeMs: number;
+	expectedSize: number;
+}
+
+export interface WriteFileResponse {
+	sessionId: string;
+	path: string;
+	size: number;
+	mtimeMs: number;
 	encoding: "utf8";
 }
 
