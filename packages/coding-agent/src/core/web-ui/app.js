@@ -1,5 +1,7 @@
 const statusEl = document.querySelector("#status");
 const sessionEl = document.querySelector("#session");
+const sessionSelectEl = document.querySelector("#sessions");
+const newSessionEl = document.querySelector("#new-session");
 const cwdEl = document.querySelector("#cwd");
 const bannerEl = document.querySelector("#banner");
 const layoutEl = document.querySelector("#layout");
@@ -21,9 +23,11 @@ let openFileState;
 let openRequestId = 0;
 let saveInFlight = false;
 let socket;
+let sessionSwitchId = 0;
 let rpcId = 1;
 let assistantMessage;
 let waitingForAssistant = false;
+let runInProgress = false;
 const treeNodes = new Map();
 
 treeNodes.set("", { entries: [], expanded: true, loaded: false, loading: false });
@@ -40,7 +44,16 @@ function setBanner(text) {
 function setThinking(visible) {
 	waitingForAssistant = visible;
 	thinkingEl.classList.toggle("hidden", !visible);
-	sendEl.disabled = visible;
+	updateSendDisabled();
+}
+
+function setRunInProgress(visible) {
+	runInProgress = visible;
+	updateSendDisabled();
+}
+
+function updateSendDisabled() {
+	sendEl.disabled = waitingForAssistant || runInProgress;
 }
 
 function addMessage(role, text = "") {
@@ -81,23 +94,122 @@ async function start() {
 		} else if (!health.capabilities?.approvalSupported) {
 			setBanner("Agent-backed chat is connected, but browser approval prompts are not available yet.");
 		}
-		const session = await api("/v1/sessions", {
-			method: "POST",
-			body: JSON.stringify({ title: "Web UI" }),
-		});
-		sessionId = session.id;
-		sessionEl.textContent = sessionId.slice(0, 8);
-		cwdEl.textContent = session.cwd || "cwd: unknown";
-		cwdEl.title = session.cwd || "Current working directory";
-		await expandDirectory("");
-		connectSocket();
+		await loadSessions();
 	} catch (error) {
 		setStatus("error");
 		addMessage("system", error instanceof Error ? error.message : String(error));
 	}
 }
 
+async function loadSessions(preferredId) {
+	const list = await api("/v1/sessions?limit=25");
+	const sessions = list.sessions || [];
+	if (sessions.length === 0) {
+		await createSession();
+		return;
+	}
+	renderSessionOptions(sessions);
+	const selected = sessions.find((session) => session.id === preferredId) || sessions[0];
+	await useSession(selected.id);
+}
+
+function renderSessionOptions(sessions) {
+	sessionSelectEl.textContent = "";
+	for (const session of sessions) {
+		const option = document.createElement("option");
+		option.value = session.id;
+		option.dataset.title = session.title || "session";
+		option.textContent = formatSessionOption(option.dataset.title, session.id, session.state);
+		sessionSelectEl.append(option);
+	}
+}
+
+function formatSessionOption(title, id, state) {
+	return `${title || "session"} · ${id.slice(0, 8)} · ${state}`;
+}
+
+function updateSelectedSessionState(state) {
+	const option = sessionSelectEl.selectedOptions[0];
+	if (!option || option.value !== sessionId) return;
+	option.textContent = formatSessionOption(option.dataset.title, sessionId, state);
+}
+
+async function createSession() {
+	if (!canLeaveCurrentEditor()) return;
+	const session = await api("/v1/sessions", {
+		method: "POST",
+		body: JSON.stringify({ title: "Web UI" }),
+	});
+	await loadSessions(session.id);
+}
+
+async function useSession(nextSessionId) {
+	if (nextSessionId === sessionId) return;
+	if (!canLeaveCurrentEditor()) {
+		sessionSelectEl.value = sessionId;
+		return;
+	}
+	const previousSessionId = sessionId;
+	const switchId = ++sessionSwitchId;
+	try {
+		const session = await api(`/v1/sessions/${encodeURIComponent(nextSessionId)}`);
+		const transcript = await api(`/v1/sessions/${encodeURIComponent(nextSessionId)}/transcript`);
+		if (switchId !== sessionSwitchId) return;
+		closeSocket();
+		resetEditor();
+		resetTree();
+		messagesEl.textContent = "";
+		sessionId = session.id;
+		sessionSelectEl.value = session.id;
+		sessionEl.textContent = session.id.slice(0, 8);
+		cwdEl.textContent = session.cwd || "cwd: unknown";
+		cwdEl.title = session.cwd || "Current working directory";
+		for (const message of transcript.messages || []) addMessage(message.role, message.text || "");
+		await expandDirectory("");
+		if (switchId !== sessionSwitchId) return;
+		connectSocket();
+	} catch (error) {
+		if (switchId !== sessionSwitchId) return;
+		sessionSelectEl.value = previousSessionId;
+		addMessage("system", error instanceof Error ? error.message : String(error));
+	}
+}
+
+function canLeaveCurrentEditor() {
+	if (saveInFlight) {
+		window.alert("Wait for the current save to finish before switching sessions.");
+		return false;
+	}
+	return !openFileState?.dirty || window.confirm("Discard unsaved changes?");
+}
+
+function resetTree() {
+	treeNodes.clear();
+	treeNodes.set("", { entries: [], expanded: true, loaded: false, loading: false });
+	fileTreeEl.textContent = "loading…";
+}
+
+function resetEditor() {
+	selectedFile = "";
+	openFileState = undefined;
+	openRequestId++;
+	editorTitleEl.textContent = "Editor";
+	editorEl.value = "Select a file from the tree.";
+	editorEl.disabled = true;
+	setDirty(false);
+}
+
+function closeSocket() {
+	if (!socket) return;
+	socket.close();
+	socket = undefined;
+	assistantMessage = undefined;
+	setThinking(false);
+	setRunInProgress(false);
+}
+
 async function expandDirectory(path) {
+	const targetSessionId = sessionId;
 	const node = treeNode(path);
 	if (node.loading) return;
 	node.error = undefined;
@@ -111,7 +223,8 @@ async function expandDirectory(path) {
 	try {
 		const qs = new URLSearchParams();
 		if (path) qs.set("path", path);
-		const tree = await api(`/v1/sessions/${encodeURIComponent(sessionId)}/files/tree?${qs}`);
+		const tree = await api(`/v1/sessions/${encodeURIComponent(targetSessionId)}/files/tree?${qs}`);
+		if (targetSessionId !== sessionId) return;
 		node.entries = tree.entries || [];
 		node.loaded = true;
 	} catch (error) {
@@ -278,28 +391,39 @@ async function saveOpenFile() {
 }
 
 function connectSocket() {
+	closeSocket();
 	const protocol = location.protocol === "https:" ? "wss:" : "ws:";
 	const url = `${protocol}//${location.host}/v1/sessions/${encodeURIComponent(sessionId)}/stream`;
 	const protocols = token ? ["mewrite-auth", `mewrite-bearer.${base64Url(token)}`] : [];
-	socket = new WebSocket(url, protocols);
-	socket.addEventListener("open", () => {
+	const nextSocket = new WebSocket(url, protocols);
+	socket = nextSocket;
+	nextSocket.addEventListener("open", () => {
+		if (socket !== nextSocket) return;
 		setStatus("connected");
-		socket.send(JSON.stringify({ jsonrpc: "2.0", id: rpcId++, method: "client_capabilities", params: { approval: true } }));
+		nextSocket.send(JSON.stringify({ jsonrpc: "2.0", id: rpcId++, method: "client_capabilities", params: { approval: true } }));
 	});
-	socket.addEventListener("close", () => {
+	nextSocket.addEventListener("close", () => {
+		if (socket !== nextSocket) return;
 		setStatus("disconnected");
 		setThinking(false);
+		setRunInProgress(false);
 	});
-	socket.addEventListener("error", () => {
+	nextSocket.addEventListener("error", () => {
+		if (socket !== nextSocket) return;
 		setStatus("socket error");
 		setThinking(false);
+		setRunInProgress(false);
 	});
-	socket.addEventListener("message", (event) => onSocketMessage(event.data));
+	nextSocket.addEventListener("message", (event) => {
+		if (socket !== nextSocket) return;
+		onSocketMessage(event.data);
+	});
 }
 
 function onSocketMessage(raw) {
 	const envelope = JSON.parse(raw);
 	if (envelope.method === "token") {
+		setRunInProgress(true);
 		if (waitingForAssistant) setThinking(false);
 		if (!assistantMessage) assistantMessage = addMessage(envelope.params?.role || "assistant");
 		assistantMessage.textContent += envelope.params?.text || "";
@@ -311,7 +435,16 @@ function onSocketMessage(raw) {
 		return;
 	}
 	if (envelope.method === "state") {
-		setStatus(envelope.params?.state || "connected");
+		const state = envelope.params?.state || "connected";
+		setStatus(state);
+		updateSelectedSessionState(state);
+		if (state === "running") {
+			setRunInProgress(true);
+			if (!assistantMessage) setThinking(true);
+		} else if (state === "idle" || state === "error" || state === "stopped") {
+			setThinking(false);
+			setRunInProgress(false);
+		}
 		return;
 	}
 	if (envelope.method === "approval") {
@@ -321,10 +454,12 @@ function onSocketMessage(raw) {
 	if (envelope.method === "done") {
 		assistantMessage = undefined;
 		setThinking(false);
+		setRunInProgress(false);
 		return;
 	}
 	if (envelope.error) {
 		setThinking(false);
+		setRunInProgress(false);
 		addMessage("system", envelope.error.message || "request failed");
 	}
 }
@@ -343,6 +478,14 @@ function handleApproval(params) {
 		}),
 	);
 }
+
+sessionSelectEl.addEventListener("change", () => {
+	void useSession(sessionSelectEl.value);
+});
+
+newSessionEl.addEventListener("click", () => {
+	void createSession();
+});
 
 editorEl.addEventListener("input", () => {
 	if (!openFileState) return;
@@ -365,6 +508,7 @@ formEl.addEventListener("submit", (event) => {
 	if (!text || !socket || socket.readyState !== WebSocket.OPEN || waitingForAssistant) return;
 	promptEl.value = "";
 	addMessage("user", text);
+	setRunInProgress(true);
 	setThinking(true);
 	socket.send(JSON.stringify({ jsonrpc: "2.0", id: rpcId++, method: "send", params: { text } }));
 });

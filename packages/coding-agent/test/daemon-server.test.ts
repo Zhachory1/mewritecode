@@ -155,6 +155,44 @@ describe("WS9 daemon — REST routing", () => {
 		expect(transcript.messages[0].text).toBe("hello");
 	});
 
+	it("persists runner state events without attached WebSocket clients", async () => {
+		const tmpDir = mkdtempSync(join(tmpdir(), "cave-daemon-state-"));
+		const store = openStore(join(tmpDir, "sessions.db"));
+		try {
+			const handle = await startDaemon({
+				host: "127.0.0.1",
+				port: 0,
+				store,
+				runnerFactory: (session, emit) => ({
+					async send(text) {
+						emit({ type: "state", sessionId: session.id, state: "stopped" });
+						return {
+							id: "m_user",
+							sessionId: session.id,
+							role: "user",
+							text,
+							createdAt: new Date().toISOString(),
+						};
+					},
+					interrupt() {},
+					close() {},
+				}),
+				version: "test",
+			});
+			try {
+				const client = new CaveClient({ host: handle.host, port: handle.port });
+				const session = await client.createSession({});
+				await client.send(session.id, { text: "pause" });
+				await expect(client.getSession(session.id)).resolves.toMatchObject({ state: "stopped" });
+			} finally {
+				await handle.close();
+			}
+		} finally {
+			store.close();
+			rmSync(tmpDir, { recursive: true, force: true });
+		}
+	});
+
 	it("rejects unknown routes with 404", async () => {
 		await expect(fetch(`http://127.0.0.1:${f.handle.port}/v1/nope`).then((r) => r.status)).resolves.toBe(404);
 	});
