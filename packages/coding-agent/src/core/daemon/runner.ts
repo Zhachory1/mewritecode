@@ -7,9 +7,9 @@
  * immediately and exercises the full streaming path without dragging the
  * full agent runtime through `mewrite serve`'s startup.
  *
- * The real agent-backed runner lives in `agent-runner.ts` and is selected
- * explicitly with `mewrite serve --runner agent`. Echo remains the default so
- * `mewrite serve` can boot fast without initializing the full agent runtime.
+ * The real agent-backed runner lives in `agent-runner.ts` and is the default
+ * for `mewrite serve`. Echo remains available via `--runner echo` for tests
+ * and transport debugging without initializing the full agent runtime.
  */
 
 import { randomUUID } from "node:crypto";
