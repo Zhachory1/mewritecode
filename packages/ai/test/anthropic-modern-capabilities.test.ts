@@ -433,8 +433,8 @@ describe("static registry contextWindow", () => {
 		expect(m.contextWindow).toBe(200_000);
 	});
 
-	it("sonnet-4-5 stays at 200_000", () => {
+	it("sonnet-4-5 uses the generated 1M context window", () => {
 		const m = getModel("anthropic", "claude-sonnet-4-5");
-		expect(m.contextWindow).toBe(200_000);
+		expect(m.contextWindow).toBe(1_000_000);
 	});
 });
