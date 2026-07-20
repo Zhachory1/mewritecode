@@ -118,9 +118,20 @@ function renderSessionOptions(sessions) {
 	for (const session of sessions) {
 		const option = document.createElement("option");
 		option.value = session.id;
-		option.textContent = `${session.title || "session"} · ${session.id.slice(0, 8)} · ${session.state}`;
+		option.dataset.title = session.title || "session";
+		option.textContent = formatSessionOption(option.dataset.title, session.id, session.state);
 		sessionSelectEl.append(option);
 	}
+}
+
+function formatSessionOption(title, id, state) {
+	return `${title || "session"} · ${id.slice(0, 8)} · ${state}`;
+}
+
+function updateSelectedSessionState(state) {
+	const option = sessionSelectEl.selectedOptions[0];
+	if (!option || option.value !== sessionId) return;
+	option.textContent = formatSessionOption(option.dataset.title, sessionId, state);
 }
 
 async function createSession() {
@@ -426,6 +437,7 @@ function onSocketMessage(raw) {
 	if (envelope.method === "state") {
 		const state = envelope.params?.state || "connected";
 		setStatus(state);
+		updateSelectedSessionState(state);
 		if (state === "running") {
 			setRunInProgress(true);
 			if (!assistantMessage) setThinking(true);

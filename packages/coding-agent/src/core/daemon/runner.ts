@@ -7,12 +7,9 @@
  * immediately and exercises the full streaming path without dragging the
  * full agent runtime through `mewrite serve`'s startup.
  *
- * TODO(ws9-real-runner): swap in a factory that delegates to
- * `createAgentSession()` from sdk.ts, wiring the agent's event bus to the
- * RunnerEmitter. WS6 (subagents) and WS7 (memory) need the runtime hookup,
- * so we hold the full integration until those land. Until then, the daemon
- * is functionally a multi-client transport with persistent transcripts —
- * exactly the v2.1 cut-line described in the master plan's risk register.
+ * The real agent-backed runner lives in `agent-runner.ts` and is selected
+ * explicitly with `mewrite serve --runner agent`. Echo remains the default so
+ * `mewrite serve` can boot fast without initializing the full agent runtime.
  */
 
 import { randomUUID } from "node:crypto";
