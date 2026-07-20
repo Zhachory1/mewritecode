@@ -1105,8 +1105,8 @@ export class Editor implements Component, Focusable {
 
 		// Check if we should trigger or update autocomplete
 		if (!this.autocompleteState) {
-			// Auto-trigger for "/" at the start of a line (slash commands)
-			if (char === "/" && this.isAtStartOfMessage()) {
+			// Auto-trigger for "/" starting a fresh token anywhere in the prompt
+			if (char === "/" && this.isSlashCommandTrigger()) {
 				this.tryTriggerAutocomplete();
 			}
 			// Auto-trigger for "@" file reference (fuzzy search)
@@ -1123,8 +1123,12 @@ export class Editor implements Component, Focusable {
 			else if (/[a-zA-Z0-9.\-_]/.test(char)) {
 				const currentLine = this.state.lines[this.state.cursorLine] || "";
 				const textBeforeCursor = currentLine.slice(0, this.state.cursorCol);
-				// Check if we're in a slash command (with or without space for arguments)
-				if (this.isInSlashCommandContext(textBeforeCursor)) {
+				// Refresh menu while typing inside a slash-command token, or while typing
+				// argument text for a start-of-line slash command.
+				if (
+					this.getCurrentSlashToken() !== null ||
+					(this.state.cursorLine === 0 && textBeforeCursor.startsWith("/"))
+				) {
 					this.tryTriggerAutocomplete();
 				}
 				// Check if we're in an @ file reference context
@@ -1291,8 +1295,11 @@ export class Editor implements Component, Focusable {
 			// If autocomplete was cancelled (no matches), re-trigger if we're in a completable context
 			const currentLine = this.state.lines[this.state.cursorLine] || "";
 			const textBeforeCursor = currentLine.slice(0, this.state.cursorCol);
-			// Slash command context
-			if (this.isInSlashCommandContext(textBeforeCursor)) {
+			// Slash command context (token phase or start-of-line argument phase)
+			if (
+				this.getCurrentSlashToken() !== null ||
+				(this.state.cursorLine === 0 && textBeforeCursor.startsWith("/"))
+			) {
 				this.tryTriggerAutocomplete();
 			}
 			// @ file reference context
@@ -1622,8 +1629,11 @@ export class Editor implements Component, Focusable {
 		} else {
 			const currentLine = this.state.lines[this.state.cursorLine] || "";
 			const textBeforeCursor = currentLine.slice(0, this.state.cursorCol);
-			// Slash command context
-			if (this.isInSlashCommandContext(textBeforeCursor)) {
+			// Slash command context (token phase or start-of-line argument phase)
+			if (
+				this.getCurrentSlashToken() !== null ||
+				(this.state.cursorLine === 0 && textBeforeCursor.startsWith("/"))
+			) {
 				this.tryTriggerAutocomplete();
 			}
 			// @ file reference context
@@ -2039,21 +2049,29 @@ export class Editor implements Component, Focusable {
 		this.setCursorCol(newCol);
 	}
 
-	// Slash menu only allowed on the first line of the editor
-	private isSlashMenuAllowed(): boolean {
-		return this.state.cursorLine === 0;
-	}
-
-	// Helper method to check if cursor is at start of message (for slash command detection)
-	private isAtStartOfMessage(): boolean {
-		if (!this.isSlashMenuAllowed()) return false;
+	// True when a "/" just typed at the cursor should open the slash-command menu.
+	// The "/" must start a fresh token on the current line: the char immediately
+	// before it must be start-of-line, space, or tab. Multi-line prompts are
+	// handled per line (newline resets the token boundary implicitly).
+	private isSlashCommandTrigger(): boolean {
 		const currentLine = this.state.lines[this.state.cursorLine] || "";
 		const beforeCursor = currentLine.slice(0, this.state.cursorCol);
-		return beforeCursor.trim() === "" || beforeCursor.trim() === "/";
+		if (beforeCursor.length < 1 || beforeCursor[beforeCursor.length - 1] !== "/") return false;
+		const prev = beforeCursor.length >= 2 ? beforeCursor[beforeCursor.length - 2] : undefined;
+		return prev === undefined || prev === " " || prev === "\t";
 	}
 
-	private isInSlashCommandContext(textBeforeCursor: string): boolean {
-		return this.isSlashMenuAllowed() && textBeforeCursor.trimStart().startsWith("/");
+	// Returns the current "/token" on the current line if the cursor sits inside
+	// a slash-command name token (starts with "/", contains no space, and is
+	// preceded by a token boundary); otherwise null.
+	private getCurrentSlashToken(): string | null {
+		const currentLine = this.state.lines[this.state.cursorLine] || "";
+		const beforeCursor = currentLine.slice(0, this.state.cursorCol);
+		const tokenStart = Math.max(beforeCursor.lastIndexOf(" "), beforeCursor.lastIndexOf("\t")) + 1;
+		const token = beforeCursor.slice(tokenStart);
+		if (!token.startsWith("/")) return null;
+		if (token.slice(1).includes("/")) return null;
+		return token;
 	}
 
 	// Autocomplete methods
@@ -2101,10 +2119,7 @@ export class Editor implements Component, Focusable {
 	private handleTabCompletion(): void {
 		if (!this.autocompleteProvider) return;
 
-		const currentLine = this.state.lines[this.state.cursorLine] || "";
-		const beforeCursor = currentLine.slice(0, this.state.cursorCol);
-
-		if (this.isInSlashCommandContext(beforeCursor) && !beforeCursor.trimStart().includes(" ")) {
+		if (this.getCurrentSlashToken() !== null) {
 			this.handleSlashCommandCompletion();
 		} else {
 			this.forceFileAutocomplete(true);

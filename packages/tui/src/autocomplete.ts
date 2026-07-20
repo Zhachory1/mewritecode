@@ -42,6 +42,20 @@ function buildFdPathQuery(query: string): string {
 	return pattern;
 }
 
+// Returns the start index of the current "/token" in `text` if the cursor sits
+// inside a slash-command name token: token starts with "/", contains no space,
+// no additional "/", and its first char is preceded by start-of-input, space,
+// or tab. Returns null otherwise.
+function findSlashTokenStart(text: string): number | null {
+	const lastSpace = text.lastIndexOf(" ");
+	const lastTab = text.lastIndexOf("\t");
+	const tokenStart = Math.max(lastSpace, lastTab) + 1;
+	const token = text.slice(tokenStart);
+	if (!token.startsWith("/")) return null;
+	if (token.slice(1).includes("/")) return null;
+	return tokenStart;
+}
+
 function findLastDelimiter(text: string): number {
 	for (let i = text.length - 1; i >= 0; i -= 1) {
 		if (PATH_DELIMITERS.has(text[i] ?? "")) {
@@ -298,18 +312,17 @@ export class CombinedAutocompleteProvider implements AutocompleteProvider {
 			};
 		}
 
-		if (!options.force && textBeforeCursor.startsWith("/")) {
-			const spaceIndex = textBeforeCursor.indexOf(" ");
-
-			if (spaceIndex === -1) {
-				const prefix = textBeforeCursor.slice(1);
+		if (!options.force) {
+			const slashTokenStart = findSlashTokenStart(textBeforeCursor);
+			if (slashTokenStart !== null) {
+				const slashToken = textBeforeCursor.slice(slashTokenStart);
 				const commandItems = this.commands.map((cmd) => ({
 					name: "name" in cmd ? cmd.name : cmd.value,
 					label: "name" in cmd ? cmd.name : cmd.label,
 					description: cmd.description,
 				}));
 
-				const filtered = fuzzyFilter(commandItems, prefix, (item) => item.name).map((item) => ({
+				const filtered = fuzzyFilter(commandItems, slashToken.slice(1), (item) => item.name).map((item) => ({
 					value: item.name,
 					label: item.label,
 					...(item.description && { description: item.description }),
@@ -319,30 +332,39 @@ export class CombinedAutocompleteProvider implements AutocompleteProvider {
 
 				return {
 					items: filtered,
-					prefix: textBeforeCursor,
+					prefix: slashToken,
 				};
 			}
 
-			const commandName = textBeforeCursor.slice(1, spaceIndex);
-			const argumentText = textBeforeCursor.slice(spaceIndex + 1);
+			// Argument-phase completion stays scoped to start-of-line commands.
+			if (textBeforeCursor.startsWith("/")) {
+				const spaceIndex = textBeforeCursor.indexOf(" ");
+				if (spaceIndex !== -1) {
+					const commandName = textBeforeCursor.slice(1, spaceIndex);
+					const argumentText = textBeforeCursor.slice(spaceIndex + 1);
 
-			const command = this.commands.find((cmd) => {
-				const name = "name" in cmd ? cmd.name : cmd.value;
-				return name === commandName;
-			});
-			if (!command || !("getArgumentCompletions" in command) || !command.getArgumentCompletions) {
+					const command = this.commands.find((cmd) => {
+						const name = "name" in cmd ? cmd.name : cmd.value;
+						return name === commandName;
+					});
+					if (!command || !("getArgumentCompletions" in command) || !command.getArgumentCompletions) {
+						return null;
+					}
+
+					const argumentSuggestions = await command.getArgumentCompletions(argumentText);
+					if (!Array.isArray(argumentSuggestions) || argumentSuggestions.length === 0) {
+						return null;
+					}
+
+					return {
+						items: argumentSuggestions,
+						prefix: argumentText,
+					};
+				}
+				// Text starts with "/" but neither slash-token nor arg-phase applied.
+				// Do not fall through to file-path completion (preserves origin short-circuit).
 				return null;
 			}
-
-			const argumentSuggestions = await command.getArgumentCompletions(argumentText);
-			if (!Array.isArray(argumentSuggestions) || argumentSuggestions.length === 0) {
-				return null;
-			}
-
-			return {
-				items: argumentSuggestions,
-				prefix: argumentText,
-			};
 		}
 
 		const pathMatch = this.extractPathPrefix(textBeforeCursor, options.force ?? false);
@@ -375,9 +397,10 @@ export class CombinedAutocompleteProvider implements AutocompleteProvider {
 		const adjustedAfterCursor =
 			isQuotedPrefix && hasTrailingQuoteInItem && hasLeadingQuoteAfterCursor ? afterCursor.slice(1) : afterCursor;
 
-		// Check if we're completing a slash command (prefix starts with "/" but NOT a file path)
-		// Slash commands are at the start of the line and don't contain path separators after the first /
-		const isSlashCommand = prefix.startsWith("/") && beforePrefix.trim() === "" && !prefix.slice(1).includes("/");
+		// Check if we're completing a slash command (prefix is the local "/token": starts with "/",
+		// no additional "/" in the token, and no spaces). The prefix window ensures the replacement
+		// scopes to the /token even when it sits mid-line.
+		const isSlashCommand = prefix.startsWith("/") && !prefix.slice(1).includes("/") && !prefix.includes(" ");
 		if (isSlashCommand) {
 			// This is a command name completion
 			const newLine = `${beforePrefix}/${item.value} ${adjustedAfterCursor}`;
