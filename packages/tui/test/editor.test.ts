@@ -2524,6 +2524,129 @@ describe("Editor component", () => {
 		});
 	});
 
+	describe("Slash-command trigger anywhere in prompt", () => {
+		const slashProvider: AutocompleteProvider = {
+			getSuggestions: async (lines, cursorLine, cursorCol) => {
+				const before = (lines[cursorLine] || "").slice(0, cursorCol);
+				const lastSpace = Math.max(before.lastIndexOf(" "), before.lastIndexOf("\t")) + 1;
+				const token = before.slice(lastSpace);
+				if (!token.startsWith("/") || token.slice(1).includes("/")) return null;
+				const commands = [
+					{ value: "model", label: "model" },
+					{ value: "help", label: "help" },
+				];
+				const filtered = commands.filter((c) => c.value.startsWith(token.slice(1)));
+				if (filtered.length === 0) return null;
+				return { items: filtered, prefix: token };
+			},
+			applyCompletion: (lines, cursorLine, cursorCol, item, prefix) => {
+				const line = lines[cursorLine] || "";
+				const before = line.slice(0, cursorCol - prefix.length);
+				const after = line.slice(cursorCol);
+				const newLine = `${before}/${item.value} ${after}`;
+				const newLines = [...lines];
+				newLines[cursorLine] = newLine;
+				return { lines: newLines, cursorLine, cursorCol: before.length + item.value.length + 2 };
+			},
+		};
+
+		it("opens the menu when '/' is typed at start of first line", async () => {
+			const editor = new Editor(createTestTUI(), defaultEditorTheme);
+			editor.setAutocompleteProvider(slashProvider);
+
+			editor.handleInput("/");
+			await flushAutocomplete();
+
+			assert.strictEqual(editor.getText(), "/");
+			assert.strictEqual(editor.isShowingAutocomplete(), true);
+		});
+
+		it("opens the menu when '/' is typed after a space on the first line", async () => {
+			const editor = new Editor(createTestTUI(), defaultEditorTheme);
+			editor.setAutocompleteProvider(slashProvider);
+
+			for (const ch of "hello ") editor.handleInput(ch);
+			editor.handleInput("/");
+			await flushAutocomplete();
+
+			assert.strictEqual(editor.getText(), "hello /");
+			assert.strictEqual(editor.isShowingAutocomplete(), true);
+		});
+
+		it("opens the menu when '/' starts a fresh token on a later line", async () => {
+			const editor = new Editor(createTestTUI(), defaultEditorTheme);
+			editor.setAutocompleteProvider(slashProvider);
+
+			for (const ch of "hello") editor.handleInput(ch);
+			editor.handleInput("\\"); // backslash+enter newline workaround: two separate inputs
+			editor.handleInput("\r");
+			editor.handleInput("/");
+			await flushAutocomplete();
+
+			assert.strictEqual(editor.getText(), "hello\n/");
+			assert.strictEqual(editor.isShowingAutocomplete(), true);
+		});
+
+		it("opens the menu when '/' is typed after 'word ' on a later line", async () => {
+			const editor = new Editor(createTestTUI(), defaultEditorTheme);
+			editor.setAutocompleteProvider(slashProvider);
+
+			for (const ch of "hello") editor.handleInput(ch);
+			editor.handleInput("\\");
+			editor.handleInput("\r");
+			for (const ch of "world ") editor.handleInput(ch);
+			editor.handleInput("/");
+			await flushAutocomplete();
+
+			assert.strictEqual(editor.getText(), "hello\nworld /");
+			assert.strictEqual(editor.isShowingAutocomplete(), true);
+		});
+
+		it("does not open the menu when '/' is typed mid-word", async () => {
+			const editor = new Editor(createTestTUI(), defaultEditorTheme);
+			editor.setAutocompleteProvider(slashProvider);
+
+			for (const ch of "abc") editor.handleInput(ch);
+			editor.handleInput("/");
+			await flushAutocomplete();
+
+			assert.strictEqual(editor.getText(), "abc/");
+			assert.strictEqual(editor.isShowingAutocomplete(), false);
+		});
+
+		it("closes the menu when the triggering '/' is backspaced", async () => {
+			const editor = new Editor(createTestTUI(), defaultEditorTheme);
+			editor.setAutocompleteProvider(slashProvider);
+
+			for (const ch of "hello ") editor.handleInput(ch);
+			editor.handleInput("/");
+			await flushAutocomplete();
+			assert.strictEqual(editor.isShowingAutocomplete(), true);
+
+			editor.handleInput("\x7f"); // backspace
+			await flushAutocomplete();
+			assert.strictEqual(editor.getText(), "hello ");
+			assert.strictEqual(editor.isShowingAutocomplete(), false);
+		});
+
+		it("replaces only the local /token when a mid-line completion is selected", async () => {
+			const editor = new Editor(createTestTUI(), defaultEditorTheme);
+			editor.setAutocompleteProvider(slashProvider);
+
+			for (const ch of "hello ") editor.handleInput(ch);
+			editor.handleInput("/");
+			editor.handleInput("m");
+			editor.handleInput("o");
+			editor.handleInput("d");
+			await flushAutocomplete();
+			assert.strictEqual(editor.isShowingAutocomplete(), true);
+
+			editor.handleInput("\t");
+			assert.strictEqual(editor.getText(), "hello /model ");
+			assert.strictEqual(editor.isShowingAutocomplete(), false);
+		});
+	});
+
 	describe("Character jump (Ctrl+])", () => {
 		it("jumps forward to first occurrence of character on same line", () => {
 			const editor = new Editor(createTestTUI(), defaultEditorTheme);

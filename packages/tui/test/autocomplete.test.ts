@@ -55,6 +55,64 @@ const getSuggestions = (
 ) => provider.getSuggestions(lines, cursorLine, cursorCol, { signal: new AbortController().signal, force });
 
 describe("CombinedAutocompleteProvider", () => {
+	describe("slash-command suggestions anywhere in prompt", () => {
+		const commands = [
+			{ name: "model", description: "Change model" },
+			{ name: "help", description: "Show help" },
+		];
+
+		it("suggests commands for a mid-line /token after a space", async () => {
+			const provider = new CombinedAutocompleteProvider(commands, "/tmp");
+			const line = "hello /mod";
+			const result = await getSuggestions(provider, [line], 0, line.length);
+
+			assert.notEqual(result, null);
+			if (result) {
+				assert.strictEqual(result.prefix, "/mod");
+				assert.deepStrictEqual(
+					result.items.map((item) => item.value),
+					["model"],
+				);
+			}
+		});
+
+		it("scopes applyCompletion to the local /token, preserving surrounding text", async () => {
+			const provider = new CombinedAutocompleteProvider(commands, "/tmp");
+			const line = "hello /mod";
+			const result = await getSuggestions(provider, [line], 0, line.length);
+			assert.notEqual(result, null);
+			if (!result) return;
+
+			const applied = provider.applyCompletion([line], 0, line.length, result.items[0]!, result.prefix);
+			assert.strictEqual(applied.lines[0], "hello /model ");
+			assert.strictEqual(applied.cursorCol, "hello /model ".length);
+		});
+
+		it("does not suggest commands mid-word (no token boundary before /)", async () => {
+			const provider = new CombinedAutocompleteProvider(commands, "/tmp");
+			const line = "abc/mo";
+			const result = await getSuggestions(provider, [line], 0, line.length);
+			assert.strictEqual(result, null);
+		});
+
+		it("does not suggest commands for '//' (second slash is inside the token)", async () => {
+			const provider = new CombinedAutocompleteProvider(commands, "/tmp");
+			const line = "//";
+			const result = await getSuggestions(provider, [line], 0, line.length);
+			assert.strictEqual(result, null);
+		});
+
+		it("still routes '/command /path' (start-of-line arg phase) to path completion", async () => {
+			const provider = new CombinedAutocompleteProvider([{ name: "model", description: "Change model" }], "/tmp");
+			const line = "/model /";
+			const result = await getSuggestions(provider, [line], 0, line.length, true);
+			assert.notEqual(result, null);
+			if (result) {
+				assert.strictEqual(result.prefix, "/");
+			}
+		});
+	});
+
 	describe("extractPathPrefix", () => {
 		it("extracts / from 'hey /' when forced", async () => {
 			const provider = new CombinedAutocompleteProvider([], "/tmp");
