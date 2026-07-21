@@ -714,3 +714,78 @@ main.chat-collapsed #thinking {
 	background: #21262d;
 	color: #e6edf3;
 }
+
+.toasts {
+	position: fixed;
+	bottom: 16px;
+	right: 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	max-width: min(360px, 90vw);
+	z-index: 100;
+	pointer-events: none;
+}
+
+.toast {
+	pointer-events: auto;
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 10px 12px;
+	border-radius: 8px;
+	border: 1px solid #30363d;
+	background: #161b22;
+	color: #e6edf3;
+	box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+	font-size: 12px;
+	line-height: 1.4;
+	animation: toast-in 140ms ease-out;
+}
+
+.toast.info {
+	border-color: #238636;
+}
+
+.toast.error {
+	border-color: #f85149;
+}
+
+.toast.tool {
+	border-color: #30363d;
+	background: #0d1117;
+	color: #8b949e;
+}
+
+.toast .toast-body {
+	flex: 1;
+	min-width: 0;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.toast .toast-close {
+	border: 0;
+	background: transparent;
+	color: inherit;
+	opacity: 0.6;
+	cursor: pointer;
+	font: inherit;
+	line-height: 1;
+	padding: 0 2px;
+}
+
+.toast .toast-close:hover {
+	opacity: 1;
+}
+
+@keyframes toast-in {
+	from {
+		opacity: 0;
+		transform: translateY(6px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
