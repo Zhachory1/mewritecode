@@ -2,6 +2,11 @@ const statusEl = document.querySelector("#status");
 const sessionEl = document.querySelector("#session");
 const sessionSelectEl = document.querySelector("#sessions");
 const newSessionEl = document.querySelector("#new-session");
+const manageSessionsEl = document.querySelector("#manage-sessions");
+const sessionsManagerEl = document.querySelector("#sessions-manager");
+const sessionsManagerListEl = document.querySelector("#sessions-manager-list");
+const sessionsManagerErrorEl = document.querySelector("#sessions-manager-error");
+const sessionsManagerCloseEl = document.querySelector("#sessions-manager-close");
 const cwdEl = document.querySelector("#cwd");
 const bannerEl = document.querySelector("#banner");
 const layoutEl = document.querySelector("#layout");
@@ -590,6 +595,140 @@ sessionSelectEl.addEventListener("change", () => {
 newSessionEl.addEventListener("click", () => {
 	void createSession();
 });
+
+manageSessionsEl.addEventListener("click", () => {
+	openSessionsManager();
+});
+
+sessionsManagerCloseEl.addEventListener("click", () => {
+	if (sessionsManagerEl.open) sessionsManagerEl.close();
+});
+
+sessionsManagerEl.addEventListener("cancel", (event) => {
+	event.preventDefault();
+	sessionsManagerEl.close();
+});
+
+function openSessionsManager() {
+	sessionsManagerErrorEl.classList.add("hidden");
+	sessionsManagerErrorEl.textContent = "";
+	sessionsManagerListEl.textContent = "loading…";
+	sessionsManagerListEl.classList.add("placeholder");
+	sessionsManagerEl.showModal();
+	void reloadSessionsManager();
+}
+
+async function reloadSessionsManager() {
+	try {
+		const data = await api("/v1/sessions?limit=100");
+		renderSessionsManager(data.sessions || []);
+	} catch (error) {
+		sessionsManagerListEl.textContent = "";
+		sessionsManagerErrorEl.textContent = error instanceof Error ? error.message : String(error);
+		sessionsManagerErrorEl.classList.remove("hidden");
+	}
+}
+
+function renderSessionsManager(sessions) {
+	sessionsManagerListEl.classList.remove("placeholder");
+	sessionsManagerListEl.textContent = "";
+	if (sessions.length === 0) {
+		const empty = document.createElement("div");
+		empty.className = "placeholder";
+		empty.textContent = "No sessions.";
+		sessionsManagerListEl.append(empty);
+		return;
+	}
+	const sorted = [...sessions].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+	for (const session of sorted) sessionsManagerListEl.append(sessionRow(session));
+}
+
+function sessionRow(session) {
+	const row = document.createElement("div");
+	const isCurrent = session.id === sessionId;
+	row.className = `sessions-manager-row${isCurrent ? " current" : ""}`;
+	row.setAttribute("role", "listitem");
+
+	const meta = document.createElement("div");
+	meta.className = "sessions-manager-meta";
+
+	const titleRow = document.createElement("div");
+	titleRow.className = "sessions-manager-title-row";
+	const title = document.createElement("span");
+	title.className = "sessions-manager-title";
+	title.textContent = session.title || "session";
+	titleRow.append(title);
+	titleRow.append(badge(session.state, `state-${session.state}`));
+	if (isCurrent) titleRow.append(badge("current", "current"));
+	meta.append(titleRow);
+
+	const sub = document.createElement("span");
+	sub.className = "sessions-manager-sub";
+	sub.textContent = `${session.id.slice(0, 8)} · ${session.cwd || "(unknown cwd)"} · ${formatCreatedAt(session.createdAt)}`;
+	sub.title = `${session.id} — ${session.cwd || "unknown cwd"} — created ${session.createdAt}`;
+	meta.append(sub);
+
+	row.append(meta);
+
+	const deleteBtn = document.createElement("button");
+	deleteBtn.type = "button";
+	deleteBtn.className = "sessions-manager-delete";
+	deleteBtn.textContent = "Delete";
+	if (isCurrent) {
+		deleteBtn.disabled = true;
+		deleteBtn.title = "Switch to a different session before deleting this one";
+	} else {
+		deleteBtn.addEventListener("click", () => {
+			void deleteSessionFromManager(session, deleteBtn);
+		});
+	}
+	row.append(deleteBtn);
+	return row;
+}
+
+function badge(text, extra = "") {
+	const el = document.createElement("span");
+	el.className = `sessions-manager-badge${extra ? ` ${extra}` : ""}`;
+	el.textContent = text;
+	return el;
+}
+
+function formatCreatedAt(iso) {
+	if (!iso) return "";
+	try {
+		return new Date(iso).toLocaleString();
+	} catch {
+		return iso;
+	}
+}
+
+async function deleteSessionFromManager(session, button) {
+	const label = session.title ? `"${session.title}"` : session.id.slice(0, 8);
+	if (!window.confirm(`Delete session ${label}? Any running work is stopped and its transcript is removed.`)) return;
+	button.disabled = true;
+	sessionsManagerErrorEl.classList.add("hidden");
+	try {
+		await api(`/v1/sessions/${encodeURIComponent(session.id)}`, { method: "DELETE" });
+		await reloadSessionsManager();
+		await refreshHeaderSessions();
+	} catch (error) {
+		sessionsManagerErrorEl.textContent = error instanceof Error ? error.message : String(error);
+		sessionsManagerErrorEl.classList.remove("hidden");
+		button.disabled = false;
+	}
+}
+
+async function refreshHeaderSessions() {
+	try {
+		const data = await api("/v1/sessions?limit=25");
+		renderSessionOptions(data.sessions || []);
+		if (sessionId && [...sessionSelectEl.options].some((option) => option.value === sessionId)) {
+			sessionSelectEl.value = sessionId;
+		}
+	} catch {
+		// ignore — the manager still displays its own error state.
+	}
+}
 
 editorEl.addEventListener("input", () => {
 	if (!openFileState) return;

@@ -76,6 +76,20 @@ header {
 	padding: 6px 10px;
 }
 
+#manage-sessions {
+	border: 1px solid #30363d;
+	border-radius: 6px;
+	background: #21262d;
+	color: #e6edf3;
+	cursor: pointer;
+	font-weight: 600;
+	padding: 6px 10px;
+}
+
+#manage-sessions:hover {
+	border-color: #8b949e;
+}
+
 .banner {
 	padding: 10px 16px;
 	background: #3b2e09;
@@ -543,4 +557,160 @@ main.chat-collapsed #thinking {
 #folder-picker-select:disabled {
 	opacity: 0.55;
 	cursor: not-allowed;
+}
+
+.sessions-manager {
+	border: 1px solid #30363d;
+	border-radius: 10px;
+	background: #161b22;
+	color: #e6edf3;
+	padding: 0;
+	width: min(720px, 92vw);
+	max-width: 92vw;
+}
+
+.sessions-manager::backdrop {
+	background: rgba(0, 0, 0, 0.55);
+}
+
+.sessions-manager-form {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 18px;
+}
+
+.sessions-manager-form h2 {
+	margin: 0;
+	font-size: 15px;
+	font-weight: 600;
+}
+
+.sessions-manager-error {
+	border: 1px solid #f85149;
+	background: rgba(248, 81, 73, 0.1);
+	color: #ffa198;
+	padding: 6px 8px;
+	border-radius: 6px;
+	font-size: 12px;
+}
+
+.sessions-manager-list {
+	border: 1px solid #30363d;
+	border-radius: 6px;
+	background: #010409;
+	max-height: 60vh;
+	overflow-y: auto;
+	font-size: 13px;
+}
+
+.sessions-manager-list .placeholder {
+	padding: 12px;
+	color: #8b949e;
+}
+
+.sessions-manager-row {
+	display: grid;
+	grid-template-columns: 1fr auto;
+	gap: 12px;
+	align-items: center;
+	padding: 10px 12px;
+	border-bottom: 1px solid #21262d;
+}
+
+.sessions-manager-row:last-child {
+	border-bottom: 0;
+}
+
+.sessions-manager-row.current {
+	background: #0d1b2a;
+}
+
+.sessions-manager-meta {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	min-width: 0;
+}
+
+.sessions-manager-title-row {
+	display: flex;
+	gap: 8px;
+	align-items: baseline;
+	flex-wrap: wrap;
+}
+
+.sessions-manager-title {
+	font-weight: 600;
+	color: #e6edf3;
+}
+
+.sessions-manager-badge {
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	padding: 1px 6px;
+	border-radius: 999px;
+	border: 1px solid #30363d;
+	color: #8b949e;
+}
+
+.sessions-manager-badge.current {
+	border-color: #1f6feb;
+	color: #58a6ff;
+}
+
+.sessions-manager-badge.state-running {
+	border-color: #238636;
+	color: #7ee787;
+}
+
+.sessions-manager-badge.state-error {
+	border-color: #f85149;
+	color: #ffa198;
+}
+
+.sessions-manager-sub {
+	color: #8b949e;
+	font-size: 12px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.sessions-manager-delete {
+	border: 1px solid #f85149;
+	border-radius: 6px;
+	background: transparent;
+	color: #ffa198;
+	cursor: pointer;
+	font-weight: 600;
+	padding: 5px 10px;
+}
+
+.sessions-manager-delete:hover {
+	background: rgba(248, 81, 73, 0.14);
+}
+
+.sessions-manager-delete:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+	border-color: #30363d;
+	color: #8b949e;
+}
+
+.sessions-manager-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+.sessions-manager-actions button {
+	border: 0;
+	border-radius: 6px;
+	padding: 6px 12px;
+	cursor: pointer;
+	font-weight: 600;
+	background: #21262d;
+	color: #e6edf3;
 }
