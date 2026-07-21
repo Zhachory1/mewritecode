@@ -4,12 +4,17 @@
 
 ### Added
 
+- Added a text-size control (Small / Medium / Large) to the served web UI header so the chat, editor, and composer scale together while UI chrome stays fixed; the selected size persists across reloads in `localStorage` ([#101](https://github.com/Zhachory1/mewritecode/issues/101)).
 - Added syntax highlighting to the served web UI editor via the highlight.js bundle already vendored for transcript export (no new dependency), with extension-based language selection covering ~40 common languages including markdown, and a 200KB skip threshold for large files. The textarea remains the input surface with a pixel-synced highlight overlay behind it ([#96](https://github.com/Zhachory1/mewritecode/issues/96)).
 - Added a Cmd+Enter / Ctrl+Enter shortcut to the served web UI chat composer that submits the current prompt while leaving plain Enter for newlines; respects the existing Send-disabled/running state ([#95](https://github.com/Zhachory1/mewritecode/issues/95)).
 - Added a Cmd+S / Ctrl+S shortcut to the served web UI editor that saves the currently open file when it is dirty and no save is in flight, and reworked system messages (save success, errors, tool status, RPC errors) from inline chat rows to bottom-right toasts so the agent chat only carries user and assistant turns ([#94](https://github.com/Zhachory1/mewritecode/issues/94)).
 - Added a Sessions manager to the served web UI so users can browse, identify, and delete other sessions (with a confirmation prompt and a disabled Delete on the currently-attached session) ([#93](https://github.com/Zhachory1/mewritecode/issues/93)).
 - Added drag handles between the served web UI panes so the files and chat sidebars can be resized (with keyboard nudging, double-click reset, and localStorage persistence) while keeping the editor at least 360px wide ([#92](https://github.com/Zhachory1/mewritecode/issues/92)).
 - Added a folder picker to the served web UI so `New` prompts for the session working directory instead of defaulting to the daemon cwd, backed by a new `GET /v1/fs/list` endpoint ([#91](https://github.com/Zhachory1/mewritecode/issues/91)).
+
+### Changed
+
+- Reworked chat message density in the served web UI: role indication moved from a full-width uppercase label row to a colored left-border stripe (blue = user, green = assistant), gap between messages tightened to 4px, and vertical padding cut, so two short turns no longer eat the pane. Role is preserved for screen readers ([#104](https://github.com/Zhachory1/mewritecode/issues/104)).
 
 ## [1.1.1] - 2026-07-21
 

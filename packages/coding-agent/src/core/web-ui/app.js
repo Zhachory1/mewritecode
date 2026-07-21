@@ -3,6 +3,8 @@ const sessionEl = document.querySelector("#session");
 const sessionSelectEl = document.querySelector("#sessions");
 const newSessionEl = document.querySelector("#new-session");
 const manageSessionsEl = document.querySelector("#manage-sessions");
+const textSizeToggleEl = document.querySelector("#text-size-toggle");
+const textSizeMenuEl = document.querySelector("#text-size-menu");
 const sessionsManagerEl = document.querySelector("#sessions-manager");
 const sessionsManagerListEl = document.querySelector("#sessions-manager-list");
 const sessionsManagerErrorEl = document.querySelector("#sessions-manager-error");
@@ -1014,6 +1016,60 @@ window.addEventListener("resize", () => {
 	applyPaneWidth("files", readPaneWidth("files"));
 	applyPaneWidth("chat", readPaneWidth("chat"));
 });
+
+const TEXT_SIZE_STORAGE_KEY = "web-ui.text-size";
+const TEXT_SIZES = ["small", "medium", "large"];
+
+function applyTextSize(size) {
+	const next = TEXT_SIZES.includes(size) ? size : "medium";
+	if (next === "medium") document.documentElement.removeAttribute("data-text-size");
+	else document.documentElement.setAttribute("data-text-size", next);
+	for (const button of textSizeMenuEl.querySelectorAll("button[data-size]")) {
+		button.setAttribute("aria-checked", button.dataset.size === next ? "true" : "false");
+	}
+	try {
+		localStorage.setItem(TEXT_SIZE_STORAGE_KEY, next);
+	} catch {
+		// storage may be blocked; setting still applies for the session.
+	}
+}
+
+function toggleTextSizeMenu(open) {
+	const shouldOpen = open ?? textSizeMenuEl.classList.contains("hidden");
+	textSizeMenuEl.classList.toggle("hidden", !shouldOpen);
+	textSizeToggleEl.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+}
+
+textSizeToggleEl.addEventListener("click", (event) => {
+	event.stopPropagation();
+	toggleTextSizeMenu();
+});
+
+textSizeMenuEl.addEventListener("click", (event) => {
+	const button = event.target instanceof Element ? event.target.closest("button[data-size]") : null;
+	if (!button) return;
+	applyTextSize(button.dataset.size);
+	toggleTextSizeMenu(false);
+});
+
+document.addEventListener("click", (event) => {
+	if (textSizeMenuEl.classList.contains("hidden")) return;
+	if (event.target instanceof Node && (textSizeMenuEl.contains(event.target) || textSizeToggleEl.contains(event.target))) return;
+	toggleTextSizeMenu(false);
+});
+
+document.addEventListener("keydown", (event) => {
+	if (event.key === "Escape" && !textSizeMenuEl.classList.contains("hidden")) {
+		toggleTextSizeMenu(false);
+		textSizeToggleEl.focus();
+	}
+});
+
+try {
+	applyTextSize(localStorage.getItem(TEXT_SIZE_STORAGE_KEY) ?? "medium");
+} catch {
+	applyTextSize("medium");
+}
 
 function base64Url(value) {
 	const bytes = new TextEncoder().encode(value);
