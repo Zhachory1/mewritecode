@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added drag handles between the served web UI panes so the files and chat sidebars can be resized (with keyboard nudging, double-click reset, and localStorage persistence) while keeping the editor at least 360px wide ([#92](https://github.com/Zhachory1/mewritecode/issues/92)).
+
 ## [1.1.1] - 2026-07-21
 
 ### Fixed

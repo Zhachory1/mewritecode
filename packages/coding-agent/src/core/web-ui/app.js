@@ -525,6 +525,110 @@ function togglePane(pane) {
 	if (button) button.textContent = pane === "files" ? (collapsed ? "›" : "‹") : collapsed ? "‹" : "›";
 }
 
+const PANE_MIN = 160;
+const PANE_MAX = 720;
+const EDITOR_MIN = 360;
+const PANE_STORAGE_KEYS = { files: "web-ui.pane-width.files", chat: "web-ui.pane-width.chat" };
+const PANE_CSS_VARS = { files: "--files-width", chat: "--chat-width" };
+
+function clampPaneWidth(side, next) {
+	const layoutWidth = layoutEl.getBoundingClientRect().width;
+	const otherSide = side === "files" ? "chat" : "files";
+	const otherWidth = readPaneWidth(otherSide);
+	const max = Math.min(PANE_MAX, Math.max(PANE_MIN, layoutWidth - otherWidth - EDITOR_MIN - 12));
+	return Math.min(max, Math.max(PANE_MIN, Math.round(next)));
+}
+
+function readPaneWidth(side) {
+	const raw = getComputedStyle(layoutEl).getPropertyValue(PANE_CSS_VARS[side]).trim();
+	const parsed = Number.parseFloat(raw);
+	if (Number.isFinite(parsed)) return parsed;
+	return side === "files" ? 280 : 380;
+}
+
+function applyPaneWidth(side, next) {
+	const clamped = clampPaneWidth(side, next);
+	layoutEl.style.setProperty(PANE_CSS_VARS[side], `${clamped}px`);
+	try {
+		localStorage.setItem(PANE_STORAGE_KEYS[side], String(clamped));
+	} catch {
+		// storage may be blocked (private mode, quota); resize still works for the session.
+	}
+	return clamped;
+}
+
+function restorePaneWidths() {
+	for (const side of ["files", "chat"]) {
+		try {
+			const raw = localStorage.getItem(PANE_STORAGE_KEYS[side]);
+			if (!raw) continue;
+			const parsed = Number.parseFloat(raw);
+			if (Number.isFinite(parsed)) applyPaneWidth(side, parsed);
+		} catch {
+			// ignore
+		}
+	}
+}
+
+for (const resizer of document.querySelectorAll(".resizer")) {
+	const side = resizer.dataset.side;
+	if (side !== "files" && side !== "chat") continue;
+	let startX = 0;
+	let startWidth = 0;
+	let pointerId;
+	resizer.addEventListener("pointerdown", (event) => {
+		if (event.button !== 0) return;
+		if (layoutEl.classList.contains(`${side}-collapsed`)) return;
+		event.preventDefault();
+		pointerId = event.pointerId;
+		resizer.setPointerCapture(pointerId);
+		resizer.classList.add("dragging");
+		startX = event.clientX;
+		startWidth = readPaneWidth(side);
+	});
+	resizer.addEventListener("pointermove", (event) => {
+		if (pointerId === undefined || event.pointerId !== pointerId) return;
+		const delta = event.clientX - startX;
+		const next = side === "files" ? startWidth + delta : startWidth - delta;
+		applyPaneWidth(side, next);
+	});
+	const end = (event) => {
+		if (pointerId === undefined || event.pointerId !== pointerId) return;
+		try {
+			resizer.releasePointerCapture(pointerId);
+		} catch {
+			// pointer may already be released
+		}
+		pointerId = undefined;
+		resizer.classList.remove("dragging");
+	};
+	resizer.addEventListener("pointerup", end);
+	resizer.addEventListener("pointercancel", end);
+	resizer.addEventListener("dblclick", () => {
+		applyPaneWidth(side, side === "files" ? 280 : 380);
+	});
+	resizer.addEventListener("keydown", (event) => {
+		const step = event.shiftKey ? 40 : 16;
+		const current = readPaneWidth(side);
+		const grow = side === "files" ? "ArrowRight" : "ArrowLeft";
+		const shrink = side === "files" ? "ArrowLeft" : "ArrowRight";
+		if (event.key === grow) {
+			event.preventDefault();
+			applyPaneWidth(side, current + step);
+		} else if (event.key === shrink) {
+			event.preventDefault();
+			applyPaneWidth(side, current - step);
+		}
+	});
+}
+
+restorePaneWidths();
+window.addEventListener("resize", () => {
+	// Re-clamp so a narrower viewport doesn't leave panes larger than the editor allows.
+	applyPaneWidth("files", readPaneWidth("files"));
+	applyPaneWidth("chat", readPaneWidth("chat"));
+});
+
 function base64Url(value) {
 	const bytes = new TextEncoder().encode(value);
 	let binary = "";
