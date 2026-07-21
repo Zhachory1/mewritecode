@@ -39,7 +39,10 @@
 							<button id="save" type="button" disabled>Save</button>
 						</div>
 					</div>
-					<textarea id="editor" spellcheck="false" disabled>Select a file from the tree.</textarea>
+					<div class="editor-stack">
+						<pre id="editor-highlight" class="editor-highlight" aria-hidden="true"><code class="hljs"></code></pre>
+						<textarea id="editor" spellcheck="false" disabled>Select a file from the tree.</textarea>
+					</div>
 				</section>
 				<div class="resizer" data-side="chat" role="separator" aria-orientation="vertical" aria-label="Resize chat pane" tabindex="0"></div>
 				<section class="pane chat">
@@ -83,6 +86,7 @@
 				</form>
 			</dialog>
 		</div>
+		<script src="/web/vendor/highlight.min.js"></script>
 		<script type="module" src="/web/app.js"></script>
 	</body>
 </html>

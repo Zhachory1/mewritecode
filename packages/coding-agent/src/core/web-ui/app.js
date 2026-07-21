@@ -13,6 +13,9 @@ const layoutEl = document.querySelector("#layout");
 const fileTreeEl = document.querySelector("#file-tree");
 const editorTitleEl = document.querySelector("#editor-title");
 const editorEl = document.querySelector("#editor");
+const editorStackEl = editorEl.parentElement;
+const editorHighlightEl = document.querySelector("#editor-highlight");
+const editorHighlightCodeEl = editorHighlightEl.querySelector("code");
 const dirtyEl = document.querySelector("#dirty");
 const saveEl = document.querySelector("#save");
 const messagesEl = document.querySelector("#messages");
@@ -332,6 +335,94 @@ function resetEditor() {
 	editorEl.value = "Select a file from the tree.";
 	editorEl.disabled = true;
 	setDirty(false);
+	setEditorLanguage(undefined);
+	renderHighlight("");
+}
+
+const HIGHLIGHT_MAX_BYTES = 200 * 1024;
+const EXT_LANGUAGE = {
+	ts: "typescript", tsx: "typescript", mts: "typescript", cts: "typescript",
+	js: "javascript", jsx: "javascript", mjs: "javascript", cjs: "javascript",
+	py: "python", pyi: "python",
+	rs: "rust",
+	go: "go",
+	java: "java", kt: "kotlin", kts: "kotlin", scala: "scala", groovy: "groovy",
+	c: "c", h: "c", cc: "cpp", cpp: "cpp", cxx: "cpp", hpp: "cpp", hh: "cpp", hxx: "cpp",
+	cs: "csharp",
+	swift: "swift", m: "objectivec", mm: "objectivec",
+	rb: "ruby", php: "php", pl: "perl", lua: "lua", r: "r",
+	sh: "bash", bash: "bash", zsh: "bash", fish: "bash",
+	ps1: "powershell",
+	sql: "sql",
+	json: "json", jsonc: "json", json5: "json",
+	yaml: "yaml", yml: "yaml",
+	toml: "ini", ini: "ini", cfg: "ini", conf: "ini",
+	md: "markdown", markdown: "markdown", mdx: "markdown",
+	html: "xml", htm: "xml", xml: "xml", svg: "xml", xhtml: "xml",
+	css: "css", scss: "scss", sass: "scss", less: "less",
+	dockerfile: "dockerfile",
+	make: "makefile", makefile: "makefile", mk: "makefile",
+	diff: "diff", patch: "diff",
+	graphql: "graphql", gql: "graphql",
+	tf: "terraform", hcl: "terraform",
+};
+const BASENAME_LANGUAGE = {
+	dockerfile: "dockerfile",
+	"containerfile": "dockerfile",
+	makefile: "makefile",
+	gnumakefile: "makefile",
+	".bashrc": "bash",
+	".zshrc": "bash",
+	".profile": "bash",
+};
+let currentLanguage;
+let highlightPending = false;
+
+function detectLanguage(path) {
+	if (!path) return undefined;
+	const base = (path.split("/").pop() || "").toLowerCase();
+	if (BASENAME_LANGUAGE[base]) return BASENAME_LANGUAGE[base];
+	const dot = base.lastIndexOf(".");
+	if (dot < 0 || dot === base.length - 1) return undefined;
+	return EXT_LANGUAGE[base.slice(dot + 1)] || undefined;
+}
+
+function setEditorLanguage(language) {
+	const hljsAvailable = typeof window.hljs !== "undefined";
+	const plain = !language || !hljsAvailable;
+	editorStackEl.classList.toggle("plain", plain);
+	currentLanguage = plain ? undefined : language;
+}
+
+function renderHighlight(text) {
+	if (!currentLanguage) {
+		editorHighlightCodeEl.textContent = text;
+		return;
+	}
+	const hljs = window.hljs;
+	const content = text.endsWith("\n") ? text : `${text}\n`;
+	try {
+		const result = hljs.getLanguage(currentLanguage)
+			? hljs.highlight(content, { language: currentLanguage, ignoreIllegals: true })
+			: hljs.highlightAuto(content);
+		editorHighlightCodeEl.innerHTML = result.value;
+	} catch {
+		editorHighlightCodeEl.textContent = content;
+	}
+}
+
+function scheduleHighlight() {
+	if (highlightPending) return;
+	highlightPending = true;
+	requestAnimationFrame(() => {
+		highlightPending = false;
+		renderHighlight(editorEl.value);
+		syncHighlightScroll();
+	});
+}
+
+function syncHighlightScroll() {
+	editorHighlightCodeEl.style.transform = `translate(${-editorEl.scrollLeft}px, ${-editorEl.scrollTop}px)`;
 }
 
 function closeSocket() {
@@ -469,6 +560,10 @@ async function openFile(path) {
 		};
 		editorEl.value = file.text;
 		editorEl.disabled = false;
+		const language = file.size <= HIGHLIGHT_MAX_BYTES ? detectLanguage(path) : undefined;
+		setEditorLanguage(language);
+		renderHighlight(file.text);
+		syncHighlightScroll();
 		setDirty(false);
 	} catch (error) {
 		if (requestId !== openRequestId) return;
@@ -760,7 +855,10 @@ async function refreshHeaderSessions() {
 editorEl.addEventListener("input", () => {
 	if (!openFileState) return;
 	setDirty(editorEl.value !== openFileState.text);
+	scheduleHighlight();
 });
+
+editorEl.addEventListener("scroll", syncHighlightScroll);
 
 saveEl.addEventListener("click", () => {
 	void saveOpenFile();

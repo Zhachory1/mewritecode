@@ -216,30 +216,176 @@ main.chat-collapsed #thinking {
 	display: none;
 }
 
-.placeholder,
-#editor {
+.placeholder {
 	color: #8b949e;
 }
 
-#editor {
+.editor-stack {
+	position: relative;
 	margin: 12px 0 0;
-	padding: 14px;
 	width: 100%;
 	min-height: calc(100% - 44px);
 	border: 1px solid #30363d;
 	border-radius: 8px;
 	background: #010409;
-	color: #e6edf3;
+	overflow: hidden;
+}
+
+.editor-stack #editor,
+.editor-stack .editor-highlight {
+	position: absolute;
+	inset: 0;
+	margin: 0;
+	padding: 14px;
+	width: 100%;
+	height: 100%;
+	border: 0;
+	background: transparent;
 	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 	font-size: 13px;
 	line-height: 1.45;
-	overflow: auto;
-	resize: none;
 	white-space: pre;
+	tab-size: 4;
+	-moz-tab-size: 4;
+	overflow: auto;
+	box-sizing: border-box;
 }
 
-#editor:disabled {
+.editor-stack .editor-highlight {
+	pointer-events: none;
+	user-select: none;
+	z-index: 1;
+	color: #e6edf3;
+	overflow: hidden;
+}
+
+.editor-stack .editor-highlight code {
+	display: block;
+	background: transparent;
+	padding: 0;
+	margin: 0;
+	white-space: pre;
+	font: inherit;
+	color: inherit;
+	min-height: 100%;
+	transform: translate3d(0, 0, 0);
+	will-change: transform;
+}
+
+.editor-stack #editor {
+	z-index: 2;
+	resize: none;
+	color: transparent;
+	caret-color: #e6edf3;
+	-webkit-text-fill-color: transparent;
+}
+
+.editor-stack #editor::selection {
+	background: rgba(56, 139, 253, 0.35);
+	color: transparent;
+	-webkit-text-fill-color: transparent;
+}
+
+.editor-stack.plain #editor {
+	color: #e6edf3;
+	-webkit-text-fill-color: #e6edf3;
+	caret-color: #e6edf3;
+}
+
+.editor-stack.plain .editor-highlight {
+	display: none;
+}
+
+.editor-stack #editor:disabled {
 	color: #8b949e;
+	-webkit-text-fill-color: #8b949e;
+	caret-color: transparent;
+}
+
+.editor-stack #editor:disabled ~ .editor-highlight {
+	display: none;
+}
+
+/* highlight.js token colors (matches the transcript export theme). */
+.hljs {
+	background: transparent;
+	color: #e6edf3;
+}
+
+.hljs-comment,
+.hljs-quote {
+	color: #8b949e;
+	font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-meta,
+.hljs-meta .hljs-keyword,
+.hljs-meta .hljs-string {
+	color: #ff7b72;
+}
+
+.hljs-number,
+.hljs-literal {
+	color: #79c0ff;
+}
+
+.hljs-string,
+.hljs-doctag,
+.hljs-regexp {
+	color: #a5d6ff;
+}
+
+.hljs-function,
+.hljs-title,
+.hljs-title.function_,
+.hljs-section,
+.hljs-name {
+	color: #d2a8ff;
+}
+
+.hljs-type,
+.hljs-class,
+.hljs-title.class_,
+.hljs-built_in {
+	color: #ffa657;
+}
+
+.hljs-attr,
+.hljs-variable,
+.hljs-variable.language_,
+.hljs-params,
+.hljs-property,
+.hljs-attribute {
+	color: #79c0ff;
+}
+
+.hljs-operator {
+	color: #ff7b72;
+}
+
+.hljs-punctuation,
+.hljs-subst {
+	color: #e6edf3;
+}
+
+.hljs-tag {
+	color: #7ee787;
+}
+
+.hljs-symbol,
+.hljs-bullet,
+.hljs-link {
+	color: #79c0ff;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: 600;
 }
 
 .editor-title-row {
