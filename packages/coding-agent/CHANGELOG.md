@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed extension alias resolution for import-only package exports, restoring project extensions that import `@zhachory1/mewrite-ai`.
+
 ## [1.1.0] - 2026-07-21
 
 ### Added
