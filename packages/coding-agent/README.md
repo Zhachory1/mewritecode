@@ -194,6 +194,19 @@ Main UI regions:
 
 Keyboard shortcut details: [docs/keybindings.md](docs/keybindings.md)
 
+### Terminal Padding
+
+Me Write Code renders edge-to-edge because in-cell padding contaminates copy-paste selections. If you want visual breathing room around the UI, use your terminal's own window-padding setting. That padding lives outside the cell grid, so it's invisible to selection and always copy-clean.
+
+| Terminal   | Setting                                                        |
+|------------|----------------------------------------------------------------|
+| iTerm2     | Preferences → Advanced → "Terminal Windows" → internal padding |
+| WezTerm    | `window_padding = { left = 8, right = 8, top = 6, bottom = 6 }` in `wezterm.lua` |
+| Alacritty  | `window.padding = { x = 8, y = 6 }` in `alacritty.toml`        |
+| Kitty      | `window_padding_width 6` in `kitty.conf`                       |
+| Ghostty    | `window-padding-x = 8`, `window-padding-y = 6` in `config`     |
+| Warp       | Settings → Appearance → Window → Padding                       |
+
 ---
 
 ## Sessions
