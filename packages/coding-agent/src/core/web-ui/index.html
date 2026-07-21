@@ -52,6 +52,22 @@
 					</form>
 				</section>
 			</main>
+			<dialog id="folder-picker" class="folder-picker">
+				<form method="dialog" class="folder-picker-form">
+					<h2>Choose session folder</h2>
+					<div class="folder-picker-path">
+						<label for="folder-picker-input">Path</label>
+						<input id="folder-picker-input" type="text" spellcheck="false" autocomplete="off" />
+						<button id="folder-picker-go" type="button">Go</button>
+					</div>
+					<div id="folder-picker-error" class="folder-picker-error hidden"></div>
+					<div id="folder-picker-list" class="folder-picker-list" role="listbox" aria-label="Directories">loading…</div>
+					<div class="folder-picker-actions">
+						<button id="folder-picker-cancel" type="button">Cancel</button>
+						<button id="folder-picker-select" type="button">Use this folder</button>
+					</div>
+				</form>
+			</dialog>
 		</div>
 		<script type="module" src="/web/app.js"></script>
 	</body>

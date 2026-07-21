@@ -47,6 +47,13 @@ export interface FileTreeResponse {
 	entries: FileTreeEntry[];
 }
 
+export interface FsListResponse {
+	path: string;
+	parent: string | null;
+	home: string;
+	entries: FileTreeEntry[];
+}
+
 export interface ReadFileResponse {
 	sessionId: string;
 	path: string;

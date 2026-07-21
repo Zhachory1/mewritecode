@@ -15,6 +15,13 @@ const thinkingEl = document.querySelector("#thinking");
 const formEl = document.querySelector("#composer");
 const promptEl = document.querySelector("#prompt");
 const sendEl = document.querySelector("#send");
+const pickerEl = document.querySelector("#folder-picker");
+const pickerInputEl = document.querySelector("#folder-picker-input");
+const pickerGoEl = document.querySelector("#folder-picker-go");
+const pickerListEl = document.querySelector("#folder-picker-list");
+const pickerErrorEl = document.querySelector("#folder-picker-error");
+const pickerCancelEl = document.querySelector("#folder-picker-cancel");
+const pickerSelectEl = document.querySelector("#folder-picker-select");
 
 let token = "";
 let sessionId = "";
@@ -136,12 +143,109 @@ function updateSelectedSessionState(state) {
 
 async function createSession() {
 	if (!canLeaveCurrentEditor()) return;
+	const cwd = await pickFolder();
+	if (!cwd) return;
 	const session = await api("/v1/sessions", {
 		method: "POST",
-		body: JSON.stringify({ title: "Web UI" }),
+		body: JSON.stringify({ title: "Web UI", cwd }),
 	});
 	await loadSessions(session.id);
 }
+
+let pickerCurrentPath = "";
+let pickerLoading = false;
+let pickerResolve;
+
+function pickFolder() {
+	return new Promise((resolve) => {
+		pickerResolve = resolve;
+		pickerErrorEl.classList.add("hidden");
+		pickerErrorEl.textContent = "";
+		pickerEl.showModal();
+		const initial = pickerCurrentPath || pickerInputEl.value || "";
+		void loadPickerPath(initial);
+	});
+}
+
+function closePicker(result) {
+	if (pickerEl.open) pickerEl.close();
+	const resolve = pickerResolve;
+	pickerResolve = undefined;
+	if (resolve) resolve(result);
+}
+
+async function loadPickerPath(path) {
+	if (pickerLoading) return;
+	pickerLoading = true;
+	pickerErrorEl.classList.add("hidden");
+	pickerErrorEl.textContent = "";
+	pickerListEl.textContent = "loading…";
+	pickerSelectEl.disabled = true;
+	try {
+		const qs = new URLSearchParams();
+		if (path) qs.set("path", path);
+		const data = await api(`/v1/fs/list${qs.toString() ? `?${qs}` : ""}`);
+		pickerCurrentPath = data.path;
+		pickerInputEl.value = data.path;
+		renderPicker(data);
+		pickerSelectEl.disabled = false;
+	} catch (error) {
+		pickerErrorEl.textContent = error instanceof Error ? error.message : String(error);
+		pickerErrorEl.classList.remove("hidden");
+		pickerListEl.textContent = "";
+	} finally {
+		pickerLoading = false;
+	}
+}
+
+function renderPicker(data) {
+	pickerListEl.textContent = "";
+	if (data.parent) {
+		pickerListEl.append(pickerRow("← parent directory", data.parent, "parent"));
+	}
+	if (data.entries.length === 0) {
+		const empty = document.createElement("div");
+		empty.className = "placeholder";
+		empty.textContent = "(no subdirectories)";
+		pickerListEl.append(empty);
+		return;
+	}
+	for (const entry of data.entries) {
+		pickerListEl.append(pickerRow(entry.name, entry.path));
+	}
+}
+
+function pickerRow(label, path, extra = "") {
+	const row = document.createElement("button");
+	row.type = "button";
+	row.className = `row${extra ? ` ${extra}` : ""}`;
+	row.textContent = label;
+	row.addEventListener("click", () => {
+		void loadPickerPath(path);
+	});
+	return row;
+}
+
+pickerGoEl.addEventListener("click", () => {
+	void loadPickerPath(pickerInputEl.value.trim());
+});
+
+pickerInputEl.addEventListener("keydown", (event) => {
+	if (event.key === "Enter") {
+		event.preventDefault();
+		void loadPickerPath(pickerInputEl.value.trim());
+	}
+});
+
+pickerCancelEl.addEventListener("click", () => closePicker(undefined));
+pickerEl.addEventListener("cancel", (event) => {
+	event.preventDefault();
+	closePicker(undefined);
+});
+pickerSelectEl.addEventListener("click", () => {
+	if (!pickerCurrentPath) return;
+	closePicker(pickerCurrentPath);
+});
 
 async function useSession(nextSessionId) {
 	if (nextSessionId === sessionId) return;

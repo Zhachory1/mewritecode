@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added a folder picker to the served web UI so `New` prompts for the session working directory instead of defaulting to the daemon cwd, backed by a new `GET /v1/fs/list` endpoint ([#91](https://github.com/Zhachory1/mewritecode/issues/91)).
+
 ## [1.1.1] - 2026-07-21
 
 ### Fixed

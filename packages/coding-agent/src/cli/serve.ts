@@ -102,6 +102,7 @@ Endpoints:
   POST /v1/sessions/:id/messages             Send message
   GET  /v1/sessions/:id/transcript           Full transcript
   WS   /v1/sessions/:id/stream               JSON-RPC stream (token/tool/state/done)
+  GET  /v1/fs/list?path=<abs>                Directory picker (defaults to $HOME)
   GET  /v1/workers                           List registered workers
   POST /v1/workers                           Register a worker
   DEL  /v1/workers/:name                     Unregister a worker

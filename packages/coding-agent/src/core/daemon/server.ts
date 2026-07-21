@@ -12,7 +12,8 @@ import { createReadStream } from "node:fs";
 import { lstat, readdir, readFile, realpath, stat, writeFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { Socket } from "node:net";
-import { isAbsolute, join, normalize, relative, resolve } from "node:path";
+import { homedir } from "node:os";
+import { dirname, isAbsolute, join, normalize, relative, resolve } from "node:path";
 import { WebSocket, WebSocketServer } from "ws";
 import { getWebUiDir } from "../../config.js";
 import {
@@ -309,6 +310,11 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 				if (body.tooLarge) return json(res, 413, { error: "request too large" });
 				return handleFileWrite(res, session, body.value);
 			}
+		}
+
+		// /v1/fs/list — daemon-level directory browser for the session cwd picker.
+		if (url.pathname === "/v1/fs/list" && req.method === "GET") {
+			return handleFsList(res, url.searchParams.get("path"));
 		}
 
 		// /v1/workers
@@ -610,6 +616,45 @@ const DENIED_FILE_NAMES = new Set([
 	"id_ecdsa",
 ]);
 const OMITTED_TREE_NAMES = new Set(["node_modules", "dist", "coverage", ".next"]);
+
+async function handleFsList(res: ServerResponse, requested: string | null): Promise<void> {
+	const target = requested && requested.length > 0 ? requested : homedir();
+	if (!isAbsolute(target)) return json(res, 400, { error: "path must be absolute" });
+	let realPath: string;
+	try {
+		realPath = await realpath(target);
+	} catch {
+		return json(res, 404, { error: "path not found" });
+	}
+	try {
+		const s = await stat(realPath);
+		if (!s.isDirectory()) return json(res, 400, { error: "path is not a directory" });
+		const dirents = await readdir(realPath, { withFileTypes: true });
+		const entries: FileTreeEntry[] = [];
+		for (const dirent of dirents) {
+			if (dirent.isSymbolicLink()) continue;
+			if (!dirent.isDirectory()) continue;
+			if (DENIED_PATH_SEGMENTS.has(dirent.name)) continue;
+			if (dirent.name.startsWith(".env")) continue;
+			entries.push({
+				name: dirent.name,
+				path: join(realPath, dirent.name),
+				type: "directory",
+			});
+			if (entries.length > MAX_TREE_ENTRIES) return json(res, 413, { error: "directory too large" });
+		}
+		entries.sort((a, b) => a.name.localeCompare(b.name));
+		const parentPath = dirname(realPath);
+		return json(res, 200, {
+			path: realPath,
+			parent: parentPath === realPath ? null : parentPath,
+			home: homedir(),
+			entries,
+		});
+	} catch (err) {
+		return json(res, 403, { error: err instanceof Error ? err.message : "cannot list directory" });
+	}
+}
 
 async function handleFileTree(res: ServerResponse, session: SessionRecord, requestPath: string): Promise<void> {
 	const resolved = await resolveSessionPath(session, requestPath);
