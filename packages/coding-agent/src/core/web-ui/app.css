@@ -92,20 +92,44 @@ main {
 	min-height: 0;
 	flex: 1;
 	display: grid;
-	grid-template-columns: 280px minmax(360px, 1fr) 380px;
-	transition: grid-template-columns 120ms ease;
+	grid-template-columns:
+		var(--files-width, 280px)
+		6px
+		minmax(360px, 1fr)
+		6px
+		var(--chat-width, 380px);
 }
 
 main.files-collapsed {
-	grid-template-columns: 46px minmax(360px, 1fr) 380px;
+	grid-template-columns: 46px 0 minmax(360px, 1fr) 6px var(--chat-width, 380px);
 }
 
 main.chat-collapsed {
-	grid-template-columns: 280px minmax(360px, 1fr) 46px;
+	grid-template-columns: var(--files-width, 280px) 6px minmax(360px, 1fr) 0 46px;
 }
 
 main.files-collapsed.chat-collapsed {
-	grid-template-columns: 46px minmax(360px, 1fr) 46px;
+	grid-template-columns: 46px 0 minmax(360px, 1fr) 0 46px;
+}
+
+.resizer {
+	cursor: col-resize;
+	background: transparent;
+	transition: background 120ms ease;
+	touch-action: none;
+}
+
+.resizer:hover,
+.resizer:focus-visible,
+.resizer.dragging {
+	background: #1f6feb;
+	outline: none;
+}
+
+main.files-collapsed .resizer[data-side="files"],
+main.chat-collapsed .resizer[data-side="chat"] {
+	pointer-events: none;
+	background: transparent;
 }
 
 .pane {
