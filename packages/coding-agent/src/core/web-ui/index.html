@@ -17,6 +17,7 @@
 				<div class="session-controls">
 					<select id="sessions" aria-label="Session"></select>
 					<button id="new-session" type="button">New</button>
+					<button id="manage-sessions" type="button">Manage</button>
 					<div id="session">no session</div>
 				</div>
 			</header>
@@ -54,6 +55,16 @@
 					</form>
 				</section>
 			</main>
+			<dialog id="sessions-manager" class="sessions-manager">
+				<form method="dialog" class="sessions-manager-form">
+					<h2>Sessions</h2>
+					<div id="sessions-manager-error" class="sessions-manager-error hidden"></div>
+					<div id="sessions-manager-list" class="sessions-manager-list" role="list" aria-label="Sessions">loading…</div>
+					<div class="sessions-manager-actions">
+						<button id="sessions-manager-close" type="button">Close</button>
+					</div>
+				</form>
+			</dialog>
 			<dialog id="folder-picker" class="folder-picker">
 				<form method="dialog" class="folder-picker-form">
 					<h2>Choose session folder</h2>

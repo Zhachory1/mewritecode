@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added a Sessions manager to the served web UI so users can browse, identify, and delete other sessions (with a confirmation prompt and a disabled Delete on the currently-attached session) ([#93](https://github.com/Zhachory1/mewritecode/issues/93)).
 - Added drag handles between the served web UI panes so the files and chat sidebars can be resized (with keyboard nudging, double-click reset, and localStorage persistence) while keeping the editor at least 360px wide ([#92](https://github.com/Zhachory1/mewritecode/issues/92)).
 - Added a folder picker to the served web UI so `New` prompts for the session working directory instead of defaulting to the daemon cwd, backed by a new `GET /v1/fs/list` endpoint ([#91](https://github.com/Zhachory1/mewritecode/issues/91)).
 
