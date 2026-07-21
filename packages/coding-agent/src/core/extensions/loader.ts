@@ -56,6 +56,14 @@ const VIRTUAL_MODULES: Record<string, unknown> = {
 
 const require = createRequire(import.meta.url);
 
+function resolveImportSpecifier(specifier: string): string {
+	try {
+		return fileURLToPath(import.meta.resolve(specifier));
+	} catch {
+		return require.resolve(specifier);
+	}
+}
+
 /**
  * Get aliases for jiti (used in Node.js/development mode).
  * In Bun binary mode, virtualModules is used instead.
@@ -86,7 +94,7 @@ function getAliases(): Record<string, string> {
 				return sourcePath;
 			}
 		}
-		return require.resolve(specifier);
+		return resolveImportSpecifier(specifier);
 	};
 
 	_aliases = {
