@@ -244,6 +244,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /v1/fs/list:
+    get:
+      summary: List directories at an absolute path (folder picker for new sessions)
+      operationId: listFilesystem
+      parameters:
+        - in: query
+          name: path
+          required: false
+          description: Absolute path to list. Defaults to the user's home directory.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FsList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "413":
+          description: directory too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /v1/workers:
     get:
       summary: List registered remote workers (for `&prompt` handoff)
@@ -465,6 +495,24 @@ components:
           enum: [file, directory]
         size:
           type: integer
+    FsList:
+      type: object
+      required: [path, entries]
+      properties:
+        path:
+          type: string
+          description: The resolved absolute path being listed.
+        parent:
+          type: string
+          nullable: true
+          description: Absolute path of the parent directory, or null at the filesystem root.
+        home:
+          type: string
+          description: The user's home directory (client hint).
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/FileTreeEntry"
     ReadFile:
       type: object
       required: [sessionId, path, text, size, mtimeMs, encoding]
