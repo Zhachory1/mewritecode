@@ -411,6 +411,52 @@ describe("WS9 daemon — REST routing", () => {
 			rmSync(cwd, { recursive: true, force: true });
 		}
 	});
+
+	it("lists directories at an absolute path for the folder picker", async () => {
+		const root = mkdtempSync(join(tmpdir(), "cave-fs-list-"));
+		try {
+			mkdirSync(join(root, "alpha"));
+			mkdirSync(join(root, "beta"));
+			mkdirSync(join(root, ".ssh"));
+			writeFileSync(join(root, "note.txt"), "hi", "utf8");
+			const response = await fetch(`http://127.0.0.1:${f.handle.port}/v1/fs/list?path=${encodeURIComponent(root)}`);
+			expect(response.status).toBe(200);
+			const body = (await response.json()) as {
+				path: string;
+				parent: string | null;
+				home: string;
+				entries: { name: string; type: string }[];
+			};
+			expect(body.parent).not.toBeNull();
+			expect(body.home).toBeTruthy();
+			expect(body.entries.every((entry) => entry.type === "directory")).toBe(true);
+			const names = body.entries.map((entry) => entry.name);
+			expect(names).toEqual(["alpha", "beta"]);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	it("defaults the folder picker to $HOME when no path is supplied", async () => {
+		const response = await fetch(`http://127.0.0.1:${f.handle.port}/v1/fs/list`);
+		expect(response.status).toBe(200);
+		const body = (await response.json()) as { path: string; home: string };
+		expect(body.path).toBe(body.home);
+	});
+
+	it("rejects relative folder-picker paths", async () => {
+		const response = await fetch(
+			`http://127.0.0.1:${f.handle.port}/v1/fs/list?path=${encodeURIComponent("relative/path")}`,
+		);
+		expect(response.status).toBe(400);
+	});
+
+	it("reports 404 when the picker path does not exist", async () => {
+		const response = await fetch(
+			`http://127.0.0.1:${f.handle.port}/v1/fs/list?path=${encodeURIComponent("/does/not/exist/xyz-cave")}`,
+		);
+		expect(response.status).toBe(404);
+	});
 });
 
 describe("WS9 daemon — SQLite round-trip survives restart", () => {
