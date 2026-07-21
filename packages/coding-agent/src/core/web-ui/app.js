@@ -20,6 +20,7 @@ const thinkingEl = document.querySelector("#thinking");
 const formEl = document.querySelector("#composer");
 const promptEl = document.querySelector("#prompt");
 const sendEl = document.querySelector("#send");
+const toastsEl = document.querySelector("#toasts");
 const pickerEl = document.querySelector("#folder-picker");
 const pickerInputEl = document.querySelector("#folder-picker-input");
 const pickerGoEl = document.querySelector("#folder-picker-go");
@@ -82,6 +83,28 @@ function addMessage(role, text = "") {
 	return body;
 }
 
+const TOAST_TIMEOUTS = { info: 4000, tool: 2000, error: 0 };
+
+function showToast(text, variant = "info") {
+	if (!text) return;
+	const toast = document.createElement("div");
+	toast.className = `toast ${variant}`;
+	const body = document.createElement("span");
+	body.className = "toast-body";
+	body.textContent = text;
+	const close = document.createElement("button");
+	close.type = "button";
+	close.className = "toast-close";
+	close.setAttribute("aria-label", "Dismiss");
+	close.textContent = "\u00d7";
+	close.addEventListener("click", () => toast.remove());
+	toast.append(body, close);
+	toastsEl.append(toast);
+	const timeout = TOAST_TIMEOUTS[variant] ?? 4000;
+	if (timeout > 0) setTimeout(() => toast.remove(), timeout);
+	return toast;
+}
+
 async function api(path, options = {}) {
 	const headers = { "content-type": "application/json", ...(options.headers || {}) };
 	if (token) headers.authorization = `Bearer ${token}`;
@@ -109,7 +132,7 @@ async function start() {
 		await loadSessions();
 	} catch (error) {
 		setStatus("error");
-		addMessage("system", error instanceof Error ? error.message : String(error));
+		showToast(error instanceof Error ? error.message : String(error), "error");
 	}
 }
 
@@ -273,14 +296,17 @@ async function useSession(nextSessionId) {
 		sessionEl.textContent = session.id.slice(0, 8);
 		cwdEl.textContent = session.cwd || "cwd: unknown";
 		cwdEl.title = session.cwd || "Current working directory";
-		for (const message of transcript.messages || []) addMessage(message.role, message.text || "");
+		for (const message of transcript.messages || []) {
+			if (message.role === "system") continue;
+			addMessage(message.role, message.text || "");
+		}
 		await expandDirectory("");
 		if (switchId !== sessionSwitchId) return;
 		connectSocket();
 	} catch (error) {
 		if (switchId !== sessionSwitchId) return;
 		sessionSelectEl.value = previousSessionId;
-		addMessage("system", error instanceof Error ? error.message : String(error));
+		showToast(error instanceof Error ? error.message : String(error), "error");
 	}
 }
 
@@ -489,10 +515,10 @@ async function saveOpenFile() {
 			openFileState.mtimeMs = saved.mtimeMs;
 			setDirty(editorEl.value !== snapshot.text);
 		}
-		addMessage("system", `saved ${snapshot.path}`);
+		showToast(`saved ${snapshot.path}`, "info");
 	} catch (error) {
 		if (openFileState?.path === snapshot.path) setDirty(true);
-		addMessage("system", error instanceof Error ? error.message : String(error));
+		showToast(error instanceof Error ? error.message : String(error), "error");
 	} finally {
 		saveInFlight = false;
 		if (openFileState?.path === snapshot.path) setDirty(openFileState.dirty);
@@ -540,7 +566,8 @@ function onSocketMessage(raw) {
 		return;
 	}
 	if (envelope.method === "tool") {
-		addMessage("system", `tool ${envelope.params?.name}: ${envelope.params?.status}`);
+		const status = envelope.params?.status;
+		showToast(`tool ${envelope.params?.name}: ${status}`, status === "err" ? "error" : "tool");
 		return;
 	}
 	if (envelope.method === "state") {
@@ -569,7 +596,7 @@ function onSocketMessage(raw) {
 	if (envelope.error) {
 		setThinking(false);
 		setRunInProgress(false);
-		addMessage("system", envelope.error.message || "request failed");
+		showToast(envelope.error.message || "request failed", "error");
 	}
 }
 
@@ -736,6 +763,15 @@ editorEl.addEventListener("input", () => {
 });
 
 saveEl.addEventListener("click", () => {
+	void saveOpenFile();
+});
+
+window.addEventListener("keydown", (event) => {
+	const mod = event.metaKey || event.ctrlKey;
+	if (!mod || event.altKey) return;
+	if (event.key !== "s" && event.key !== "S") return;
+	event.preventDefault();
+	if (!openFileState || !openFileState.dirty || saveInFlight) return;
 	void saveOpenFile();
 });
 
