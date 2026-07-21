@@ -346,10 +346,13 @@ main.chat-collapsed #thinking {
 	-webkit-text-fill-color: transparent;
 }
 
+/* Do NOT override color / -webkit-text-fill-color inside ::selection.
+ * Chrome treats a fully transparent selected-text color as a signal to paint
+ * the selection band opaque (so the user can still see what they picked),
+ * which blocks the highlight overlay beneath. Leaving the base transparent
+ * color to cascade keeps the band translucent and the highlight visible. */
 .editor-stack #editor::selection {
-	background: rgba(56, 139, 253, 0.35);
-	color: transparent;
-	-webkit-text-fill-color: transparent;
+	background: rgba(56, 139, 253, 0.3);
 }
 
 .editor-stack.plain #editor {

@@ -8,7 +8,7 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { createReadStream } from "node:fs";
+import { createReadStream, realpathSync } from "node:fs";
 import { lstat, readdir, readFile, realpath, stat, writeFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { Socket } from "node:net";
@@ -16,6 +16,7 @@ import { homedir } from "node:os";
 import { dirname, isAbsolute, join, normalize, relative, resolve } from "node:path";
 import { WebSocket, WebSocketServer } from "ws";
 import { getWebUiDir } from "../../config.js";
+import { onFileMutation } from "../tools/file-mutation-queue.js";
 import {
 	type ApprovalDecision,
 	type ApprovalDecisionParams,
@@ -23,6 +24,7 @@ import {
 	DEFAULT_DAEMON_HOST,
 	DEFAULT_DAEMON_PORT,
 	type DoneParams,
+	type FileChangedParams,
 	type FileTreeEntry,
 	type FileTreeResponse,
 	type Health,
@@ -461,6 +463,39 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 		ws.on("error", detach);
 	}
 
+	// Fan file mutations out to any WS clients whose session cwd contains the
+	// mutated path. Emits `file` notifications so browsers can refetch the
+	// affected directory / open file without polling.
+	//
+	// The mutation queue emits realpath-normalized targets, so we must realpath
+	// each session's cwd once for the compare (e.g. macOS /tmp -> /private/tmp).
+	const sessionRootCache = new Map<string, string>();
+	const resolveSessionRoot = (sessionId: string, cwd: string): string => {
+		const cached = sessionRootCache.get(sessionId);
+		if (cached !== undefined) return cached;
+		let resolved = cwd;
+		try {
+			resolved = realpathSync(cwd);
+		} catch {
+			// Fall back to the raw cwd; missing/deleted session directories still
+			// permit lexical prefix matching for anything still under them.
+		}
+		sessionRootCache.set(sessionId, resolved);
+		return resolved;
+	};
+	const unsubscribeFileMutations = onFileMutation((event) => {
+		for (const [sessionId, set] of clients.entries()) {
+			if (set.size === 0) continue;
+			const session = opts.store.getSession(sessionId);
+			if (!session) continue;
+			const root = resolveSessionRoot(sessionId, session.cwd);
+			const relPath = relativeIfWithin(root, event.path);
+			if (relPath === undefined) continue;
+			const params: FileChangedParams = { sessionId, path: relPath, at: event.at };
+			for (const c of set) send(c.ws, notification("file", params));
+		}
+	});
+
 	await new Promise<void>((resolve, reject) => {
 		httpServer.once("error", reject);
 		httpServer.listen(port, host, () => {
@@ -474,6 +509,7 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 		port: (httpServer.address() as { port: number } | null)?.port ?? port,
 		server: httpServer,
 		async close() {
+			unsubscribeFileMutations();
 			for (const r of runners.values()) {
 				try {
 					r.close();
@@ -572,6 +608,19 @@ function isAllowedOrigin(req: IncomingMessage, url: URL, token: string | undefin
 function isLoopbackName(name: string): boolean {
 	const host = name.toLowerCase();
 	return host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "[::1]";
+}
+
+/**
+ * Return the POSIX-style relative path of `target` under `root`, or `undefined`
+ * if `target` is not inside `root`. Uses realpath-independent lexical compare;
+ * callers should feed already-normalized paths.
+ */
+function relativeIfWithin(root: string, target: string): string | undefined {
+	if (!root) return undefined;
+	const rel = relative(root, target);
+	if (rel === "") return "";
+	if (rel.startsWith("..") || isAbsolute(rel)) return undefined;
+	return rel.replaceAll("\\", "/");
 }
 
 function readBearerToken(req: IncomingMessage): string | undefined {

@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added live file updates to the served web UI: the daemon now broadcasts a `file` WebSocket notification whenever an agent write/edit tool mutates a path under an attached session's cwd, and the browser refreshes the affected file-tree directory and reloads the open buffer automatically. Dirty local edits are preserved with a sticky Reload/Dismiss conflict toast instead of being silently overwritten ([#106](https://github.com/Zhachory1/mewritecode/issues/106)).
 - Added a text-size control (Small / Medium / Large) to the served web UI header so the chat, editor, and composer scale together while UI chrome stays fixed; the selected size persists across reloads in `localStorage` ([#101](https://github.com/Zhachory1/mewritecode/issues/101)).
 - Added syntax highlighting to the served web UI editor via the highlight.js bundle already vendored for transcript export (no new dependency), with extension-based language selection covering ~40 common languages including markdown, and a 200KB skip threshold for large files. The textarea remains the input surface with a pixel-synced highlight overlay behind it ([#96](https://github.com/Zhachory1/mewritecode/issues/96)).
 - Added a Cmd+Enter / Ctrl+Enter shortcut to the served web UI chat composer that submits the current prompt while leaving plain Enter for newlines; respects the existing Send-disabled/running state ([#95](https://github.com/Zhachory1/mewritecode/issues/95)).
@@ -15,6 +16,10 @@
 ### Changed
 
 - Reworked chat message density in the served web UI: role indication moved from a full-width uppercase label row to a colored left-border stripe (blue = user, green = assistant), gap between messages tightened to 4px, and vertical padding cut, so two short turns no longer eat the pane. Role is preserved for screen readers ([#104](https://github.com/Zhachory1/mewritecode/issues/104)).
+
+### Fixed
+
+- Fixed the served web UI editor selection blocking the highlighted word underneath in Chrome: dropped the `color: transparent` / `-webkit-text-fill-color: transparent` overrides inside `#editor::selection` that were causing the browser to paint the selection band opaque over the syntax-highlight overlay.
 
 ## [1.1.1] - 2026-07-21
 
