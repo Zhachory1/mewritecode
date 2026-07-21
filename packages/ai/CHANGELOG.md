@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-21
+
 ### Changed
 
 - Refreshed the generated model catalog from upstream providers, including Claude Fable 5 entries.

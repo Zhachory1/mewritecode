@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-21
+
 ### Added
 
 - Added interactive `&prompt` worker dispatch with worker-aware attach hints and token-redacted remote dispatch errors ([#13](https://github.com/Zhachory1/mewritecode/issues/13)).

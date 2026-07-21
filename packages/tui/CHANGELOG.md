@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-21
+
 ### Changed
 
 - Slash-command dropdown now opens whenever `/` starts a fresh token in the prompt editor (preceded by start-of-line, space, or tab), regardless of which line or column, instead of only at the start of the first line. Selecting a command replaces only the local `/token` and preserves surrounding text ([#88](https://github.com/Zhachory1/mewritecode/issues/88)).
