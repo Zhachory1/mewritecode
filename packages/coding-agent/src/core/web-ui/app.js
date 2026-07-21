@@ -792,6 +792,15 @@ formEl.addEventListener("submit", (event) => {
 	socket.send(JSON.stringify({ jsonrpc: "2.0", id: rpcId++, method: "send", params: { text } }));
 });
 
+promptEl.addEventListener("keydown", (event) => {
+	if (event.key !== "Enter") return;
+	if (!(event.metaKey || event.ctrlKey)) return;
+	if (event.altKey || event.shiftKey) return;
+	event.preventDefault();
+	if (sendEl.disabled) return;
+	formEl.requestSubmit();
+});
+
 for (const button of document.querySelectorAll(".pane-toggle")) {
 	button.addEventListener("click", () => togglePane(button.dataset.pane));
 }
