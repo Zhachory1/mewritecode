@@ -23,6 +23,7 @@ import {
 	openStore,
 	startDaemon,
 } from "../src/core/daemon/index.js";
+import { withFileMutationQueue } from "../src/core/tools/file-mutation-queue.js";
 
 interface Fixture {
 	tmpDir: string;
@@ -692,6 +693,57 @@ describe("WS9 daemon — WebSocket streaming", () => {
 		expect(tokensB.join("")).toContain("multi");
 		a.close();
 		b.close();
+	});
+
+	it("broadcasts a file notification when a mutation lands under the session cwd", async () => {
+		const cwd = mkdtempSync(join(tmpdir(), "cave-daemon-file-changed-"));
+		try {
+			const session = await f.client.createSession({ cwd });
+			const attached = f.client.attach(session.id);
+			await attached.ready();
+
+			const target = join(cwd, "agent-wrote.txt");
+			const received = new Promise<{ sessionId: string; path: string; at: number }>((resolve) => {
+				attached.on("file", (p) => {
+					if (p?.sessionId === session.id) resolve(p as { sessionId: string; path: string; at: number });
+				});
+			});
+			await withFileMutationQueue(target, async () => {
+				writeFileSync(target, "agent output\n", "utf8");
+			});
+			const event = await received;
+			expect(event.path).toBe("agent-wrote.txt");
+			expect(event.at).toBeGreaterThan(0);
+			attached.close();
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
+	it("does not broadcast a file notification for mutations outside the session cwd", async () => {
+		const insideCwd = mkdtempSync(join(tmpdir(), "cave-daemon-file-inside-"));
+		const outsideCwd = mkdtempSync(join(tmpdir(), "cave-daemon-file-outside-"));
+		try {
+			const session = await f.client.createSession({ cwd: insideCwd });
+			const attached = f.client.attach(session.id);
+			await attached.ready();
+
+			const outsideTarget = join(outsideCwd, "far-away.txt");
+			let fileEventSeen = false;
+			attached.on("file", () => {
+				fileEventSeen = true;
+			});
+			await withFileMutationQueue(outsideTarget, async () => {
+				writeFileSync(outsideTarget, "unrelated\n", "utf8");
+			});
+			// Give the event loop a beat to deliver anything the daemon might mistakenly send.
+			await new Promise((resolve) => setTimeout(resolve, 50));
+			expect(fileEventSeen).toBe(false);
+			attached.close();
+		} finally {
+			rmSync(insideCwd, { recursive: true, force: true });
+			rmSync(outsideCwd, { recursive: true, force: true });
+		}
 	});
 });
 

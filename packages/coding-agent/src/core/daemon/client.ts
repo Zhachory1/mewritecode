@@ -144,6 +144,8 @@ export interface AttachedSessionEvents {
 	tool: (params: { sessionId: string; name: string; status: string }) => void;
 	state: (params: { sessionId: string; state: string }) => void;
 	done: (params: { sessionId: string }) => void;
+	file: (params: { sessionId: string; path: string; at: number }) => void;
+	approval: (params: { sessionId: string; approvalId: string; toolName: string; args: unknown; tier: string }) => void;
 }
 
 export interface AttachedSession {
@@ -183,20 +185,7 @@ export class AttachedSession extends EventEmitter {
 		}
 		if ("method" in env) {
 			const params = env.params as Record<string, unknown> | undefined;
-			switch (env.method) {
-				case "token":
-					this.emit("token", params);
-					break;
-				case "tool":
-					this.emit("tool", params);
-					break;
-				case "state":
-					this.emit("state", params);
-					break;
-				case "done":
-					this.emit("done", params);
-					break;
-			}
+			this.emit(env.method, params);
 			return;
 		}
 		const resp = env as RpcResponse;

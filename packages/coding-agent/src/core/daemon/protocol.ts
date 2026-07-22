@@ -142,6 +142,7 @@ export interface ApprovalDecisionParams {
 //   { jsonrpc: "2.0", method: "tool",     params: { sessionId, name, status } }
 //   { jsonrpc: "2.0", method: "state",    params: { sessionId, state } }
 //   { jsonrpc: "2.0", method: "approval", params: { sessionId, approvalId, toolName, args, tier } }
+//   { jsonrpc: "2.0", method: "file",     params: { sessionId, path, at } }
 //   { jsonrpc: "2.0", method: "done",     params: { sessionId } }
 //
 // Requests (client → server):
@@ -192,6 +193,14 @@ export interface StateParams {
 
 export interface DoneParams {
 	sessionId: string;
+}
+
+export interface FileChangedParams {
+	sessionId: string;
+	/** Path relative to the session cwd (POSIX-style, no leading slash). */
+	path: string;
+	/** Epoch millis when the mutation completed. */
+	at: number;
 }
 
 export interface SendParams {

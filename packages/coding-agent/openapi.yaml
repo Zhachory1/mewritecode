@@ -608,6 +608,7 @@ components:
 #                  { method: "tool", params: { sessionId, name, status } }
 #                  { method: "state", params: { sessionId, state } }
 #                  { method: "approval", params: { sessionId, approvalId, toolName, args, tier } }
+#                  { method: "file", params: { sessionId, path, at } }
 #                  { method: "done",  params: { sessionId } }
 #   requests:      { method: "client_capabilities", params: { approval } } → { result: { ok: true } }
 #                  { method: "send", params: { text } } → { result: { id } }

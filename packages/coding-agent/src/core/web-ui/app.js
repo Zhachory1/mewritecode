@@ -684,6 +684,10 @@ function onSocketMessage(raw) {
 		handleApproval(envelope.params);
 		return;
 	}
+	if (envelope.method === "file") {
+		handleFileChanged(envelope.params);
+		return;
+	}
 	if (envelope.method === "done") {
 		assistantMessage = undefined;
 		setThinking(false);
@@ -695,6 +699,103 @@ function onSocketMessage(raw) {
 		setRunInProgress(false);
 		showToast(envelope.error.message || "request failed", "error");
 	}
+}
+
+function handleFileChanged(params) {
+	if (!params || typeof params.path !== "string") return;
+	if (!sessionId || params.sessionId !== sessionId) return;
+	const changedPath = params.path;
+	const parent = changedPath.includes("/") ? changedPath.slice(0, changedPath.lastIndexOf("/")) : "";
+	void refreshTreeDirectory(parent);
+	if (openFileState && changedPath === openFileState.path) {
+		void reconcileOpenFileWithDisk();
+	}
+}
+
+async function refreshTreeDirectory(path) {
+	const targetSessionId = sessionId;
+	const node = treeNode(path);
+	if (node.loading) return;
+	try {
+		const qs = new URLSearchParams();
+		if (path) qs.set("path", path);
+		const tree = await api(`/v1/sessions/${encodeURIComponent(targetSessionId)}/files/tree?${qs}`);
+		if (targetSessionId !== sessionId) return;
+		node.entries = tree.entries || [];
+		node.loaded = true;
+		node.error = undefined;
+		if (path === "") node.expanded = true;
+		renderTree();
+	} catch {
+		// Non-existent parent (e.g. deleted directory) — just drop the stale entries.
+		node.entries = [];
+		node.loaded = true;
+		renderTree();
+	}
+}
+
+let fileChangedToast;
+
+async function reconcileOpenFileWithDisk() {
+	if (!openFileState || saveInFlight) return;
+	const snapshotPath = openFileState.path;
+	if (openFileState.dirty) {
+		showFileConflictToast(snapshotPath);
+		return;
+	}
+	await reloadOpenFile(snapshotPath);
+}
+
+async function reloadOpenFile(path) {
+	if (!openFileState || openFileState.path !== path) return;
+	const requestId = ++openRequestId;
+	try {
+		const qs = new URLSearchParams({ path });
+		const file = await api(`/v1/sessions/${encodeURIComponent(sessionId)}/files/read?${qs}`);
+		if (requestId !== openRequestId || !openFileState || openFileState.path !== path) return;
+		openFileState.text = file.text;
+		openFileState.size = file.size;
+		openFileState.mtimeMs = file.mtimeMs;
+		const wasSelectionAtEnd = editorEl.selectionStart === editorEl.value.length;
+		editorEl.value = file.text;
+		setDirty(false);
+		renderHighlight(file.text);
+		syncHighlightScroll();
+		if (wasSelectionAtEnd) editorEl.selectionStart = editorEl.selectionEnd = file.text.length;
+	} catch (error) {
+		showToast(`could not reload ${path}: ${error instanceof Error ? error.message : String(error)}`, "error");
+	}
+}
+
+function showFileConflictToast(path) {
+	if (fileChangedToast && fileChangedToast.isConnected) fileChangedToast.remove();
+	const toast = document.createElement("div");
+	toast.className = "toast error";
+	const body = document.createElement("span");
+	body.className = "toast-body";
+	body.textContent = `Agent modified ${path}. Your unsaved edits are still here.`;
+	const reload = document.createElement("button");
+	reload.type = "button";
+	reload.className = "toast-close";
+	reload.textContent = "Reload";
+	reload.style.opacity = "1";
+	reload.addEventListener("click", () => {
+		toast.remove();
+		fileChangedToast = undefined;
+		void reloadOpenFile(path);
+	});
+	const dismiss = document.createElement("button");
+	dismiss.type = "button";
+	dismiss.className = "toast-close";
+	dismiss.setAttribute("aria-label", "Dismiss");
+	dismiss.textContent = "\u00d7";
+	dismiss.addEventListener("click", () => {
+		toast.remove();
+		fileChangedToast = undefined;
+	});
+	toast.append(body, reload, dismiss);
+	toastsEl.append(toast);
+	fileChangedToast = toast;
 }
 
 function handleApproval(params) {
