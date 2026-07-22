@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-07-22
+
 ### Added
 
 - Added markdown rendering to assistant messages in the served web UI chat: assistant output streams as plain text and re-renders as sanitized HTML (headings, lists, blockquotes, links opening in new tabs, inline code, syntax-highlighted code fences) on completion. Uses the marked bundle already vendored for transcript export, plus a small hand-rolled tag/attribute whitelist to prevent XSS. User messages stay plain-text ([#108](https://github.com/Zhachory1/mewritecode/issues/108)).
