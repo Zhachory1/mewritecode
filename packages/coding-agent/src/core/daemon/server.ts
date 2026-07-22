@@ -15,7 +15,8 @@ import type { Socket } from "node:net";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, normalize, relative, resolve } from "node:path";
 import { WebSocket, WebSocketServer } from "ws";
-import { getWebUiDir } from "../../config.js";
+import { getAgentDir, getWebUiDir } from "../../config.js";
+import { loadSkills } from "../skills.js";
 import { onFileMutation } from "../tools/file-mutation-queue.js";
 import {
 	type ApprovalDecision,
@@ -311,6 +312,10 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 				const body = await readJsonCapped<WriteFileRequest>(req, MAX_FILE_BYTES * 6 + 8192);
 				if (body.tooLarge) return json(res, 413, { error: "request too large" });
 				return handleFileWrite(res, session, body.value);
+			}
+
+			if (sub === "/skills" && req.method === "GET") {
+				return handleListSkills(res, session);
 			}
 		}
 
@@ -702,6 +707,19 @@ async function handleFsList(res: ServerResponse, requested: string | null): Prom
 		});
 	} catch (err) {
 		return json(res, 403, { error: err instanceof Error ? err.message : "cannot list directory" });
+	}
+}
+
+async function handleListSkills(res: ServerResponse, session: SessionRecord): Promise<void> {
+	try {
+		const result = loadSkills({ cwd: session.cwd, agentDir: getAgentDir() });
+		const skills = result.skills.map((s) => ({
+			name: s.name,
+			description: s.description || "",
+		}));
+		return json(res, 200, { sessionId: session.id, skills });
+	} catch (err) {
+		return json(res, 500, { error: err instanceof Error ? err.message : "failed to load skills" });
 	}
 }
 

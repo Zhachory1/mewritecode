@@ -458,6 +458,37 @@ describe("WS9 daemon — REST routing", () => {
 		);
 		expect(response.status).toBe(404);
 	});
+
+	it("lists skills discovered under the session cwd for the composer dropdown", async () => {
+		const cwd = mkdtempSync(join(tmpdir(), "cave-daemon-skills-"));
+		try {
+			const skillDir = join(cwd, ".mewrite", "skills", "demo-skill");
+			mkdirSync(skillDir, { recursive: true });
+			writeFileSync(
+				join(skillDir, "SKILL.md"),
+				"---\nname: demo-skill\ndescription: A demo skill used in a daemon test.\n---\n\nBody text.\n",
+				"utf8",
+			);
+			const session = await f.client.createSession({ cwd });
+			const response = await fetch(`http://127.0.0.1:${f.handle.port}/v1/sessions/${session.id}/skills`);
+			expect(response.status).toBe(200);
+			const body = (await response.json()) as { sessionId: string; skills: { name: string; description: string }[] };
+			expect(body.sessionId).toBe(session.id);
+			expect(Array.isArray(body.skills)).toBe(true);
+			const demo = body.skills.find((s) => s.name === "demo-skill");
+			expect(demo).toBeDefined();
+			expect(demo?.description).toContain("demo skill");
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
+	it("returns 404 skills for an unknown session", async () => {
+		const response = await fetch(
+			`http://127.0.0.1:${f.handle.port}/v1/sessions/${encodeURIComponent("not-a-real-session")}/skills`,
+		);
+		expect(response.status).toBe(404);
+	});
 });
 
 describe("WS9 daemon — SQLite round-trip survives restart", () => {

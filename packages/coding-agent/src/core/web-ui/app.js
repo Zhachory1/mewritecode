@@ -3,8 +3,7 @@ const sessionEl = document.querySelector("#session");
 const sessionSelectEl = document.querySelector("#sessions");
 const newSessionEl = document.querySelector("#new-session");
 const manageSessionsEl = document.querySelector("#manage-sessions");
-const textSizeToggleEl = document.querySelector("#text-size-toggle");
-const textSizeMenuEl = document.querySelector("#text-size-menu");
+const textSizeInputEl = document.querySelector("#text-size-input");
 const sessionsManagerEl = document.querySelector("#sessions-manager");
 const sessionsManagerListEl = document.querySelector("#sessions-manager-list");
 const sessionsManagerErrorEl = document.querySelector("#sessions-manager-error");
@@ -25,6 +24,7 @@ const thinkingEl = document.querySelector("#thinking");
 const formEl = document.querySelector("#composer");
 const promptEl = document.querySelector("#prompt");
 const sendEl = document.querySelector("#send");
+const skillMenuEl = document.querySelector("#skill-menu");
 const toastsEl = document.querySelector("#toasts");
 const pickerEl = document.querySelector("#folder-picker");
 const pickerInputEl = document.querySelector("#folder-picker-input");
@@ -44,6 +44,7 @@ let socket;
 let sessionSwitchId = 0;
 let rpcId = 1;
 let assistantMessage;
+let assistantAccumulatedText = "";
 let waitingForAssistant = false;
 let runInProgress = false;
 const treeNodes = new Map();
@@ -85,7 +86,106 @@ function addMessage(role, text = "") {
 	item.append(label, body);
 	messagesEl.append(item);
 	messagesEl.scrollTop = messagesEl.scrollHeight;
+	// Finalized assistant messages (e.g. replayed from transcript) get
+	// markdown-rendered right away. Streaming assistant tokens go through
+	// this same body element via textContent and are re-rendered on `done`.
+	if (role === "assistant" && text) renderAssistantMarkdown(body, text);
 	return body;
+}
+
+// -------- markdown rendering (issue #108) --------
+
+const MD_ALLOWED_TAGS = new Set([
+	"P", "BR", "HR", "STRONG", "EM", "B", "I", "U", "S", "DEL", "CODE", "PRE",
+	"BLOCKQUOTE", "UL", "OL", "LI", "H1", "H2", "H3", "H4", "H5", "H6",
+	"A", "SPAN", "DIV",
+]);
+const MD_ALLOWED_ATTRS_ANY = new Set(["class"]);
+const MD_ALLOWED_ATTRS_BY_TAG = { A: new Set(["href", "title", "class"]) };
+const MD_URL_SAFE = /^(https?:|mailto:|#|\/)/i;
+
+function renderAssistantMarkdown(bodyEl, text) {
+	if (!bodyEl) return;
+	const markedLib = /** @type {any} */ (window).marked;
+	if (!markedLib || typeof markedLib.parse !== "function") {
+		bodyEl.textContent = text;
+		return;
+	}
+	let html;
+	try {
+		html = markedLib.parse(text, { async: false, gfm: true, breaks: false });
+	} catch {
+		bodyEl.textContent = text;
+		return;
+	}
+	const wrapper = document.createElement("div");
+	wrapper.className = "md-body";
+	wrapper.innerHTML = typeof html === "string" ? html : String(html);
+	sanitizeMarkdownRoot(wrapper);
+	highlightCodeBlocks(wrapper);
+	bodyEl.replaceChildren(wrapper);
+}
+
+function sanitizeMarkdownRoot(root) {
+	// Walk depth-first; drop disallowed tags (unwrap into their children) and
+	// scrub every attribute that isn't on the whitelist. Never trust marked's
+	// output as-is: it will happily render <script>, <img onerror>, etc.
+	const walk = (node) => {
+		for (const child of Array.from(node.childNodes)) {
+			if (child.nodeType !== 1) continue;
+			const el = /** @type {Element} */ (child);
+			if (!MD_ALLOWED_TAGS.has(el.tagName)) {
+				const textNode = document.createTextNode(el.textContent || "");
+				el.replaceWith(textNode);
+				continue;
+			}
+			sanitizeAttributes(el);
+			walk(el);
+		}
+	};
+	walk(root);
+}
+
+function sanitizeAttributes(el) {
+	const allowedForTag = MD_ALLOWED_ATTRS_BY_TAG[el.tagName] ?? MD_ALLOWED_ATTRS_ANY;
+	for (const attr of Array.from(el.attributes)) {
+		if (!allowedForTag.has(attr.name)) {
+			el.removeAttribute(attr.name);
+			continue;
+		}
+		if (attr.name === "href" && !MD_URL_SAFE.test(attr.value.trim())) {
+			el.removeAttribute("href");
+		}
+	}
+	if (el.tagName === "A") {
+		el.setAttribute("target", "_blank");
+		el.setAttribute("rel", "noopener noreferrer");
+	}
+}
+
+function highlightCodeBlocks(root) {
+	const hljs = /** @type {any} */ (window).hljs;
+	if (!hljs || typeof hljs.highlight !== "function") return;
+	for (const codeEl of Array.from(root.querySelectorAll("pre code"))) {
+		const text = codeEl.textContent || "";
+		if (!text) continue;
+		let language;
+		for (const cls of codeEl.classList) {
+			if (cls.startsWith("language-")) {
+				language = cls.slice("language-".length);
+				break;
+			}
+		}
+		try {
+			const result = language && hljs.getLanguage(language)
+				? hljs.highlight(text, { language, ignoreIllegals: true })
+				: hljs.highlightAuto(text);
+			codeEl.innerHTML = result.value;
+			codeEl.classList.add("hljs");
+		} catch {
+			// Leave the code block as plain text on any highlight failure.
+		}
+	}
 }
 
 const TOAST_TIMEOUTS = { info: 4000, tool: 2000, error: 0 };
@@ -307,6 +407,8 @@ async function useSession(nextSessionId) {
 		}
 		await expandDirectory("");
 		if (switchId !== sessionSwitchId) return;
+		closeSkillMenu();
+		void loadSkillsForSession(session.id);
 		connectSocket();
 	} catch (error) {
 		if (switchId !== sessionSwitchId) return;
@@ -432,6 +534,7 @@ function closeSocket() {
 	socket.close();
 	socket = undefined;
 	assistantMessage = undefined;
+	assistantAccumulatedText = "";
 	setThinking(false);
 	setRunInProgress(false);
 }
@@ -657,8 +760,13 @@ function onSocketMessage(raw) {
 	if (envelope.method === "token") {
 		setRunInProgress(true);
 		if (waitingForAssistant) setThinking(false);
-		if (!assistantMessage) assistantMessage = addMessage(envelope.params?.role || "assistant");
-		assistantMessage.textContent += envelope.params?.text || "";
+		if (!assistantMessage) {
+			assistantMessage = addMessage(envelope.params?.role || "assistant");
+			assistantAccumulatedText = "";
+		}
+		const chunk = envelope.params?.text || "";
+		assistantAccumulatedText += chunk;
+		assistantMessage.textContent += chunk;
 		messagesEl.scrollTop = messagesEl.scrollHeight;
 		return;
 	}
@@ -689,7 +797,12 @@ function onSocketMessage(raw) {
 		return;
 	}
 	if (envelope.method === "done") {
+		if (assistantMessage && assistantAccumulatedText) {
+			renderAssistantMarkdown(assistantMessage, assistantAccumulatedText);
+			messagesEl.scrollTop = messagesEl.scrollHeight;
+		}
 		assistantMessage = undefined;
+		assistantAccumulatedText = "";
 		setThinking(false);
 		setRunInProgress(false);
 		return;
@@ -994,6 +1107,35 @@ formEl.addEventListener("submit", (event) => {
 });
 
 promptEl.addEventListener("keydown", (event) => {
+	if (skillMenuOpen) {
+		if (event.key === "ArrowDown") {
+			event.preventDefault();
+			moveSkillMenuActive(1);
+			return;
+		}
+		if (event.key === "ArrowUp") {
+			event.preventDefault();
+			moveSkillMenuActive(-1);
+			return;
+		}
+		if (event.key === "Enter" && !(event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)) {
+			if (filteredSkills[skillMenuActive]) {
+				event.preventDefault();
+				insertSkillAtTrigger(filteredSkills[skillMenuActive]);
+				return;
+			}
+		}
+		if (event.key === "Escape") {
+			event.preventDefault();
+			closeSkillMenu();
+			return;
+		}
+		if (event.key === "Tab" && filteredSkills[skillMenuActive]) {
+			event.preventDefault();
+			insertSkillAtTrigger(filteredSkills[skillMenuActive]);
+			return;
+		}
+	}
 	if (event.key !== "Enter") return;
 	if (!(event.metaKey || event.ctrlKey)) return;
 	if (event.altKey || event.shiftKey) return;
@@ -1119,57 +1261,46 @@ window.addEventListener("resize", () => {
 });
 
 const TEXT_SIZE_STORAGE_KEY = "web-ui.text-size";
-const TEXT_SIZES = ["small", "medium", "large"];
+const TEXT_SIZE_MIN = 10;
+const TEXT_SIZE_MAX = 24;
+const TEXT_SIZE_DEFAULT = 13;
 
-function applyTextSize(size) {
-	const next = TEXT_SIZES.includes(size) ? size : "medium";
-	if (next === "medium") document.documentElement.removeAttribute("data-text-size");
-	else document.documentElement.setAttribute("data-text-size", next);
-	for (const button of textSizeMenuEl.querySelectorAll("button[data-size]")) {
-		button.setAttribute("aria-checked", button.dataset.size === next ? "true" : "false");
-	}
+function clampTextSize(px) {
+	if (!Number.isFinite(px)) return TEXT_SIZE_DEFAULT;
+	return Math.max(TEXT_SIZE_MIN, Math.min(TEXT_SIZE_MAX, Math.round(px)));
+}
+
+function applyTextSize(px) {
+	const next = clampTextSize(px);
+	if (next === TEXT_SIZE_DEFAULT) document.documentElement.style.removeProperty("--chat-text-size");
+	else document.documentElement.style.setProperty("--chat-text-size", `${next}px`);
+	if (Number.parseInt(textSizeInputEl.value, 10) !== next) textSizeInputEl.value = String(next);
 	try {
-		localStorage.setItem(TEXT_SIZE_STORAGE_KEY, next);
+		localStorage.setItem(TEXT_SIZE_STORAGE_KEY, String(next));
 	} catch {
 		// storage may be blocked; setting still applies for the session.
 	}
 }
 
-function toggleTextSizeMenu(open) {
-	const shouldOpen = open ?? textSizeMenuEl.classList.contains("hidden");
-	textSizeMenuEl.classList.toggle("hidden", !shouldOpen);
-	textSizeToggleEl.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
-}
-
-textSizeToggleEl.addEventListener("click", (event) => {
-	event.stopPropagation();
-	toggleTextSizeMenu();
+textSizeInputEl.addEventListener("input", () => {
+	const parsed = Number.parseInt(textSizeInputEl.value, 10);
+	if (!Number.isFinite(parsed)) return;
+	const clamped = clampTextSize(parsed);
+	if (clamped !== parsed) return; // Wait for a valid value before applying.
+	applyTextSize(clamped);
 });
 
-textSizeMenuEl.addEventListener("click", (event) => {
-	const button = event.target instanceof Element ? event.target.closest("button[data-size]") : null;
-	if (!button) return;
-	applyTextSize(button.dataset.size);
-	toggleTextSizeMenu(false);
-});
-
-document.addEventListener("click", (event) => {
-	if (textSizeMenuEl.classList.contains("hidden")) return;
-	if (event.target instanceof Node && (textSizeMenuEl.contains(event.target) || textSizeToggleEl.contains(event.target))) return;
-	toggleTextSizeMenu(false);
-});
-
-document.addEventListener("keydown", (event) => {
-	if (event.key === "Escape" && !textSizeMenuEl.classList.contains("hidden")) {
-		toggleTextSizeMenu(false);
-		textSizeToggleEl.focus();
-	}
+textSizeInputEl.addEventListener("change", () => {
+	const parsed = Number.parseInt(textSizeInputEl.value, 10);
+	applyTextSize(Number.isFinite(parsed) ? parsed : TEXT_SIZE_DEFAULT);
 });
 
 try {
-	applyTextSize(localStorage.getItem(TEXT_SIZE_STORAGE_KEY) ?? "medium");
+	const stored = localStorage.getItem(TEXT_SIZE_STORAGE_KEY);
+	const parsed = stored ? Number.parseInt(stored, 10) : Number.NaN;
+	applyTextSize(Number.isFinite(parsed) ? parsed : TEXT_SIZE_DEFAULT);
 } catch {
-	applyTextSize("medium");
+	applyTextSize(TEXT_SIZE_DEFAULT);
 }
 
 function base64Url(value) {
@@ -1178,5 +1309,136 @@ function base64Url(value) {
 	for (const byte of bytes) binary += String.fromCharCode(byte);
 	return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 }
+
+// -------- skill dropdown (issue #111) --------
+
+let availableSkills = [];
+let filteredSkills = [];
+let skillMenuOpen = false;
+let skillMenuActive = 0;
+let skillTriggerStart = -1; // Index of the `/` that opened the menu.
+
+async function loadSkillsForSession(id) {
+	availableSkills = [];
+	try {
+		const data = await api(`/v1/sessions/${encodeURIComponent(id)}/skills`);
+		if (id !== sessionId) return;
+		availableSkills = Array.isArray(data?.skills) ? data.skills : [];
+	} catch {
+		// A missing endpoint or a load error just means no skills UI — not fatal.
+	}
+}
+
+function skillTriggerFor(value, caret) {
+	// Menu triggers when a `/` sits at the start of the textarea or immediately
+	// after a newline, and the caret is on the same line at or after that slash.
+	const before = value.slice(0, caret);
+	const lastNewline = before.lastIndexOf("\n");
+	const lineStart = lastNewline + 1;
+	if (before[lineStart] !== "/") return -1;
+	// If the line has whitespace between `/` and the caret, treat as non-trigger.
+	const lineTail = before.slice(lineStart + 1);
+	if (/\s/.test(lineTail)) return -1;
+	return lineStart;
+}
+
+function updateSkillMenu() {
+	if (availableSkills.length === 0) {
+		closeSkillMenu();
+		return;
+	}
+	const caret = promptEl.selectionStart ?? promptEl.value.length;
+	const triggerIdx = skillTriggerFor(promptEl.value, caret);
+	if (triggerIdx < 0) {
+		closeSkillMenu();
+		return;
+	}
+	skillTriggerStart = triggerIdx;
+	const query = promptEl.value.slice(triggerIdx + 1, caret).toLowerCase();
+	filteredSkills = query
+		? availableSkills.filter((s) => s.name.toLowerCase().includes(query) || s.description.toLowerCase().includes(query))
+		: availableSkills.slice(0, 40);
+	skillMenuActive = 0;
+	renderSkillMenu();
+	openSkillMenu();
+}
+
+function renderSkillMenu() {
+	skillMenuEl.textContent = "";
+	if (filteredSkills.length === 0) {
+		const empty = document.createElement("div");
+		empty.className = "skill-menu-empty";
+		empty.textContent = "No matching skills.";
+		skillMenuEl.append(empty);
+		return;
+	}
+	filteredSkills.forEach((skill, idx) => {
+		const row = document.createElement("button");
+		row.type = "button";
+		row.className = `skill-menu-row${idx === skillMenuActive ? " active" : ""}`;
+		row.dataset.index = String(idx);
+		const name = document.createElement("span");
+		name.className = "name";
+		name.textContent = skill.name;
+		row.append(name);
+		if (skill.description) {
+			const desc = document.createElement("span");
+			desc.className = "desc";
+			desc.textContent = skill.description;
+			row.append(desc);
+		}
+		row.addEventListener("mousedown", (event) => {
+			event.preventDefault();
+			insertSkillAtTrigger(skill);
+		});
+		row.addEventListener("mouseenter", () => {
+			skillMenuActive = idx;
+			renderSkillMenu();
+		});
+		skillMenuEl.append(row);
+	});
+}
+
+function openSkillMenu() {
+	skillMenuEl.classList.remove("hidden");
+	skillMenuOpen = true;
+}
+
+function closeSkillMenu() {
+	if (!skillMenuOpen) return;
+	skillMenuEl.classList.add("hidden");
+	skillMenuEl.textContent = "";
+	skillMenuOpen = false;
+	skillTriggerStart = -1;
+	filteredSkills = [];
+}
+
+function moveSkillMenuActive(delta) {
+	if (!skillMenuOpen || filteredSkills.length === 0) return;
+	skillMenuActive = (skillMenuActive + delta + filteredSkills.length) % filteredSkills.length;
+	renderSkillMenu();
+}
+
+function insertSkillAtTrigger(skill) {
+	if (skillTriggerStart < 0) return;
+	const before = promptEl.value.slice(0, skillTriggerStart);
+	const caret = promptEl.selectionStart ?? promptEl.value.length;
+	const after = promptEl.value.slice(caret);
+	const summary = skill.description ? ` \u2014 ${skill.description}` : "";
+	const insertion = `use skill: ${skill.name}${summary}`;
+	const next = before + insertion + (after.startsWith(" ") || after === "" ? after : " " + after);
+	const newCaret = (before + insertion).length;
+	promptEl.value = next;
+	promptEl.selectionStart = promptEl.selectionEnd = newCaret;
+	promptEl.focus();
+	closeSkillMenu();
+}
+
+promptEl.addEventListener("input", updateSkillMenu);
+promptEl.addEventListener("click", updateSkillMenu);
+promptEl.addEventListener("blur", () => {
+	// Delay so a click on a menu row can fire before the menu hides.
+	setTimeout(closeSkillMenu, 120);
+});
 
 start();
