@@ -244,6 +244,21 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /v1/sessions/{id}/skills:
+    get:
+      summary: List skills available to this session (built-in + user + project)
+      operationId: listSessionSkills
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillList"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /v1/fs/list:
     get:
       summary: List directories at an absolute path (folder picker for new sessions)
@@ -559,6 +574,25 @@ components:
         encoding:
           type: string
           enum: [utf8]
+    SkillList:
+      type: object
+      required: [sessionId, skills]
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+        skills:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillSummary"
+    SkillSummary:
+      type: object
+      required: [name, description]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
     Worker:
       type: object
       required: [name, url, registeredAt]

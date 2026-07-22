@@ -18,14 +18,10 @@
 					<select id="sessions" aria-label="Session"></select>
 					<button id="new-session" type="button">New</button>
 					<button id="manage-sessions" type="button">Manage</button>
-					<div class="text-size-control">
-						<button id="text-size-toggle" type="button" title="Text size" aria-haspopup="true" aria-expanded="false">Aa</button>
-						<div id="text-size-menu" class="text-size-menu hidden" role="menu">
-							<button type="button" role="menuitemradio" data-size="small">Small</button>
-							<button type="button" role="menuitemradio" data-size="medium">Medium</button>
-							<button type="button" role="menuitemradio" data-size="large">Large</button>
-						</div>
-					</div>
+					<label class="text-size-control" for="text-size-input" title="Text size (px)">
+						<span aria-hidden="true">Aa</span>
+						<input id="text-size-input" type="number" min="10" max="24" step="1" aria-label="Text size in pixels" />
+					</label>
 					<div id="session">no session</div>
 				</div>
 			</header>
@@ -61,7 +57,10 @@
 					<div id="messages" class="messages"></div>
 					<div id="thinking" class="thinking hidden" aria-live="polite">Agent is thinking<span></span></div>
 					<form id="composer">
-						<textarea id="prompt" rows="3" placeholder="Ask Me Write Code…"></textarea>
+						<div class="composer-input">
+							<textarea id="prompt" rows="3" placeholder="Ask Me Write Code… or / for skills"></textarea>
+							<div id="skill-menu" class="skill-menu hidden" role="listbox" aria-label="Skills"></div>
+						</div>
 						<button id="send" type="submit">Send</button>
 					</form>
 				</section>
@@ -95,6 +94,7 @@
 			</dialog>
 		</div>
 		<script src="/web/vendor/highlight.min.js"></script>
+		<script src="/web/vendor/marked.min.js"></script>
 		<script type="module" src="/web/app.js"></script>
 	</body>
 </html>

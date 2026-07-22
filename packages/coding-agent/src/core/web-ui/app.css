@@ -4,17 +4,6 @@
 	background: #0d1117;
 	color: #e6edf3;
 	--chat-text-size: 13px;
-	--editor-text-size: 13px;
-}
-
-:root[data-text-size="small"] {
-	--chat-text-size: 12px;
-	--editor-text-size: 12px;
-}
-
-:root[data-text-size="large"] {
-	--chat-text-size: 15px;
-	--editor-text-size: 15px;
 }
 
 * {
@@ -103,57 +92,42 @@ header {
 }
 
 .text-size-control {
-	position: relative;
-}
-
-#text-size-toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 8px;
 	border: 1px solid #30363d;
 	border-radius: 6px;
 	background: #21262d;
 	color: #e6edf3;
-	cursor: pointer;
 	font-weight: 600;
-	padding: 6px 10px;
 	line-height: 1;
 }
 
-#text-size-toggle:hover {
+.text-size-control:focus-within {
 	border-color: #8b949e;
 }
 
-.text-size-menu {
-	position: absolute;
-	top: calc(100% + 6px);
-	right: 0;
-	display: flex;
-	flex-direction: column;
-	min-width: 120px;
-	padding: 4px;
-	border: 1px solid #30363d;
-	border-radius: 8px;
-	background: #161b22;
-	box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
-	z-index: 50;
-}
-
-.text-size-menu button {
+#text-size-input {
+	width: 3.5ch;
 	border: 0;
-	border-radius: 4px;
 	background: transparent;
-	color: #e6edf3;
-	cursor: pointer;
-	text-align: left;
-	padding: 6px 10px;
+	color: inherit;
 	font: inherit;
+	text-align: center;
+	padding: 2px 0;
+	-moz-appearance: textfield;
 }
 
-.text-size-menu button:hover {
-	background: #21262d;
+#text-size-input::-webkit-outer-spin-button,
+#text-size-input::-webkit-inner-spin-button {
+	appearance: none;
+	-webkit-appearance: none;
+	margin: 0;
 }
 
-.text-size-menu button[aria-checked="true"] {
-	background: #1f6feb;
-	color: white;
+#text-size-input:focus {
+	outline: none;
 }
 
 .banner {
@@ -308,7 +282,7 @@ main.chat-collapsed #thinking {
 	border: 0;
 	background: transparent;
 	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-	font-size: var(--editor-text-size, 13px);
+	font-size: var(--chat-text-size, 13px);
 	line-height: 1.45;
 	white-space: pre;
 	tab-size: 4;
@@ -491,7 +465,7 @@ main.chat-collapsed #thinking {
 	display: flex;
 	flex-direction: column;
 	gap: 2px;
-	font-size: 14px;
+	font-size: var(--chat-text-size, 13px);
 }
 
 .file-row {
@@ -1011,4 +985,181 @@ main.chat-collapsed #thinking {
 		opacity: 1;
 		transform: translateY(0);
 	}
+}
+
+/* Rendered markdown inside assistant messages. */
+.md-body {
+	display: block;
+	white-space: normal;
+	word-break: break-word;
+}
+
+.md-body > *:first-child {
+	margin-top: 0;
+}
+
+.md-body > *:last-child {
+	margin-bottom: 0;
+}
+
+.md-body p {
+	margin: 0.35em 0;
+}
+
+.md-body h1,
+.md-body h2,
+.md-body h3,
+.md-body h4,
+.md-body h5,
+.md-body h6 {
+	margin: 0.6em 0 0.25em;
+	line-height: 1.25;
+	font-weight: 600;
+}
+
+.md-body h1 {
+	font-size: 1.35em;
+}
+
+.md-body h2 {
+	font-size: 1.2em;
+}
+
+.md-body h3 {
+	font-size: 1.08em;
+}
+
+.md-body h4,
+.md-body h5,
+.md-body h6 {
+	font-size: 1em;
+}
+
+.md-body ul,
+.md-body ol {
+	margin: 0.3em 0;
+	padding-left: 1.4em;
+}
+
+.md-body li {
+	margin: 0.15em 0;
+}
+
+.md-body blockquote {
+	margin: 0.4em 0;
+	padding: 0.15em 0 0.15em 0.8em;
+	border-left: 3px solid #30363d;
+	color: #8b949e;
+}
+
+.md-body hr {
+	border: 0;
+	border-top: 1px solid #30363d;
+	margin: 0.6em 0;
+}
+
+.md-body a {
+	color: #58a6ff;
+	text-decoration: none;
+}
+
+.md-body a:hover {
+	text-decoration: underline;
+}
+
+.md-body code {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+	font-size: 0.92em;
+	padding: 0.1em 0.35em;
+	border-radius: 4px;
+	background: #21262d;
+}
+
+.md-body pre {
+	margin: 0.4em 0;
+	padding: 8px 10px;
+	border: 1px solid #30363d;
+	border-radius: 6px;
+	background: #010409;
+	overflow-x: auto;
+}
+
+.md-body pre code {
+	display: block;
+	padding: 0;
+	background: transparent;
+	border-radius: 0;
+	white-space: pre;
+	font-size: 0.92em;
+	line-height: 1.4;
+}
+
+/* Composer skill dropdown (issue #111). */
+.composer-input {
+	position: relative;
+	flex: 1;
+	min-width: 0;
+}
+
+.composer-input #prompt {
+	width: 100%;
+}
+
+.skill-menu {
+	position: absolute;
+	bottom: calc(100% + 6px);
+	left: 0;
+	right: 0;
+	max-height: min(280px, 45vh);
+	overflow-y: auto;
+	background: #161b22;
+	border: 1px solid #30363d;
+	border-radius: 8px;
+	box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
+	padding: 4px;
+	z-index: 60;
+	font-size: var(--chat-text-size, 13px);
+}
+
+.skill-menu-row {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	width: 100%;
+	text-align: left;
+	border: 0;
+	background: transparent;
+	color: #e6edf3;
+	border-radius: 4px;
+	padding: 6px 10px;
+	cursor: pointer;
+	font: inherit;
+}
+
+.skill-menu-row:hover,
+.skill-menu-row.active {
+	background: #1f6feb;
+}
+
+.skill-menu-row .name {
+	font-weight: 600;
+}
+
+.skill-menu-row .desc {
+	font-size: 0.85em;
+	color: #8b949e;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.skill-menu-row:hover .desc,
+.skill-menu-row.active .desc {
+	color: #c9d1d9;
+}
+
+.skill-menu-empty {
+	padding: 10px 12px;
+	color: #8b949e;
+	font-size: 0.9em;
 }
