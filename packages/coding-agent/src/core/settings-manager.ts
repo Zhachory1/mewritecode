@@ -63,7 +63,7 @@ export type MemoryBackend = "cavemem" | "files";
 
 export interface MemorySettings {
 	enabled?: boolean; // default: true
-	backend?: MemoryBackend; // default: files
+	backend?: MemoryBackend; // default: cavemem; falls back to files when unavailable
 	command?: string; // cavemem command override
 	capture?: {
 		requirePreview?: boolean; // default: true
@@ -582,7 +582,7 @@ export class SettingsManager {
 			const value = memory as Record<string, unknown>;
 			if (value.backend === "zbrain") {
 				messages.push(
-					'Replace `memory.backend: "zbrain"` with `memory.backend: "files"` (default) or `"cavemem"`.',
+					'Replace `memory.backend: "zbrain"` with `memory.backend: "cavemem"` (default, with Files fallback when unavailable) or `"files"`.',
 				);
 			} else if ("backend" in value && value.backend !== "files" && value.backend !== "cavemem") {
 				messages.push(
@@ -590,10 +590,12 @@ export class SettingsManager {
 				);
 			}
 			if ("workspace" in value) {
-				messages.push("Remove `memory.workspace`; Files memory is stored in `.mewrite/memory`.");
+				messages.push("Remove `memory.workspace`; durable-memory storage is configured by the active backend.");
 			}
 			if (value.capture && typeof value.capture === "object" && "defaultCollection" in value.capture) {
-				messages.push("Remove `memory.capture.defaultCollection`; Files memory has no collections.");
+				messages.push(
+					"Remove `memory.capture.defaultCollection`; collections are not configured through Me Write memory settings.",
+				);
 			}
 		}
 		if (contextEngine && typeof contextEngine === "object") {
@@ -1448,7 +1450,7 @@ export class SettingsManager {
 		capture: { requirePreview: boolean };
 		retrieval: { enabled: boolean; maxResults: number };
 	} {
-		const backend = this.settings.memory?.backend ?? "files";
+		const backend = this.settings.memory?.backend ?? "cavemem";
 		return {
 			enabled: this.settings.memory?.enabled ?? true,
 			backend,

@@ -1075,8 +1075,8 @@ export class AgentSession {
 	}
 
 	/**
-	 * Resolve (and lazily build) the active memory provider. Files is the default;
-	 * cavemem is supported when explicitly configured.
+	 * Resolve (and lazily build) the active memory provider. Cavemem is the default;
+	 * FilesProvider is used only when Cavemem is unavailable or explicitly configured.
 	 *
 	 * Returns the same instance the `/memory` slash command should use so the
 	 * MCP transport, embedding model, and FTS handles are reused.
@@ -3557,7 +3557,7 @@ export class AgentSession {
 		);
 
 		// WS7: register memory_search / memory_save when a provider is reachable.
-		// Cached factory means Files (or explicitly configured Cavemem) is built once
+		// Cached factory means Cavemem (or its FilesProvider fallback) is built once
 		// and shared with the `/memory` slash command + the recall transform.
 		try {
 			const memorySettings = this.settingsManager.getMemorySettings();
@@ -3568,7 +3568,7 @@ export class AgentSession {
 			this._memoryInjector.primeProvider(memoryProvider);
 			const available = memorySettings.enabled ? await memoryProvider.isAvailable().catch(() => false) : false;
 			// Always register; the tools themselves short-circuit when unavailable.
-			// FilesProvider is always available, so this never strips them locally.
+			// The FilesProvider fallback is always available, so this never strips those tools locally.
 			if (available || memoryProvider.id === "files") {
 				this._baseToolDefinitions.set(
 					"memory_search",

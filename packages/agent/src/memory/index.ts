@@ -3,8 +3,8 @@
  *
  * Public surface:
  *   - MemoryProvider         interface, plus types
- *   - CavememProvider        opt-in — wraps cavemem stdio MCP + `cavemem hook run`
- *   - FilesProvider          default — markdown under .mewrite/memory/
+ *   - CavememProvider        default — wraps cavemem stdio MCP + `cavemem hook run`
+ *   - FilesProvider          fallback or explicit — markdown under .mewrite/memory/
  *   - consolidate()          episodic→semantic consolidation pass (cave's value-add)
  *   - formatPrelude()        helper for the session-start prelude injection
  *

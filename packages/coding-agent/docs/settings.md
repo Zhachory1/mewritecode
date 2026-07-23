@@ -141,13 +141,13 @@ RTK is detected automatically at startup. If the `rtk` binary is not installed, 
 
 ### Durable Memory
 
-Me Write owns the durable-memory read/write lifecycle. Files is the default local backend and stores explicit saves in `.mewrite/memory`. Cavemem is available only when explicitly configured. Memory writes still require explicit user intent; `/memory save` previews by default and `/memory save --yes` persists directly.
+Me Write owns the durable-memory read/write lifecycle. Cavemem is the default backend; Me Write probes it at startup and falls back to local `.mewrite/memory` files only when Cavemem is unavailable. Set `memory.backend: "files"` to use FilesProvider explicitly. Memory writes still require explicit user intent; `/memory save` previews by default and `/memory save --yes` persists directly.
 
 ```json
 {
   "memory": {
     "enabled": true,
-    "backend": "files",
+    "backend": "cavemem",
     "capture": {
       "requirePreview": true
     },
@@ -162,7 +162,7 @@ Me Write owns the durable-memory read/write lifecycle. Files is the default loca
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `memory.enabled` | boolean | `true` | Enable memory recall and save tools for the session |
-| `memory.backend` | string | `"files"` | Memory backend: `"files"` or opt-in `"cavemem"` |
+| `memory.backend` | string | `"cavemem"` | Memory backend: default `"cavemem"` (falls back to FilesProvider when unavailable) or explicit `"files"` |
 | `memory.command` | string | - | Cavemem command override |
 | `memory.capture.requirePreview` | boolean | `true` | Preview `/memory save` writes before persisting |
 | `memory.retrieval.enabled` | boolean | `true` | Enable durable-memory retrieval |
@@ -171,7 +171,7 @@ Me Write owns the durable-memory read/write lifecycle. Files is the default loca
 Use `/memory status` to inspect backend, capture, retrieval, and index health.
 Use `/memory search <query>` for explicit retrieval.
 
-Migration is a hard fail at agent session startup and reload: replace `memory.backend: "zbrain"` with `memory.backend: "files"` or `"cavemem"`; remove `memory.workspace` and `memory.capture.defaultCollection`. Any other `memory.backend` value is rejected; only `"files"` and `"cavemem"` are supported. This settings migration does not delete existing ZBrain workspace, index, or memory data.
+Migration is a hard fail at agent session startup and reload: replace `memory.backend: "zbrain"` with `memory.backend: "cavemem"` (default, with FilesProvider fallback when unavailable) or `"files"`; remove `memory.workspace` and `memory.capture.defaultCollection`. Any other `memory.backend` value is rejected; only `"files"` and `"cavemem"` are supported. This settings migration does not delete existing ZBrain workspace, index, or memory data.
 Use `/memory save <text>` to preview a durable save and `/memory save --yes <text>` to persist.
 
 ### Experimental Context Engine

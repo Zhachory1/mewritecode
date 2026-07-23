@@ -1,6 +1,6 @@
 /**
  * memory_search / memory_save — native tools wrapping the active
- * `MemoryProvider` (Files by default; Cavemem when explicitly configured).
+ * `MemoryProvider` (Cavemem by default; FilesProvider when Cavemem is unavailable or explicitly configured).
  *
  * Auto-injection of recent recall happens in `agent-session._buildMemoryTransform`
  * each turn. These tools let the LLM expand a hit, query a different topic, or

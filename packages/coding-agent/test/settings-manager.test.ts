@@ -349,13 +349,13 @@ describe("SettingsManager", () => {
 	});
 
 	describe("memory settings", () => {
-		it("defaults durable memory to Files with previewed capture and retrieval enabled", () => {
+		it("defaults durable memory to Cavemem with previewed capture and retrieval enabled", () => {
 			const manager = SettingsManager.create(projectDir, agentDir);
 			const settings = manager.getMemorySettings();
 
 			expect(settings).toEqual({
 				enabled: true,
-				backend: "files",
+				backend: "cavemem",
 				command: undefined,
 				capture: { requirePreview: true },
 				retrieval: { enabled: true, maxResults: 5 },
@@ -399,7 +399,7 @@ describe("SettingsManager", () => {
 
 			const manager = SettingsManager.fromStorage(storage);
 			expect(() => manager.assertNoRemovedSettings()).toThrow(
-				'Removed settings detected. Replace `memory.backend: "zbrain"` with `memory.backend: "files"` (default) or `"cavemem"`.',
+				'Removed settings detected. Replace `memory.backend: "zbrain"` with `memory.backend: "cavemem"` (default, with Files fallback when unavailable) or `"files"`.',
 			);
 			expect(() => manager.assertNoRemovedSettings()).toThrow("Remove `memory.workspace`");
 			expect(() => manager.assertNoRemovedSettings()).toThrow("Remove `memory.capture.defaultCollection`");

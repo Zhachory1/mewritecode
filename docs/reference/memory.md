@@ -32,7 +32,7 @@ On session start, mewrite-code runs `cavemem search "<task summary>"` and inject
 
 ## Setup
 
-If `cavemem` is on your `$PATH`, Me Write Code can use it as the memory backend:
+Cavemem is the default memory backend. Me Write Code probes `cavemem --version` and uses it when available:
 
 ```bash
 npm install -g cavemem
@@ -100,19 +100,18 @@ Imports the per-fact `.md` files as cavemem observations.
 
 ## Falling back to files
 
-If you don't want cavemem, set `memory.provider: files` in `~/.mewrite/agent/settings.json`. Me Write Code then uses plain `.mewrite/memory/*.md` files and project context docs.
+When Cavemem is unavailable, Me Write Code automatically uses plain `.mewrite/memory/*.md` files and project context docs. To use FilesProvider without probing Cavemem, set `memory.backend: "files"` in `~/.mewrite/agent/settings.json`.
 
 ```json
 {
-    "memory": {
-        "provider": "files",
-        "files": { "dir": ".mewrite/memory" }
-    }
+  "memory": {
+    "backend": "files"
+  }
 }
 ```
 
 ## Troubleshooting
 
-- **`cavemem: command not found`** — install it (`npm i -g cavemem`) or set `memory.provider: files`.
+- **`cavemem: command not found`** — install it (`npm i -g cavemem`) to use Cavemem; otherwise Me Write Code falls back to FilesProvider. Set `memory.backend: "files"` to skip the probe.
 - **Memory injection too aggressive** — lower `memory.maxInjectTokens`.
 - **Want to wipe** — `rm -rf ~/.cavemem/`.

@@ -57,7 +57,7 @@ describe("MemoryInjector basics", () => {
 		expect(await m.getProvider()).toBe(p);
 	});
 
-	test("defaults to FilesProvider without probing Cavemem", async () => {
+	test("uses FilesProvider when explicitly configured", async () => {
 		const m = make(undefined);
 		expect((await m.getProvider())?.id).toBe("files");
 	});

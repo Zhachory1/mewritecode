@@ -80,7 +80,7 @@ export class MemoryInjector {
 
 	/**
 	 * Seed the shared provider instance (called by AgentSession's `_buildRuntime`
-	 * tool registration so cavemem / FilesProvider is built once and shared with
+	 * tool registration so Cavemem or its FilesProvider fallback is built once and shared with
 	 * the `/memory` slash command + the recall transform).
 	 */
 	primeProvider(provider: MemoryProviderInstance | undefined): void {
@@ -88,8 +88,8 @@ export class MemoryInjector {
 	}
 
 	/**
-	 * Resolve (and lazily build) the active memory provider. Files is the default;
-	 * cavemem is supported when explicitly configured.
+	 * Resolve (and lazily build) the active memory provider. Cavemem is the default;
+	 * FilesProvider is used only when Cavemem is unavailable or explicitly configured.
 	 *
 	 * Returns the same instance the `/memory` slash command should use so the
 	 * MCP transport, embedding model, and FTS handles are reused.
