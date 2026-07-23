@@ -2,9 +2,8 @@
  * MemoryProvider — pluggable backend for Me Write Code's memory subsystem (WS7).
  *
  * Implementations:
- *   - ZbrainProvider  (default — wraps the local zbrain CLI/index)
- *   - CavememProvider (legacy — wraps cavemem stdio MCP + `cavemem hook run`)
- *   - FilesProvider   (fallback — plain `.mewrite/memory/*.md`)
+ *   - CavememProvider (opt-in — wraps cavemem stdio MCP + `cavemem hook run`)
+ *   - FilesProvider   (default — plain `.mewrite/memory/*.md`)
  *
  * Me Write Code never reimplements embeddings, FTS, or compression: those are the
  * canonical responsibility of the configured backend.

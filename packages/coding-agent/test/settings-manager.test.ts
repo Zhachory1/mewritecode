@@ -2,7 +2,9 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { CONFIG_DIR_NAME } from "../src/config.js";
-import { SettingsManager } from "../src/core/settings-manager.js";
+import { createAgentSessionServices } from "../src/core/agent-session-services.js";
+import type { ModelRegistry } from "../src/core/model-registry.js";
+import { InMemorySettingsStorage, SettingsManager } from "../src/core/settings-manager.js";
 
 describe("SettingsManager", () => {
 	const testDir = join(process.cwd(), "test-settings-tmp");
@@ -347,31 +349,29 @@ describe("SettingsManager", () => {
 	});
 
 	describe("memory settings", () => {
-		it("defaults durable memory to zbrain with previewed capture and retrieval enabled", () => {
+		it("defaults durable memory to Files with previewed capture and retrieval enabled", () => {
 			const manager = SettingsManager.create(projectDir, agentDir);
 			const settings = manager.getMemorySettings();
 
 			expect(settings).toEqual({
 				enabled: true,
-				backend: "zbrain",
+				backend: "files",
 				command: undefined,
-				workspace: "~/.zbrain",
-				capture: { requirePreview: true, defaultCollection: "inbox" },
+				capture: { requirePreview: true },
 				retrieval: { enabled: true, maxResults: 5 },
 			});
 		});
 
-		it("loads explicit zbrain memory settings", () => {
+		it("loads explicit Cavemem memory settings", () => {
 			const settingsPath = join(agentDir, "settings.json");
 			writeFileSync(
 				settingsPath,
 				JSON.stringify({
 					memory: {
 						enabled: false,
-						backend: "zbrain",
-						command: "/opt/bin/zbrain",
-						workspace: "~/notes",
-						capture: { requirePreview: false, defaultCollection: "learnings" },
+						backend: "cavemem",
+						command: "/opt/bin/cavemem",
+						capture: { requirePreview: false },
 						retrieval: { enabled: false, maxResults: 3 },
 					},
 				}),
@@ -382,12 +382,99 @@ describe("SettingsManager", () => {
 
 			expect(settings).toMatchObject({
 				enabled: false,
-				backend: "zbrain",
-				command: "/opt/bin/zbrain",
-				workspace: "~/notes",
-				capture: { requirePreview: false, defaultCollection: "learnings" },
+				backend: "cavemem",
+				command: "/opt/bin/cavemem",
+				capture: { requirePreview: false },
 				retrieval: { enabled: false, maxResults: 3 },
 			});
+		});
+		it("rejects removed ZBrain and Codescry fields with migration instructions", () => {
+			const storage = new InMemorySettingsStorage();
+			storage.withLock("global", () =>
+				JSON.stringify({
+					memory: { backend: "zbrain", workspace: "~/.zbrain", capture: { defaultCollection: "inbox" } },
+					contextEngine: { provider: "codescry", repoIndex: {}, setup: { mainCodeDir: "/tmp/code" } },
+				}),
+			);
+
+			const manager = SettingsManager.fromStorage(storage);
+			expect(() => manager.assertNoRemovedSettings()).toThrow(
+				'Removed settings detected. Replace `memory.backend: "zbrain"` with `memory.backend: "files"` (default) or `"cavemem"`.',
+			);
+			expect(() => manager.assertNoRemovedSettings()).toThrow("Remove `memory.workspace`");
+			expect(() => manager.assertNoRemovedSettings()).toThrow("Remove `memory.capture.defaultCollection`");
+			expect(() => manager.assertNoRemovedSettings()).toThrow(
+				'Replace `contextEngine.provider` with `"none"`, `"qmd"`, `"gbrain"`, or `"remote"`; Codescry, repo-index, and stack were removed.',
+			);
+			expect(() => manager.assertNoRemovedSettings()).toThrow("Remove `contextEngine.repoIndex`");
+			expect(() => manager.assertNoRemovedSettings()).toThrow("Remove `contextEngine.setup.mainCodeDir`");
+		});
+
+		const invalidSettings = [
+			{
+				name: "removed memory backend",
+				settings: { memory: { backend: "zbrain" } },
+				expected: "memory.backend",
+			},
+			{
+				name: "unknown memory backend",
+				settings: { memory: { backend: "legacy" } },
+				expected: 'Unsupported `memory.backend`: "legacy". Supported values are `"files"` and `"cavemem"`',
+			},
+			{
+				name: "removed context provider",
+				settings: { contextEngine: { provider: "codescry" } },
+				expected: "contextEngine.provider",
+			},
+			{
+				name: "unknown context provider",
+				settings: { contextEngine: { provider: "custom" } },
+				expected:
+					'Unsupported `contextEngine.provider`: "custom". Supported values are `"none"`, `"qmd"`, `"gbrain"`, and `"remote"`',
+			},
+		] as const;
+
+		for (const scope of ["global", "project"] as const) {
+			for (const { name, settings, expected } of invalidSettings) {
+				it(`rejects ${scope} ${name}`, () => {
+					const storage = new InMemorySettingsStorage();
+					storage.withLock(scope, () => JSON.stringify(settings));
+
+					const manager = SettingsManager.fromStorage(storage);
+					expect(() => manager.assertNoRemovedSettings()).toThrow(expected);
+				});
+			}
+		}
+
+		it("fails before capability discovery or resource loading", async () => {
+			writeFileSync(join(agentDir, "settings.json"), JSON.stringify({ contextEngine: { provider: "codescry" } }));
+			let capabilityDiscoveryStarted = false;
+			let resourceLoadingStarted = false;
+			const modelRegistry = {
+				discoverAnthropicCapabilities: async () => {
+					capabilityDiscoveryStarted = true;
+				},
+			} as unknown as ModelRegistry;
+
+			await expect(
+				createAgentSessionServices({
+					cwd: projectDir,
+					agentDir,
+					modelRegistry,
+					resourceLoaderOptions: {
+						extensionFactories: [
+							() => {
+								resourceLoadingStarted = true;
+							},
+						],
+						noSkills: true,
+						noPromptTemplates: true,
+						noThemes: true,
+					},
+				}),
+			).rejects.toThrow("contextEngine.provider");
+			expect(capabilityDiscoveryStarted).toBe(false);
+			expect(resourceLoadingStarted).toBe(false);
 		});
 	});
 

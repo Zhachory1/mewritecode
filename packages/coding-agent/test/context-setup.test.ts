@@ -22,14 +22,13 @@ describe("context setup", () => {
 	it("shows notice only before setup is seen or configured", () => {
 		expect(shouldShowContextSetupNotice({ hasSeenSetupPrompt: false })).toBe(true);
 		expect(shouldShowContextSetupNotice({ hasSeenSetupPrompt: true })).toBe(false);
-		expect(shouldShowContextSetupNotice({ hasSeenSetupPrompt: false, mainCodeDir: "/tmp/code" })).toBe(false);
 		expect(shouldShowContextSetupNotice({ hasSeenSetupPrompt: false, mainDocsDir: "/tmp/docs" })).toBe(false);
 	});
 
 	it("formats one-time notice and help", () => {
 		expect(formatContextSetupNotice()).toContain("Optional context setup");
 		expect(formatContextSetupNotice()).toContain("/context setup skip");
-		expect(formatContextSetupHelp("/repo")).toContain("/context setup code-dir <path>");
+		expect(formatContextSetupHelp("/repo")).toContain("/context setup docs-dir <path>");
 	});
 
 	it("validates directories", () => {
@@ -50,23 +49,21 @@ describe("context setup", () => {
 	it("formats status with next actions and no content", () => {
 		const lines = formatContextSetupStatus({
 			hasSeenSetupPrompt: true,
-			mainCodeDir: "/Users/test/code",
 			mainDocsDir: "/Users/test/docs",
 		});
 
-		expect(lines.join("\n")).toContain("Main code dir:");
 		expect(lines.join("\n")).toContain("qmd collection add");
-		expect(lines.join("\n")).toContain("Codescry");
+		expect(lines.join("\n")).not.toContain("Codescry");
 		expect(lines.join("\n")).toContain("Headroom: built-in integration");
 	});
 
 	it("persists setup state in settings manager", () => {
 		const settings = SettingsManager.inMemory();
-		settings.setContextSetupSettings({ hasSeenSetupPrompt: true, mainCodeDir: "/tmp/code" });
+		settings.setContextSetupSettings({ hasSeenSetupPrompt: true, mainDocsDir: "/tmp/docs" });
 
 		expect(settings.getContextSetupSettings()).toMatchObject({
 			hasSeenSetupPrompt: true,
-			mainCodeDir: "/tmp/code",
+			mainDocsDir: "/tmp/docs",
 		});
 	});
 });

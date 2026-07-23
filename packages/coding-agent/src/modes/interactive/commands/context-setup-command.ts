@@ -29,7 +29,7 @@ export class ContextSetupCommand extends InteractiveSlashCommand {
 				context.appendSlashOutput("Context setup skipped. Run /context setup anytime.", false);
 				return;
 			}
-			if (subcommand === "code-dir" || subcommand === "docs-dir") {
+			if (subcommand === "docs-dir") {
 				const value = rest.join(" ");
 				if (!value) {
 					context.appendSlashOutput(`Usage: /context setup ${subcommand} <path>`, true);
@@ -38,14 +38,6 @@ export class ContextSetupCommand extends InteractiveSlashCommand {
 				const validated = validateSetupDir(value, context.sessionManager.getCwd());
 				if (!validated.ok) {
 					context.appendSlashOutput(validated.error, true);
-					return;
-				}
-				if (subcommand === "code-dir") {
-					context.settingsManager.setContextSetupSettings({
-						hasSeenSetupPrompt: true,
-						mainCodeDir: validated.path,
-					});
-					context.appendSlashOutput(`Saved main code directory: ${validated.path}`, false);
 					return;
 				}
 				context.settingsManager.setContextSetupSettings({ hasSeenSetupPrompt: true, mainDocsDir: validated.path });

@@ -59,27 +59,19 @@ export interface RtkSettings {
 	enabled?: boolean; // default: true
 }
 
-export type MemoryBackend = "zbrain" | "cavemem" | "files";
+export type MemoryBackend = "cavemem" | "files";
 
 export interface MemorySettings {
 	enabled?: boolean; // default: true
-	backend?: MemoryBackend; // default: zbrain
-	command?: string; // backend command; default: zbrain or cavemem
-	workspace?: string; // zbrain workspace; default: ~/.zbrain
+	backend?: MemoryBackend; // default: files
+	command?: string; // cavemem command override
 	capture?: {
 		requirePreview?: boolean; // default: true
-		defaultCollection?: string; // default: inbox
 	};
 	retrieval?: {
 		enabled?: boolean; // default: true
 		maxResults?: number; // default: 5
 	};
-}
-
-export interface RepoIndexContextSettings {
-	command?: string; // default: codescry
-	dbPath?: string;
-	k?: number; // default: 8
 }
 
 export interface GbrainContextSettings {
@@ -133,7 +125,6 @@ export interface ContextCompressionSettings {
 export interface ContextSetupSettings {
 	hasSeenSetupPrompt?: boolean;
 	skippedAt?: string;
-	mainCodeDir?: string;
 	mainDocsDir?: string;
 }
 
@@ -144,7 +135,6 @@ export interface ContextEngineSettings {
 	timeoutMs?: number; // default: 1000
 	setup?: ContextSetupSettings;
 	compression?: ContextCompressionSettings;
-	repoIndex?: RepoIndexContextSettings;
 	gbrain?: GbrainContextSettings;
 	qmd?: QmdContextSettings;
 	remote?: RemoteContextSettings;
@@ -363,6 +353,13 @@ export interface SettingsError {
 	error: Error;
 }
 
+export class RemovedSettingsError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = "RemovedSettingsError";
+	}
+}
+
 export class FileSettingsStorage implements SettingsStorage {
 	private globalSettingsPath: string;
 	private projectSettingsPath: string;
@@ -539,6 +536,8 @@ export class SettingsManager {
 
 	/** Migrate old settings format to new format */
 	private static migrateSettings(settings: Record<string, unknown>): Settings {
+		SettingsManager.throwForRemovedSettings(settings);
+
 		// Migrate queueMode -> steeringMode
 		if ("queueMode" in settings && !("steeringMode" in settings)) {
 			settings.steeringMode = settings.queueMode;
@@ -573,6 +572,67 @@ export class SettingsManager {
 		}
 
 		return settings as Settings;
+	}
+
+	private static throwForRemovedSettings(settings: Record<string, unknown>): void {
+		const memory = settings.memory;
+		const contextEngine = settings.contextEngine;
+		const messages: string[] = [];
+		if (memory && typeof memory === "object") {
+			const value = memory as Record<string, unknown>;
+			if (value.backend === "zbrain") {
+				messages.push(
+					'Replace `memory.backend: "zbrain"` with `memory.backend: "files"` (default) or `"cavemem"`.',
+				);
+			} else if ("backend" in value && value.backend !== "files" && value.backend !== "cavemem") {
+				messages.push(
+					`Unsupported \`memory.backend\`: ${JSON.stringify(value.backend)}. Supported values are \`"files"\` and \`"cavemem"\`; replace it with one of them.`,
+				);
+			}
+			if ("workspace" in value) {
+				messages.push("Remove `memory.workspace`; Files memory is stored in `.mewrite/memory`.");
+			}
+			if (value.capture && typeof value.capture === "object" && "defaultCollection" in value.capture) {
+				messages.push("Remove `memory.capture.defaultCollection`; Files memory has no collections.");
+			}
+		}
+		if (contextEngine && typeof contextEngine === "object") {
+			const value = contextEngine as Record<string, unknown>;
+			if (value.provider === "codescry" || value.provider === "repo-index" || value.provider === "stack") {
+				messages.push(
+					'Replace `contextEngine.provider` with `"none"`, `"qmd"`, `"gbrain"`, or `"remote"`; Codescry, repo-index, and stack were removed.',
+				);
+			} else if (
+				"provider" in value &&
+				value.provider !== "none" &&
+				value.provider !== "qmd" &&
+				value.provider !== "gbrain" &&
+				value.provider !== "remote"
+			) {
+				messages.push(
+					`Unsupported \`contextEngine.provider\`: ${JSON.stringify(value.provider)}. Supported values are \`"none"\`, \`"qmd"\`, \`"gbrain"\`, and \`"remote"\`; replace it with one of them.`,
+				);
+			}
+			if ("repoIndex" in value) {
+				messages.push("Remove `contextEngine.repoIndex`; Codescry configuration is no longer supported.");
+			}
+			const setup = value.setup;
+			if (setup && typeof setup === "object" && "mainCodeDir" in setup) {
+				messages.push(
+					"Remove `contextEngine.setup.mainCodeDir`; `/context setup docs-dir <path>` configures QMD only.",
+				);
+			}
+		}
+		if (messages.length > 0) {
+			throw new RemovedSettingsError(`Removed settings detected. ${messages.join(" ")}`);
+		}
+	}
+
+	assertNoRemovedSettings(): void {
+		const error = [this.globalSettingsLoadError, this.projectSettingsLoadError].find(
+			(value): value is RemovedSettingsError => value instanceof RemovedSettingsError,
+		);
+		if (error) throw error;
 	}
 
 	getGlobalSettings(): Settings {
@@ -1385,19 +1445,16 @@ export class SettingsManager {
 		enabled: boolean;
 		backend: MemoryBackend;
 		command?: string;
-		workspace: string;
-		capture: { requirePreview: boolean; defaultCollection: string };
+		capture: { requirePreview: boolean };
 		retrieval: { enabled: boolean; maxResults: number };
 	} {
-		const backend = this.settings.memory?.backend ?? "zbrain";
+		const backend = this.settings.memory?.backend ?? "files";
 		return {
 			enabled: this.settings.memory?.enabled ?? true,
 			backend,
 			command: this.settings.memory?.command,
-			workspace: this.settings.memory?.workspace ?? "~/.zbrain",
 			capture: {
 				requirePreview: this.settings.memory?.capture?.requirePreview ?? true,
-				defaultCollection: this.settings.memory?.capture?.defaultCollection ?? "inbox",
 			},
 			retrieval: {
 				enabled: this.settings.memory?.retrieval?.enabled ?? true,
@@ -1409,13 +1466,11 @@ export class SettingsManager {
 	getContextSetupSettings(): {
 		hasSeenSetupPrompt: boolean;
 		skippedAt?: string;
-		mainCodeDir?: string;
 		mainDocsDir?: string;
 	} {
 		return {
 			hasSeenSetupPrompt: this.settings.contextEngine?.setup?.hasSeenSetupPrompt ?? false,
 			skippedAt: this.settings.contextEngine?.setup?.skippedAt,
-			mainCodeDir: this.settings.contextEngine?.setup?.mainCodeDir,
 			mainDocsDir: this.settings.contextEngine?.setup?.mainDocsDir,
 		};
 	}
@@ -1458,7 +1513,6 @@ export class SettingsManager {
 				maxOutputBytes: number;
 			};
 		};
-		repoIndex: { command: string; dbPath?: string; k: number };
 		gbrain: {
 			command: string;
 			maxResults: number;
@@ -1501,11 +1555,6 @@ export class SettingsManager {
 					maxInputBytes: effectiveContextEngine?.compression?.headroom?.maxInputBytes ?? 64 * 1024,
 					maxOutputBytes: effectiveContextEngine?.compression?.headroom?.maxOutputBytes ?? 128 * 1024,
 				},
-			},
-			repoIndex: {
-				command: this.settings.contextEngine?.repoIndex?.command ?? "codescry",
-				dbPath: this.settings.contextEngine?.repoIndex?.dbPath,
-				k: this.settings.contextEngine?.repoIndex?.k ?? 8,
 			},
 			gbrain: {
 				command: this.settings.contextEngine?.gbrain?.command ?? "gbrain",

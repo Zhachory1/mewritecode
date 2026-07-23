@@ -19,8 +19,7 @@ function makeCtx(overrides: Partial<Parameters<typeof runMemorySlashCommand>[1]>
 		settings: {
 			enabled: true,
 			backend: "files" as const,
-			workspace: join(cwd, ".cave", "memory"),
-			capture: { requirePreview: true, defaultCollection: "inbox" },
+			capture: { requirePreview: true },
 			retrieval: { enabled: true, maxResults: 5 },
 		},
 		get enabled() {
@@ -63,14 +62,14 @@ describe("/memory slash dispatcher", () => {
 		});
 	});
 
-	it("/memory show prints provider, backend, workspace, and enabled state", async () => {
+	it("/memory show prints provider, backend, capture, and enabled state", async () => {
 		const { ctx, cwd } = makeCtx();
 		cleanup.push(cwd);
 		const r = await runMemorySlashCommand("/memory show", ctx);
 		expect(r.errors).toBe(0);
 		expect(r.lines.some((l) => l.includes("provider:"))).toBe(true);
 		expect(r.lines).toContain("backend: files");
-		expect(r.lines.some((l) => l.startsWith("workspace:"))).toBe(true);
+		expect(r.lines.some((l) => l.startsWith("capture:"))).toBe(true);
 		expect(r.lines.some((l) => l.includes("enabled: yes"))).toBe(true);
 	});
 

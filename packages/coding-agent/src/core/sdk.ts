@@ -227,6 +227,9 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 	const agentDir = options.agentDir ?? getDefaultAgentDir();
 	let resourceLoader = options.resourceLoader;
 
+	const settingsManager = options.settingsManager ?? SettingsManager.create(cwd, agentDir);
+	settingsManager.assertNoRemovedSettings();
+
 	// Use provided or create AuthStorage and ModelRegistry
 	const authPath = options.agentDir ? join(agentDir, "auth.json") : undefined;
 	const modelsPath = options.agentDir ? join(agentDir, "models.json") : undefined;
@@ -238,8 +241,6 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 	// claude-opus-4.6-1m that aren't in the static registry). Fire-and-forget;
 	// onModelRegistryChange refreshes the local snapshot as results arrive.
 	void modelRegistry.discoverAnthropicCapabilities().catch(() => {});
-
-	const settingsManager = options.settingsManager ?? SettingsManager.create(cwd, agentDir);
 	const sessionManager = options.sessionManager ?? SessionManager.create(cwd, getDefaultSessionDir(cwd, agentDir));
 
 	if (!resourceLoader) {

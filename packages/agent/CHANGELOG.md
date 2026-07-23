@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Breaking Changes
+
+- Removed the ZBrain memory provider and its public exports. Use `FilesProvider` or explicitly configure `CavememProvider`. In coding-agent settings, replace `memory.backend: "zbrain"` and remove `memory.workspace` plus `memory.capture.defaultCollection`; existing ZBrain workspace, index, and memory data is not deleted.
+
 ## [1.1.2] - 2026-07-22
 
 ## [1.1.1] - 2026-07-21

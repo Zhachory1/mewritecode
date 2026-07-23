@@ -88,8 +88,8 @@ export class MemoryInjector {
 	}
 
 	/**
-	 * Resolve (and lazily build) the active memory provider. zbrain is the default;
-	 * cavemem/files remain supported when configured.
+	 * Resolve (and lazily build) the active memory provider. Files is the default;
+	 * cavemem is supported when explicitly configured.
 	 *
 	 * Returns the same instance the `/memory` slash command should use so the
 	 * MCP transport, embedding model, and FTS handles are reused.
