@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed the `/model` picker to recognize stored OAuth credentials when showing provider availability, while preserving providers' required setup warnings ([#118](https://github.com/Zhachory1/mewritecode/issues/118)).
+
 ## [1.1.2] - 2026-07-22
 
 ### Added
