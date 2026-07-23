@@ -1,6 +1,6 @@
 {
 	"name": "@zhachory1/mewrite-markdown-preview",
-	"version": "1.1.2",
+	"version": "1.2.0",
 	"description": "Rendered markdown + LaTeX preview for mewrite-code, with terminal, browser, and PDF output",
 	"type": "module",
 	"pi": {
@@ -34,8 +34,8 @@
 		"puppeteer-core": "^24.22.3"
 	},
 	"devDependencies": {
-		"@zhachory1/mewrite-code": "^1.1.2",
-		"@zhachory1/mewrite-tui": "^1.1.2",
+		"@zhachory1/mewrite-code": "^1.2.0",
+		"@zhachory1/mewrite-tui": "^1.2.0",
 		"@types/node": "^24.3.0",
 		"typescript": "^5.7.3"
 	},

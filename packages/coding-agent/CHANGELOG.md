@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-23
+
 ### Breaking Changes
 
 - Removed ZBrain, Codescry/repo-index, and stack context providers. Cavemem is now the default durable-memory backend and falls back to FilesProvider only when unavailable; set `memory.backend: "files"` to use FilesProvider explicitly.
