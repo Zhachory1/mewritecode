@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Breaking Changes
+
+- Removed ZBrain, Codescry/repo-index, and stack context providers. Cavemem is now the default durable-memory backend and falls back to FilesProvider only when unavailable; set `memory.backend: "files"` to use FilesProvider explicitly.
+- Settings now hard-fail at agent session startup and reload for removed or unknown backend/provider values. Replace `memory.backend: "zbrain"` with `"cavemem"` (default, with FilesProvider fallback when unavailable) or `"files"`; remove `memory.workspace` and `memory.capture.defaultCollection`. Replace `contextEngine.provider: "codescry"`, `"repo-index"`, or `"stack"` with `"none"`, `"qmd"`, `"gbrain"`, or `"remote"`; remove `contextEngine.repoIndex` and `contextEngine.setup.mainCodeDir`. This configuration migration does not delete existing memory, index, or provider data.
+- Removed Codescry context setup. `/context setup docs-dir <path>` remains for QMD.
+
 ### Fixed
 
 - Fixed the `/model` picker to recognize stored OAuth credentials when showing provider availability, while preserving providers' required setup warnings ([#118](https://github.com/Zhachory1/mewritecode/issues/118)).

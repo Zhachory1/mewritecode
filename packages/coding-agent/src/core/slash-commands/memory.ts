@@ -27,10 +27,9 @@ type MemoryProvider = memoryNs.MemoryProvider;
 
 export interface MemorySlashSettings {
 	enabled: boolean;
-	backend: "zbrain" | "cavemem" | "files";
+	backend: "cavemem" | "files";
 	command?: string;
-	workspace: string;
-	capture: { requirePreview: boolean; defaultCollection: string };
+	capture: { requirePreview: boolean };
 	retrieval: { enabled: boolean; maxResults: number };
 }
 
@@ -123,10 +122,7 @@ async function runShow(ctx: MemorySlashContext): Promise<MemorySlashResult> {
 	lines.push(`provider: ${ctx.provider.label}`);
 	if (ctx.settings) {
 		lines.push(`backend: ${ctx.settings.backend}`);
-		lines.push(`workspace: ${ctx.settings.workspace}`);
-		lines.push(
-			`capture: ${ctx.settings.capture.requirePreview ? "preview-required" : "direct"} (${ctx.settings.capture.defaultCollection})`,
-		);
+		lines.push(`capture: ${ctx.settings.capture.requirePreview ? "preview-required" : "direct"}`);
 		lines.push(
 			`retrieval: ${ctx.settings.retrieval.enabled ? "enabled" : "disabled"} (max ${ctx.settings.retrieval.maxResults})`,
 		);
@@ -270,9 +266,7 @@ function runConfig(ctx: MemorySlashContext): MemorySlashResult {
 	];
 	if (ctx.settings) {
 		lines.push(`backend: ${ctx.settings.backend}`);
-		lines.push(`workspace: ${ctx.settings.workspace}`);
 		lines.push(`capture.requirePreview: ${ctx.settings.capture.requirePreview}`);
-		lines.push(`capture.defaultCollection: ${ctx.settings.capture.defaultCollection}`);
 		lines.push(`retrieval.enabled: ${ctx.settings.retrieval.enabled}`);
 		lines.push(`retrieval.maxResults: ${ctx.settings.retrieval.maxResults}`);
 	}

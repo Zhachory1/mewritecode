@@ -1,6 +1,6 @@
 /**
  * memory_search / memory_save — native tools wrapping the active
- * `MemoryProvider` (zbrain by default; cavemem/files when configured).
+ * `MemoryProvider` (Cavemem by default; FilesProvider when Cavemem is unavailable or explicitly configured).
  *
  * Auto-injection of recent recall happens in `agent-session._buildMemoryTransform`
  * each turn. These tools let the LLM expand a hit, query a different topic, or
@@ -62,7 +62,7 @@ export function createMemorySearchToolDefinition(
 		name: "memory_search",
 		label: "memory_search",
 		description:
-			"Search persistent memory through the configured backend (zbrain by default). Prefer this over re-running `grep`/`read` for remembered knowledge or topics explored before. The auto-injected `<memory-recall>` block already shows top hits each turn — use this tool to expand a hit, query a different topic, or paginate.",
+			"Search persistent memory through the configured backend. Prefer this over re-running `grep`/`read` for remembered knowledge or topics explored before. The auto-injected `<memory-recall>` block already shows top hits each turn — use this tool to expand a hit, query a different topic, or paginate.",
 		promptSnippet: "Search persistent memory (prior sessions + saved facts)",
 		promptGuidelines: [
 			"When the user asks what Me Write remembers, or asks to use remembered notes/knowledge, run `memory_search` with the topic before answering.",

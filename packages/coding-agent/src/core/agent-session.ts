@@ -44,8 +44,6 @@ import {
 import { GbrainContextEngine, GbrainContextError } from "./context-providers/gbrain.js";
 import { QmdContextEngine, QmdContextError } from "./context-providers/qmd.js";
 import { RemoteContextEngine, RemoteContextError, remoteEndpointHost } from "./context-providers/remote.js";
-import { RepoIndexContextEngine, RepoIndexContextError } from "./context-providers/repo-index.js";
-import { ContextStackEngine } from "./context-providers/stack.js";
 
 const { CheckpointManager } = checkpoints;
 type CheckpointManagerInstance = InstanceType<typeof CheckpointManager>;
@@ -530,6 +528,7 @@ export class AgentSession {
 		this.agent = config.agent;
 		this.sessionManager = config.sessionManager;
 		this.settingsManager = config.settingsManager;
+		this.settingsManager.assertNoRemovedSettings();
 		this._scopedModels = config.scopedModels ?? [];
 		this._resourceLoader = config.resourceLoader;
 		this._customTools = config.customTools ?? [];
@@ -1076,8 +1075,8 @@ export class AgentSession {
 	}
 
 	/**
-	 * Resolve (and lazily build) the active memory provider. zbrain is the default;
-	 * cavemem/files remain supported when configured.
+	 * Resolve (and lazily build) the active memory provider. Cavemem is the default;
+	 * FilesProvider is used only when Cavemem is unavailable or explicitly configured.
 	 *
 	 * Returns the same instance the `/memory` slash command should use so the
 	 * MCP transport, embedding model, and FTS handles are reused.
@@ -1099,14 +1098,6 @@ export class AgentSession {
 	private _createContextEngine(): ContextEngine {
 		const settings = this.settingsManager.getContextEngineSettings();
 		if (!settings.enabled || settings.provider === "none") return new NoopContextEngine();
-		if (settings.provider === "codescry" || settings.provider === "repo-index") {
-			return new RepoIndexContextEngine({
-				cwd: this._cwd,
-				command: settings.repoIndex.command,
-				dbPath: settings.repoIndex.dbPath,
-				k: settings.repoIndex.k,
-			});
-		}
 		if (settings.provider === "gbrain") {
 			return new GbrainContextEngine({
 				command: settings.gbrain.command,
@@ -1137,34 +1128,6 @@ export class AgentSession {
 				maxBundles: settings.remote.maxBundles,
 				failureThreshold: settings.remote.failureThreshold,
 				failureTtlMs: settings.remote.failureTtlMs,
-			});
-		}
-		if (settings.provider === "stack") {
-			return new ContextStackEngine({
-				childTimeoutMs: Math.max(100, Math.floor(settings.timeoutMs / 2)),
-				children: [
-					{
-						name: "codescry",
-						engine: new RepoIndexContextEngine({
-							cwd: this._cwd,
-							command: settings.repoIndex.command,
-							dbPath: settings.repoIndex.dbPath,
-							k: settings.repoIndex.k,
-						}),
-						includeCode: true,
-						includeMemory: false,
-					},
-					{
-						name: "qmd",
-						engine: new QmdContextEngine({
-							command: settings.qmd.command,
-							maxResults: settings.qmd.maxResults,
-							collections: settings.qmd.collections,
-						}),
-						includeCode: false,
-						includeMemory: true,
-					},
-				],
 			});
 		}
 		return new NoopContextEngine();
@@ -1226,7 +1189,6 @@ export class AgentSession {
 				? { ...EMPTY_CONTEXT_COMPRESSION_STATS, enabled: true, fallbackReason: "no-context-pack" }
 				: EMPTY_CONTEXT_COMPRESSION_STATS;
 			const state =
-				result.error instanceof RepoIndexContextError ||
 				result.error instanceof GbrainContextError ||
 				result.error instanceof QmdContextError ||
 				result.error instanceof RemoteContextError
@@ -3595,7 +3557,7 @@ export class AgentSession {
 		);
 
 		// WS7: register memory_search / memory_save when a provider is reachable.
-		// Cached factory means zbrain (or configured legacy provider) is built once
+		// Cached factory means Cavemem (or its FilesProvider fallback) is built once
 		// and shared with the `/memory` slash command + the recall transform.
 		try {
 			const memorySettings = this.settingsManager.getMemorySettings();
@@ -3606,7 +3568,7 @@ export class AgentSession {
 			this._memoryInjector.primeProvider(memoryProvider);
 			const available = memorySettings.enabled ? await memoryProvider.isAvailable().catch(() => false) : false;
 			// Always register; the tools themselves short-circuit when unavailable.
-			// FilesProvider is always available, so this never strips them locally.
+			// The FilesProvider fallback is always available, so this never strips those tools locally.
 			if (available || memoryProvider.id === "files") {
 				this._baseToolDefinitions.set(
 					"memory_search",
@@ -3679,6 +3641,7 @@ export class AgentSession {
 		const previousFlagValues = this._extensionRunner?.getFlagValues();
 		await this._extensionRunner?.emit({ type: "session_shutdown" });
 		await this.settingsManager.reload();
+		this.settingsManager.assertNoRemovedSettings();
 		resetApiProviders();
 		await this._resourceLoader.reload();
 		await this._buildRuntime({

@@ -50,7 +50,7 @@ mewrite
 
 ### Memory
 
-Claude Code uses Auto-Memory with `~/.claude/projects/<slug>/memory/MEMORY.md`. Me Write Code uses [cavemem](/reference/memory). To bridge:
+Claude Code uses Auto-Memory with `~/.claude/projects/<slug>/memory/MEMORY.md`. Me Write Code uses [cavemem](/reference/memory) by default and falls back to FilesProvider when Cavemem is unavailable. To bridge:
 
 ```bash
 mewrite memory sync --from claude

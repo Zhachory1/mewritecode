@@ -32,8 +32,7 @@ function make(provider: MemoryProviderInstance | undefined, recent: string[] = [
 		memorySettings: {
 			enabled: true,
 			backend: "files",
-			workspace: "~/.zbrain",
-			capture: { requirePreview: true, defaultCollection: "inbox" },
+			capture: { requirePreview: true },
 			retrieval: { enabled: true, maxResults: 5 },
 		},
 	});
@@ -56,6 +55,11 @@ describe("MemoryInjector basics", () => {
 		const p = fakeProvider({});
 		const m = make(p);
 		expect(await m.getProvider()).toBe(p);
+	});
+
+	test("uses FilesProvider when explicitly configured", async () => {
+		const m = make(undefined);
+		expect((await m.getProvider())?.id).toBe("files");
 	});
 });
 

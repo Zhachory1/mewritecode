@@ -5,7 +5,6 @@ import { basename, resolve } from "node:path";
 export interface ContextSetupState {
 	hasSeenSetupPrompt: boolean;
 	skippedAt?: string;
-	mainCodeDir?: string;
 	mainDocsDir?: string;
 }
 
@@ -31,7 +30,7 @@ export function validateSetupDir(
 }
 
 export function shouldShowContextSetupNotice(state: ContextSetupState): boolean {
-	return !state.hasSeenSetupPrompt && !state.mainCodeDir && !state.mainDocsDir;
+	return !state.hasSeenSetupPrompt && !state.mainDocsDir;
 }
 
 function displayPath(path: string | undefined): string {
@@ -42,33 +41,20 @@ function displayPath(path: string | undefined): string {
 
 export function formatContextSetupNotice(): string {
 	return [
-		"Optional context setup: choose a code folder for Codescry and a docs folder for QMD.",
+		"Optional context setup: choose a docs folder for QMD.",
 		"Run /context setup to configure, or /context setup skip to dismiss.",
 		"Me Write works normally without this.",
 	].join("\n");
 }
 
 export function formatContextSetupStatus(state: ContextSetupState): string[] {
-	const lines = [
-		"Context setup:",
-		`Main code dir: ${displayPath(state.mainCodeDir)}`,
-		`Main docs dir: ${displayPath(state.mainDocsDir)}`,
-		"",
-		"Optional providers:",
-	];
+	const lines = ["Context setup:", `Main docs dir: ${displayPath(state.mainDocsDir)}`, "", "Optional providers:"];
 	if (state.mainDocsDir) {
 		lines.push(`QMD: configure collection if needed`);
 		lines.push(`  Next: qmd collection add ${displayPath(state.mainDocsDir)} --name docs && qmd embed`);
 	} else {
 		lines.push("QMD: not configured");
 		lines.push("  Next: /context setup docs-dir <path>");
-	}
-	if (state.mainCodeDir) {
-		lines.push("Codescry: configure index if needed");
-		lines.push(`  Next: index ${displayPath(state.mainCodeDir)} with Codescry`);
-	} else {
-		lines.push("Codescry: not configured");
-		lines.push("  Next: /context setup code-dir <path>");
 	}
 	lines.push("Headroom: built-in integration; toggle with contextEngine.compression.headroom.enabled");
 	return lines;
@@ -80,11 +66,10 @@ export function formatContextSetupHelp(cwd = process.cwd()): string {
 		"Context setup is optional. Me Write works normally without it.",
 		"",
 		"Commands:",
-		"  /context setup code-dir <path>",
 		"  /context setup docs-dir <path>",
 		"  /context setup skip",
 		"  /context status",
 		"",
-		`Current directory suggestion for code: ${cwd} (${cwdName})`,
+		`Current directory suggestion for docs: ${cwd} (${cwdName})`,
 	].join("\n");
 }

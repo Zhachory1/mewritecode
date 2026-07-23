@@ -141,17 +141,15 @@ RTK is detected automatically at startup. If the `rtk` binary is not installed, 
 
 ### Durable Memory
 
-Me Write owns the durable-memory read/write lifecycle. zbrain is the default local backend. Memory writes still require explicit user intent; `/memory save` previews by default and `/memory save --yes` persists directly.
+Me Write owns the durable-memory read/write lifecycle. Cavemem is the default backend; Me Write probes it at startup and falls back to local `.mewrite/memory` files only when Cavemem is unavailable. Set `memory.backend: "files"` to use FilesProvider explicitly. Memory writes still require explicit user intent; `/memory save` previews by default and `/memory save --yes` persists directly.
 
 ```json
 {
   "memory": {
     "enabled": true,
-    "backend": "zbrain",
-    "workspace": "~/.zbrain",
+    "backend": "cavemem",
     "capture": {
-      "requirePreview": true,
-      "defaultCollection": "inbox"
+      "requirePreview": true
     },
     "retrieval": {
       "enabled": true,
@@ -164,16 +162,16 @@ Me Write owns the durable-memory read/write lifecycle. zbrain is the default loc
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `memory.enabled` | boolean | `true` | Enable memory recall and save tools for the session |
-| `memory.backend` | string | `"zbrain"` | Memory backend: `"zbrain"`, `"cavemem"`, or `"files"` |
-| `memory.command` | string | - | Backend command override, for example a custom `zbrain` path |
-| `memory.workspace` | string | `"~/.zbrain"` | zbrain workspace root |
+| `memory.backend` | string | `"cavemem"` | Memory backend: default `"cavemem"` (falls back to FilesProvider when unavailable) or explicit `"files"` |
+| `memory.command` | string | - | Cavemem command override |
 | `memory.capture.requirePreview` | boolean | `true` | Preview `/memory save` writes before persisting |
-| `memory.capture.defaultCollection` | string | `"inbox"` | zbrain subfolder for saved facts |
 | `memory.retrieval.enabled` | boolean | `true` | Enable durable-memory retrieval |
 | `memory.retrieval.maxResults` | number | `5` | Default retrieval result count |
 
-Use `/memory status` to inspect backend, workspace, capture, retrieval, and index health.
+Use `/memory status` to inspect backend, capture, retrieval, and index health.
 Use `/memory search <query>` for explicit retrieval.
+
+Migration is a hard fail at agent session startup and reload: replace `memory.backend: "zbrain"` with `memory.backend: "cavemem"` (default, with FilesProvider fallback when unavailable) or `"files"`; remove `memory.workspace` and `memory.capture.defaultCollection`. Any other `memory.backend` value is rejected; only `"files"` and `"cavemem"` are supported. This settings migration does not delete existing ZBrain workspace, index, or memory data.
 Use `/memory save <text>` to preview a durable save and `/memory save --yes <text>` to persist.
 
 ### Experimental Context Engine
@@ -200,9 +198,8 @@ The Context Engine is disabled by default. It can inject transient, lower-priori
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `contextEngine.enabled` | boolean | `false` | Enable experimental context retrieval |
-| `contextEngine.provider` | string | `"none"` | Context provider: `"none"`, `"codescry"`, legacy `"repo-index"`, `"gbrain"`, `"qmd"`, experimental `"stack"`, or advanced `"remote"` |
+| `contextEngine.provider` | string | `"none"` | Context provider: `"none"`, `"gbrain"`, `"qmd"`, or advanced `"remote"` |
 | `contextEngine.setup.hasSeenSetupPrompt` | boolean | `false` | Whether the one-time optional context setup notice has been shown or skipped |
-| `contextEngine.setup.mainCodeDir` | string | - | Main code folder for Codescry/code context setup |
 | `contextEngine.setup.mainDocsDir` | string | - | Main docs folder for QMD/durable-memory setup |
 | `contextEngine.budgetTokens` | number | `4000` | Approximate context budget for retrieved bundles |
 | `contextEngine.timeoutMs` | number | `1000` | Retrieval timeout; failures continue without context |
@@ -232,24 +229,6 @@ Headroom compression is experimental. The Headroom integration is built into Me 
 ```
 
 M4b only sends bundles explicitly marked `lossy-ok`; current real providers keep exact-preserve defaults.
-
-#### contextEngine.provider: stack
-
-`provider: "stack"` is an experimental fanout mode. It runs Codescry and QMD in parallel, applies per-provider deadlines, and merges results under `contextEngine.budgetTokens`.
-
-```json
-{
-  "contextEngine": {
-    "enabled": true,
-    "provider": "stack",
-    "budgetTokens": 4000,
-    "repoIndex": { "command": "codescry", "k": 8 },
-    "qmd": { "command": "qmd", "maxResults": 5, "collections": ["docs"] }
-  }
-}
-```
-
-M6a has no generic provider registry. `stack` means exactly Codescry + QMD.
 
 #### contextEngine.provider: remote
 
@@ -295,6 +274,8 @@ export MEWRITE_CONTEXT_REMOTE_TOKEN=...
 | `contextEngine.remote.failureTtlMs` | number | `30000` | Skip window after repeated failures. |
 
 M10a requires one server endpoint: `POST /v1/context/query`. Health endpoints, production reference server, remote writes, and local+remote composition are deferred.
+
+Migration is a hard fail at agent session startup and reload: remove `contextEngine.repoIndex` and `contextEngine.setup.mainCodeDir`. Replace removed `"codescry"`, `"repo-index"`, or `"stack"` providers with `"none"`, `"qmd"`, `"gbrain"`, or `"remote"`. Any other `contextEngine.provider` value is rejected. This configuration cleanup does not delete indexed code, QMD collections, or gbrain data.
 
 Request shape:
 
@@ -351,29 +332,6 @@ Server contract:
 - Return no hidden instructions; Me Write will still treat bundle content as untrusted evidence.
 
 Redacted status categories include `missing-token`, `insecure-endpoint`, `auth-failed`, `rate-limited`, `remote-unavailable`, `schema-mismatch`, `oversize-response`, `timeout`, and `circuit-open`.
-
-#### contextEngine.repoIndex / codescry
-
-The code context provider is powered by Codescry (formerly `repo-index-mcp`). Use `contextEngine.provider: "codescry"`. The settings key remains `repoIndex` for now.
-
-```json
-{
-  "contextEngine": {
-    "enabled": true,
-    "provider": "codescry",
-    "repoIndex": {
-      "command": "codescry",
-      "k": 8
-    }
-  }
-}
-```
-
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `contextEngine.repoIndex.command` | string | `"codescry"` | Codescry executable |
-| `contextEngine.repoIndex.dbPath` | string | - | Optional index database path |
-| `contextEngine.repoIndex.k` | number | `8` | Maximum code results to request |
 
 #### contextEngine.qmd
 

@@ -136,6 +136,7 @@ export async function createAgentSessionServices(
 	const agentDir = options.agentDir ?? getAgentDir();
 	const authStorage = options.authStorage ?? AuthStorage.create(join(agentDir, "auth.json"));
 	const settingsManager = options.settingsManager ?? SettingsManager.create(cwd, agentDir);
+	settingsManager.assertNoRemovedSettings();
 	const modelRegistry = options.modelRegistry ?? ModelRegistry.create(authStorage, join(agentDir, "models.json"));
 	// See sdk.ts for rationale; fire-and-forget Anthropic capability discovery.
 	void modelRegistry.discoverAnthropicCapabilities().catch(() => {});

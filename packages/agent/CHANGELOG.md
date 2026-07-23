@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Breaking Changes
+
+- Removed the ZBrain memory provider and its public exports. Coding-agent now defaults to `CavememProvider`, with `FilesProvider` fallback only when Cavemem is unavailable; configure `memory.backend: "files"` to use FilesProvider explicitly. Replace `memory.backend: "zbrain"` and remove `memory.workspace` plus `memory.capture.defaultCollection`; existing ZBrain workspace, index, and memory data is not deleted.
+
 ## [1.1.2] - 2026-07-22
 
 ## [1.1.1] - 2026-07-21
