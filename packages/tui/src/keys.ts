@@ -478,6 +478,13 @@ type LegacyModifierKey = keyof typeof LEGACY_SHIFT_SEQUENCES;
 
 const matchesLegacySequence = (data: string, sequences: readonly string[]): boolean => sequences.includes(data);
 
+/**
+ * Match an ESC-prefixed meta arrow, e.g. alt+up = \x1b\x1b[A or \x1b\x1bOA.
+ * Terminals with Option/Alt-as-Meta prefix the bare arrow sequence with ESC.
+ */
+const matchesMetaArrow = (data: string, key: LegacyModifierKey & ("up" | "down" | "left" | "right")): boolean =>
+	data.startsWith("\x1b") && matchesLegacySequence(data.slice(1), LEGACY_KEY_SEQUENCES[key]);
+
 const matchesLegacyModifierSequence = (data: string, key: LegacyModifierKey, modifier: number): boolean => {
 	if (modifier === MODIFIERS.shift) {
 		return matchesLegacySequence(data, LEGACY_SHIFT_SEQUENCES[key]);
@@ -1020,7 +1027,11 @@ export function matchesKey(data: string, keyId: KeyId): boolean {
 
 		case "up":
 			if (alt && !ctrl && !shift) {
-				return data === "\x1bp" || matchesKittySequence(data, ARROW_CODEPOINTS.up, MODIFIERS.alt);
+				return (
+					data === "\x1bp" ||
+					matchesMetaArrow(data, "up") ||
+					matchesKittySequence(data, ARROW_CODEPOINTS.up, MODIFIERS.alt)
+				);
 			}
 			if (modifier === 0) {
 				return (
@@ -1035,7 +1046,11 @@ export function matchesKey(data: string, keyId: KeyId): boolean {
 
 		case "down":
 			if (alt && !ctrl && !shift) {
-				return data === "\x1bn" || matchesKittySequence(data, ARROW_CODEPOINTS.down, MODIFIERS.alt);
+				return (
+					data === "\x1bn" ||
+					matchesMetaArrow(data, "down") ||
+					matchesKittySequence(data, ARROW_CODEPOINTS.down, MODIFIERS.alt)
+				);
 			}
 			if (modifier === 0) {
 				return (
@@ -1054,6 +1069,7 @@ export function matchesKey(data: string, keyId: KeyId): boolean {
 					data === "\x1b[1;3D" ||
 					(!_kittyProtocolActive && data === "\x1bB") ||
 					data === "\x1bb" ||
+					matchesMetaArrow(data, "left") ||
 					matchesKittySequence(data, ARROW_CODEPOINTS.left, MODIFIERS.alt)
 				);
 			}
@@ -1081,6 +1097,7 @@ export function matchesKey(data: string, keyId: KeyId): boolean {
 					data === "\x1b[1;3C" ||
 					(!_kittyProtocolActive && data === "\x1bF") ||
 					data === "\x1bf" ||
+					matchesMetaArrow(data, "right") ||
 					matchesKittySequence(data, ARROW_CODEPOINTS.right, MODIFIERS.alt)
 				);
 			}

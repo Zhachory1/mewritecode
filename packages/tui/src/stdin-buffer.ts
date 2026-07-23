@@ -68,6 +68,16 @@ function isCompleteSequence(data: string): "complete" | "incomplete" | "not-esca
 		return afterEsc.length >= 2 ? "complete" : "incomplete";
 	}
 
+	// Meta-prefixed escape sequences: ESC + <escape sequence>.
+	// Terminals with Option/Alt-as-Meta send alt+arrow as ESC followed by the
+	// bare arrow sequence (e.g. alt+up = \x1b\x1b[A). Recurse on the inner
+	// sequence so the whole thing is kept together instead of being split into
+	// \x1b\x1b, [, A.
+	if (afterEsc.startsWith(ESC)) {
+		const inner = isCompleteSequence(afterEsc);
+		return inner === "not-escape" ? "complete" : inner;
+	}
+
 	// Meta key sequences: ESC followed by a single character
 	if (afterEsc.length === 1) {
 		return "complete";

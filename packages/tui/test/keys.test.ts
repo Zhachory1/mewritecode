@@ -402,6 +402,20 @@ describe("matchesKey", () => {
 			assert.strictEqual(matchesKey("\x1bp", "up"), false);
 		});
 
+		it("should match ESC-prefixed meta arrows (Option/Alt-as-Meta)", () => {
+			// Terminals with Option/Alt-as-Meta send alt+arrow as ESC + bare arrow.
+			assert.strictEqual(matchesKey("\x1b\x1b[A", "alt+up"), true);
+			assert.strictEqual(matchesKey("\x1b\x1b[B", "alt+down"), true);
+			assert.strictEqual(matchesKey("\x1b\x1b[C", "alt+right"), true);
+			assert.strictEqual(matchesKey("\x1b\x1b[D", "alt+left"), true);
+			// SS3 arrow variant (application cursor mode).
+			assert.strictEqual(matchesKey("\x1b\x1bOA", "alt+up"), true);
+			assert.strictEqual(matchesKey("\x1b\x1bOB", "alt+down"), true);
+			// Must not collide with unmodified arrows or escape.
+			assert.strictEqual(matchesKey("\x1b[A", "alt+up"), false);
+			assert.strictEqual(matchesKey("\x1b\x1b[A", "up"), false);
+		});
+
 		it("should match rxvt modifier sequences", () => {
 			assert.strictEqual(matchesKey("\x1b[a", "shift+up"), true);
 			assert.strictEqual(matchesKey("\x1bOa", "ctrl+up"), true);
