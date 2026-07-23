@@ -188,7 +188,24 @@ export class ModelSelectorComponent extends Container implements Focusable {
 		const seenProviders = new Set<string>();
 		for (const model of this.allModels) seenProviders.add(model.provider);
 		for (const provider of seenProviders) {
-			this.authByProvider.set(provider, getProviderAuthStatus(provider));
+			const status = getProviderAuthStatus(provider);
+			const model = this.allModels.find((candidate) => candidate.provider === provider);
+			if (
+				status.configured ||
+				status.kind === "needs-region" ||
+				status.kind === "file" ||
+				!model ||
+				!this.modelRegistry.hasConfiguredAuth(model)
+			) {
+				this.authByProvider.set(provider, status);
+				continue;
+			}
+			this.authByProvider.set(provider, {
+				...status,
+				kind: this.modelRegistry.isUsingOAuth(model) ? "oauth" : "file",
+				configured: true,
+				hint: undefined,
+			});
 		}
 
 		this.favoriteRefs = this.settingsManager.getFavoriteModels();
