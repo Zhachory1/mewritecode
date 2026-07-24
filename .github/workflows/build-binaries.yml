@@ -344,7 +344,10 @@ jobs:
         shell: bash
         run: |
           cd archives
-          python3 -m http.server 8000 >/tmp/http.log 2>&1 &
+          # Bind to 127.0.0.1 (not 0.0.0.0): on macOS runners `localhost`
+          # resolves to ::1 first, and python's default IPv4-only bind means
+          # curl hangs then fails. Serving and fetching over 127.0.0.1 avoids it.
+          python3 -m http.server 8000 --bind 127.0.0.1 >/tmp/http.log 2>&1 &
           echo $! > /tmp/http.pid
           sleep 2
       - name: Run unix installer
@@ -352,7 +355,7 @@ jobs:
         shell: bash
         env:
           MEWRITE_VERSION: ${{ env.RELEASE_TAG }}
-          MEWRITE_BASE_URL: http://localhost:8000
+          MEWRITE_BASE_URL: http://127.0.0.1:8000
           MEWRITE_PREFIX: ${{ runner.temp }}/mewrite-smoke
         run: |
           bash install.sh
@@ -362,7 +365,7 @@ jobs:
         shell: pwsh
         env:
           MEWRITE_VERSION: ${{ env.RELEASE_TAG }}
-          MEWRITE_BASE_URL: http://localhost:8000
+          MEWRITE_BASE_URL: http://127.0.0.1:8000
           MEWRITE_PREFIX: ${{ runner.temp }}\mewrite-smoke
         run: |
           pwsh -File install.ps1
