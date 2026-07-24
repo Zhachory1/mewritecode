@@ -30,6 +30,15 @@ ARCHIVES_DIR="${2:-packages/coding-agent/binaries}"
 VERSION="${VERSION_RAW#v}"
 RPM_VERSION="$(echo "$VERSION" | sed 's/[^A-Za-z0-9._+]/_/g')"
 
+# dpkg requires the Debian version to start with a digit. Real tags (1.2.0)
+# pass through unchanged; non-numeric sentinels (e.g. the CI "smoke" build)
+# are prefixed with a valid pre-release base.
+if [[ "$VERSION" =~ ^[0-9] ]]; then
+    DEB_VERSION="$VERSION"
+else
+    DEB_VERSION="0.0.0~${VERSION}"
+fi
+
 if [ ! -d "$ARCHIVES_DIR" ]; then
     echo "Error: Archives directory not found: $ARCHIVES_DIR" >&2
     exit 1
@@ -71,7 +80,7 @@ build_deb() {
     require_tool dpkg-deb "Install with: sudo apt-get install -y dpkg-dev"
 
     local build_dir="$ARCHIVES_DIR/deb-build-${deb_arch}"
-    local deb_file="$ARCHIVES_DIR/${PKG_NAME}_${VERSION}_${deb_arch}.deb"
+    local deb_file="$ARCHIVES_DIR/${PKG_NAME}_${DEB_VERSION}_${deb_arch}.deb"
 
     echo "Building .deb for ${arch_name} (${deb_arch})..."
 
@@ -86,7 +95,7 @@ build_deb() {
 
     cat > "$build_dir/DEBIAN/control" <<EOF
 Package: $PKG_NAME
-Version: $VERSION
+Version: $DEB_VERSION
 Section: $SECTION
 Priority: $PRIORITY
 Architecture: $deb_arch
