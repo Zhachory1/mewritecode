@@ -80,6 +80,20 @@ describe("StdinBuffer", () => {
 			processInput(ss3);
 			assert.deepStrictEqual(emittedSequences, [ss3]);
 		});
+
+		it("should keep ESC-prefixed meta arrows intact (Option/Alt-as-Meta)", () => {
+			// alt+up on terminals with Option-as-Meta arrives as ESC + bare arrow.
+			// It must be emitted as one sequence, not split into \x1b\x1b, [, A.
+			const metaUp = "\x1b\x1b[A";
+			processInput(metaUp);
+			assert.deepStrictEqual(emittedSequences, [metaUp]);
+		});
+
+		it("should keep ESC-prefixed meta SS3 arrows intact", () => {
+			const metaUp = "\x1b\x1bOA";
+			processInput(metaUp);
+			assert.deepStrictEqual(emittedSequences, [metaUp]);
+		});
 	});
 
 	describe("Partial Escape Sequences", () => {
