@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-07-24
+
 ### Fixed
 - Recognize ESC-prefixed meta arrow keys (`alt+up`/`down`/`left`/`right`) sent by terminals with Option/Alt-as-Meta. The stdin buffer now keeps `\x1b\x1b[A`-style sequences intact and `matchesKey` matches them, so `alt+up` reaches its keybinding (e.g. editing queued messages) ([#120](https://github.com/Zhachory1/mewritecode/issues/120))
 

@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-07-24
+
 ### Fixed
 - Release and smoke-install CI: bind the local install-test server to `127.0.0.1` so macOS runners (which resolve `localhost` to IPv6 first) no longer hang and fail the installer download ([#124](https://github.com/Zhachory1/mewritecode/pull/124))
 - Linux package build produces a valid Debian version for non-numeric smoke builds (`smoke` -> `0.0.0~smoke`), fixing the `dpkg-deb` "version number does not start with digit" failure ([#124](https://github.com/Zhachory1/mewritecode/pull/124))
