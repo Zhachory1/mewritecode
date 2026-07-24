@@ -134,7 +134,11 @@ export class LLMLinguaMiddleware implements CompressionMiddleware {
 
 		const mPath = modelPath(LLMLINGUA2_MANIFEST);
 		try {
-			const ort = await import("onnxruntime-node");
+			// onnxruntime-node is an optional dependency. Load via an indirect
+			// specifier so the build does not hard-fail (TS2307) when it is not
+			// installed; the runtime try/catch handles genuine absence.
+			const ortSpecifier = "onnxruntime-node";
+			const ort = await import(ortSpecifier);
 			this.onnxSession = (await ort.InferenceSession.create(mPath, {
 				executionProviders: ["cpu"],
 			})) as unknown as OnnxInferenceSession;
