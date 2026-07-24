@@ -31,9 +31,33 @@ jobs:
       - run: npm run bench:nightly
       - name: Commit results
         run: |
+          # main is branch-protected (PR + required checks); a bot cannot push
+          # to it. Nightly results are data, so persist them on a dedicated
+          # unprotected branch instead.
           git config user.name "cave-bot"
           git config user.email "bot@cave.local"
           DATE=$(date -u +%Y-%m-%d)
-          git add "research/results/nightly/${DATE}.json" README.md
-          git commit -m "bench(nightly): ${DATE}" || echo "no changes"
-          git push
+          REL="research/results/nightly/${DATE}.json"
+          if [ ! -f "${REL}" ]; then
+            echo "no results produced"
+            exit 0
+          fi
+          # Copy the result aside, switch to the results branch, restore it.
+          TMP="$(mktemp)"
+          cp "${REL}" "${TMP}"
+          git fetch origin bench-results || true
+          if git show-ref --verify --quiet refs/remotes/origin/bench-results; then
+            git checkout -B bench-results origin/bench-results
+          else
+            git checkout --orphan bench-results
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
+          mkdir -p "$(dirname "${REL}")"
+          cp "${TMP}" "${REL}"
+          git add "${REL}"
+          if git diff --cached --quiet; then
+            echo "no changes"
+            exit 0
+          fi
+          git commit -m "bench(nightly): ${DATE}"
+          git push origin HEAD:bench-results

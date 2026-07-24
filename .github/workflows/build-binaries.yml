@@ -14,6 +14,7 @@ on:
 permissions:
   contents: write
   packages: write
+  pull-requests: write
 
 jobs:
   build:
@@ -251,17 +252,38 @@ jobs:
           path: archives
       - name: Rewrite Homebrew formula
         run: ./scripts/update-homebrew.sh "${RELEASE_TAG}" archives
-      - name: Commit and push
+      - name: Open formula bump PR
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_BUMP_TOKEN || secrets.GITHUB_TOKEN }}
+          # A PR opened with the default GITHUB_TOKEN does NOT trigger the
+          # required build-check-test workflow, so it cannot be merged. Set
+          # HOMEBREW_BUMP_TOKEN (a PAT) to make CI run and enable auto-merge.
+          HAS_PAT: ${{ secrets.HOMEBREW_BUMP_TOKEN != '' }}
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           if git diff --quiet Formula/mewrite.rb; then
-            echo "Formula unchanged — nothing to commit"
+            echo "Formula unchanged — nothing to open a PR for"
             exit 0
           fi
+          BRANCH="homebrew-bump-${RELEASE_TAG}"
+          git checkout -B "${BRANCH}"
           git add Formula/mewrite.rb
           git commit -m "chore(homebrew): bump formula to ${RELEASE_TAG}"
-          git push origin HEAD:main
+          git push --force-with-lease origin "${BRANCH}"
+          gh pr create \
+            --base main \
+            --head "${BRANCH}" \
+            --title "chore(homebrew): bump formula to ${RELEASE_TAG}" \
+            --body "Automated Homebrew formula bump for ${RELEASE_TAG}." \
+            2>/dev/null || echo "PR already exists for ${BRANCH}"
+          if [ "${HAS_PAT}" = "true" ]; then
+            gh pr merge "${BRANCH}" --auto --squash || \
+              echo "auto-merge not enabled; merge the PR manually once checks pass"
+          else
+            echo "HOMEBREW_BUMP_TOKEN not set: required checks will not run on this PR."
+            echo "Merge manually or configure the PAT to enable CI + auto-merge."
+          fi
 
   publish-status:
     runs-on: ubuntu-latest
@@ -344,7 +366,10 @@ jobs:
         shell: bash
         run: |
           cd archives
-          python3 -m http.server 8000 >/tmp/http.log 2>&1 &
+          # Bind to 127.0.0.1 (not 0.0.0.0): on macOS runners `localhost`
+          # resolves to ::1 first, and python's default IPv4-only bind means
+          # curl hangs then fails. Serving and fetching over 127.0.0.1 avoids it.
+          python3 -m http.server 8000 --bind 127.0.0.1 >/tmp/http.log 2>&1 &
           echo $! > /tmp/http.pid
           sleep 2
       - name: Run unix installer
@@ -352,7 +377,7 @@ jobs:
         shell: bash
         env:
           MEWRITE_VERSION: ${{ env.RELEASE_TAG }}
-          MEWRITE_BASE_URL: http://localhost:8000
+          MEWRITE_BASE_URL: http://127.0.0.1:8000
           MEWRITE_PREFIX: ${{ runner.temp }}/mewrite-smoke
         run: |
           bash install.sh
@@ -362,7 +387,7 @@ jobs:
         shell: pwsh
         env:
           MEWRITE_VERSION: ${{ env.RELEASE_TAG }}
-          MEWRITE_BASE_URL: http://localhost:8000
+          MEWRITE_BASE_URL: http://127.0.0.1:8000
           MEWRITE_PREFIX: ${{ runner.temp }}\mewrite-smoke
         run: |
           pwsh -File install.ps1
