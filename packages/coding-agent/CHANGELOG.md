@@ -69,6 +69,10 @@
 - Fixed daemon session state persistence so served web UI session lists keep runner state across reconnects.
 - Fixed extension loading for extensions that import the `@zhachory1/mewrite-ai/registry` package subpath.
 
+### Removed
+
+- Removed the startup package-update notification for installed agent packages. Startup now only notifies about available updates to the CLI itself; installed packages are user-owned and no longer nag on every launch (`PackageManager.checkForAvailableUpdates()` remains available on demand).
+
 ## [1.0.12] - 2026-07-09
 
 ### Changed
