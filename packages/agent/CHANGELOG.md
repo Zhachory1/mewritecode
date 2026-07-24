@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Fixed
+- Build no longer fails when the optional `onnxruntime-node` dependency is absent; the LLMLingua compressor loads it via an indirect import specifier so type-checking does not hard-fail with TS2307 ([#124](https://github.com/Zhachory1/mewritecode/pull/124))
+
 ## [1.2.0] - 2026-07-23
 
 ### Breaking Changes
