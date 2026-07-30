@@ -14,7 +14,7 @@ const DEFAULT_PACKAGE_NAME = "@zhachory1/mewrite-code";
 const DEFAULT_REPO = "Zhachory1/mewritecode";
 const DEFAULT_CONFIG_DIR_NAME = ".mewrite";
 const DEFAULT_PACKAGE_DIR_ENV = `${DEFAULT_APP_NAME.toUpperCase()}_PACKAGE_DIR`;
-const DEFAULT_DISCORD_URL = "https://discord.com/invite/nKXTsAcmbT";
+const DEFAULT_DISCORD_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
 const GENERIC_PACKAGE_DIR_ENV = "CODING_AGENT_PACKAGE_DIR";
 
 const DEFAULT_BANNER_PRIMARY_WORDMARK: readonly string[] = [
