@@ -1,0 +1,60 @@
+name: registry-nightly
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      # Refresh the built-in model catalog from upstream, then project the
+      # curated allowlist onto it to rebuild registry/registry.json.
+      - run: npm run generate-models --workspace @zhachory1/mewrite-ai
+      - run: npm run generate-registry --workspace @zhachory1/mewrite-ai
+      - name: Open registry update PR
+        env:
+          GH_TOKEN: ${{ secrets.REGISTRY_UPDATE_TOKEN || secrets.GITHUB_TOKEN }}
+          # A PR opened with the default GITHUB_TOKEN does NOT trigger the
+          # required checks, so it cannot auto-merge. Set REGISTRY_UPDATE_TOKEN
+          # (a PAT) to make CI run and enable auto-merge; otherwise the PR is
+          # opened but must be merged manually.
+          HAS_PAT: ${{ secrets.REGISTRY_UPDATE_TOKEN != '' }}
+        run: |
+          # publishedAt changes every run; ignore it and only open a PR when
+          # provider/model/pricing data actually changed.
+          if git diff --quiet -I '"publishedAt"' registry/registry.json; then
+            echo "Registry data unchanged — nothing to open a PR for"
+            git checkout -- registry/registry.json
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          BRANCH="registry-update-$(date -u +%Y-%m-%d)"
+          git checkout -B "${BRANCH}"
+          git add registry/registry.json
+          git commit -m "chore(registry): refresh model pricing"
+          git push --force-with-lease origin "${BRANCH}"
+          gh pr create \
+            --base main \
+            --head "${BRANCH}" \
+            --title "chore(registry): refresh model pricing" \
+            --body "Automated model registry refresh (see #137)." \
+            2>/dev/null || echo "PR already exists for ${BRANCH}"
+          if [ "${HAS_PAT}" = "true" ]; then
+            gh pr merge "${BRANCH}" --auto --squash || \
+              echo "auto-merge not enabled; merge the PR manually once checks pass"
+          else
+            echo "REGISTRY_UPDATE_TOKEN not set: required checks will not run on this PR."
+            echo "Merge manually or configure the PAT to enable CI + auto-merge."
+          fi

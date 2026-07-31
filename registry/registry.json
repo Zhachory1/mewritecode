@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "channel": "stable",
-  "publishedAt": "2026-04-28T00:00:00Z",
+  "publishedAt": "2026-07-31T17:36:14.075Z",
   "providers": [
     {
       "id": "anthropic",
@@ -11,49 +11,74 @@
       "auth": "api-key",
       "models": [
         {
+          "id": "claude-opus-4-8",
+          "displayName": "Claude Opus 4.8",
+          "contextWindow": 1000000,
+          "maxOutputTokens": 128000,
+          "inputCostPerMtok": 5,
+          "outputCostPerMtok": 25,
+          "capabilities": [
+            "tools",
+            "vision",
+            "cache",
+            "reasoning"
+          ]
+        },
+        {
           "id": "claude-opus-4-6",
           "displayName": "Claude Opus 4.6",
-          "contextWindow": 200000,
-          "maxOutputTokens": 32000,
-          "inputCostPerMtok": 15,
-          "outputCostPerMtok": 75,
-          "capabilities": ["tools", "vision", "cache", "reasoning"]
+          "contextWindow": 1000000,
+          "maxOutputTokens": 128000,
+          "inputCostPerMtok": 5,
+          "outputCostPerMtok": 25,
+          "capabilities": [
+            "tools",
+            "vision",
+            "cache",
+            "reasoning"
+          ]
+        },
+        {
+          "id": "claude-sonnet-5",
+          "displayName": "Claude Sonnet 5",
+          "contextWindow": 1000000,
+          "maxOutputTokens": 128000,
+          "inputCostPerMtok": 2,
+          "outputCostPerMtok": 10,
+          "capabilities": [
+            "tools",
+            "vision",
+            "cache",
+            "reasoning"
+          ]
         },
         {
           "id": "claude-sonnet-4-5",
-          "displayName": "Claude Sonnet 4.5",
-          "contextWindow": 200000,
-          "maxOutputTokens": 16000,
+          "displayName": "Claude Sonnet 4.5 (latest)",
+          "contextWindow": 1000000,
+          "maxOutputTokens": 64000,
           "inputCostPerMtok": 3,
           "outputCostPerMtok": 15,
-          "capabilities": ["tools", "vision", "cache"]
+          "capabilities": [
+            "tools",
+            "vision",
+            "cache",
+            "reasoning"
+          ]
         },
         {
-          "id": "claude-haiku-3-5",
-          "displayName": "Claude Haiku 3.5",
+          "id": "claude-haiku-4-5",
+          "displayName": "Claude Haiku 4.5 (latest)",
           "contextWindow": 200000,
-          "maxOutputTokens": 8192,
-          "inputCostPerMtok": 0.8,
-          "outputCostPerMtok": 4,
-          "capabilities": ["tools", "vision", "cache"]
-        },
-        {
-          "id": "claude-opus-4",
-          "displayName": "Claude Opus 4",
-          "contextWindow": 200000,
-          "maxOutputTokens": 32000,
-          "inputCostPerMtok": 15,
-          "outputCostPerMtok": 75,
-          "capabilities": ["tools", "vision", "cache", "reasoning"]
-        },
-        {
-          "id": "claude-sonnet-4",
-          "displayName": "Claude Sonnet 4",
-          "contextWindow": 200000,
-          "maxOutputTokens": 16000,
-          "inputCostPerMtok": 3,
-          "outputCostPerMtok": 15,
-          "capabilities": ["tools", "vision", "cache"]
+          "maxOutputTokens": 64000,
+          "inputCostPerMtok": 1,
+          "outputCostPerMtok": 5,
+          "capabilities": [
+            "tools",
+            "vision",
+            "cache",
+            "reasoning"
+          ]
         }
       ]
     },
@@ -65,40 +90,32 @@
       "auth": "api-key",
       "models": [
         {
-          "id": "gpt-4o",
-          "displayName": "GPT-4o",
-          "contextWindow": 128000,
-          "maxOutputTokens": 16384,
-          "inputCostPerMtok": 2.5,
+          "id": "gpt-5.6",
+          "displayName": "GPT-5.6",
+          "contextWindow": 1050000,
+          "maxOutputTokens": 128000,
+          "inputCostPerMtok": 5,
+          "outputCostPerMtok": 30,
+          "capabilities": [
+            "tools",
+            "vision",
+            "cache",
+            "reasoning"
+          ]
+        },
+        {
+          "id": "gpt-5.1",
+          "displayName": "GPT-5.1",
+          "contextWindow": 400000,
+          "maxOutputTokens": 128000,
+          "inputCostPerMtok": 1.25,
           "outputCostPerMtok": 10,
-          "capabilities": ["tools", "vision"]
-        },
-        {
-          "id": "gpt-4o-mini",
-          "displayName": "GPT-4o Mini",
-          "contextWindow": 128000,
-          "maxOutputTokens": 16384,
-          "inputCostPerMtok": 0.15,
-          "outputCostPerMtok": 0.6,
-          "capabilities": ["tools", "vision"]
-        },
-        {
-          "id": "o3",
-          "displayName": "o3",
-          "contextWindow": 200000,
-          "maxOutputTokens": 100000,
-          "inputCostPerMtok": 10,
-          "outputCostPerMtok": 40,
-          "capabilities": ["tools", "reasoning"]
-        },
-        {
-          "id": "o4-mini",
-          "displayName": "o4-mini",
-          "contextWindow": 200000,
-          "maxOutputTokens": 100000,
-          "inputCostPerMtok": 1.1,
-          "outputCostPerMtok": 4.4,
-          "capabilities": ["tools", "reasoning"]
+          "capabilities": [
+            "tools",
+            "vision",
+            "cache",
+            "reasoning"
+          ]
         },
         {
           "id": "gpt-4.1",
@@ -107,16 +124,52 @@
           "maxOutputTokens": 32768,
           "inputCostPerMtok": 2,
           "outputCostPerMtok": 8,
-          "capabilities": ["tools", "vision"]
+          "capabilities": [
+            "tools",
+            "vision",
+            "cache"
+          ]
         },
         {
-          "id": "gpt-4.1-mini",
-          "displayName": "GPT-4.1 Mini",
-          "contextWindow": 1047576,
-          "maxOutputTokens": 32768,
-          "inputCostPerMtok": 0.4,
-          "outputCostPerMtok": 1.6,
-          "capabilities": ["tools", "vision"]
+          "id": "gpt-4o",
+          "displayName": "GPT-4o",
+          "contextWindow": 128000,
+          "maxOutputTokens": 16384,
+          "inputCostPerMtok": 2.5,
+          "outputCostPerMtok": 10,
+          "capabilities": [
+            "tools",
+            "vision",
+            "cache"
+          ]
+        },
+        {
+          "id": "o3",
+          "displayName": "o3",
+          "contextWindow": 200000,
+          "maxOutputTokens": 100000,
+          "inputCostPerMtok": 2,
+          "outputCostPerMtok": 8,
+          "capabilities": [
+            "tools",
+            "vision",
+            "cache",
+            "reasoning"
+          ]
+        },
+        {
+          "id": "o4-mini",
+          "displayName": "o4-mini",
+          "contextWindow": 200000,
+          "maxOutputTokens": 100000,
+          "inputCostPerMtok": 1.1,
+          "outputCostPerMtok": 4.4,
+          "capabilities": [
+            "tools",
+            "vision",
+            "cache",
+            "reasoning"
+          ]
         }
       ]
     },
@@ -128,31 +181,60 @@
       "auth": "api-key",
       "models": [
         {
+          "id": "gemini-3.1-pro-preview",
+          "displayName": "Gemini 3.1 Pro Preview",
+          "contextWindow": 1048576,
+          "maxOutputTokens": 65536,
+          "inputCostPerMtok": 2,
+          "outputCostPerMtok": 12,
+          "capabilities": [
+            "tools",
+            "vision",
+            "cache",
+            "reasoning"
+          ]
+        },
+        {
+          "id": "gemini-3.5-flash",
+          "displayName": "Gemini 3.5 Flash",
+          "contextWindow": 1048576,
+          "maxOutputTokens": 65536,
+          "inputCostPerMtok": 1.5,
+          "outputCostPerMtok": 9,
+          "capabilities": [
+            "tools",
+            "vision",
+            "cache",
+            "reasoning"
+          ]
+        },
+        {
           "id": "gemini-2.5-pro",
           "displayName": "Gemini 2.5 Pro",
           "contextWindow": 1048576,
           "maxOutputTokens": 65536,
           "inputCostPerMtok": 1.25,
           "outputCostPerMtok": 10,
-          "capabilities": ["tools", "vision", "cache", "reasoning"]
+          "capabilities": [
+            "tools",
+            "vision",
+            "cache",
+            "reasoning"
+          ]
         },
         {
           "id": "gemini-2.5-flash",
           "displayName": "Gemini 2.5 Flash",
           "contextWindow": 1048576,
           "maxOutputTokens": 65536,
-          "inputCostPerMtok": 0.15,
-          "outputCostPerMtok": 0.6,
-          "capabilities": ["tools", "vision", "cache"]
-        },
-        {
-          "id": "gemini-2.0-flash",
-          "displayName": "Gemini 2.0 Flash",
-          "contextWindow": 1048576,
-          "maxOutputTokens": 8192,
-          "inputCostPerMtok": 0.1,
-          "outputCostPerMtok": 0.4,
-          "capabilities": ["tools", "vision"]
+          "inputCostPerMtok": 0.3,
+          "outputCostPerMtok": 2.5,
+          "capabilities": [
+            "tools",
+            "vision",
+            "cache",
+            "reasoning"
+          ]
         }
       ]
     },
@@ -164,49 +246,58 @@
       "auth": "api-key",
       "models": [
         {
-          "id": "anthropic/claude-sonnet-4-5",
-          "displayName": "Claude Sonnet 4.5 (via OpenRouter)",
-          "contextWindow": 200000,
-          "maxOutputTokens": 16000,
-          "inputCostPerMtok": 3,
-          "outputCostPerMtok": 15,
-          "capabilities": ["tools", "vision"]
+          "id": "anthropic/claude-opus-4.8",
+          "displayName": "Anthropic: Claude Opus 4.8",
+          "contextWindow": 1000000,
+          "maxOutputTokens": 128000,
+          "inputCostPerMtok": 5,
+          "outputCostPerMtok": 25,
+          "capabilities": [
+            "tools",
+            "vision",
+            "cache",
+            "reasoning"
+          ]
         },
         {
           "id": "openai/gpt-4o",
-          "displayName": "GPT-4o (via OpenRouter)",
+          "displayName": "OpenAI: GPT-4o",
           "contextWindow": 128000,
           "maxOutputTokens": 16384,
           "inputCostPerMtok": 2.5,
           "outputCostPerMtok": 10,
-          "capabilities": ["tools", "vision"]
+          "capabilities": [
+            "tools",
+            "vision",
+            "cache"
+          ]
         },
         {
           "id": "google/gemini-2.5-pro",
-          "displayName": "Gemini 2.5 Pro (via OpenRouter)",
+          "displayName": "Google: Gemini 2.5 Pro",
           "contextWindow": 1048576,
           "maxOutputTokens": 65536,
           "inputCostPerMtok": 1.25,
           "outputCostPerMtok": 10,
-          "capabilities": ["tools", "vision", "reasoning"]
+          "capabilities": [
+            "tools",
+            "vision",
+            "cache",
+            "reasoning"
+          ]
         },
         {
-          "id": "meta-llama/llama-4-maverick",
-          "displayName": "Llama 4 Maverick (via OpenRouter)",
+          "id": "deepseek/deepseek-v4-pro",
+          "displayName": "DeepSeek: DeepSeek V4 Pro",
           "contextWindow": 1048576,
-          "maxOutputTokens": 65536,
-          "inputCostPerMtok": 0.18,
-          "outputCostPerMtok": 0.73,
-          "capabilities": ["tools", "vision"]
-        },
-        {
-          "id": "deepseek/deepseek-r2",
-          "displayName": "DeepSeek R2 (via OpenRouter)",
-          "contextWindow": 65536,
-          "maxOutputTokens": 8000,
-          "inputCostPerMtok": 0.55,
-          "outputCostPerMtok": 2.19,
-          "capabilities": ["tools", "reasoning"]
+          "maxOutputTokens": 384000,
+          "inputCostPerMtok": 0.435,
+          "outputCostPerMtok": 0.87,
+          "capabilities": [
+            "tools",
+            "cache",
+            "reasoning"
+          ]
         }
       ]
     },
@@ -219,30 +310,39 @@
       "models": [
         {
           "id": "mistral-large-latest",
-          "displayName": "Mistral Large",
-          "contextWindow": 131072,
-          "maxOutputTokens": 131072,
-          "inputCostPerMtok": 2,
-          "outputCostPerMtok": 6,
-          "capabilities": ["tools"]
+          "displayName": "Mistral Large (latest)",
+          "contextWindow": 262144,
+          "maxOutputTokens": 262144,
+          "inputCostPerMtok": 0.5,
+          "outputCostPerMtok": 1.5,
+          "capabilities": [
+            "tools",
+            "vision"
+          ]
         },
         {
           "id": "mistral-small-latest",
-          "displayName": "Mistral Small",
-          "contextWindow": 131072,
-          "maxOutputTokens": 131072,
-          "inputCostPerMtok": 0.1,
-          "outputCostPerMtok": 0.3,
-          "capabilities": ["tools"]
+          "displayName": "Mistral Small (latest)",
+          "contextWindow": 256000,
+          "maxOutputTokens": 256000,
+          "inputCostPerMtok": 0.15,
+          "outputCostPerMtok": 0.6,
+          "capabilities": [
+            "tools",
+            "vision",
+            "reasoning"
+          ]
         },
         {
           "id": "codestral-latest",
-          "displayName": "Codestral",
-          "contextWindow": 262144,
-          "maxOutputTokens": 262144,
+          "displayName": "Codestral (latest)",
+          "contextWindow": 256000,
+          "maxOutputTokens": 4096,
           "inputCostPerMtok": 0.3,
           "outputCostPerMtok": 0.9,
-          "capabilities": ["tools"]
+          "capabilities": [
+            "tools"
+          ]
         }
       ]
     },
@@ -254,22 +354,44 @@
       "auth": "api-key",
       "models": [
         {
-          "id": "grok-3",
-          "displayName": "Grok 3",
-          "contextWindow": 131072,
-          "maxOutputTokens": 131072,
-          "inputCostPerMtok": 3,
-          "outputCostPerMtok": 15,
-          "capabilities": ["tools", "vision"]
+          "id": "grok-4.5",
+          "displayName": "Grok 4.5",
+          "contextWindow": 500000,
+          "maxOutputTokens": 500000,
+          "inputCostPerMtok": 2,
+          "outputCostPerMtok": 6,
+          "capabilities": [
+            "tools",
+            "vision",
+            "cache",
+            "reasoning"
+          ]
         },
         {
-          "id": "grok-3-mini",
-          "displayName": "Grok 3 Mini",
-          "contextWindow": 131072,
-          "maxOutputTokens": 131072,
-          "inputCostPerMtok": 0.3,
-          "outputCostPerMtok": 0.5,
-          "capabilities": ["tools", "reasoning"]
+          "id": "grok-4.3",
+          "displayName": "Grok 4.3",
+          "contextWindow": 1000000,
+          "maxOutputTokens": 30000,
+          "inputCostPerMtok": 1.25,
+          "outputCostPerMtok": 2.5,
+          "capabilities": [
+            "tools",
+            "vision",
+            "cache",
+            "reasoning"
+          ]
+        },
+        {
+          "id": "grok-code-fast-1",
+          "displayName": "Grok Code Fast 1",
+          "contextWindow": 32768,
+          "maxOutputTokens": 8192,
+          "inputCostPerMtok": 0.2,
+          "outputCostPerMtok": 1.5,
+          "capabilities": [
+            "tools",
+            "cache"
+          ]
         }
       ]
     },
@@ -283,20 +405,37 @@
         {
           "id": "llama-3.3-70b-versatile",
           "displayName": "Llama 3.3 70B",
-          "contextWindow": 128000,
+          "contextWindow": 131072,
           "maxOutputTokens": 32768,
           "inputCostPerMtok": 0.59,
           "outputCostPerMtok": 0.79,
-          "capabilities": ["tools"]
+          "capabilities": [
+            "tools"
+          ]
         },
         {
-          "id": "llama3-8b-8192",
-          "displayName": "Llama 3 8B",
-          "contextWindow": 8192,
-          "maxOutputTokens": 8192,
+          "id": "llama-3.1-8b-instant",
+          "displayName": "Llama 3.1 8B",
+          "contextWindow": 131072,
+          "maxOutputTokens": 131072,
           "inputCostPerMtok": 0.05,
           "outputCostPerMtok": 0.08,
-          "capabilities": ["tools"]
+          "capabilities": [
+            "tools"
+          ]
+        },
+        {
+          "id": "openai/gpt-oss-120b",
+          "displayName": "GPT OSS 120B",
+          "contextWindow": 131072,
+          "maxOutputTokens": 65536,
+          "inputCostPerMtok": 0.15,
+          "outputCostPerMtok": 0.6,
+          "capabilities": [
+            "tools",
+            "cache",
+            "reasoning"
+          ]
         }
       ]
     },
@@ -308,31 +447,60 @@
       "auth": "oauth",
       "models": [
         {
-          "id": "claude-sonnet-4-5",
-          "displayName": "Claude Sonnet 4.5 (Copilot)",
+          "id": "claude-sonnet-4.5",
+          "displayName": "Claude Sonnet 4.5 (latest)",
           "contextWindow": 200000,
-          "maxOutputTokens": 16000,
-          "inputCostPerMtok": 0,
-          "outputCostPerMtok": 0,
-          "capabilities": ["tools", "vision"]
+          "maxOutputTokens": 32000,
+          "inputCostPerMtok": 3,
+          "outputCostPerMtok": 15,
+          "capabilities": [
+            "tools",
+            "vision",
+            "cache",
+            "reasoning"
+          ]
         },
         {
-          "id": "gpt-4o",
-          "displayName": "GPT-4o (Copilot)",
-          "contextWindow": 128000,
-          "maxOutputTokens": 16384,
-          "inputCostPerMtok": 0,
-          "outputCostPerMtok": 0,
-          "capabilities": ["tools", "vision"]
+          "id": "claude-opus-4.8",
+          "displayName": "Claude Opus 4.8",
+          "contextWindow": 200000,
+          "maxOutputTokens": 64000,
+          "inputCostPerMtok": 5,
+          "outputCostPerMtok": 25,
+          "capabilities": [
+            "tools",
+            "vision",
+            "cache",
+            "reasoning"
+          ]
         },
         {
-          "id": "o3",
-          "displayName": "o3 (Copilot)",
-          "contextWindow": 200000,
-          "maxOutputTokens": 100000,
-          "inputCostPerMtok": 0,
-          "outputCostPerMtok": 0,
-          "capabilities": ["tools", "reasoning"]
+          "id": "gpt-5.4",
+          "displayName": "GPT-5.4",
+          "contextWindow": 1050000,
+          "maxOutputTokens": 128000,
+          "inputCostPerMtok": 2.5,
+          "outputCostPerMtok": 15,
+          "capabilities": [
+            "tools",
+            "vision",
+            "cache",
+            "reasoning"
+          ]
+        },
+        {
+          "id": "gemini-3.1-pro-preview",
+          "displayName": "Gemini 3.1 Pro Preview",
+          "contextWindow": 1000000,
+          "maxOutputTokens": 64000,
+          "inputCostPerMtok": 2,
+          "outputCostPerMtok": 12,
+          "capabilities": [
+            "tools",
+            "vision",
+            "cache",
+            "reasoning"
+          ]
         }
       ]
     }

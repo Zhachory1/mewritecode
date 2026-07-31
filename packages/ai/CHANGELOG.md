@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Added
+
+- `generate-registry` script and weekly `registry-nightly` CI workflow that regenerate `registry/registry.json` from the built-in model catalog (a curated allowlist projected onto `MODELS`) and open a PR when pricing/model data changes, so the pricing registry no longer drifts ([#137](https://github.com/Zhachory1/mewritecode/issues/137)).
+
+### Fixed
+
+- Registry pricing refresh no longer always fails: the remote registry URL pointed at the defunct `cave-cli/registry` repo (HTTP 404). It now fetches from `Zhachory1/mewritecode` (`registry/registry.json` on `main`) ([#133](https://github.com/Zhachory1/mewritecode/issues/133)).
+- Bundled registry fallback now works for npm-installed users: `registry/registry.json` is copied into `dist/registry/` at build time and the loader probes that package-adjacent path first. Previously the fallback only resolved inside the monorepo, so installed clients had no registry-based pricing ([#133](https://github.com/Zhachory1/mewritecode/issues/133)).
+
 ## [1.2.2] - 2026-07-31
 
 ## [1.2.1] - 2026-07-24

@@ -1325,6 +1325,27 @@ Regenerating pulls whatever the upstream catalogs currently return, so review th
 diff (and run the test suite) before committing — new/removed model ids can
 require test updates.
 
+### Pricing registry (`registry/registry.json`)
+
+The repo-root `registry/registry.json` is the pricing/registry source of truth
+consumed at runtime (remote fetch and bundled fallback, see #133). It is a
+**curated projection** of `src/models.generated.ts`: `scripts/registry-allowlist.ts`
+lists which providers/models to include, and `scripts/generate-registry.ts`
+rebuilds the file with fresh pricing/context/capabilities:
+
+```bash
+npm run generate-registry   # projects the allowlist onto MODELS, validates, writes
+```
+
+The generator only refreshes data for allowlisted ids — it never adds or removes
+models. To change the set, edit `scripts/registry-allowlist.ts` (every id must
+exist under its `source` in MODELS or generation fails) and rerun. `version` is
+static; `publishedAt` is the freshness signal.
+
+The `registry-nightly` GitHub Actions workflow runs weekly, regenerates from
+upstream, and opens a PR when the data (ignoring `publishedAt`) changes. To
+override locally, drop a `registry.json` at `~/.cave/agent/registry.json`.
+
 ## License
 
 MIT
