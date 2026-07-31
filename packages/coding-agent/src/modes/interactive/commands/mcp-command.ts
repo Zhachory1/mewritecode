@@ -15,7 +15,11 @@ export class McpCommand extends InteractiveSlashCommand {
 
 	async handleCommand(text: string, context: InteractiveSlashCommandContext): Promise<void> {
 		await clearAnd(context, async () => {
-			const result = await runMcpSlashCommand(text, { cwd: context.sessionManager.getCwd() });
+			const activeTools = context.session.getActiveToolNames();
+			const result = await runMcpSlashCommand(text, {
+				cwd: context.sessionManager.getCwd(),
+				mcpToolsAttached: activeTools.includes("mcp_tool_search") || activeTools.includes("mcp_tool_call"),
+			});
 			context.appendSlashOutput(result.lines.join("\n"), result.errors > 0);
 		});
 	}

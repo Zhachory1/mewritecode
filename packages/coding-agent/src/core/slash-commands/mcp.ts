@@ -26,6 +26,12 @@ export interface SlashContext {
 	 */
 	hub?: agentMcp.McpHub;
 	mcpDiscoveryOptions?: agentMcp.McpDiscoveryOptions;
+	/**
+	 * Whether the current session actually received the MCP bridge tools
+	 * (`mcp_tool_search` / `mcp_tool_call`). Configured-but-not-attached is a
+	 * real failure mode (issue #127): a restricted agent def can drop them.
+	 */
+	mcpToolsAttached?: boolean;
 }
 
 export interface SlashResult {
@@ -75,6 +81,14 @@ async function runList(ctx: SlashContext): Promise<SlashResult> {
 		const transport = s.transport ?? (s.url ? "http" : "stdio");
 		const target = s.command ? `${s.command} ${(s.args ?? []).join(" ")}`.trim() : (s.url ?? "—");
 		lines.push(`  ${s.name} [${transport}] → ${target}`);
+	}
+	if (ctx.mcpToolsAttached === false) {
+		lines.push(
+			`Note: ${loaded.servers.length} server(s) configured but the current agent has no MCP tools attached.`,
+			"The active agent def restricts its toolset and excludes mcp_tool_search/mcp_tool_call.",
+		);
+	} else if (ctx.mcpToolsAttached === true) {
+		lines.push("The current agent has mcp_tool_search + mcp_tool_call attached.");
 	}
 	return ok(...lines);
 }
