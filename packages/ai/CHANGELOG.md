@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.2.3] - 2026-07-31
+
 ### Added
 
 - `generate-registry` script and weekly `registry-nightly` CI workflow that regenerate `registry/registry.json` from the built-in model catalog (a curated allowlist projected onto `MODELS`) and open a PR when pricing/model data changes, so the pricing registry no longer drifts ([#137](https://github.com/Zhachory1/mewritecode/issues/137)).
