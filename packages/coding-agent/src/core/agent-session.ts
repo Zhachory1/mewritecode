@@ -25,7 +25,7 @@ import type {
 	ThinkingLevel,
 	ToolExecutionMode,
 } from "@zhachory1/mewrite-agent";
-import { checkpoints, type memory as memoryNs } from "@zhachory1/mewrite-agent";
+import { mcp as agentMcp, checkpoints, type memory as memoryNs } from "@zhachory1/mewrite-agent";
 import { CompressionPipeline, sumTextLen } from "./compression-pipeline.js";
 import {
 	type ContextCompressionStats,
@@ -58,7 +58,7 @@ import {
 	resetApiProviders,
 	supportsXhigh,
 } from "@zhachory1/mewrite-ai";
-import { CONFIG_DIR_NAME, getDocsPath } from "../config.js";
+import { CONFIG_DIR_NAME, getDocsPath, MCP_DISCOVERY_OPTIONS } from "../config.js";
 import { theme } from "../modes/interactive/theme/theme.js";
 import { stripFrontmatter } from "../utils/frontmatter.js";
 import { sleep } from "../utils/sleep.js";
@@ -128,6 +128,7 @@ import { createSyntheticSourceInfo, type SourceInfo } from "./source-info.js";
 import { buildSystemPrompt, type SystemPromptBranding } from "./system-prompt.js";
 import { type BashOperations, createLocalBashOperations } from "./tools/bash.js";
 import { createAllToolDefinitions } from "./tools/index.js";
+import { buildAlwaysOnMcpTools } from "./tools/mcp-bridge.js";
 import { createMemorySaveToolDefinition, createMemorySearchToolDefinition } from "./tools/memory.js";
 import { createToolDefinitionFromAgentTool, wrapToolDefinition } from "./tools/tool-definition-wrapper.js";
 import { createTraceSink } from "./trace.js";
@@ -416,6 +417,9 @@ export class AgentSession {
 	private _resourceLoader: ResourceLoader;
 	private _customTools: ToolDefinition[];
 	private _baseToolDefinitions: Map<string, ToolDefinition> = new Map();
+	// Lazily-connected MCP hub built from mcp.json when >=1 server is configured.
+	// Rebuilt on each _buildRuntime() (reload) and disposed with the session.
+	private _mcpHub: agentMcp.McpHub | undefined;
 	private _cwd: string;
 	private _extensionRunnerRef?: { current?: ExtensionRunner };
 	// The transformContext installed on the agent at construction time (e.g. the
@@ -1711,6 +1715,8 @@ export class AgentSession {
 		// path, so disposing here covers session reset; ActivityRegistry.clear() is
 		// reserved for any future in-place reset.
 		this._activityRegistry.dispose();
+		void this._mcpHub?.closeAll().catch(() => {});
+		this._mcpHub = undefined;
 	}
 
 	// =========================================================================
@@ -3583,6 +3589,31 @@ export class AgentSession {
 			console.warn(`[cave/memory] tool registration skipped: ${err instanceof Error ? err.message : String(err)}`);
 		}
 
+		// Wire configured MCP servers into the session toolset. When mcp.json has
+		// >=1 server, register the always-on `mcp_tool_search` + `mcp_tool_call`
+		// pair (Anthropic ToolSearch pattern, ~250 tokens). The hub connects lazily
+		// on first tool use, so this never blocks startup on an unreachable server.
+		await this._mcpHub?.closeAll().catch(() => {});
+		this._mcpHub = undefined;
+		try {
+			if (!this._baseToolsOverride) {
+				const loaded = agentMcp.loadMcpConfig(this._cwd, undefined, MCP_DISCOVERY_OPTIONS);
+				if (loaded.servers.length > 0) {
+					const hub = new agentMcp.McpHub({ settings: loaded.settings });
+					for (const server of loaded.servers) hub.addServer(server);
+					this._mcpHub = hub;
+					for (const tool of buildAlwaysOnMcpTools(hub)) {
+						this._baseToolDefinitions.set(
+							tool.name,
+							createToolDefinitionFromAgentTool(tool) as unknown as ToolDefinition,
+						);
+					}
+				}
+			}
+		} catch (err) {
+			console.warn(`[cave/mcp] tool registration skipped: ${err instanceof Error ? err.message : String(err)}`);
+		}
+
 		const extensionsResult = this._resourceLoader.getExtensions();
 		if (options.flagValues) {
 			for (const [name, value] of options.flagValues) {
@@ -3629,6 +3660,8 @@ export class AgentSession {
 					"agent",
 					...(this._baseToolDefinitions.has("memory_search") ? ["memory_search"] : []),
 					...(this._baseToolDefinitions.has("memory_save") ? ["memory_save"] : []),
+					...(this._baseToolDefinitions.has("mcp_tool_search") ? ["mcp_tool_search"] : []),
+					...(this._baseToolDefinitions.has("mcp_tool_call") ? ["mcp_tool_call"] : []),
 				];
 		const requestedActive = options.activeToolNames ?? defaultActiveToolNames;
 		this._refreshToolRegistry({
