@@ -73,7 +73,10 @@ export class ModelCommand extends InteractiveSlashCommand {
 				showModelSelector(context);
 				return;
 			}
-			void context.session.modelRegistry.refreshPricingFromSource();
+			const pricingResult = await context.session.modelRegistry.refreshPricingFromSource();
+			if (!pricingResult.ok) {
+				context.showStatus("pricing refresh failed");
+			}
 			const model = await findExactModelMatch(context, searchTerm);
 			if (model) {
 				try {
