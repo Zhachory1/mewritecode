@@ -1,8 +1,11 @@
 MIT License
 
-Copyright (c) 2025 Mario Zechner
-Copyright (c) 2026 Julius Brussee (Cave Pi fork)
-Copyright (c) 2026 Oliver MacLaren (pi-markdown-preview, see packages/markdown-preview/LICENSE)
+Copyright (c) 2026 Oliver MacLaren (original author, pi-markdown-preview)
+Copyright (c) 2026 Julius Brussee (caveman-code fork)
+Copyright (c) 2026 Zhach Volker (Me Write Code)
+
+This package is derived from pi-markdown-preview by Oliver MacLaren:
+https://github.com/omaclaren/pi-markdown-preview
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
