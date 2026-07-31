@@ -112,7 +112,10 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 					getOAuthProviders: () => [{ id: "anthropic", aliases: ["claude"] }],
 				},
 				refresh: () => calls.push("modelRegistry.refresh:"),
-				refreshPricingFromSource: async () => calls.push("modelRegistry.refreshPricingFromSource:"),
+				refreshPricingFromSource: async () => {
+					calls.push("modelRegistry.refreshPricingFromSource:");
+					return { ok: true, version: "test", providerCount: 0, modelCount: 0 };
+				},
 				getAvailable: async () => [{ provider: "anthropic", id: "claude", name: "Claude" }],
 			},
 			scopedModels: [],
