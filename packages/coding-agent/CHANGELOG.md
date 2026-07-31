@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-07-31
+
 ### Added
 
 - Wired configured MCP servers into normal sessions: when `mcp.json` has at least one server, the session now registers the always-on `mcp_tool_search` + `mcp_tool_call` bridge tools (lazy connect, no startup blocking). `/mcp list` also reports whether the current agent actually received the MCP tools ([#127](https://github.com/Zhachory1/mewritecode/issues/127)).
