@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed `ctrl+o` ("Toggle tool output") not expanding tool output for tool rows grouped into a tool shelf (the running/most-recent turn): the shelf now propagates output expansion to its nested rows and reveals them when expanded, instead of flashing and reverting ([#134](https://github.com/Zhachory1/mewritecode/issues/134)).
+- `/model <search>` now surfaces `pricing refresh failed` instead of silently swallowing the pricing refresh error (was fired fire-and-forget with no handling) ([#133](https://github.com/Zhachory1/mewritecode/issues/133)).
+
 ## [1.2.2] - 2026-07-31
 
 ### Added
