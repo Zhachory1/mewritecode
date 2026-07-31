@@ -13,8 +13,8 @@ import { type Registry, validateRegistry } from "./schema.js";
 export type FetchChannel = "stable" | "beta";
 
 const REGISTRY_URLS: Record<FetchChannel, string> = {
-	stable: "https://raw.githubusercontent.com/cave-cli/registry/main/registry.json",
-	beta: "https://raw.githubusercontent.com/cave-cli/registry/canary/registry.json",
+	stable: "https://raw.githubusercontent.com/Zhachory1/mewritecode/main/registry/registry.json",
+	beta: "https://raw.githubusercontent.com/Zhachory1/mewritecode/main/registry/registry.json",
 };
 
 /** Default timeout for registry fetch (ms) */

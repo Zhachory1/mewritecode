@@ -40,6 +40,14 @@ export function getCachePath(configDir?: string): string {
  * src/registry/ or dist/registry/.
  */
 export function getBundledRegistryPath(): string {
+	// Preferred: registry copied next to the compiled loader at build time
+	// (dist/registry/registry.json). This is the only path that resolves when
+	// the package is installed from npm, since the repo-root registry/ dir is
+	// not published.
+	const adjacentPath = join(__dirname, "registry.json");
+	if (existsSync(adjacentPath)) return adjacentPath;
+
+	// Monorepo dev/tests: loader runs from src/registry or dist/registry.
 	// __dirname is:
 	//   src:  packages/ai/src/registry    (4 levels up = repo root)
 	//   dist: packages/ai/dist/registry   (4 levels up = repo root)

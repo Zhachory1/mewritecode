@@ -32,7 +32,7 @@ export class BtwCommand extends InteractiveSlashCommand {
 			void context.session
 				.askSidecar(question)
 				.then((answer) => {
-					pending.setText(theme.fg("dim", `↪ btw: ${answer || "(empty response)"}`));
+					pending.setText(theme.fg("accent", `↪ btw: ${answer || "(empty response)"}`));
 				})
 				.catch((err: unknown) => {
 					const msg = err instanceof Error ? err.message : String(err);

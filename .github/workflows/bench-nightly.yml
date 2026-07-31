@@ -46,10 +46,14 @@ jobs:
           TMP="$(mktemp)"
           cp "${REL}" "${TMP}"
           git fetch origin bench-results || true
+          # The bench run leaves regenerated artifacts under research/results/
+          # (predictions.jsonl, traces/*.json) in the working tree. We've already
+          # copied the file we persist aside to ${TMP}, so force the branch switch
+          # and discard those throwaway changes instead of aborting the checkout.
           if git show-ref --verify --quiet refs/remotes/origin/bench-results; then
-            git checkout -B bench-results origin/bench-results
+            git checkout -f -B bench-results origin/bench-results
           else
-            git checkout --orphan bench-results
+            git checkout -f --orphan bench-results
             git rm -rf . >/dev/null 2>&1 || true
           fi
           mkdir -p "$(dirname "${REL}")"
