@@ -84,6 +84,7 @@ export class ToolGroupShellComponent extends Container {
 	private readonly toolsContainer = new Container();
 	private readonly entries: { name: string; component: ToolExecutionComponent }[] = [];
 	private expanded = true;
+	private finalized = false;
 
 	constructor() {
 		super();
@@ -101,7 +102,25 @@ export class ToolGroupShellComponent extends Container {
 	 * the footer bar already surfaces cost/token usage.
 	 */
 	finalize(): void {
+		this.finalized = true;
 		this.expanded = false;
+		this.refresh();
+	}
+
+	/**
+	 * Propagate the global "toggle tool output" (ctrl+o) state into the group.
+	 * Implementing this makes the group `isExpandable`, so `setToolsExpanded`
+	 * reaches the nested rows instead of skipping the whole group. Revealing the
+	 * group's rows on expand, and restoring the finalized (hidden) state on
+	 * collapse, keeps ctrl+o consistent with ungrouped tool rows.
+	 */
+	setExpanded(expanded: boolean): void {
+		// Show the rows whenever output is expanded, or while the turn is still
+		// live; collapse back to the hidden shelf only once the turn finalized.
+		this.expanded = expanded || !this.finalized;
+		for (const entry of this.entries) {
+			entry.component.setExpanded(expanded);
+		}
 		this.refresh();
 	}
 
