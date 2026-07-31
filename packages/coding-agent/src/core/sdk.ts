@@ -305,14 +305,14 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		thinkingLevel = "off";
 	}
 
-	// Subagent fan-out (`task`) and single-agent invocation (`agent`) are
-	// part of the default loadout — without them the model can never reach
-	// `.cave/agents/<name>.md` definitions. Mirrors Claude Code's Task tool
-	// being on by default.
-	const defaultActiveToolNames: ToolName[] = ["read", "bash", "edit", "write", "task", "agent"];
-	const initialActiveToolNames: ToolName[] = options.tools
+	// When the caller passes explicit `tools`, honor exactly that set. Otherwise
+	// leave the initial active set undefined so the session computes its own full
+	// default — read/bash/edit/write/task/agent plus any memory_* and mcp_* tools
+	// it registered from settings and mcp.json. Pinning a fixed list here would
+	// register those tools but never activate them.
+	const initialActiveToolNames: ToolName[] | undefined = options.tools
 		? options.tools.map((t) => t.name).filter((n): n is ToolName => n in allTools)
-		: defaultActiveToolNames;
+		: undefined;
 
 	let agent: Agent;
 

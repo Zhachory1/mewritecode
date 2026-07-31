@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed configured MCP servers never reaching the model in normal sessions: `createAgentSession` pinned a fixed initial active-tool list (`read`/`bash`/`edit`/`write`/`task`/`agent`) that overrode the session's computed default, so the registered `mcp_tool_search` / `mcp_tool_call` (and `memory_*`) tools were never activated. `mcp list` showed servers and no error fired, yet the agent had no MCP tools. The initial active set is now left unset unless the caller passes explicit `tools`, so the session activates the memory and MCP bridge tools it discovers ([#127](https://github.com/Zhachory1/mewritecode/issues/127)).
+
 ## [1.2.3] - 2026-07-31
 
 ### Fixed
