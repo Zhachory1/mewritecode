@@ -24,8 +24,7 @@ function makeRow(id: string, callText: string, resultText: string): ToolExecutio
 		parameters: Type.Any(),
 		execute: async () => ({ content: [{ type: "text", text: "ok" }], details: {} }),
 		renderCall: () => new Text(callText, 0, 0),
-		renderResult: (_result, options) =>
-			new Text(options.expanded ? resultText : "(preview)", 0, 0),
+		renderResult: (_result, options) => new Text(options.expanded ? resultText : "(preview)", 0, 0),
 	};
 	const row = new ToolExecutionComponent("custom_tool", id, {}, {}, def, createFakeTui());
 	row.updateResult({ content: [{ type: "text", text: resultText }], details: {}, isError: false }, false);
