@@ -4,6 +4,12 @@ Rendered markdown + LaTeX preview for [Me Write Code](https://github.com/Zhachor
 
 Loaded as a `@zhachory1/mewrite-code` extension; not intended as a standalone library.
 
+## Attribution
+
+Derived from [`pi-markdown-preview`](https://github.com/omaclaren/pi-markdown-preview)
+by Oliver MacLaren, used under the MIT License. The original copyright and
+permission notice is preserved in [LICENSE](./LICENSE).
+
 ## Install
 
 Bundled with `@zhachory1/mewrite-code` by default. To load explicitly:
@@ -20,4 +26,5 @@ mewrite --extension @zhachory1/mewrite-markdown-preview "render this README"
 
 ## License
 
-MIT — see [LICENSE](../../LICENSE).
+MIT — see [LICENSE](./LICENSE). Includes the original copyright notice from
+[`pi-markdown-preview`](https://github.com/omaclaren/pi-markdown-preview).

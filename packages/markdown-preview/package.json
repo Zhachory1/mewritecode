@@ -20,7 +20,8 @@
 		"client",
 		"shared",
 		"tsconfig.json",
-		"README.md"
+		"README.md",
+		"LICENSE"
 	],
 	"scripts": {
 		"clean": "echo \"no build artifacts to clean\"",
