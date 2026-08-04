@@ -231,7 +231,7 @@ function detectOnboarding(cwd: string): DoctorCheck[] {
 	try {
 		const settings = SettingsManager.create(cwd, getAgentDir());
 		const completed = settings.getHasCompletedOnboarding();
-		const telemetry = settings.getTelemetryEnabled();
+		const localLogging = settings.getDiagnosticsEnabled();
 		return [
 			{
 				id: "onboarding",
@@ -242,10 +242,10 @@ function detectOnboarding(cwd: string): DoctorCheck[] {
 					: `not yet completed — run \`${APP_NAME}\` interactively to start the wizard`,
 			},
 			{
-				id: "telemetry",
-				label: "Telemetry",
+				id: "local-logging",
+				label: "Local logging",
 				status: "info",
-				detail: telemetry ? "enabled (opt-in)" : "disabled (default)",
+				detail: localLogging ? "enabled (stays on disk, never uploaded)" : "disabled",
 			},
 		];
 	} catch (err) {

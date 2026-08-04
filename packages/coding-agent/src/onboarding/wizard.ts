@@ -1,11 +1,13 @@
 /**
  * First-run onboarding wizard (WS11).
  *
- * Four questions max plus local diagnostics notice. Designed to clear in ≤5s on the happy path:
+ * Three questions max plus local diagnostics notice. Designed to clear in ≤5s on the happy path:
  * 1. Theme        — auto-detect bg, offer dark/light/auto.
  * 2. Auth         — detect existing env keys, surface them; otherwise skip.
  * 3. Default model — pick a sensible default given which provider has a key.
- * 4. Telemetry    — explicit opt-in, default OFF.
+ *
+ * There is no telemetry: local diagnostics logging (stays on disk, never
+ * uploaded) is simply enabled so the agent has usage data to improve against.
  *
  * The wizard is small, dependency-light (just node:readline), and idempotent.
  * It writes hasCompletedOnboarding to the global settings file when it
@@ -52,7 +54,6 @@ export interface WizardAnswers {
 	auth: AuthAnswer;
 	defaultProvider?: string;
 	defaultModel?: string;
-	telemetry: boolean;
 }
 
 export interface WizardIO {
@@ -113,13 +114,14 @@ async function askChoice<T>(
 ): Promise<T> {
 	write(ctx.out, `\n${chalk.bold(title)}\n`);
 	for (const c of choices) {
-		const marker = c.default ? chalk.green("●") : chalk.dim("○");
-		write(ctx.out, `  ${marker} ${chalk.cyan(c.key)}) ${c.label}\n`);
+		const defTag = c.default ? chalk.green(" (default)") : "";
+		write(ctx.out, `  ${chalk.cyan(c.key)}) ${c.label}${defTag}\n`);
 	}
 	const def = choices.find((c) => c.default);
+	const keys = choices.map((c) => c.key).join("/");
 	const hint = def ? chalk.dim(`[default: ${def.key}]`) : "";
 	while (true) {
-		const a = (await ask(ctx, `> ${hint} `)).trim().toLowerCase();
+		const a = (await ask(ctx, `Type ${keys} and press Enter ${hint} `)).trim().toLowerCase();
 		if (a === "" && def) return def.value;
 		const match = choices.find((c) => c.key.toLowerCase() === a);
 		if (match) return match.value;
@@ -196,12 +198,12 @@ export async function runOnboarding(settings: SettingsManager, io: WizardIO = DE
 
 	try {
 		write(out, chalk.bold.cyan(`\n  Welcome to ${DISPLAY_NAME}\n`));
-		write(out, chalk.dim("  Four quick questions. You can change anything later via /settings.\n"));
+		write(out, chalk.dim("  A few quick questions. You can change anything later via /settings.\n"));
 		write(out, chalk.bold("\nLocal diagnostics\n"));
 		write(
 			out,
 			chalk.dim(
-				`  ${DISPLAY_NAME} records usage and diagnostic metadata locally by default. It never uploads this data.\n`,
+				`  ${DISPLAY_NAME} logs usage locally so it can improve over time. This stays on your disk and is never uploaded — there is no telemetry.\n`,
 			),
 		);
 		write(
@@ -284,20 +286,11 @@ export async function runOnboarding(settings: SettingsManager, io: WizardIO = DE
 			write(out, chalk.dim("\n3) Default model — skipped (no provider chosen).\n"));
 		}
 
-		// 4. Telemetry — default OFF (WS11 mandate).
-		write(out, chalk.bold("\n4) Telemetry\n"));
-		write(
-			out,
-			chalk.dim(`  ${DISPLAY_NAME} does NOT send telemetry by default. Opt-in only. You can change this later.\n`),
-		);
-		const telemetry = await askYesNo(ctx, "Enable anonymous usage telemetry?", false);
-
 		const answers: WizardAnswers = {
 			theme,
 			auth,
 			defaultProvider,
 			defaultModel,
-			telemetry,
 		};
 
 		persistAnswers(settings, answers);
@@ -331,7 +324,8 @@ export function persistAnswers(settings: SettingsManager, a: WizardAnswers): voi
 		settings.setDefaultModelAndProvider(a.defaultProvider, a.defaultModel);
 	}
 
-	settings.setTelemetryEnabled(a.telemetry);
+	// Local diagnostics logging (stays on disk, never uploaded) is on by default
+	// so the agent has usage data to improve against. No separate telemetry.
 	settings.setDiagnosticsEnabled(true);
 	settings.markDiagnosticsNoticeShown(VERSION);
 	settings.markOnboardingCompleted(VERSION);
