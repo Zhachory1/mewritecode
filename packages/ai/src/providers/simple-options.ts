@@ -110,9 +110,14 @@ export function adjustMaxTokensForThinking(
 	const minOutputTokens = 1024;
 	const level = clampReasoning(reasoningLevel)!;
 	let thinkingBudget = budgets[level]!;
-	const maxTokens = Math.min(baseMaxTokens + thinkingBudget, modelMaxTokens);
+	// `baseMaxTokens` already comes from resolveMaxOutputTokens: the model ceiling
+	// capped so input + output fits the context window. Anthropic counts thinking
+	// tokens *within* max_tokens, so the budget is carved from this cap — never
+	// added on top (which would push max_tokens past the window and 400 the
+	// request when context is nearly full).
+	const maxTokens = Math.min(baseMaxTokens, modelMaxTokens);
 
-	if (maxTokens <= thinkingBudget) {
+	if (thinkingBudget > maxTokens - minOutputTokens) {
 		thinkingBudget = Math.max(0, maxTokens - minOutputTokens);
 	}
 

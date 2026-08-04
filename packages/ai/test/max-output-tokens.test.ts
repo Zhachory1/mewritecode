@@ -13,7 +13,11 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { estimateContextTokens, resolveMaxOutputTokens } from "../src/providers/simple-options.js";
+import {
+	adjustMaxTokensForThinking,
+	estimateContextTokens,
+	resolveMaxOutputTokens,
+} from "../src/providers/simple-options.js";
 import type { Api, Context, Model } from "../src/types.js";
 
 function model(partial: Partial<Model<Api>>): Model<Api> {
@@ -83,5 +87,29 @@ describe("estimateContextTokens", () => {
 	it("counts the system prompt", () => {
 		const withSystem: Context = { systemPrompt: "x".repeat(400), messages: [] };
 		expect(estimateContextTokens(withSystem)).toBeGreaterThan(0);
+	});
+});
+
+describe("adjustMaxTokensForThinking + window-constrained base", () => {
+	// Regression: the thinking path must not re-raise max_tokens above the
+	// window-safe base that resolveMaxOutputTokens produced. Anthropic counts
+	// thinking tokens within max_tokens, so `input + max_tokens` must still fit
+	// the context window even with a large thinking budget.
+	it("never returns maxTokens above a window-constrained base", () => {
+		// Near-full window: resolveMaxOutputTokens yields a small base.
+		const base = resolveMaxOutputTokens(
+			model({ maxTokens: 8000, contextWindow: 10000 }),
+			ctx("x".repeat(4 * 5000)), // ~5000 input tokens
+		);
+		const { maxTokens, thinkingBudget } = adjustMaxTokensForThinking(base, 8000, "high");
+		expect(maxTokens).toBeLessThanOrEqual(base);
+		// Budget is carved within maxTokens, leaving room for output.
+		expect(thinkingBudget).toBeLessThanOrEqual(maxTokens);
+	});
+
+	it("still allows the model's full budget when context is light", () => {
+		const base = resolveMaxOutputTokens(model({ maxTokens: 64000, contextWindow: 200000 }), ctx("hi"));
+		const { maxTokens } = adjustMaxTokensForThinking(base, 64000, "high");
+		expect(maxTokens).toBe(64000);
 	});
 });

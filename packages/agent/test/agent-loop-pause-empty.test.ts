@@ -199,6 +199,31 @@ describe("agent loop: empty-response guard", () => {
 		expect(ended).toBeDefined();
 	});
 
+	it("does not retry a 'length'-stopped empty turn (real truncation, not a glitch)", async () => {
+		let callIndex = 0;
+		const streamFn = () => {
+			const stream = new MockAssistantStream();
+			queueMicrotask(() => {
+				callIndex++;
+				const message = createAssistantMessage([], "length"); // empty but truncated
+				stream.push({ type: "done", reason: "length", message });
+			});
+			return stream;
+		};
+
+		await drain(
+			agentLoop(
+				[createUserMessage("hi")],
+				baseContext(),
+				{ model: createModel(), convertToLlm: identityConverter },
+				undefined,
+				streamFn,
+			),
+		);
+
+		expect(callIndex).toBe(1); // not retried
+	});
+
 	it("does not retry a normal non-empty turn", async () => {
 		let callIndex = 0;
 		const streamFn = () => {

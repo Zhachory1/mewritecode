@@ -287,12 +287,14 @@ async function runLoop(
 			const toolCalls = message.content.filter((c) => c.type === "toolCall");
 			hasMoreToolCalls = toolCalls.length > 0;
 
-			// Guard against a genuinely-empty assistant turn: a clean stop with no
-			// tool calls and no non-whitespace text/thinking. This is a provider
-			// glitch (not a real completion) that otherwise ends the turn silently
-			// mid-task. Retry once from the same context; if still empty, fall
-			// through and end normally so the empty message is at least visible.
-			if (!hasMoreToolCalls && isEmptyAssistantMessage(message)) {
+			// Guard against a genuinely-empty assistant turn: a clean stop (not a
+			// truncation) with no tool calls and no non-whitespace text/thinking.
+			// This is a provider glitch (not a real completion) that otherwise ends
+			// the turn silently mid-task. Retry once from the same context; if still
+			// empty, fall through and end normally so it's at least visible. A
+			// `length`-stopped empty message is real truncation, not a glitch, so it
+			// is left to the normal path rather than retried.
+			if (message.stopReason === "stop" && !hasMoreToolCalls && isEmptyAssistantMessage(message)) {
 				consecutiveEmpties++;
 				if (consecutiveEmpties <= MAX_EMPTY_RETRIES) {
 					await emit({ type: "turn_end", message, toolResults: [] });
