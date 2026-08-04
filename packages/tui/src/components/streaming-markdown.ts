@@ -96,8 +96,18 @@ export function balancePartial(text: string): string {
 	// Close an open fenced code block. We count fence lines (``` at line start,
 	// possibly with lang). Odd count → still inside a fence → append a closing
 	// fence so the render terminates cleanly.
-	const fenceLines = working.split("\n").filter((line) => /^\s{0,3}```/.test(line));
-	if (fenceLines.length % 2 === 1) {
+	const lines = working.split("\n");
+	const fenceIndexes = lines.map((line, i) => (/^\s{0,3}```/.test(line) ? i : -1)).filter((i) => i !== -1);
+	if (fenceIndexes.length % 2 === 1) {
+		// The last fence opener is still open (code is streaming in). Strip its
+		// language so the renderer skips syntax highlighting for the in-flight
+		// block: its text grows every frame, so highlighting can't be memoized
+		// and would re-run the CPU-bound pass over an ever-larger buffer each
+		// frame, stalling the single-threaded TUI loop. The block highlights once
+		// the closing fence actually arrives (or on finalize).
+		const openerIndex = fenceIndexes[fenceIndexes.length - 1];
+		lines[openerIndex] = lines[openerIndex].replace(/^(\s{0,3}```).*$/, "$1");
+		working = lines.join("\n");
 		// If the last fence opener is mid-line (no trailing newline), add one.
 		if (!working.endsWith("\n")) working += "\n";
 		working += "```\n";
