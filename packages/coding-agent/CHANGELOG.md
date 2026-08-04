@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed the TUI appearing to freeze during a model call when auto-compaction runs. Compaction's summarization requests called `completeSimple` directly, bypassing the agent loop's stream inactivity watchdog, and their only `AbortController` fired on manual user cancel — so a provider that opened the connection then went silent would hang the summarization forever. Since compaction fires automatically at context thresholds (right around a large turn), this presented as a freeze mid model call. Compaction and turn-prefix summarization now run through `streamSimple` + `withIdleTimeout` (the same inactivity watchdog the main agent loop uses): a stall with no events for the idle window aborts fast and surfaces a retryable error, while a legitimately slow-streaming summary is never killed. Default 30s of inactivity; override via `CAVE_COMPACTION_IDLE_TIMEOUT_MS`, `0` disables.
+
 ## [1.2.4] - 2026-07-31
 
 ### Fixed

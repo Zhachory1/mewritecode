@@ -22,4 +22,11 @@ export * from "./router.js";
 export * from "./subagent.js";
 // Types
 export * from "./types.js";
+// Stream inactivity/total watchdogs (used by the loop and by compaction)
+export {
+	StreamIdleTimeoutError,
+	StreamTotalTimeoutError,
+	withIdleTimeout,
+	withTotalTimeout,
+} from "./utils/idle-timeout.js";
 export * from "./worktree.js";

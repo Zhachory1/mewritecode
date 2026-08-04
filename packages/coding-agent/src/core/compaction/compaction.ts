@@ -6,8 +6,9 @@
  */
 
 import type { AgentMessage } from "@zhachory1/mewrite-agent";
-import type { AssistantMessage, Model, Usage } from "@zhachory1/mewrite-ai";
-import { completeSimple } from "@zhachory1/mewrite-ai";
+import { StreamIdleTimeoutError, withIdleTimeout } from "@zhachory1/mewrite-agent";
+import type { AssistantMessage, Model, SimpleStreamOptions, Usage } from "@zhachory1/mewrite-ai";
+import { streamSimple } from "@zhachory1/mewrite-ai";
 import {
 	convertToLlm,
 	createBranchSummaryMessage,
@@ -25,6 +26,54 @@ import {
 	SUMMARIZATION_SYSTEM_PROMPT,
 	serializeConversation,
 } from "./utils.js";
+
+// Idle watchdog for compaction summarization requests. The main agent stream is
+// guarded by withIdleTimeout in the agent loop, but compaction summarization
+// historically called completeSimple() — a plain promise with no watchdog — so
+// a provider that opened the connection then went silent would hang the
+// summarization forever, its AbortController only reachable by manual user
+// cancel. Because compaction fires automatically at context thresholds (right
+// around a large turn), that presented as the TUI "freezing during a model
+// call". We run the summarization through streamSimple + withIdleTimeout so a
+// STALL (no events for idleMs) aborts fast, while a legitimately slow-streaming
+// summary is never killed — the deadline resets on every event, so there is no
+// arbitrary total cap. Default 30s of silence; override via env, 0 disables.
+const DEFAULT_COMPACTION_IDLE_TIMEOUT_MS = 30_000;
+
+export function resolveCompactionIdleTimeoutMs(): number {
+	const raw = process.env.CAVE_COMPACTION_IDLE_TIMEOUT_MS;
+	if (raw === undefined) return DEFAULT_COMPACTION_IDLE_TIMEOUT_MS;
+	const parsed = Number.parseInt(raw, 10);
+	return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_COMPACTION_IDLE_TIMEOUT_MS;
+}
+
+/**
+ * Run a summarization completion with an inactivity watchdog. Streams the
+ * response and, if no event arrives within the idle window, aborts the request
+ * and throws {@link StreamIdleTimeoutError} instead of hanging forever. With the
+ * watchdog disabled (idle <= 0) it degrades to a plain awaited completion.
+ */
+export async function completeSummaryWithIdleTimeout(
+	model: Model<any>,
+	context: Parameters<typeof streamSimple>[1],
+	options: SimpleStreamOptions,
+): Promise<AssistantMessage> {
+	const idleMs = resolveCompactionIdleTimeoutMs();
+	const watchdog = idleMs > 0 ? new AbortController() : undefined;
+	const signal = watchdog
+		? options.signal
+			? AbortSignal.any([options.signal, watchdog.signal])
+			: watchdog.signal
+		: options.signal;
+
+	const eventStream = streamSimple(model, context, { ...options, signal });
+	// Drain events purely to drive the idle watchdog; the summary text comes
+	// from result(). On stall, onTimeout aborts the request and the loop throws.
+	for await (const _event of withIdleTimeout(eventStream, idleMs, () => watchdog?.abort())) {
+		// no-op: compaction does not render events, it only needs the final result
+	}
+	return eventStream.result();
+}
 
 // ============================================================================
 // File Operation Tracking
@@ -584,7 +633,19 @@ export async function generateSummary(
 		: { maxTokens, signal, apiKey, headers };
 
 	const systemPrompt = caveModeEnabled ? CAVE_SUMMARIZATION_SYSTEM_PROMPT : SUMMARIZATION_SYSTEM_PROMPT;
-	const response = await completeSimple(model, { systemPrompt, messages: summarizationMessages }, completionOptions);
+	let response: AssistantMessage;
+	try {
+		response = await completeSummaryWithIdleTimeout(
+			model,
+			{ systemPrompt, messages: summarizationMessages },
+			completionOptions,
+		);
+	} catch (err) {
+		if (err instanceof StreamIdleTimeoutError) {
+			throw new Error(`Summarization stalled: no response for ${err.idleMs}ms`);
+		}
+		throw err;
+	}
 
 	if (response.stopReason === "error") {
 		throw new Error(`Summarization failed: ${response.errorMessage || "Unknown error"}`);
@@ -821,11 +882,19 @@ async function generateTurnPrefixSummary(
 		},
 	];
 
-	const response = await completeSimple(
-		model,
-		{ systemPrompt: SUMMARIZATION_SYSTEM_PROMPT, messages: summarizationMessages },
-		{ maxTokens, signal, apiKey, headers },
-	);
+	let response: AssistantMessage;
+	try {
+		response = await completeSummaryWithIdleTimeout(
+			model,
+			{ systemPrompt: SUMMARIZATION_SYSTEM_PROMPT, messages: summarizationMessages },
+			{ maxTokens, signal, apiKey, headers },
+		);
+	} catch (err) {
+		if (err instanceof StreamIdleTimeoutError) {
+			throw new Error(`Turn prefix summarization stalled: no response for ${err.idleMs}ms`);
+		}
+		throw err;
+	}
 
 	if (response.stopReason === "error") {
 		throw new Error(`Turn prefix summarization failed: ${response.errorMessage || "Unknown error"}`);
