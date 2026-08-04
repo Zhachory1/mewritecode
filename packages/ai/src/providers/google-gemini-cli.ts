@@ -815,7 +815,7 @@ export const streamSimpleGoogleGeminiCli: StreamFunction<"google-gemini-cli", Si
 		throw new Error("Google Cloud Code Assist requires OAuth authentication. Use /login to authenticate.");
 	}
 
-	const base = buildBaseOptions(model, options, apiKey);
+	const base = buildBaseOptions(model, options, apiKey, context);
 	if (!options?.reasoning) {
 		return streamGoogleGeminiCli(model, context, {
 			...base,

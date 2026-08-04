@@ -179,7 +179,10 @@ export interface Usage {
 	};
 }
 
-export type StopReason = "stop" | "length" | "toolUse" | "error" | "aborted";
+// "pause" mirrors Anthropic's `pause_turn`: the provider paused a long-running
+// turn and the same response must be sent back to let the model continue. It is
+// a non-terminal reason — the agent loop re-streams instead of ending the turn.
+export type StopReason = "stop" | "length" | "toolUse" | "error" | "aborted" | "pause";
 
 export interface UserMessage {
 	role: "user";
@@ -245,7 +248,7 @@ export type AssistantMessageEvent =
 	| { type: "toolcall_start"; contentIndex: number; partial: AssistantMessage }
 	| { type: "toolcall_delta"; contentIndex: number; delta: string; partial: AssistantMessage }
 	| { type: "toolcall_end"; contentIndex: number; toolCall: ToolCall; partial: AssistantMessage }
-	| { type: "done"; reason: Extract<StopReason, "stop" | "length" | "toolUse">; message: AssistantMessage }
+	| { type: "done"; reason: Extract<StopReason, "stop" | "length" | "toolUse" | "pause">; message: AssistantMessage }
 	| { type: "error"; reason: Extract<StopReason, "aborted" | "error">; error: AssistantMessage };
 
 /**

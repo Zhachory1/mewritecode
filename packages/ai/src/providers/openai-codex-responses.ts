@@ -280,7 +280,7 @@ export const streamSimpleOpenAICodexResponses: StreamFunction<"openai-codex-resp
 		throw new Error(`No API key for provider: ${model.provider}`);
 	}
 
-	const base = buildBaseOptions(model, options, apiKey);
+	const base = buildBaseOptions(model, options, apiKey, context);
 	const reasoningEffort = supportsXhigh(model) ? options?.reasoning : clampReasoning(options?.reasoning);
 
 	return streamOpenAICodexResponses(model, context, {

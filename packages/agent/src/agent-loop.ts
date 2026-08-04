@@ -49,6 +49,26 @@ const DEFAULT_STREAM_IDLE_TIMEOUT_MS = 120_000;
  */
 const DEFAULT_STREAM_TOTAL_TIMEOUT_MS = 0;
 
+// Max consecutive `pause_turn` continuations before we give up and end the turn,
+// so a provider stuck returning pause can't loop forever.
+const MAX_CONSECUTIVE_PAUSES = 10;
+
+// Retries for a genuinely-empty assistant turn before ending normally.
+const MAX_EMPTY_RETRIES = 1;
+
+/**
+ * True when an assistant message is content-free: no non-whitespace text and no
+ * thinking. Callers additionally require the message to have no tool calls. Such
+ * a message on a clean stop is a provider glitch, not a real completion.
+ */
+function isEmptyAssistantMessage(message: AssistantMessage): boolean {
+	for (const block of message.content) {
+		if (block.type === "text" && block.text.trim().length > 0) return false;
+		if (block.type === "thinking" && block.thinking.trim().length > 0) return false;
+	}
+	return true;
+}
+
 const EMPTY_USAGE: Usage = {
 	input: 0,
 	output: 0,
@@ -196,6 +216,13 @@ async function runLoop(
 ): Promise<void> {
 	let firstTurn = true;
 	let turnCount = 0;
+	// Bounds consecutive Anthropic `pause_turn` continuations so a provider that
+	// keeps pausing can't spin forever inside a single logical turn (maxTurns
+	// does not cover this — a pause is not a fresh user/tool turn).
+	let consecutivePauses = 0;
+	// Bounds retries of a genuinely-empty assistant response (clean stop, no tool
+	// calls, no content) so a persistently-empty provider can't loop forever.
+	let consecutiveEmpties = 0;
 	const maxTurns = config.maxTurns && config.maxTurns > 0 ? config.maxTurns : Number.POSITIVE_INFINITY;
 	// Check for steering messages at start (user may have typed while waiting)
 	let pendingMessages: AgentMessage[] = (await config.getSteeringMessages?.()) || [];
@@ -238,9 +265,43 @@ async function runLoop(
 				return;
 			}
 
+			// Anthropic `pause_turn`: the provider paused a long-running turn and
+			// expects the same response sent back to continue. Re-stream instead of
+			// treating it as done (which previously ended the turn silently). The
+			// paused message is skipped by transform-messages on replay, so the model
+			// regenerates from the last valid state — no adjacent-assistant-message
+			// API error and no fragile content merge. Bounded so it can't spin.
+			if (message.stopReason === "pause") {
+				await emit({ type: "turn_end", message, toolResults: [] });
+				consecutivePauses++;
+				if (consecutivePauses > MAX_CONSECUTIVE_PAUSES) {
+					await emit({ type: "agent_end", messages: newMessages });
+					return;
+				}
+				hasMoreToolCalls = true; // keep the inner loop going to re-stream
+				continue;
+			}
+			consecutivePauses = 0;
+
 			// Check for tool calls
 			const toolCalls = message.content.filter((c) => c.type === "toolCall");
 			hasMoreToolCalls = toolCalls.length > 0;
+
+			// Guard against a genuinely-empty assistant turn: a clean stop with no
+			// tool calls and no non-whitespace text/thinking. This is a provider
+			// glitch (not a real completion) that otherwise ends the turn silently
+			// mid-task. Retry once from the same context; if still empty, fall
+			// through and end normally so the empty message is at least visible.
+			if (!hasMoreToolCalls && isEmptyAssistantMessage(message)) {
+				consecutiveEmpties++;
+				if (consecutiveEmpties <= MAX_EMPTY_RETRIES) {
+					await emit({ type: "turn_end", message, toolResults: [] });
+					hasMoreToolCalls = true; // re-stream
+					continue;
+				}
+			} else {
+				consecutiveEmpties = 0;
+			}
 
 			const toolResults: ToolResultMessage[] = [];
 			if (hasMoreToolCalls) {
