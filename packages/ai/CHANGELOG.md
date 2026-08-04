@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-08-04
+
 ### Fixed
 
 - Fixed the per-request output token budget being clamped to a flat 32000, which throttled large-output models (64k/128k) and could truncate long replies or big tool calls mid-stream — surfacing as the agent "just stopping" after announcing an action ([#142](https://github.com/Zhachory1/mewritecode/issues/142)). The budget now derives from the model's own `maxTokens` ceiling, additionally capped so `input + output` fits the model's context window (a hard requirement for Anthropic, Bedrock and Gemini) with a small margin and a minimum-output floor. Also replaces the equivalent `maxTokens / 3` fallback in the Anthropic provider.

@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-08-04
+
 ### Fixed
 
 - Fixed the agent loop silently ending a turn on Anthropic `pause_turn`: a paused long-running turn now re-streams so the model continues, bounded so a persistently-pausing provider cannot loop forever ([#142](https://github.com/Zhachory1/mewritecode/issues/142)).

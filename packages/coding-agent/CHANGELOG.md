@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-08-04
+
 ### Changed
 
 - Onboarding no longer prompts about "telemetry" and there is no telemetry setting. What was framed as telemetry is local-only diagnostics logging that stays on disk and is never uploaded; it is simply enabled so the agent has usage data to improve against. The onboarding question is dropped (four questions down to three), the notice copy now says "logs usage locally ... never uploaded — there is no telemetry", and `doctor` reports "Local logging" instead of "Telemetry". The unused `telemetry` settings key and its getter/setter are removed.
