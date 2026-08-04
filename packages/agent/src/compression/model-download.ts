@@ -83,6 +83,36 @@ export interface DownloadProgress {
 	artifact: string;
 }
 
+/**
+ * Inactivity budget for a model-artifact download. The `fetch` and the streamed
+ * body read were previously unbounded, so a download host that opened the
+ * connection then went silent would hang the first-compression turn forever
+ * (see issue #143). A single progress-driven watchdog covers both a connect /
+ * first-byte stall and a mid-download stall: the timer resets on every received
+ * chunk, so a slow-but-progressing download is never killed. Default 60s of
+ * inactivity; override via env, `0` disables. Mirrors the CAVE_*_IDLE_TIMEOUT_MS
+ * convention used by the stream and compaction watchdogs.
+ */
+const DEFAULT_MODEL_DOWNLOAD_IDLE_TIMEOUT_MS = 60_000;
+
+export function resolveModelDownloadIdleTimeoutMs(): number {
+	const raw = process.env.CAVE_MODEL_DOWNLOAD_IDLE_TIMEOUT_MS;
+	if (raw === undefined) return DEFAULT_MODEL_DOWNLOAD_IDLE_TIMEOUT_MS;
+	const parsed = Number.parseInt(raw, 10);
+	return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_MODEL_DOWNLOAD_IDLE_TIMEOUT_MS;
+}
+
+/** Error thrown when a model download makes no progress within the idle window. */
+export class ModelDownloadStalledError extends Error {
+	constructor(
+		public readonly artifact: string,
+		public readonly idleMs: number,
+	) {
+		super(`model download stalled (${artifact}): no data for ${idleMs}ms`);
+		this.name = "ModelDownloadStalledError";
+	}
+}
+
 /** Download a single artifact to the models directory with checksum verification. */
 async function downloadArtifact(
 	url: string,
@@ -109,24 +139,56 @@ async function downloadArtifact(
 		}
 	}
 
-	const response = await fetch(url, { redirect: "follow" });
-	if (!response.ok) {
-		throw new Error(`download failed (${artifactName}): ${response.status} ${response.statusText}`);
+	// Progress-driven inactivity watchdog: abort the fetch + body read if no
+	// bytes arrive within the idle window. Reset on every chunk so a slow but
+	// progressing download survives; a connect or mid-stream stall aborts fast.
+	const idleMs = resolveModelDownloadIdleTimeoutMs();
+	const controller = new AbortController();
+	let idleTimer: ReturnType<typeof setTimeout> | undefined;
+	let stalled = false;
+	const resetIdle = () => {
+		if (idleMs <= 0) return;
+		if (idleTimer) clearTimeout(idleTimer);
+		idleTimer = setTimeout(() => {
+			stalled = true;
+			controller.abort();
+		}, idleMs);
+	};
+	const clearIdle = () => {
+		if (idleTimer) clearTimeout(idleTimer);
+		idleTimer = undefined;
+	};
+
+	try {
+		resetIdle();
+		const response = await fetch(url, { redirect: "follow", signal: controller.signal });
+		if (!response.ok) {
+			throw new Error(`download failed (${artifactName}): ${response.status} ${response.statusText}`);
+		}
+		if (!response.body) {
+			throw new Error(`download failed (${artifactName}): empty response body`);
+		}
+
+		const writer = createWriteStream(tmp);
+		const reader = Readable.fromWeb(response.body as any);
+		let bytesDownloaded = 0;
+
+		reader.on("data", (chunk: Buffer) => {
+			bytesDownloaded += chunk.length;
+			resetIdle();
+			onProgress?.({ bytesDownloaded, totalBytes: sizeBytes, artifact: artifactName });
+		});
+
+		await pipeline(reader, writer, { signal: controller.signal });
+	} catch (err) {
+		clearIdle();
+		await unlink(tmp).catch(() => {});
+		if (stalled || (err instanceof Error && err.name === "AbortError")) {
+			throw new ModelDownloadStalledError(artifactName, idleMs);
+		}
+		throw err;
 	}
-	if (!response.body) {
-		throw new Error(`download failed (${artifactName}): empty response body`);
-	}
-
-	const writer = createWriteStream(tmp);
-	const reader = Readable.fromWeb(response.body as any);
-	let bytesDownloaded = 0;
-
-	reader.on("data", (chunk: Buffer) => {
-		bytesDownloaded += chunk.length;
-		onProgress?.({ bytesDownloaded, totalBytes: sizeBytes, artifact: artifactName });
-	});
-
-	await pipeline(reader, writer);
+	clearIdle();
 
 	if (sha256) {
 		const valid = await verifyChecksum(tmp, sha256);
