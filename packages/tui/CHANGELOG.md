@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed a TUI freeze during model streaming: while a code fence is still streaming, its language is now stripped so the in-flight block renders without syntax highlighting. Highlighting a still-growing block re-ran a CPU-bound pass over an ever-larger buffer every frame (O(N^2) over a long response), stalling the single-threaded render loop. The block highlights normally once its closing fence arrives.
+
 ## [1.2.4] - 2026-07-31
 
 ## [1.2.3] - 2026-07-31

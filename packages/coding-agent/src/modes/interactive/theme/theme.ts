@@ -725,6 +725,9 @@ export const theme: Theme = new Proxy({} as Theme, {
 
 function setGlobalTheme(t: Theme): void {
 	(globalThis as Record<symbol, Theme>)[THEME_KEY] = t;
+	// Highlight output depends on the active theme; drop memoized results so a
+	// theme switch can't serve stale (wrong-color) highlights.
+	memoizedHighlights.clear();
 }
 
 let currentThemeName: string | undefined;
@@ -1040,6 +1043,33 @@ function getCliHighlightTheme(t: Theme): CliHighlightTheme {
 	return cachedCliHighlightTheme;
 }
 
+// Memoize highlighted markdown code blocks. During streaming the same finished
+// code block is re-rendered on every frame; without this each frame re-runs the
+// CPU-bound cli-highlight pass over the whole block, which is what stalls the
+// single-threaded TUI loop (O(N^2) across a long response). Keyed by lang+code;
+// bounded so a long session can't grow the cache without limit. Cleared on theme
+// change via setGlobalTheme.
+const memoizedHighlights = new Map<string, string[]>();
+const MAX_MEMOIZED_HIGHLIGHTS = 256;
+
+function highlightMarkdownCode(code: string, validLang: string): string[] {
+	const key = `${validLang}\n${code}`;
+	const cached = memoizedHighlights.get(key);
+	if (cached) return cached;
+	const opts = {
+		language: validLang,
+		ignoreIllegals: true,
+		theme: getCliHighlightTheme(theme),
+	};
+	const result = highlight(code, opts).split("\n");
+	if (memoizedHighlights.size >= MAX_MEMOIZED_HIGHLIGHTS) {
+		const oldest = memoizedHighlights.keys().next().value;
+		if (oldest !== undefined) memoizedHighlights.delete(oldest);
+	}
+	memoizedHighlights.set(key, result);
+	return result;
+}
+
 /**
  * Highlight code with syntax coloring based on file extension or language.
  * Returns array of highlighted lines.
@@ -1161,13 +1191,8 @@ export function getMarkdownTheme(): MarkdownTheme {
 			if (!validLang) {
 				return code.split("\n").map((line) => theme.fg("mdCodeBlock", line));
 			}
-			const opts = {
-				language: validLang,
-				ignoreIllegals: true,
-				theme: getCliHighlightTheme(theme),
-			};
 			try {
-				return highlight(code, opts).split("\n");
+				return highlightMarkdownCode(code, validLang);
 			} catch {
 				return code.split("\n").map((line) => theme.fg("mdCodeBlock", line));
 			}
