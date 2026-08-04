@@ -123,13 +123,20 @@ export function transformMessages<TApi extends Api>(
 				existingToolResultIds = new Set();
 			}
 
-			// Skip errored/aborted assistant messages entirely.
+			// Skip errored/aborted/paused assistant messages entirely.
 			// These are incomplete turns that shouldn't be replayed:
 			// - May have partial content (reasoning without message, incomplete tool calls)
 			// - Replaying them can cause API errors (e.g., OpenAI "reasoning without following item")
 			// - The model should retry from the last valid state
+			// "pause" (Anthropic pause_turn) is an incomplete turn too: the agent loop
+			// re-streams it, and skipping it here keeps the replay from sending two
+			// adjacent assistant messages (which the API rejects).
 			const assistantMsg = msg as AssistantMessage;
-			if (assistantMsg.stopReason === "error" || assistantMsg.stopReason === "aborted") {
+			if (
+				assistantMsg.stopReason === "error" ||
+				assistantMsg.stopReason === "aborted" ||
+				assistantMsg.stopReason === "pause"
+			) {
 				continue;
 			}
 

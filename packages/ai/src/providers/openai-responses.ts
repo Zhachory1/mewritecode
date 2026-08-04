@@ -137,7 +137,7 @@ export const streamSimpleOpenAIResponses: StreamFunction<"openai-responses", Sim
 		throw new Error(`No API key for provider: ${model.provider}`);
 	}
 
-	const base = buildBaseOptions(model, options, apiKey);
+	const base = buildBaseOptions(model, options, apiKey, context);
 	const reasoningEffort = supportsXhigh(model) ? options?.reasoning : clampReasoning(options?.reasoning);
 
 	return streamOpenAIResponses(model, context, {

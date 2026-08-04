@@ -31,7 +31,7 @@ import { sanitizeSurrogates } from "../utils/sanitize-unicode.js";
 import { getAnthropicCapabilities, supportsAdaptiveThinking } from "./anthropic-capabilities.js";
 import { discoverAnthropicCapabilities } from "./anthropic-discovery.js";
 import { buildCopilotDynamicHeaders, hasCopilotVisionInput } from "./github-copilot-headers.js";
-import { adjustMaxTokensForThinking, buildBaseOptions } from "./simple-options.js";
+import { adjustMaxTokensForThinking, buildBaseOptions, resolveMaxOutputTokens } from "./simple-options.js";
 import { transformMessages } from "./transform-messages.js";
 
 /**
@@ -486,7 +486,7 @@ export const streamSimpleAnthropic: StreamFunction<"anthropic-messages", SimpleS
 		throw new Error(`No API key for provider: ${model.provider}`);
 	}
 
-	const base = buildBaseOptions(model, options, apiKey);
+	const base = buildBaseOptions(model, options, apiKey, context);
 	if (!options?.reasoning) {
 		return streamAnthropic(model, context, { ...base, thinkingEnabled: false } satisfies AnthropicOptions);
 	}
@@ -625,7 +625,7 @@ function buildParams(
 	const params: MessageCreateParamsStreaming = {
 		model: model.id,
 		messages: convertMessages(context.messages, model, isOAuthToken, cacheControl),
-		max_tokens: options?.maxTokens || (model.maxTokens / 3) | 0,
+		max_tokens: options?.maxTokens || resolveMaxOutputTokens(model, context),
 		stream: true,
 	};
 
@@ -911,8 +911,11 @@ function mapStopReason(reason: Anthropic.Messages.StopReason | string): StopReas
 			return "toolUse";
 		case "refusal":
 			return "error";
-		case "pause_turn": // Stop is good enough -> resubmit
-			return "stop";
+		case "pause_turn":
+			// Non-terminal: Anthropic paused a long-running turn. The agent loop
+			// re-streams (sending the paused response back) so the model continues,
+			// instead of treating it as a completed turn.
+			return "pause";
 		case "stop_sequence":
 			return "stop"; // We don't supply stop sequences, so this should never happen
 		case "sensitive": // Content flagged by safety filters (not yet in SDK types)

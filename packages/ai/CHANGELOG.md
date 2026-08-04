@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed the per-request output token budget being clamped to a flat 32000, which throttled large-output models (64k/128k) and could truncate long replies or big tool calls mid-stream — surfacing as the agent "just stopping" after announcing an action ([#142](https://github.com/Zhachory1/mewritecode/issues/142)). The budget now derives from the model's own `maxTokens` ceiling, additionally capped so `input + output` fits the model's context window (a hard requirement for Anthropic, Bedrock and Gemini) with a small margin and a minimum-output floor. Also replaces the equivalent `maxTokens / 3` fallback in the Anthropic provider.
+- Fixed Anthropic `pause_turn` being mapped to the terminal stop reason `stop`, which made the agent end a paused long-running turn as if it were complete — another cause of the agent silently stopping mid-task ([#142](https://github.com/Zhachory1/mewritecode/issues/142)). Added a non-terminal `pause` stop reason; paused turns are skipped on replay (like aborted/errored turns) so the agent loop can re-stream without sending two adjacent assistant messages.
+
 ## [1.2.4] - 2026-07-31
 
 ## [1.2.3] - 2026-07-31

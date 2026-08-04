@@ -112,7 +112,7 @@ export const streamSimpleMistral: StreamFunction<"mistral-conversations", Simple
 		throw new Error(`No API key for provider: ${model.provider}`);
 	}
 
-	const base = buildBaseOptions(model, options, apiKey);
+	const base = buildBaseOptions(model, options, apiKey, context);
 	const reasoning = clampReasoning(options?.reasoning);
 
 	return streamMistral(model, context, {
