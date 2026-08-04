@@ -2,7 +2,13 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Onboarding no longer prompts about "telemetry" and there is no telemetry setting. What was framed as telemetry is local-only diagnostics logging that stays on disk and is never uploaded; it is simply enabled so the agent has usage data to improve against. The onboarding question is dropped (four questions down to three), the notice copy now says "logs usage locally ... never uploaded — there is no telemetry", and `doctor` reports "Local logging" instead of "Telemetry". The unused `telemetry` settings key and its getter/setter are removed.
+
 ### Fixed
+
+- Fixed onboarding option lists implying arrow-key navigation. Each option was drawn with a filled/empty radio-style dot (`●`/`○`) marking the default, which read like a movable cursor even though selection requires typing the option's key. Options now show a plain `(default)` tag and the prompt reads `Type <keys> and press Enter`, making the number/letter input obvious.
 
 - Fixed the TUI appearing to freeze during a model call when auto-compaction runs. Compaction's summarization requests called `completeSimple` directly, bypassing the agent loop's stream inactivity watchdog, and their only `AbortController` fired on manual user cancel — so a provider that opened the connection then went silent would hang the summarization forever. Since compaction fires automatically at context thresholds (right around a large turn), this presented as a freeze mid model call. Compaction and turn-prefix summarization now run through `streamSimple` + `withIdleTimeout` (the same inactivity watchdog the main agent loop uses): a stall with no events for the idle window aborts fast and surfaces a retryable error, while a legitimately slow-streaming summary is never killed. Default 30s of inactivity; override via `CAVE_COMPACTION_IDLE_TIMEOUT_MS`, `0` disables.
 - Fixed a TUI freeze during model streaming by memoizing markdown code-block syntax highlighting. Finished code blocks were re-highlighted on every frame while later content streamed in; memoizing by language and content makes repeat frames free and keeps the render loop responsive. The memo is cleared on theme change so colors stay correct.

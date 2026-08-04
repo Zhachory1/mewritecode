@@ -147,11 +147,6 @@ export interface OnboardingSettings {
 	completedVersion?: string; // version string at the time of completion
 }
 
-/** Telemetry config. WS11 mandates default OFF. */
-export interface TelemetrySettings {
-	enabled?: boolean; // default: false (off-by-default)
-}
-
 export interface DiagnosticsSettings {
 	enabled?: boolean; // default: true after first-run notice
 	noticeShown?: boolean;
@@ -266,7 +261,6 @@ export interface Settings {
 	memory?: MemorySettings;
 	contextEngine?: ContextEngineSettings;
 	onboarding?: OnboardingSettings;
-	telemetry?: TelemetrySettings;
 	diagnostics?: DiagnosticsSettings;
 	update?: UpdateSettings;
 	/** Claude Code-compatible lifecycle hooks. See `core/hooks/events.ts` for shape. */
@@ -1586,7 +1580,7 @@ export class SettingsManager {
 		};
 	}
 
-	// --- WS11: onboarding / telemetry / update settings ---
+	// --- WS11: onboarding / diagnostics / update settings ---
 
 	getHasCompletedOnboarding(): boolean {
 		return this.settings.onboarding?.hasCompletedOnboarding ?? false;
@@ -1602,20 +1596,6 @@ export class SettingsManager {
 		this.markModified("onboarding", "hasCompletedOnboarding");
 		this.markModified("onboarding", "completedAt");
 		this.markModified("onboarding", "completedVersion");
-		this.save();
-	}
-
-	getTelemetryEnabled(): boolean {
-		// WS11: telemetry is off by default. The user must opt-in explicitly.
-		return this.settings.telemetry?.enabled === true;
-	}
-
-	setTelemetryEnabled(enabled: boolean): void {
-		if (!this.globalSettings.telemetry) {
-			this.globalSettings.telemetry = {};
-		}
-		this.globalSettings.telemetry.enabled = enabled;
-		this.markModified("telemetry", "enabled");
 		this.save();
 	}
 
