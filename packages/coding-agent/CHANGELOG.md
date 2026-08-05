@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added `mewrite agents`: a standalone interactive view that lists running daemon agents (sessions) with live state, without a terminal multiplexer. Select an agent and press enter to attach; detaching returns to the list. Read-only monitor for now (an in-pane transcript/detail view is a planned fast-follow) ([#152](https://github.com/Zhachory1/mewritecode/issues/152)).
+
 ## [1.3.1] - 2026-08-05
 
 ### Added

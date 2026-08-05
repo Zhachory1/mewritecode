@@ -258,6 +258,7 @@ ${chalk.bold("Usage:")}
   ${APP_NAME} exec [flags] "<prompt>"         Non-interactive CI mode
   ${APP_NAME} serve                           Start daemon for remote clients
   ${APP_NAME} attach                          Attach to a running daemon session
+  ${APP_NAME} agents                          Interactive view of running daemon agents
   ${APP_NAME} worker <subcommand>             Manage remote workers
   ${APP_NAME} rollback <N>                    Revert to checkpoint N
   ${APP_NAME} models <subcommand>             Model registry (update, list, inspect)
