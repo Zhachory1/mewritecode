@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-08-05
+
 ### Added
 
 - Added subagent model tiers: `resolveTier(tier, provider, authed)`, `parseTier`, and a curated `MODEL_TIERS` map that resolves a tier keyword (`fast`/`normal`/`strong`) to a concrete model within a given provider. Pinned per-provider (not a cost heuristic) so resolution is deterministic; uncurated providers return undefined for the caller to fall back.
