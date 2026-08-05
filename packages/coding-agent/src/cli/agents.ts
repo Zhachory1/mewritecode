@@ -10,7 +10,9 @@ import { ProcessTerminal, setKeybindings, TUI } from "@zhachory1/mewrite-tui";
 import chalk from "chalk";
 import { CaveClient, DEFAULT_DAEMON_HOST, DEFAULT_DAEMON_PORT } from "../core/daemon/index.js";
 import { KeybindingsManager } from "../core/keybindings.js";
+import { SettingsManager } from "../core/settings-manager.js";
 import { AgentListComponent } from "../modes/interactive/components/agent-list.js";
+import { initTheme } from "../modes/interactive/theme/theme.js";
 import { runAttach } from "./attach.js";
 
 const POLL_MS = 1000;
@@ -100,6 +102,7 @@ export async function runAgents(args: string[]): Promise<number> {
 	}
 
 	setKeybindings(KeybindingsManager.create());
+	initTheme(SettingsManager.create().getTheme());
 
 	// Loop so each attach handoff rebuilds a fresh TUI (a stopped TUI is not reused).
 	for (;;) {
