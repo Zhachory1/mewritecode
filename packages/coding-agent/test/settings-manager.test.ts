@@ -231,6 +231,21 @@ describe("SettingsManager", () => {
 		});
 	});
 
+	describe("subagentModel", () => {
+		it("returns undefined when unset", () => {
+			const manager = SettingsManager.create(projectDir, agentDir);
+			expect(manager.getSubagentModel()).toBeUndefined();
+		});
+
+		it("returns the configured tier or concrete id", async () => {
+			const settingsPath = join(agentDir, "settings.json");
+			writeFileSync(settingsPath, JSON.stringify({ subagentModel: "tier:fast" }));
+			const manager = SettingsManager.create(projectDir, agentDir);
+			await manager.reload();
+			expect(manager.getSubagentModel()).toBe("tier:fast");
+		});
+	});
+
 	describe("error tracking", () => {
 		it("should collect and clear load errors via drainErrors", () => {
 			const globalSettingsPath = join(agentDir, "settings.json");
