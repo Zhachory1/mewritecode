@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Subagents can now request a model by capability tier instead of a concrete id: `model: tier:fast`, `tier:normal`, or `tier:strong` in an agent definition. The tier resolves to a curated model within the parent's current provider, so it works regardless of which single provider you are authed to. On a miss it falls back to the provider's curated `normal`, then to the parent model with a warning (never your default model).
+
 ## [1.3.0] - 2026-08-04
 
 ### Changed

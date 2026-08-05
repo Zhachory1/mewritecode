@@ -49,13 +49,15 @@ const { CheckpointManager } = checkpoints;
 type CheckpointManagerInstance = InstanceType<typeof CheckpointManager>;
 type MemoryProviderInstance = memoryNs.MemoryProvider;
 
-import type { AssistantMessage, ImageContent, Message, Model, TextContent } from "@zhachory1/mewrite-ai";
+import type { Api, AssistantMessage, ImageContent, Message, Model, TextContent } from "@zhachory1/mewrite-ai";
 import {
 	completeSimple,
 	ENV_VAR_BY_PROVIDER,
 	isContextOverflow,
 	modelsAreEqual,
+	parseTier,
 	resetApiProviders,
+	resolveTier,
 	supportsXhigh,
 } from "@zhachory1/mewrite-ai";
 import { CONFIG_DIR_NAME, getDocsPath, MCP_DISCOVERY_OPTIONS } from "../config.js";
@@ -359,6 +361,42 @@ export function resolveToolCompression(
 ): boolean {
 	if (override !== null) return override;
 	return settingsToolCompression && caveModeEnabled;
+}
+
+/**
+ * Resolve a subagent's requested model to a canonical `provider/id` ref for the
+ * spawned child. Pure so the fallback ladder is testable without a full spawn.
+ *
+ * - No request → parent model.
+ * - Tier keyword (`tier:fast|normal|strong`) → curated model for the parent's
+ *   provider; on miss, curated `normal`; still nothing → parent model + a
+ *   warning. Never the user's default model (may be their most expensive).
+ * - Concrete id → canonical/bare-id match in the authed pool, else parent model.
+ */
+export function resolveSubagentModelRef(
+	requested: string | undefined,
+	parentModel: Model<Api> | undefined,
+	authed: Model<Api>[],
+): { ref: string | undefined; warning?: string } {
+	const parentRef = parentModel ? `${parentModel.provider}/${parentModel.id}` : undefined;
+	if (!requested) return { ref: parentRef };
+
+	const tier = parseTier(requested);
+	if (tier) {
+		if (!parentModel) return { ref: parentRef };
+		const picked = resolveTier(tier, parentModel.provider, authed);
+		if (picked) return { ref: `${picked.provider}/${picked.id}` };
+		const normal = tier !== "normal" ? resolveTier("normal", parentModel.provider, authed) : undefined;
+		if (normal) return { ref: `${normal.provider}/${normal.id}` };
+		return {
+			ref: parentRef,
+			warning: `Subagent tier "${requested}" has no curated model for ${parentModel.provider}; using parent model.`,
+		};
+	}
+
+	const authedMatch =
+		authed.find((m) => `${m.provider}/${m.id}` === requested) ?? authed.find((m) => m.id === requested);
+	return { ref: authedMatch ? `${authedMatch.provider}/${authedMatch.id}` : parentRef };
 }
 
 // ============================================================================
@@ -3514,19 +3552,17 @@ export class AgentSession {
 						// back to the parent's currently-running model so they actually
 						// run instead of failing at child-process startup.
 						resolveModel: (agentModel) => {
-							const parentModel = this.agent.state.model;
 							// Canonicalise to `provider/id` so the child cave's resolver
-							// doesn't have to guess which provider to use — critical when
-							// the parent runs on a non-default provider (Codex, Azure
-							// OpenAI Responses, GitHub Copilot, etc.) but the agent.md
-							// frontmatter pins a model id that exists across providers.
-							const parentRef = parentModel ? `${parentModel.provider}/${parentModel.id}` : undefined;
-							if (!agentModel) return parentRef;
-							const authed = this._modelRegistry.getAvailable();
-							const authedMatch =
-								authed.find((m) => `${m.provider}/${m.id}` === agentModel) ??
-								authed.find((m) => m.id === agentModel);
-							return authedMatch ? `${authedMatch.provider}/${authedMatch.id}` : parentRef;
+							// doesn't have to guess which provider to use, and resolve a
+							// capability tier (tier:fast|normal|strong) to a curated model
+							// for the parent's provider. See resolveSubagentModelRef.
+							const { ref, warning } = resolveSubagentModelRef(
+								agentModel,
+								this.agent.state.model,
+								this._modelRegistry.getAvailable(),
+							);
+							if (warning) this._emit({ type: "context_engine_status", message: warning });
+							return ref;
 						},
 						envOverrides: (() => {
 							// Forward the parent's runtime-only API keys (set via
