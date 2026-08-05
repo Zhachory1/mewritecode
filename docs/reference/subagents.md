@@ -43,7 +43,7 @@ For implementer-class agents, set `isolation: worktree` to spawn the agent in a 
 | `prompt` | The agent's system prompt |
 | `tools` | Allowed tools |
 | `disallowedTools` | Denied tools (overrides `tools`) |
-| `model` | Model for this agent |
+| `model` | Model for this agent. A concrete id, or a capability tier `tier:fast` / `tier:normal` / `tier:strong` that resolves to a curated model within the parent's current provider. See [Per-subagent models](/getting-started/models#per-subagent-models). |
 | `mcpServers` | MCP servers exposed to this agent only |
 | `hooks` | Hook overrides |
 | `maxTurns` | Hard cap on agent turns |

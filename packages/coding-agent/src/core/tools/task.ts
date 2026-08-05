@@ -121,7 +121,8 @@ const TaskItemSchema = Type.Object({
 	cwd: Type.Optional(Type.String({ description: "Override working directory for this invocation" })),
 	model: Type.Optional(
 		Type.String({
-			description: "Override the agent's frontmatter model (e.g. anthropic/claude-haiku-4-5)",
+			description:
+				"Override the agent's frontmatter model. A concrete id (e.g. anthropic/claude-haiku-4-5) or a capability tier: tier:fast, tier:normal, tier:strong (resolves within the current provider; best-effort).",
 		}),
 	),
 	mode: Type.Optional(
@@ -135,7 +136,12 @@ const ChainItemSchema = Type.Object({
 	agent: Type.String({ description: "Name of the agent to invoke" }),
 	task: Type.String({ description: "Task; use {previous} to splice prior agent's output" }),
 	cwd: Type.Optional(Type.String({ description: "Override working directory" })),
-	model: Type.Optional(Type.String({ description: "Override the agent's frontmatter model for this step" })),
+	model: Type.Optional(
+		Type.String({
+			description:
+				"Override the agent's frontmatter model for this step. Concrete id or tier: tier:fast|normal|strong.",
+		}),
+	),
 	mode: Type.Optional(Type.Union([Type.Literal("plan"), Type.Literal("auto")])),
 });
 
@@ -143,7 +149,12 @@ const TaskSchema = Type.Object({
 	agent: Type.Optional(Type.String({ description: "Single-mode: agent name" })),
 	task: Type.Optional(Type.String({ description: "Single-mode: task description" })),
 	cwd: Type.Optional(Type.String({ description: "Single-mode: override working directory" })),
-	model: Type.Optional(Type.String({ description: "Single-mode: override the agent's frontmatter model" })),
+	model: Type.Optional(
+		Type.String({
+			description:
+				"Single-mode: override the agent's frontmatter model. Concrete id or tier: tier:fast|normal|strong.",
+		}),
+	),
 	mode: Type.Optional(Type.Union([Type.Literal("plan"), Type.Literal("auto")])),
 	tasks: Type.Optional(Type.Array(TaskItemSchema, { description: "Parallel mode: array of {agent,task}" })),
 	chain: Type.Optional(

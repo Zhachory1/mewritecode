@@ -79,6 +79,32 @@ tools: [Bash, Read]
 
 Subagent results are summarized to ≤500 tokens before re-entering the parent's context — letting you spend on Haiku instead of Opus for repetitive subtasks.
 
+### Capability tiers
+
+Instead of a concrete model id, a subagent can request a **capability tier** — `tier:fast`, `tier:normal`, or `tier:strong`:
+
+```yaml
+---
+description: "Run unit tests and report failures"
+model: "tier:fast"   # cheap model of whatever provider you're on
+tools: [Bash, Read]
+---
+```
+
+A tier resolves to a curated model **within your current provider**, so the same agent definition works whether you're authed to Anthropic, OpenAI, Google, or Bedrock — no provider-specific id to hardcode.
+
+- `tier:fast` — cheap/small model. High-volume, repeatable, small tasks.
+- `tier:normal` — the everyday model. Editing, testing, implementation.
+- `tier:strong` — the top model. Orchestration and planning.
+
+If a tier has no curated model for your provider (e.g. a router or a custom provider), the subagent falls back to the provider's `normal`, then to the parent's model with a warning. Tiers are best-effort and not pinned to an exact model — the curated mapping can change between releases.
+
+Set a default tier for all subagents that don't pin a model via the `subagentModel` setting in `settings.json`:
+
+```json
+{ "subagentModel": "tier:fast" }
+```
+
 ## Model registry
 
 Provider/model definitions ship with Me Write Code and can be refreshed without upgrading the CLI:
