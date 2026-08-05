@@ -20,6 +20,7 @@ export {
 	validateLayers,
 } from "./cache/index.js";
 export * from "./env-api-keys.js";
+export * from "./model-tiers.js";
 export * from "./models.js";
 export type { BedrockOptions } from "./providers/amazon-bedrock.js";
 export type { AnthropicOptions } from "./providers/anthropic.js";
