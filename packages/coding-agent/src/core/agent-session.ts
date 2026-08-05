@@ -3555,9 +3555,12 @@ export class AgentSession {
 							// Canonicalise to `provider/id` so the child cave's resolver
 							// doesn't have to guess which provider to use, and resolve a
 							// capability tier (tier:fast|normal|strong) to a curated model
-							// for the parent's provider. See resolveSubagentModelRef.
+							// for the parent's provider. A definition without a model falls
+							// back to the `subagentModel` setting (tier or concrete id).
+							// See resolveSubagentModelRef.
+							const requested = agentModel ?? this.settingsManager.getSubagentModel();
 							const { ref, warning } = resolveSubagentModelRef(
-								agentModel,
+								requested,
 								this.agent.state.model,
 								this._modelRegistry.getAvailable(),
 							);

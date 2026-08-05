@@ -222,6 +222,9 @@ export interface Settings {
 	lastChangelogVersion?: string;
 	defaultProvider?: string;
 	defaultModel?: string;
+	// Default model for spawned subagents when their definition pins no model.
+	// Accepts a concrete id or a capability tier keyword (`tier:fast|normal|strong`).
+	subagentModel?: string;
 	defaultThinkingLevel?: "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
 	transport?: TransportSetting; // default: "sse"
 	steeringMode?: "all" | "one-at-a-time";
@@ -822,6 +825,10 @@ export class SettingsManager {
 
 	getDefaultModel(): string | undefined {
 		return this.settings.defaultModel;
+	}
+
+	getSubagentModel(): string | undefined {
+		return this.settings.subagentModel;
 	}
 
 	setDefaultProvider(provider: string): void {
