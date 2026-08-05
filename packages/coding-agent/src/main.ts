@@ -10,6 +10,7 @@ import { createInterface } from "node:readline";
 import { type ImageContent, modelsAreEqual, supportsXhigh } from "@zhachory1/mewrite-ai";
 import { detectTerminalIdentity, ProcessTerminal, probeTerminal, setKeybindings, TUI } from "@zhachory1/mewrite-tui";
 import chalk from "chalk";
+import { handleAgentsCommand } from "./cli/agents.js";
 import { type Args, type Mode, parseArgs, printHelp } from "./cli/args.js";
 import { handleAttachCommand } from "./cli/attach.js";
 import { handleDiagnosticsCommand } from "./cli/diagnostics-cli.js";
@@ -598,6 +599,9 @@ export async function main(args: string[]) {
 		return;
 	}
 	if (await handleAttachCommand(args)) {
+		return;
+	}
+	if (await handleAgentsCommand(args)) {
 		return;
 	}
 	if (await handleWorkerCommand(args)) {

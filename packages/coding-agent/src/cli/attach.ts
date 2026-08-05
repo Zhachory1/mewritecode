@@ -162,13 +162,15 @@ export async function runAttach(args: string[]): Promise<number> {
 
 	console.error(chalk.dim(`[attached to ${sessionId}; Ctrl-C to detach]`));
 
+	let rl: ReturnType<typeof createInterface> | undefined;
 	if (!parsed.noInput && process.stdin.isTTY) {
-		const rl = createInterface({ input: process.stdin, output: process.stderr, prompt: "> " });
-		rl.prompt();
-		rl.on("line", async (line) => {
+		const repl = createInterface({ input: process.stdin, output: process.stderr, prompt: "> " });
+		rl = repl;
+		repl.prompt();
+		repl.on("line", async (line) => {
 			const text = line.trim();
 			if (!text) {
-				rl.prompt();
+				repl.prompt();
 				return;
 			}
 			try {
@@ -176,18 +178,28 @@ export async function runAttach(args: string[]): Promise<number> {
 			} catch (err) {
 				console.error(chalk.red(`send error: ${err instanceof Error ? err.message : err}`));
 			}
-			rl.prompt();
+			repl.prompt();
 		});
-		rl.on("close", () => {
+		repl.on("close", () => {
 			session.close();
 		});
 	}
 
-	process.once("SIGINT", () => {
+	const onSigint = (): void => {
 		session.close();
-	});
+	};
+	process.once("SIGINT", onSigint);
 
-	await closed;
+	try {
+		await closed;
+	} finally {
+		// #152: callers (e.g. `mewrite agents`) invoke runAttach in a loop. Without
+		// cleanup a Ctrl-C detach (ws close resolves `closed` without firing rl's
+		// own close) leaks the readline interface and the SIGINT handler per cycle,
+		// stacking stdin listeners across cycles.
+		rl?.close();
+		process.removeListener("SIGINT", onSigint);
+	}
 	return exitCode;
 }
 
