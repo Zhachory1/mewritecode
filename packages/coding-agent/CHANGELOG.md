@@ -4,6 +4,8 @@
 
 ### Added
 
+- The `mewrite agents` focus pane is now live and interactive for hosted sessions: it streams the agent's response as markdown and gives you an input box to talk to the agent in place — no more dropping to a separate attach REPL. `ctrl+w` focuses the pane, type and press enter to send, `escape` interrupts a running turn or (when the input is empty) returns focus to the sidebar. Interactive `[i]` terminal sessions remain read-only ([#158](https://github.com/Zhachory1/mewritecode/issues/158)).
+
 - `mewrite agents` is now a two-pane view: a sidebar of agents on the left and a focus pane on the right showing the selected session's transcript (live-tailing). `ctrl+w` switches focus between the panes; `!` jumps the sidebar to the first agent needing attention (errored sessions are flagged with a `!`). Below 80 columns it falls back to a single pane. Selecting a hosted `[d]` row still opens the attach REPL for now; a live, in-pane interactive session is the next step. Configurable via `app.agents.switchPane` and `app.agents.attention` ([#158](https://github.com/Zhachory1/mewritecode/issues/158)).
 
 - `mewrite agents` can now spawn new agents from the view: press `n`, type a task, and an agent starts working in the current directory with your default model. The daemon is auto-started transparently on first use (loopback, agent runner) so you never run `mewrite serve` yourself; spawned agents persist and keep running after you close the view. You can change a session's working directory or model from inside it later. Configurable via the `app.agents.new` keybinding ([#158](https://github.com/Zhachory1/mewritecode/issues/158)).

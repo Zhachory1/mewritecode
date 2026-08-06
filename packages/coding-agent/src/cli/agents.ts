@@ -20,7 +20,6 @@ import { showConfirmPrompt } from "../modes/interactive/components/confirm-promp
 import type { TranscriptLine } from "../modes/interactive/components/transcript-view.js";
 import { TwoPaneView } from "../modes/interactive/components/two-pane-view.js";
 import { initTheme, theme } from "../modes/interactive/theme/theme.js";
-import { runAttach } from "./attach.js";
 
 const POLL_MS = 1000;
 
@@ -174,12 +173,6 @@ export async function loadTranscript(
 	} catch (err) {
 		return [{ role: "error", text: err instanceof Error ? err.message : String(err) }];
 	}
-}
-
-function connFlags(parsed: AgentsArgs): string[] {
-	const flags = ["--host", parsed.host, "--port", String(parsed.port)];
-	if (parsed.token) flags.push("--token", parsed.token);
-	return flags;
 }
 
 function isLoopbackHost(host: string): boolean {
@@ -376,24 +369,11 @@ async function runViewLoop(initialClient: CaveClient, parsed: AgentsArgs, canSpa
 					}
 				}
 			}
-			continue;
-		}
-		// Hand off to the attach REPL. ui.stop() paused stdin; readline needs it flowing.
-		// Wipe the list first so the attach session renders on a clean screen.
-		process.stdout.write("\x1b[2J\x1b[H\x1b[3J");
-		process.stdin.resume();
-		const code = await runAttach([action.id, ...connFlags(parsed)]);
-		// Wipe the attach transcript so the two-pane view redraws clean on return.
-		process.stdout.write("\x1b[2J\x1b[H\x1b[3J");
-		// runAttach returns 2 when the daemon is gone; don't loop back to a dead list.
-		if (code === 2) {
-			console.error(chalk.yellow(`No daemon listening on ${parsed.host}:${parsed.port}.`));
-			return 2;
 		}
 	}
 }
 
-type ListAction = { type: "quit" } | { type: "attach"; id: string } | { type: "new" };
+type ListAction = { type: "quit" } | { type: "new" };
 
 function runListView(client: CaveClient, canSpawn: boolean): Promise<ListAction> {
 	return new Promise<ListAction>((resolve) => {
@@ -405,6 +385,7 @@ function runListView(client: CaveClient, canSpawn: boolean): Promise<ListAction>
 			if (done) return;
 			done = true;
 			if (timer) clearInterval(timer);
+			view.dispose();
 			ui.stop();
 			resolve(action);
 		};
@@ -437,15 +418,12 @@ function runListView(client: CaveClient, canSpawn: boolean): Promise<ListAction>
 		};
 
 		const view = new TwoPaneView(() => ui.requestRender(), {
-			// enter on a hosted row hands off to the attach REPL (live-in-pane is 5b);
-			// interactive rows are shown read-only in the focus pane already.
-			onAttach: (row) => {
-				if (row.kind !== "interactive") finish({ type: "attach", id: row.id });
-			},
 			onQuit: () => finish({ type: "quit" }),
 			onNew: canSpawn ? () => finish({ type: "new" }) : undefined,
 			onDelete: (row) => void confirmDelete(row),
 			loadTranscript: (row) => loadTranscript(row, client),
+			attach: (id) => client.attach(id),
+			client,
 			rows: () => process.stdout.rows || 24,
 			sidebarSide: SettingsManager.create().getAgentsSidebarSide(),
 		});

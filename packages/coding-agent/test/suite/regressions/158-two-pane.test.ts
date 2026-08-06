@@ -5,9 +5,10 @@
  * pane switch, single-pane fallback below the min width, and jump-to-attention.
  */
 
+import { EventEmitter } from "node:events";
 import { setKeybindings, visibleWidth } from "@zhachory1/mewrite-tui";
 import { beforeAll, describe, expect, it } from "vitest";
-import type { SessionRecord } from "../../../src/core/daemon/index.js";
+import type { AttachedSession, CaveClient, SessionRecord } from "../../../src/core/daemon/index.js";
 import { KeybindingsManager } from "../../../src/core/keybindings.js";
 import type { TranscriptLine } from "../../../src/modes/interactive/components/transcript-view.js";
 import { TwoPaneView } from "../../../src/modes/interactive/components/two-pane-view.js";
@@ -24,6 +25,16 @@ function rec(id: string, state: SessionRecord["state"], kind: SessionRecord["kin
 	return { id, state, kind, cwd: `/tmp/${id}`, createdAt: now, updatedAt: now };
 }
 
+/** A stub AttachedSession that never emits; enough for the live focus pane. */
+function stubAttach(): AttachedSession {
+	const e = new EventEmitter() as unknown as AttachedSession;
+	(e as unknown as { ready: () => Promise<void> }).ready = async () => {};
+	(e as unknown as { send: (t: string) => Promise<{ id: string }> }).send = async () => ({ id: "m" });
+	(e as unknown as { interrupt: () => Promise<{ ok: true }> }).interrupt = async () => ({ ok: true });
+	(e as unknown as { close: () => void }).close = () => {};
+	return e;
+}
+
 function makeView(overrides: Partial<Parameters<typeof mk>[0]> = {}) {
 	return mk({
 		loadTranscript: async (): Promise<TranscriptLine[]> => [{ role: "assistant", text: "hello from focus" }],
@@ -33,14 +44,27 @@ function makeView(overrides: Partial<Parameters<typeof mk>[0]> = {}) {
 
 function mk(cb: {
 	loadTranscript: (row: SessionRecord) => Promise<TranscriptLine[]>;
-	onAttach?: (row: SessionRecord) => void;
 	sidebarSide?: "left" | "right";
+	transcript?: TranscriptLine[];
 }) {
+	const client = {
+		getTranscript: async () => ({
+			sessionId: "x",
+			messages: (cb.transcript ?? [{ role: "assistant", text: "hello from focus" }]).map((l, i) => ({
+				id: `h${i}`,
+				sessionId: "x",
+				role: l.role,
+				text: l.text,
+				createdAt: "",
+			})),
+		}),
+	} as unknown as Pick<CaveClient, "getTranscript">;
 	return new TwoPaneView(() => {}, {
-		onAttach: cb.onAttach ?? (() => {}),
 		onQuit: () => {},
 		onDelete: () => {},
 		loadTranscript: cb.loadTranscript,
+		attach: () => stubAttach(),
+		client,
 		rows: () => 24,
 		sidebarSide: cb.sidebarSide,
 	});
@@ -108,28 +132,22 @@ describe("#158 TwoPaneView", () => {
 		expect(headerRow.indexOf("Your agents")).toBeGreaterThan(sepAt);
 	});
 
-	it("enter while the focus pane is active attaches to the focused session", async () => {
-		const attached: string[] = [];
-		const view = mk({
-			loadTranscript: async () => [{ role: "assistant", text: "x" }],
-			onAttach: (row) => attached.push(row.id),
-		});
-		await seed(view, [rec("a", "idle"), rec("b", "idle")]);
-		view.handleInput(CTRL_W); // focus the pane
-		view.handleInput("\r"); // enter -> attach the focused session
-		expect(attached).toEqual(["a"]);
+	it("enter focuses the pane (hosted rows are interactive in place)", async () => {
+		const view = makeView();
+		await seed(view, [rec("a", "idle")]);
+		let out = view.render(100).map(stripAnsi).join("\n");
+		expect(out).toContain("▸ Your agents"); // sidebar active initially
+		view.handleInput("\r"); // enter focuses the focus pane
+		out = view.render(100).map(stripAnsi).join("\n");
+		expect(out).toContain("▸ Focus  (ctrl+w)");
 	});
 
-	it("jump-to-attention selects the errored row", async () => {
-		const attached: string[] = [];
-		const view = mk({
-			loadTranscript: async () => [{ role: "assistant", text: "x" }],
-			onAttach: (row) => attached.push(row.id),
-		});
+	it("jump-to-attention focuses the errored session in the focus pane", async () => {
+		const view = makeView();
 		await seed(view, [rec("ok1", "idle"), rec("ok2", "idle"), rec("boom", "error")]);
-		// Jump to attention, then enter -> attaches the selected (errored) row.
-		view.handleInput("!");
-		view.handleInput("\r");
-		expect(attached).toEqual(["boom"]);
+		view.handleInput("!"); // jump to the errored row
+		// The focus pane's title reflects the now-selected errored session.
+		const out = view.render(100).map(stripAnsi).join("\n");
+		expect(out).toContain("boom");
 	});
 });
