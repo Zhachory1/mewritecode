@@ -6,8 +6,17 @@
  * No input handoff — this pane never sends, interrupts, or approves.
  */
 
-import { type Component, type Focusable, getKeybindings, wrapTextWithAnsi } from "@zhachory1/mewrite-tui";
+import {
+	type Component,
+	type Focusable,
+	getKeybindings,
+	truncateToWidth,
+	wrapTextWithAnsi,
+} from "@zhachory1/mewrite-tui";
 import { theme } from "../theme/theme.js";
+
+/** Columns consumed by the role label prefix (`"label ".padEnd(6) + " "`). */
+const PREFIX_WIDTH = 7;
 
 export interface TranscriptLine {
 	role: "user" | "assistant" | "toolResult" | "system" | "tool" | "error";
@@ -59,11 +68,12 @@ export class TranscriptView implements Component, Focusable {
 
 	private renderBody(width: number): string[] {
 		const out: string[] = [];
+		const bodyWidth = Math.max(1, width - PREFIX_WIDTH);
 		for (const line of this.lines) {
 			const label = ROLE_LABEL[line.role] ?? line.role;
 			const color = ROLE_COLOR[line.role] ?? "text";
-			for (const wrapped of wrapTextWithAnsi(line.text, width)) {
-				out.push(theme.fg(color, `${label.padEnd(6)} ${wrapped}`));
+			for (const wrapped of wrapTextWithAnsi(line.text, bodyWidth)) {
+				out.push(theme.fg(color, truncateToWidth(`${label.padEnd(6)} ${wrapped}`, width)));
 			}
 		}
 		return out;
@@ -94,10 +104,10 @@ export class TranscriptView implements Component, Focusable {
 
 	render(width: number): string[] {
 		const lines: string[] = [];
-		lines.push(theme.bold(this.title));
+		lines.push(theme.bold(truncateToWidth(this.title, width)));
 		if (this.error) {
 			lines.push("");
-			lines.push(theme.fg("warning", this.error));
+			lines.push(theme.fg("warning", truncateToWidth(this.error, width)));
 			lines.push("");
 			lines.push(theme.fg("dim", "esc/q back"));
 			return lines;

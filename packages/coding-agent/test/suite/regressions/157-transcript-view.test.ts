@@ -9,7 +9,7 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { setKeybindings } from "@zhachory1/mewrite-tui";
+import { setKeybindings, visibleWidth } from "@zhachory1/mewrite-tui";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { loadTranscript } from "../../../src/cli/agents.js";
 import type { CaveClient, SessionRecord, Transcript } from "../../../src/core/daemon/index.js";
@@ -193,6 +193,24 @@ describe("#157 TranscriptView", () => {
 		view.handleInput(DOWN);
 		const out = view.render(80).map(stripAnsi).join("\n");
 		expect(out).toContain("esc/q back");
+	});
+
+	it("never emits a line wider than the viewport (regression: TUI width crash)", () => {
+		const view = new TranscriptView(
+			"[i] a-very-long-session-title-that-would-overflow  /Users/zhach/code/mewritecode/packages/coding-agent",
+			() => {},
+			() => {},
+		);
+		const longWord = "socioeconomic-analysis-of-a-region-with-a-hyphenated-run-on-token-that-cannot-break";
+		view.setLines([
+			{ role: "assistant", text: `${longWord} ${longWord} ${"word ".repeat(60)}` },
+			{ role: "user", text: "short" },
+		]);
+		for (const width of [40, 80, 133, 200]) {
+			for (const line of view.render(width)) {
+				expect(visibleWidth(line)).toBeLessThanOrEqual(width);
+			}
+		}
 	});
 
 	it("shows an empty hint when there are no messages", () => {
