@@ -379,8 +379,12 @@ async function runViewLoop(initialClient: CaveClient, parsed: AgentsArgs, canSpa
 			continue;
 		}
 		// Hand off to the attach REPL. ui.stop() paused stdin; readline needs it flowing.
+		// Wipe the list first so the attach session renders on a clean screen.
+		process.stdout.write("\x1b[2J\x1b[H\x1b[3J");
 		process.stdin.resume();
 		const code = await runAttach([action.id, ...connFlags(parsed)]);
+		// Wipe the attach transcript so the two-pane view redraws clean on return.
+		process.stdout.write("\x1b[2J\x1b[H\x1b[3J");
 		// runAttach returns 2 when the daemon is gone; don't loop back to a dead list.
 		if (code === 2) {
 			console.error(chalk.yellow(`No daemon listening on ${parsed.host}:${parsed.port}.`));
