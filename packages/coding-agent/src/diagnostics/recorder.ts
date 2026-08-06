@@ -10,6 +10,7 @@ import {
 	type SessionAttributes,
 	type SubagentAttributes,
 	type ToolCallAttributes,
+	type TurnAttributes,
 	type ValidationAttributes,
 } from "./events.js";
 import { hasSensitiveKey, type RedactionConfig, redactForDiagnostics } from "./redaction.js";
@@ -26,6 +27,7 @@ export interface DiagnosticsRecorder {
 	sessionStarted(attributes: SessionAttributes): void;
 	sessionEnded(attributes: SessionAttributes, durationMs?: number): void;
 	commandCompleted(attributes: CommandAttributes, durationMs: number): void;
+	turnEnded(attributes: TurnAttributes, durationMs: number): void;
 	modelRequestCompleted(attributes: ModelRequestAttributes, durationMs: number, outcome?: DiagnosticsOutcome): void;
 	toolCallCompleted(attributes: ToolCallAttributes, durationMs: number): void;
 	subagentCompleted(attributes: SubagentAttributes, durationMs: number): void;
@@ -80,6 +82,11 @@ export function createDiagnosticsRecorder(options: DiagnosticsRecorderOptions): 
 		},
 		commandCompleted(attributes, durationMs) {
 			record("command.completed", attributes, durationMs, attributes.success ? "ok" : "error");
+		},
+		turnEnded(attributes, durationMs) {
+			const outcome: DiagnosticsOutcome =
+				attributes.turnReason === "error" ? "error" : attributes.turnReason === "aborted" ? "cancelled" : "ok";
+			record("turn.ended", attributes, durationMs, outcome);
 		},
 		modelRequestCompleted(attributes, durationMs, outcome) {
 			record("model_request.completed", attributes, durationMs, outcome ?? (attributes.errorClass ? "error" : "ok"));
