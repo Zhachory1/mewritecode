@@ -17,6 +17,7 @@ import { type LiveRecord, listLiveInteractive } from "../core/live-registry.js";
 import { getDefaultSessionDir, SessionManager } from "../core/session-manager.js";
 import { SettingsManager } from "../core/settings-manager.js";
 import { AgentListComponent } from "../modes/interactive/components/agent-list.js";
+import { showConfirmPrompt } from "../modes/interactive/components/confirm-prompt.js";
 import { type TranscriptLine, TranscriptView } from "../modes/interactive/components/transcript-view.js";
 import { initTheme, theme } from "../modes/interactive/theme/theme.js";
 import { runAttach } from "./attach.js";
@@ -415,13 +416,6 @@ function runListView(client: CaveClient, canSpawn: boolean): Promise<ListAction>
 			resolve(action);
 		};
 
-		const list = new AgentListComponent(
-			() => ui.requestRender(),
-			(row) => finish(row.kind === "interactive" ? { type: "detail", row } : { type: "attach", id: row.id }),
-			() => finish({ type: "quit" }),
-			canSpawn ? () => finish({ type: "new" }) : undefined,
-		);
-
 		const poll = async (): Promise<void> => {
 			try {
 				list.setRows(await loadRows(client));
@@ -430,6 +424,33 @@ function runListView(client: CaveClient, canSpawn: boolean): Promise<ListAction>
 				list.setPollError(err instanceof Error ? err.message : String(err));
 			}
 		};
+
+		const confirmDelete = async (row: SessionRecord): Promise<void> => {
+			const answer = await showConfirmPrompt(ui, {
+				question: `Delete this agent session?`,
+				detail: `${row.title ?? row.id.slice(0, 8)}  ${row.cwd}`,
+				danger: true,
+				defaultAnswer: "no",
+			});
+			if (answer === "yes") {
+				try {
+					await client.deleteSession(row.id);
+				} catch (err) {
+					list.setPollError(err instanceof Error ? err.message : String(err));
+				}
+				await poll();
+			}
+			ui.setFocus(list);
+			ui.requestRender();
+		};
+
+		const list = new AgentListComponent(
+			() => ui.requestRender(),
+			(row) => finish(row.kind === "interactive" ? { type: "detail", row } : { type: "attach", id: row.id }),
+			() => finish({ type: "quit" }),
+			canSpawn ? () => finish({ type: "new" }) : undefined,
+			(row) => void confirmDelete(row),
+		);
 
 		ui.addChild(list);
 		ui.setFocus(list);

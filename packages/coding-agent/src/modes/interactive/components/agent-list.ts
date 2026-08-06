@@ -66,6 +66,7 @@ export class AgentListComponent implements Component, Focusable {
 		private readonly onSelect: (row: SessionRecord) => void,
 		private readonly onQuit: () => void,
 		private readonly onNew: () => void = () => {},
+		private readonly onDelete: (row: SessionRecord) => void = () => {},
 	) {}
 
 	setRows(rows: SessionRecord[]): void {
@@ -125,6 +126,11 @@ export class AgentListComponent implements Component, Focusable {
 			if (row) this.onSelect(row);
 		} else if (kb.matches(data, "app.agents.new")) {
 			this.onNew();
+		} else if (kb.matches(data, "app.agents.delete")) {
+			const row = this.visibleRows().find((r) => r.id === this.selectedId);
+			// Only daemon-hosted sessions are stored and deletable; interactive live
+			// sessions have no delete endpoint.
+			if (row && row.kind !== "interactive") this.onDelete(row);
 		} else if (kb.matches(data, "app.agents.toggleAll")) {
 			this.toggleShowAll();
 		} else if (kb.matches(data, "tui.select.cancel") || kb.matches(data, "app.agents.back")) {
@@ -160,7 +166,7 @@ export class AgentListComponent implements Component, Focusable {
 		lines.push("");
 		if (this.pollError) lines.push(theme.fg("warning", `daemon unreachable: ${this.pollError}`));
 		const allHint = this.showAll ? "a active-only" : hidden > 0 ? `a show all (+${hidden})` : "a show all";
-		lines.push(theme.fg("dim", `↑/↓ select · enter attach · n new · ${allHint} · q/esc quit`));
+		lines.push(theme.fg("dim", `↑/↓ select · enter attach · n new · d delete · ${allHint} · q/esc quit`));
 		return lines;
 	}
 }

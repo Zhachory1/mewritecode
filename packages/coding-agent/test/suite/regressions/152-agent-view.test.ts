@@ -131,6 +131,25 @@ describe("#152 agent view list", () => {
 		expect(out).toContain("live");
 	});
 
+	it("d fires onDelete for a hosted row but not an interactive one", () => {
+		const deleted: string[] = [];
+		const list = new AgentListComponent(
+			() => {},
+			() => {},
+			() => {},
+			() => {},
+			(row) => deleted.push(row.id),
+		);
+		// Interactive row selected -> d is a no-op (no delete endpoint).
+		list.setRows([rec("live", "running", undefined, "interactive")]);
+		list.handleInput("d");
+		expect(deleted).toEqual([]);
+		// Hosted row selected -> d fires onDelete with the row.
+		list.setRows([rec("hosted-1", "idle", undefined, "hosted")]);
+		list.handleInput("d");
+		expect(deleted).toEqual(["hosted-1"]);
+	});
+
 	it("n triggers onNew", () => {
 		let created = 0;
 		const list = new AgentListComponent(
