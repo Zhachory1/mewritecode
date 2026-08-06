@@ -938,6 +938,34 @@ export function sliceByColumn(line: string, startCol: number, length: number, st
 	return sliceWithWidth(line, startCol, length, strict).text;
 }
 
+/**
+ * Composite two columns of already-rendered lines into a single set of rows,
+ * separated by a `│`. Each side is truncated to its width (preserving ANSI and
+ * zero-width markers via strict sliceByColumn) and padded to fill its column, so
+ * the separator and right column stay aligned. Used by the side-panel renderer and
+ * any two-pane view so column math + cursor-marker handling live in one place.
+ */
+export function compositeColumns(
+	leftLines: string[],
+	rightLines: string[],
+	leftW: number,
+	rightW: number,
+	rows: number,
+): string[] {
+	const RESET = "\x1b[0m";
+	const result: string[] = [];
+	for (let i = 0; i < rows; i++) {
+		const lRaw = leftLines[i] ?? "";
+		const rRaw = rightLines[i] ?? "";
+		const lTrunc = visibleWidth(lRaw) > leftW ? sliceByColumn(lRaw, 0, leftW, true) : lRaw;
+		const rTrunc = visibleWidth(rRaw) > rightW ? sliceByColumn(rRaw, 0, rightW, true) : rRaw;
+		const lPad = " ".repeat(Math.max(0, leftW - visibleWidth(lTrunc)));
+		const rPad = " ".repeat(Math.max(0, rightW - visibleWidth(rTrunc)));
+		result.push(`${lTrunc}${RESET}${lPad}│${rTrunc}${RESET}${rPad}`);
+	}
+	return result;
+}
+
 /** Like sliceByColumn but also returns the actual visible width of the result. */
 export function sliceWithWidth(
 	line: string,

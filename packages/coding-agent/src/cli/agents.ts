@@ -16,9 +16,9 @@ import { KeybindingsManager } from "../core/keybindings.js";
 import { type LiveRecord, listLiveInteractive } from "../core/live-registry.js";
 import { getDefaultSessionDir, SessionManager } from "../core/session-manager.js";
 import { SettingsManager } from "../core/settings-manager.js";
-import { AgentListComponent } from "../modes/interactive/components/agent-list.js";
 import { showConfirmPrompt } from "../modes/interactive/components/confirm-prompt.js";
-import { type TranscriptLine, TranscriptView } from "../modes/interactive/components/transcript-view.js";
+import type { TranscriptLine } from "../modes/interactive/components/transcript-view.js";
+import { TwoPaneView } from "../modes/interactive/components/two-pane-view.js";
 import { initTheme, theme } from "../modes/interactive/theme/theme.js";
 import { runAttach } from "./attach.js";
 
@@ -346,13 +346,6 @@ async function runViewLoop(initialClient: CaveClient, parsed: AgentsArgs, canSpa
 	for (;;) {
 		const action = await runListView(client, canSpawn);
 		if (action.type === "quit") return 0;
-		if (action.type === "detail") {
-			// Wipe the list (screen + scrollback) so the sub-view renders on a clean screen.
-			process.stdout.write("\x1b[2J\x1b[H\x1b[3J");
-			await runDetailView(action.row, client);
-			process.stdout.write("\x1b[2J\x1b[H\x1b[3J");
-			continue;
-		}
 		if (action.type === "new") {
 			process.stdout.write("\x1b[2J\x1b[H\x1b[3J");
 			const task = await runNewAgentPrompt(process.cwd());
@@ -396,11 +389,7 @@ async function runViewLoop(initialClient: CaveClient, parsed: AgentsArgs, canSpa
 	}
 }
 
-type ListAction =
-	| { type: "quit" }
-	| { type: "attach"; id: string }
-	| { type: "detail"; row: SessionRecord }
-	| { type: "new" };
+type ListAction = { type: "quit" } | { type: "attach"; id: string } | { type: "new" };
 
 function runListView(client: CaveClient, canSpawn: boolean): Promise<ListAction> {
 	return new Promise<ListAction>((resolve) => {
@@ -418,10 +407,9 @@ function runListView(client: CaveClient, canSpawn: boolean): Promise<ListAction>
 
 		const poll = async (): Promise<void> => {
 			try {
-				list.setRows(await loadRows(client));
+				view.setRows(await loadRows(client));
 			} catch (err) {
-				// Keep last rows, but surface that the list may be stale.
-				list.setPollError(err instanceof Error ? err.message : String(err));
+				view.setPollError(err instanceof Error ? err.message : String(err));
 			}
 		};
 
@@ -436,51 +424,26 @@ function runListView(client: CaveClient, canSpawn: boolean): Promise<ListAction>
 				try {
 					await client.deleteSession(row.id);
 				} catch (err) {
-					list.setPollError(err instanceof Error ? err.message : String(err));
+					view.setPollError(err instanceof Error ? err.message : String(err));
 				}
 				await poll();
 			}
-			ui.setFocus(list);
+			ui.setFocus(view);
 			ui.requestRender();
 		};
 
-		const list = new AgentListComponent(
-			() => ui.requestRender(),
-			(row) => finish(row.kind === "interactive" ? { type: "detail", row } : { type: "attach", id: row.id }),
-			() => finish({ type: "quit" }),
-			canSpawn ? () => finish({ type: "new" }) : undefined,
-			(row) => void confirmDelete(row),
-		);
-
-		ui.addChild(list);
-		ui.setFocus(list);
-		ui.start();
-		void poll();
-		timer = setInterval(() => void poll(), POLL_MS);
-	});
-}
-
-function runDetailView(row: SessionRecord, client: CaveClient): Promise<void> {
-	return new Promise<void>((resolve) => {
-		const ui = new TUI(new ProcessTerminal());
-		let done = false;
-		let timer: ReturnType<typeof setInterval> | null = null;
-
-		const finish = (): void => {
-			if (done) return;
-			done = true;
-			if (timer) clearInterval(timer);
-			ui.stop();
-			resolve();
-		};
-
-		const kind = row.kind === "interactive" ? "[i]" : "[d]";
-		const title = `${kind} ${row.title ?? row.id.slice(0, 8)}  ${row.cwd}`;
-		const view = new TranscriptView(title, () => ui.requestRender(), finish);
-
-		const poll = async (): Promise<void> => {
-			view.setLines(await loadTranscript(row, client));
-		};
+		const view = new TwoPaneView(() => ui.requestRender(), {
+			// enter on a hosted row hands off to the attach REPL (live-in-pane is 5b);
+			// interactive rows are shown read-only in the focus pane already.
+			onAttach: (row) => {
+				if (row.kind !== "interactive") finish({ type: "attach", id: row.id });
+			},
+			onQuit: () => finish({ type: "quit" }),
+			onNew: canSpawn ? () => finish({ type: "new" }) : undefined,
+			onDelete: (row) => void confirmDelete(row),
+			loadTranscript: (row) => loadTranscript(row, client),
+			rows: () => process.stdout.rows || 24,
+		});
 
 		ui.addChild(view);
 		ui.setFocus(view);
