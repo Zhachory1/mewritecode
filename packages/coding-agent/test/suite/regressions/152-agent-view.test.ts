@@ -18,11 +18,12 @@ const DOWN = "\x1b[B";
 const ENTER = "\r";
 const ESC = "\x1b";
 
-function rec(id: string, state: SessionRecord["state"], title?: string): SessionRecord {
+function rec(id: string, state: SessionRecord["state"], title?: string, kind?: SessionRecord["kind"]): SessionRecord {
 	return {
 		id,
 		state,
 		title,
+		kind,
 		cwd: `/tmp/${id}`,
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
@@ -114,6 +115,21 @@ describe("#152 agent view list", () => {
 		list.setRows([rec("a", "running", "keep-me")]); // successful poll clears error
 		out = list.render(80).map(stripAnsi).join("\n");
 		expect(out).not.toContain("daemon unreachable");
+	});
+
+	it("prefixes rows with a kind tag", () => {
+		const list = new AgentListComponent(
+			() => {},
+			() => {},
+			() => {},
+		);
+		list.setRows([
+			rec("aaaa1111", "running", "interactive-one", "interactive"),
+			rec("bbbb2222", "idle", "hosted-one", "hosted"),
+		]);
+		const out = list.render(80).map(stripAnsi).join("\n");
+		expect(out).toContain("[i]");
+		expect(out).toContain("[d]");
 	});
 
 	it("shows a start hint when there are no agents", () => {

@@ -51,6 +51,7 @@ import {
 import { AuthStorage } from "./core/auth-storage.js";
 import { exportFromFile } from "./core/export-html/index.js";
 import { KeybindingsManager } from "./core/keybindings.js";
+import { attachLiveRegistry } from "./core/live-registry.js";
 import type { ModelRegistry } from "./core/model-registry.js";
 import { resolveCliModel, resolveModelScope, type ScopedModel } from "./core/model-resolver.js";
 import { restoreStdout, takeOverStdout } from "./core/output-guard.js";
@@ -1008,7 +1009,12 @@ export async function main(args: string[]) {
 		}
 
 		printTimings();
-		await interactiveMode.run();
+		const disposeLive = attachLiveRegistry(session, sessionManager.getCwd());
+		try {
+			await interactiveMode.run();
+		} finally {
+			disposeLive();
+		}
 	} else {
 		printTimings();
 		const exitCode = await runPrintMode(runtime, {
