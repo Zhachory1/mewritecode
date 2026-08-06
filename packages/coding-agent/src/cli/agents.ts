@@ -6,13 +6,17 @@
  * existing `attach` REPL, then returns to the list on detach.
  */
 
+import { readdir } from "node:fs/promises";
+import { join } from "node:path";
 import { ProcessTerminal, setKeybindings, TUI } from "@zhachory1/mewrite-tui";
 import chalk from "chalk";
 import { CaveClient, DEFAULT_DAEMON_HOST, DEFAULT_DAEMON_PORT, type SessionRecord } from "../core/daemon/index.js";
 import { KeybindingsManager } from "../core/keybindings.js";
 import { type LiveRecord, listLiveInteractive } from "../core/live-registry.js";
+import { getDefaultSessionDir, SessionManager } from "../core/session-manager.js";
 import { SettingsManager } from "../core/settings-manager.js";
 import { AgentListComponent } from "../modes/interactive/components/agent-list.js";
+import { type TranscriptLine, TranscriptView } from "../modes/interactive/components/transcript-view.js";
 import { initTheme } from "../modes/interactive/theme/theme.js";
 import { runAttach } from "./attach.js";
 
@@ -117,6 +121,59 @@ export function isDaemonUnreachable(err: unknown): boolean {
 	return false;
 }
 
+function messageText(content: unknown): string {
+	if (typeof content === "string") return content;
+	if (Array.isArray(content)) {
+		return content
+			.filter(
+				(p): p is { type: "text"; text: string } =>
+					!!p && typeof p === "object" && (p as { type?: string }).type === "text",
+			)
+			.map((p) => p.text)
+			.join("");
+	}
+	return "";
+}
+
+/** Locate the JSONL transcript file for a live interactive session id. */
+async function findInteractiveTranscript(cwd: string, id: string): Promise<string | null> {
+	try {
+		const dir = getDefaultSessionDir(cwd);
+		const files = (await readdir(dir)).filter((f) => f.endsWith(`_${id}.jsonl`));
+		if (files.length === 0) return null;
+		files.sort();
+		return join(dir, files[files.length - 1]);
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Read a session's transcript for the read-only detail pane. Interactive rows are
+ * read from the local JSONL; hosted rows are fetched from the daemon. Best-effort:
+ * a failure yields a single error line rather than throwing.
+ */
+export async function loadTranscript(
+	row: SessionRecord,
+	client: Pick<CaveClient, "getTranscript">,
+): Promise<TranscriptLine[]> {
+	try {
+		if (row.kind === "interactive") {
+			const path = await findInteractiveTranscript(row.cwd, row.id);
+			if (!path) return [{ role: "error", text: "Transcript file not found." }];
+			const messages = SessionManager.open(path).buildSessionContext().messages;
+			return messages.map((m): TranscriptLine => {
+				const role = m.role as TranscriptLine["role"];
+				return { role, text: messageText((m as { content?: unknown }).content) };
+			});
+		}
+		const transcript = await client.getTranscript(row.id);
+		return transcript.messages.map((m): TranscriptLine => ({ role: m.role, text: m.text }));
+	} catch (err) {
+		return [{ role: "error", text: err instanceof Error ? err.message : String(err) }];
+	}
+}
+
 function connFlags(parsed: AgentsArgs): string[] {
 	const flags = ["--host", parsed.host, "--port", String(parsed.port)];
 	if (parsed.token) flags.push("--token", parsed.token);
@@ -161,10 +218,14 @@ export async function runAgents(args: string[]): Promise<number> {
 	setKeybindings(KeybindingsManager.create());
 	initTheme(SettingsManager.create().getTheme());
 
-	// Loop so each attach handoff rebuilds a fresh TUI (a stopped TUI is not reused).
+	// Loop so each handoff rebuilds a fresh TUI (a stopped TUI is not reused).
 	for (;;) {
 		const action = await runListView(client);
 		if (action.type === "quit") return 0;
+		if (action.type === "detail") {
+			await runDetailView(action.row, client);
+			continue;
+		}
 		// Hand off to the attach REPL. ui.stop() paused stdin; readline needs it flowing.
 		process.stdin.resume();
 		const code = await runAttach([action.id, ...connFlags(parsed)]);
@@ -176,7 +237,7 @@ export async function runAgents(args: string[]): Promise<number> {
 	}
 }
 
-type ListAction = { type: "quit" } | { type: "attach"; id: string };
+type ListAction = { type: "quit" } | { type: "attach"; id: string } | { type: "detail"; row: SessionRecord };
 
 function runListView(client: CaveClient): Promise<ListAction> {
 	return new Promise<ListAction>((resolve) => {
@@ -194,7 +255,7 @@ function runListView(client: CaveClient): Promise<ListAction> {
 
 		const list = new AgentListComponent(
 			() => ui.requestRender(),
-			(id) => finish({ type: "attach", id }),
+			(row) => finish(row.kind === "interactive" ? { type: "detail", row } : { type: "attach", id: row.id }),
 			() => finish({ type: "quit" }),
 		);
 
@@ -209,6 +270,36 @@ function runListView(client: CaveClient): Promise<ListAction> {
 
 		ui.addChild(list);
 		ui.setFocus(list);
+		ui.start();
+		void poll();
+		timer = setInterval(() => void poll(), POLL_MS);
+	});
+}
+
+function runDetailView(row: SessionRecord, client: CaveClient): Promise<void> {
+	return new Promise<void>((resolve) => {
+		const ui = new TUI(new ProcessTerminal());
+		let done = false;
+		let timer: ReturnType<typeof setInterval> | null = null;
+
+		const finish = (): void => {
+			if (done) return;
+			done = true;
+			if (timer) clearInterval(timer);
+			ui.stop();
+			resolve();
+		};
+
+		const kind = row.kind === "interactive" ? "[i]" : "[d]";
+		const title = `${kind} ${row.title ?? row.id.slice(0, 8)}  ${row.cwd}`;
+		const view = new TranscriptView(title, () => ui.requestRender(), finish);
+
+		const poll = async (): Promise<void> => {
+			view.setLines(await loadTranscript(row, client));
+		};
+
+		ui.addChild(view);
+		ui.setFocus(view);
 		ui.start();
 		void poll();
 		timer = setInterval(() => void poll(), POLL_MS);
