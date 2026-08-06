@@ -21,6 +21,7 @@ import { initTheme } from "../../../src/modes/interactive/theme/theme.js";
 const ENV_AGENT_DIR = "MEWRITE_CODING_AGENT_DIR";
 const ESC = "\x1b";
 const DOWN = "\x1b[B";
+const UP = "\x1b[A";
 
 function stripAnsi(s: string): string {
 	return s.replace(/\x1b\[[0-9;]*m/g, "");
@@ -149,6 +150,7 @@ describe("#157 TranscriptView", () => {
 			"[i] session-1  /tmp/proj",
 			() => {},
 			() => {},
+			() => 40,
 		);
 		view.setLines([
 			{ role: "user", text: "hello" },
@@ -162,6 +164,57 @@ describe("#157 TranscriptView", () => {
 		expect(out).not.toContain("you");
 		expect(out).not.toContain("agent ");
 		expect(out).toContain("esc/q back");
+	});
+
+	it("renders markdown (bold, headings) rather than literal markup", () => {
+		const view = new TranscriptView(
+			"t",
+			() => {},
+			() => {},
+			() => 40,
+		);
+		view.setLines([{ role: "assistant", text: "# Heading\n\nsome **bold** words" }]);
+		const out = view.render(80).map(stripAnsi).join("\n");
+		// The literal markdown tokens must not survive rendering.
+		expect(out).not.toContain("# Heading");
+		expect(out).not.toContain("**bold**");
+		expect(out).toContain("Heading");
+		expect(out).toContain("bold");
+	});
+
+	it("live-tails: pins to newest content and follows new lines when at the bottom", () => {
+		const view = new TranscriptView(
+			"t",
+			() => {},
+			() => {},
+			() => 6, // viewport body rows = 6 - CHROME_ROWS(3) = 3
+		);
+		view.setLines(Array.from({ length: 10 }, (_, i) => ({ role: "assistant" as const, text: `line-${i}` })));
+		let out = view.render(80).map(stripAnsi).join("\n");
+		expect(out).toContain("line-9"); // newest visible
+		expect(out).not.toContain("line-0"); // oldest windowed out
+		expect(out).toContain("following");
+
+		// New turn arrives; still pinned to the tail.
+		view.setLines(Array.from({ length: 12 }, (_, i) => ({ role: "assistant" as const, text: `line-${i}` })));
+		out = view.render(80).map(stripAnsi).join("\n");
+		expect(out).toContain("line-11");
+		expect(out).toContain("following");
+	});
+
+	it("holds position after scrolling up and drops the following indicator", () => {
+		const view = new TranscriptView(
+			"t",
+			() => {},
+			() => {},
+			() => 6,
+		);
+		view.setLines(Array.from({ length: 10 }, (_, i) => ({ role: "assistant" as const, text: `line-${i}` })));
+		view.handleInput(UP);
+		view.handleInput(UP);
+		const out = view.render(80).map(stripAnsi).join("\n");
+		expect(out).not.toContain("following");
+		expect(out).not.toContain("line-9"); // scrolled away from the tail
 	});
 
 	it("esc fires onBack", () => {
@@ -183,6 +236,7 @@ describe("#157 TranscriptView", () => {
 			"t",
 			() => {},
 			() => {},
+			() => 6,
 		);
 		view.setLines([
 			{ role: "user", text: "a" },
@@ -192,6 +246,9 @@ describe("#157 TranscriptView", () => {
 		view.handleInput(DOWN);
 		view.handleInput(DOWN);
 		view.handleInput(DOWN);
+		view.handleInput(UP);
+		view.handleInput(UP);
+		view.handleInput(UP);
 		const out = view.render(80).map(stripAnsi).join("\n");
 		expect(out).toContain("esc/q back");
 	});
@@ -201,6 +258,7 @@ describe("#157 TranscriptView", () => {
 			"[i] a-very-long-session-title-that-would-overflow  /Users/zhach/code/mewritecode/packages/coding-agent",
 			() => {},
 			() => {},
+			() => 200,
 		);
 		const longWord = "socioeconomic-analysis-of-a-region-with-a-hyphenated-run-on-token-that-cannot-break";
 		view.setLines([
@@ -219,6 +277,7 @@ describe("#157 TranscriptView", () => {
 			"t",
 			() => {},
 			() => {},
+			() => 24,
 		);
 		view.setLines([]);
 		const out = view.render(80).map(stripAnsi).join("\n");
