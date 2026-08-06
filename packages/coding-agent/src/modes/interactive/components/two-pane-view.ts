@@ -133,6 +133,12 @@ export class TwoPaneView implements Component, Focusable {
 			return;
 		}
 		if (this.active === "focus" && this.focus) {
+			// Enter on the focused session attaches to it (interactive rows have no
+			// attach handoff — they're already shown read-only here).
+			if (kb.matches(data, "tui.select.confirm")) {
+				if (this.focusRow) this.cb.onAttach(this.focusRow);
+				return;
+			}
 			this.focus.handleInput(data);
 		} else {
 			this.sidebar.handleInput(data);

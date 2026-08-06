@@ -726,6 +726,70 @@ describe("WS9 daemon — WebSocket streaming", () => {
 		b.close();
 	});
 
+	it("replays the in-progress assistant turn to a client that attaches mid-stream", async () => {
+		const tmpDir = mkdtempSync(join(tmpdir(), "cave-daemon-replay-"));
+		const store = openStore(join(tmpDir, "sessions.db"));
+		let releaseSecondHalf: (() => void) | undefined;
+		const secondHalf = new Promise<void>((r) => {
+			releaseSecondHalf = r;
+		});
+		try {
+			const handle = await startDaemon({
+				host: "127.0.0.1",
+				port: 0,
+				store,
+				runnerFactory: (session, emit) => ({
+					async send(text) {
+						emit({ type: "state", sessionId: session.id, state: "running" });
+						emit({ type: "token", sessionId: session.id, text: "AAA", role: "assistant" });
+						void secondHalf.then(() => {
+							emit({ type: "token", sessionId: session.id, text: "BBB", role: "assistant" });
+							emit({ type: "state", sessionId: session.id, state: "idle" });
+							emit({ type: "done", sessionId: session.id });
+						});
+						return {
+							id: "m_user",
+							sessionId: session.id,
+							role: "user",
+							text,
+							createdAt: new Date().toISOString(),
+						};
+					},
+					interrupt() {},
+					close() {},
+				}),
+				version: "test",
+			});
+			try {
+				const client = new CaveClient({ host: handle.host, port: handle.port });
+				const s = await client.createSession({});
+				await client.send(s.id, { text: "go" }); // kicks off the turn; "AAA" emitted
+				await new Promise((r) => setTimeout(r, 20)); // ensure the daemon buffered "AAA"
+
+				const late = client.attach(s.id); // attach AFTER the first half was emitted
+				await late.ready();
+				const tokens: string[] = [];
+				const done = new Promise<void>((res) => {
+					late.on("token", (p) => p?.text && tokens.push(p.text));
+					late.on("done", () => res());
+				});
+				await new Promise((r) => setTimeout(r, 20)); // let the replay arrive
+				releaseSecondHalf?.();
+				await done;
+
+				// The late attacher must see the full text, including the "AAA" prefix.
+				expect(tokens.join("")).toContain("AAA");
+				expect(tokens.join("")).toContain("BBB");
+				late.close();
+			} finally {
+				await handle.close();
+			}
+		} finally {
+			store.close();
+			rmSync(tmpDir, { recursive: true, force: true });
+		}
+	});
+
 	it("broadcasts a file notification when a mutation lands under the session cwd", async () => {
 		const cwd = mkdtempSync(join(tmpdir(), "cave-daemon-file-changed-"));
 		try {

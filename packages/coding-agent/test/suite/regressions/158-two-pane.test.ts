@@ -108,6 +108,18 @@ describe("#158 TwoPaneView", () => {
 		expect(headerRow.indexOf("Your agents")).toBeGreaterThan(sepAt);
 	});
 
+	it("enter while the focus pane is active attaches to the focused session", async () => {
+		const attached: string[] = [];
+		const view = mk({
+			loadTranscript: async () => [{ role: "assistant", text: "x" }],
+			onAttach: (row) => attached.push(row.id),
+		});
+		await seed(view, [rec("a", "idle"), rec("b", "idle")]);
+		view.handleInput(CTRL_W); // focus the pane
+		view.handleInput("\r"); // enter -> attach the focused session
+		expect(attached).toEqual(["a"]);
+	});
+
 	it("jump-to-attention selects the errored row", async () => {
 		const attached: string[] = [];
 		const view = mk({
