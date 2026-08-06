@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { AgentMessage } from "@zhachory1/mewrite-agent";
 import type { AgentSession, AgentSessionEvent, ApprovalDecision, RequestApprovalFn } from "../agent-session.js";
 import { createAgentSession } from "../sdk.js";
+import { SessionManager } from "../session-manager.js";
 import type { MessageRecord, SessionRecord } from "./protocol.js";
 import type { AgentRunner, RunnerEmitter, RunnerFactory } from "./server.js";
 
@@ -14,12 +15,21 @@ interface AgentSessionLike {
 }
 
 export interface AgentBackedRunnerOptions {
-	createSession?: (session: SessionRecord) => Promise<{ session: AgentSessionLike }>;
+	createSession?: (session: SessionRecord, history?: HistoryMessage[]) => Promise<{ session: AgentSessionLike }>;
+	/** Prior transcript for a session, used to seed the agent's context after a daemon
+	 * restart (or first realization of a resumed session) so it remembers the chat. */
+	loadHistory?: (sessionId: string) => HistoryMessage[];
+}
+
+/** Minimal shape the runner needs from a stored message to seed history. */
+export interface HistoryMessage {
+	role: string;
+	text: string;
 }
 
 export function createAgentBackedRunnerFactory(options: AgentBackedRunnerOptions = {}): RunnerFactory {
 	const createSession = options.createSession ?? defaultCreateSession;
-	return (daemonSession, emit) => new AgentBackedRunner(daemonSession, emit, createSession);
+	return (daemonSession, emit) => new AgentBackedRunner(daemonSession, emit, createSession, options.loadHistory);
 }
 
 class AgentBackedRunner implements AgentRunner {
@@ -37,7 +47,11 @@ class AgentBackedRunner implements AgentRunner {
 	constructor(
 		private readonly daemonSession: SessionRecord,
 		private readonly emit: RunnerEmitter,
-		private readonly createSession: (session: SessionRecord) => Promise<{ session: AgentSessionLike }>,
+		private readonly createSession: (
+			session: SessionRecord,
+			history?: HistoryMessage[],
+		) => Promise<{ session: AgentSessionLike }>,
+		private readonly loadHistory?: (sessionId: string) => HistoryMessage[],
 	) {}
 
 	async send(text: string): Promise<MessageRecord> {
@@ -49,6 +63,17 @@ class AgentBackedRunner implements AgentRunner {
 			text,
 			createdAt: new Date().toISOString(),
 		};
+		// Snapshot the prior transcript BEFORE recording this user message, so the
+		// agent can be seeded with history that excludes the message it's about to
+		// process (avoids duplicating the current turn). Only needed once, when the
+		// underlying AgentSession is first realized.
+		if (!this.sessionPromise && this.loadHistory) {
+			try {
+				this.pendingHistory = this.loadHistory(this.daemonSession.id);
+			} catch {
+				this.pendingHistory = undefined;
+			}
+		}
 		this.active = true;
 		this.cancelRequested = false;
 		this.terminalEmitted = false;
@@ -96,9 +121,13 @@ class AgentBackedRunner implements AgentRunner {
 		await session.prompt(text);
 	}
 
+	private pendingHistory?: HistoryMessage[];
+
 	private async ensureSession(): Promise<AgentSessionLike> {
 		if (!this.sessionPromise) {
-			this.sessionPromise = this.createSession(this.daemonSession).then((result) => {
+			const history = this.pendingHistory;
+			this.pendingHistory = undefined;
+			this.sessionPromise = this.createSession(this.daemonSession, history).then((result) => {
 				this.realizedSession = result.session;
 				result.session.setApprovalCallback?.(this.requestApproval);
 				this.unsubscribe = result.session.subscribe((event) => this.onEvent(event));
@@ -231,8 +260,44 @@ class AgentBackedRunner implements AgentRunner {
 	}
 }
 
-async function defaultCreateSession(session: SessionRecord): Promise<{ session: AgentSession }> {
-	return createAgentSession({ cwd: session.cwd });
+async function defaultCreateSession(
+	session: SessionRecord,
+	history?: HistoryMessage[],
+): Promise<{ session: AgentSession }> {
+	if (!history || history.length === 0) {
+		return createAgentSession({ cwd: session.cwd });
+	}
+	// Seed an in-memory session manager with the prior transcript so the resumed
+	// agent remembers the conversation the user can see in the view. Stored messages
+	// only carry role + text; that is enough for context (tool-call structure is not
+	// reconstructable from the store, so tool turns become plain text).
+	const sessionManager = SessionManager.inMemory(session.cwd);
+	for (const m of history) {
+		if (!m.text.trim()) continue;
+		const ts = Date.now();
+		if (m.role === "assistant") {
+			sessionManager.appendMessage({
+				role: "assistant",
+				content: [{ type: "text", text: m.text }],
+				api: "anthropic-messages",
+				provider: "anthropic",
+				model: "resumed",
+				usage: {
+					input: 0,
+					output: 0,
+					cacheRead: 0,
+					cacheWrite: 0,
+					totalTokens: 0,
+					cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+				},
+				stopReason: "stop",
+				timestamp: ts,
+			});
+		} else if (m.role === "user") {
+			sessionManager.appendMessage({ role: "user", content: m.text, timestamp: ts });
+		}
+	}
+	return createAgentSession({ cwd: session.cwd, sessionManager });
 }
 
 function readTextDelta(event: unknown): string | undefined {

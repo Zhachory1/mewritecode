@@ -117,17 +117,45 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 	};
 	const webUiDir = getWebUiDir();
 
+	// Recover from an unclean shutdown: any session left in "running" has no live
+	// runner (they live only in this process's memory), so its state is stale. Reset
+	// it to "idle" so a fresh runner starts cleanly on the next message instead of
+	// tripping the "already processing" guard or answering the wrong prompt.
+	try {
+		for (const s of opts.store.listSessions({ state: "running" })) {
+			opts.store.updateSession(s.id, { state: "idle" });
+		}
+	} catch {
+		/* best-effort recovery; don't block startup */
+	}
+
 	const runners = new Map<string, AgentRunner>();
 	const clients = new Map<string, Set<AttachedClient>>();
+	// Accumulated text of the current, not-yet-persisted assistant turn per session.
+	// A client that attaches mid-stream gets this replayed so it doesn't miss the
+	// portion already emitted before it connected. Cleared when the turn completes
+	// (the full message is then in the store / getTranscript).
+	const liveTurn = new Map<string, { role: string; text: string }>();
 
 	function emitForSession(sessionId: string): RunnerEmitter {
 		return (event) => {
 			if (event.type === "message") {
 				opts.store.appendMessage(event.message);
+				// The turn is now persisted; drop the live buffer so late attachers read
+				// it from the transcript instead of getting a duplicate replay.
+				liveTurn.delete(sessionId);
 				return true;
 			}
 			if (event.type === "state") {
 				opts.store.updateSession(event.sessionId, { state: event.state });
+				if (event.state !== "running") liveTurn.delete(sessionId);
+			}
+			// Accumulate assistant token text for mid-stream replay (even with no
+			// clients attached, so the first attacher during a turn sees the prefix).
+			if (event.type === "token" && event.role === "assistant") {
+				const cur = liveTurn.get(sessionId);
+				if (cur && cur.role === event.role) cur.text += event.text;
+				else liveTurn.set(sessionId, { role: event.role, text: event.text });
 			}
 			const set = clients.get(sessionId);
 			if (!set || set.size === 0) return false;
@@ -405,6 +433,14 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 
 		// Send initial state snapshot.
 		send(ws, notification("state", { sessionId, state: session.state } as StateParams));
+
+		// Replay the in-progress assistant turn (if any) so a mid-stream attach doesn't
+		// miss the text emitted before it connected. The completed turn is not buffered
+		// here (it's in the transcript), so this never double-sends a finished message.
+		const pending = liveTurn.get(sessionId);
+		if (pending?.text) {
+			send(ws, notification("token", { sessionId, text: pending.text, role: pending.role } as TokenParams));
+		}
 
 		ws.on("message", async (raw) => {
 			let env: RpcEnvelope | undefined;

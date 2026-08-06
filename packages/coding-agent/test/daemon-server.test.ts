@@ -541,6 +541,38 @@ describe("WS9 daemon — SQLite round-trip survives restart", () => {
 			rmSync(tmpDir, { recursive: true, force: true });
 		}
 	});
+
+	it("resets sessions stranded in 'running' to 'idle' on startup", async () => {
+		const tmpDir = mkdtempSync(join(tmpdir(), "cave-daemon-stale-"));
+		const dbPath = join(tmpDir, "sessions.db");
+		try {
+			// Simulate an unclean shutdown: a session left in "running" state with no
+			// live runner (as happens when the daemon is killed mid-turn).
+			const seed = openStore(dbPath);
+			const s = seed.createSession({ id: `sess-${Date.now()}`, cwd: "/tmp", title: "stranded", state: "running" });
+			expect(seed.getSession(s.id)?.state).toBe("running");
+			seed.close();
+
+			// A fresh daemon on that store must recover the stale state.
+			const store = openStore(dbPath);
+			const handle = await startDaemon({
+				host: "127.0.0.1",
+				port: 0,
+				store,
+				runnerFactory: createDefaultRunnerFactory({ tokensPerSecond: 2000 }),
+				version: "test",
+			});
+			try {
+				const client = new CaveClient({ host: handle.host, port: handle.port });
+				expect((await client.getSession(s.id)).state).toBe("idle");
+			} finally {
+				await handle.close();
+				store.close();
+			}
+		} finally {
+			rmSync(tmpDir, { recursive: true, force: true });
+		}
+	});
 });
 
 describe("WS9 daemon — WebSocket streaming", () => {
@@ -724,6 +756,72 @@ describe("WS9 daemon — WebSocket streaming", () => {
 		expect(tokensB.join("")).toContain("multi");
 		a.close();
 		b.close();
+	});
+
+	it("replays the in-progress assistant turn to a client that attaches mid-stream", async () => {
+		const tmpDir = mkdtempSync(join(tmpdir(), "cave-daemon-replay-"));
+		const store = openStore(join(tmpDir, "sessions.db"));
+		let releaseSecondHalf: (() => void) | undefined;
+		const secondHalf = new Promise<void>((r) => {
+			releaseSecondHalf = r;
+		});
+		try {
+			const handle = await startDaemon({
+				host: "127.0.0.1",
+				port: 0,
+				store,
+				runnerFactory: (session, emit) => ({
+					async send(text) {
+						emit({ type: "state", sessionId: session.id, state: "running" });
+						emit({ type: "token", sessionId: session.id, text: "AAA", role: "assistant" });
+						void secondHalf.then(() => {
+							emit({ type: "token", sessionId: session.id, text: "BBB", role: "assistant" });
+							emit({ type: "state", sessionId: session.id, state: "idle" });
+							emit({ type: "done", sessionId: session.id });
+						});
+						return {
+							id: "m_user",
+							sessionId: session.id,
+							role: "user",
+							text,
+							createdAt: new Date().toISOString(),
+						};
+					},
+					interrupt() {},
+					close() {},
+				}),
+				version: "test",
+			});
+			try {
+				const client = new CaveClient({ host: handle.host, port: handle.port });
+				const s = await client.createSession({});
+				await client.send(s.id, { text: "go" }); // kicks off the turn; "AAA" emitted
+				await new Promise((r) => setTimeout(r, 20)); // ensure the daemon buffered "AAA"
+
+				const late = client.attach(s.id); // attach AFTER the first half was emitted
+				const tokens: string[] = [];
+				// Register the listener BEFORE ready() so the mid-stream replay token the
+				// server sends on attach isn't missed.
+				const done = new Promise<void>((res) => {
+					late.on("token", (p) => p?.text && tokens.push(p.text));
+					late.on("done", () => res());
+				});
+				await late.ready();
+				// Wait for the replayed prefix to arrive before releasing the rest.
+				await vi.waitFor(() => expect(tokens.join("")).toContain("AAA"), { timeout: 2000, interval: 10 });
+				releaseSecondHalf?.();
+				await done;
+
+				expect(tokens.join("")).toContain("AAA");
+				expect(tokens.join("")).toContain("BBB");
+				late.close();
+			} finally {
+				await handle.close();
+			}
+		} finally {
+			store.close();
+			rmSync(tmpDir, { recursive: true, force: true });
+		}
 	});
 
 	it("broadcasts a file notification when a mutation lands under the session cwd", async () => {

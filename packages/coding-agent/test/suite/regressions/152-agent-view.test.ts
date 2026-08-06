@@ -114,7 +114,7 @@ describe("#152 agent view list", () => {
 		list.handleInput("a");
 		out = list.render(80).map(stripAnsi).join("\n");
 		expect(out).toContain("stale");
-		expect(out).toContain("Agents (all)");
+		expect(out).toContain("showing all");
 	});
 
 	it("interactive rows are never hidden even if the timestamp is old", () => {
@@ -199,7 +199,7 @@ describe("#152 agent view list", () => {
 		expect(out).not.toContain("daemon unreachable");
 	});
 
-	it("prefixes rows with a kind tag", () => {
+	it("marks interactive rows with [i] and leaves hosted rows unmarked", () => {
 		const list = new AgentListComponent(
 			() => {},
 			() => {},
@@ -210,8 +210,9 @@ describe("#152 agent view list", () => {
 			rec("bbbb2222", "idle", "hosted-one", "hosted"),
 		]);
 		const out = list.render(80).map(stripAnsi).join("\n");
-		expect(out).toContain("[i]");
-		expect(out).toContain("[d]");
+		expect(out).toContain("[i] interactive-one");
+		expect(out).toContain("hosted-one");
+		expect(out).not.toContain("[d]");
 	});
 
 	it("shows a start hint when there are no agents", () => {

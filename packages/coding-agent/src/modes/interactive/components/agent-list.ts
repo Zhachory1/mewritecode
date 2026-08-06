@@ -7,7 +7,7 @@
  */
 
 import { basename } from "node:path";
-import { type Component, type Focusable, getKeybindings, truncateToWidth } from "@zhachory1/mewrite-tui";
+import { type Component, type Focusable, getKeybindings, truncateToWidth, visibleWidth } from "@zhachory1/mewrite-tui";
 import type { SessionRecord, SessionState } from "../../../core/daemon/index.js";
 import { theme } from "../theme/theme.js";
 
@@ -53,6 +53,24 @@ export class AgentListComponent implements Component, Focusable {
 	private selectedId: string | null = null;
 	private pollError: string | null = null;
 	private showAll = false;
+	/** Session ids the focus pane has flagged as needing attention (e.g. pending
+	 * approval). Errored sessions are always attention regardless of this set. */
+	private attentionIds = new Set<string>();
+
+	setAttention(ids: Iterable<string>): void {
+		this.attentionIds = new Set(ids);
+		this.requestRender();
+	}
+
+	/** True when a row should be flagged for attention: errored, or explicitly marked. */
+	needsAttention(s: SessionRecord): boolean {
+		return s.state === "error" || this.attentionIds.has(s.id);
+	}
+
+	/** Select the first visible attention row; returns it (or null if none). */
+	jumpToAttention(): SessionRecord | null {
+		return this.selectAttention((r) => this.needsAttention(r));
+	}
 
 	/** Rows currently visible given the active/show-all filter. */
 	private visibleRows(): SessionRecord[] {
@@ -67,16 +85,34 @@ export class AgentListComponent implements Component, Focusable {
 		private readonly onQuit: () => void,
 		private readonly onNew: () => void = () => {},
 		private readonly onDelete: (row: SessionRecord) => void = () => {},
+		private readonly onSelectionChange: (row: SessionRecord | null) => void = () => {},
 	) {}
+
+	/** The currently highlighted row, or null when the visible list is empty. */
+	getSelectedRow(): SessionRecord | null {
+		return this.visibleRows().find((r) => r.id === this.selectedId) ?? null;
+	}
+
+	private selectAttention(needsAttention: (row: SessionRecord) => boolean): SessionRecord | null {
+		const target = this.visibleRows().find(needsAttention);
+		if (target) {
+			this.selectedId = target.id;
+			this.onSelectionChange(target);
+			this.requestRender();
+		}
+		return target ?? null;
+	}
 
 	setRows(rows: SessionRecord[]): void {
 		this.rows = rows;
 		const visible = this.visibleRows();
+		const prevId = this.selectedId;
 		if (visible.length === 0) {
 			this.selectedId = null;
 		} else if (!this.selectedId || !visible.some((r) => r.id === this.selectedId)) {
 			this.selectedId = visible[0].id;
 		}
+		if (this.selectedId !== prevId) this.emitSelection();
 		this.pollError = null;
 		this.requestRender();
 	}
@@ -93,12 +129,19 @@ export class AgentListComponent implements Component, Focusable {
 		return this.visibleRows().findIndex((r) => r.id === this.selectedId);
 	}
 
+	private emitSelection(): void {
+		this.onSelectionChange(this.getSelectedRow());
+	}
+
 	private move(delta: number): void {
 		const visible = this.visibleRows();
 		if (visible.length === 0) return;
 		const cur = Math.max(0, this.selectedIndex());
 		const next = Math.min(visible.length - 1, Math.max(0, cur + delta));
-		this.selectedId = visible[next].id;
+		if (visible[next].id !== this.selectedId) {
+			this.selectedId = visible[next].id;
+			this.emitSelection();
+		}
 		this.requestRender();
 	}
 
@@ -107,6 +150,7 @@ export class AgentListComponent implements Component, Focusable {
 		const visible = this.visibleRows();
 		if (!visible.some((r) => r.id === this.selectedId)) {
 			this.selectedId = visible[0]?.id ?? null;
+			this.emitSelection();
 		}
 		this.requestRender();
 	}
@@ -139,34 +183,49 @@ export class AgentListComponent implements Component, Focusable {
 	}
 
 	render(width: number): string[] {
+		// No own title line — the enclosing TwoPaneView renders the "Your agents" pane
+		// header. Only the "(all)" filter state is worth surfacing here.
 		const lines: string[] = [];
 		const visible = this.visibleRows();
 		const hidden = this.rows.length - visible.length;
-		lines.push(theme.bold(`Agents${this.showAll ? " (all)" : ""}`));
+		if (this.showAll) lines.push(theme.fg("dim", truncateToWidth("(showing all)", width)));
 		if (visible.length === 0) {
+			const hint = hidden > 0 ? "n new agent · a show all · q/esc quit" : "n new agent · q/esc quit";
 			lines.push("");
-			lines.push(theme.fg("dim", hidden > 0 ? `No active agents (${hidden} hidden).` : "No agents yet."));
+			lines.push(
+				theme.fg(
+					"dim",
+					truncateToWidth(hidden > 0 ? `No active agents (${hidden} hidden).` : "No agents yet.", width),
+				),
+			);
 			lines.push("");
-			lines.push(theme.fg("dim", hidden > 0 ? "n new agent · a show all · q/esc quit" : "n new agent · q/esc quit"));
+			lines.push(theme.fg("dim", truncateToWidth(hint, width)));
 			return lines;
 		}
 		for (const s of visible) {
 			const selected = s.id === this.selectedId;
 			const glyph = STATE_GLYPH[s.state] ?? "?";
-			const tag = s.kind === "interactive" ? "[i]" : s.kind === "hosted" ? "[d]" : "   ";
-			const label = s.title ?? s.id.slice(0, 8);
-			const cwd = s.cwd ? basename(s.cwd) : "";
+			// Interactive (terminal) sessions get an [i] marker; daemon-hosted agents are
+			// the default and unmarked.
+			const tag = s.kind === "interactive" ? "[i] " : "";
+			const attn = this.needsAttention(s) ? theme.fg("warning", "! ") : "  ";
+			// Prefer a real title, then the working-directory name, then a short id.
+			const name = s.title ?? ((s.cwd ? basename(s.cwd) : "") || s.id.slice(0, 8));
 			const updated = relativeTime(s.updatedAt);
-			const cols = `${tag} ${glyph} ${label}`;
-			const meta = theme.fg("dim", `${s.state.padEnd(8)} ${cwd} ${updated}`);
 			const prefix = selected ? "› " : "  ";
-			const row = truncateToWidth(`${prefix}${cols}  ${meta}`, width);
+			const head = `${prefix}${attn}${glyph} ${tag}${name}`;
+			// Right-align the relative time when there's room.
+			const gap = Math.max(1, width - visibleWidth(head) - updated.length);
+			const row = truncateToWidth(`${head}${" ".repeat(gap)}${theme.fg("dim", updated)}`, width);
 			lines.push(selected ? theme.fg("accent", row) : row);
 		}
 		lines.push("");
-		if (this.pollError) lines.push(theme.fg("warning", `daemon unreachable: ${this.pollError}`));
+		if (this.pollError)
+			lines.push(theme.fg("warning", truncateToWidth(`daemon unreachable: ${this.pollError}`, width)));
 		const allHint = this.showAll ? "a active-only" : hidden > 0 ? `a show all (+${hidden})` : "a show all";
-		lines.push(theme.fg("dim", `↑/↓ select · enter attach · n new · d delete · ${allHint} · q/esc quit`));
+		// Split across two lines so the hint isn't truncated in the narrow sidebar.
+		lines.push(theme.fg("dim", truncateToWidth(`↑/↓ select · enter attach · n new`, width)));
+		lines.push(theme.fg("dim", truncateToWidth(`d delete · ${allHint} · q/esc quit`, width)));
 		return lines;
 	}
 }

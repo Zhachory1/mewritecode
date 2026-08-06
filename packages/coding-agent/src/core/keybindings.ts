@@ -46,6 +46,8 @@ export interface AppKeybindings {
 	"app.agents.new": true;
 	"app.agents.toggleAll": true;
 	"app.agents.delete": true;
+	"app.agents.switchPane": true;
+	"app.agents.attention": true;
 }
 
 export type AppKeybinding = keyof AppKeybindings;
@@ -162,6 +164,14 @@ export const KEYBINDINGS = {
 	"app.agents.delete": {
 		defaultKeys: "d",
 		description: "Delete the selected agent session",
+	},
+	"app.agents.switchPane": {
+		defaultKeys: "ctrl+w",
+		description: "Switch focus between the agent list and the focus pane",
+	},
+	"app.agents.attention": {
+		defaultKeys: "!",
+		description: "Jump to the first agent needing attention",
 	},
 } as const satisfies KeybindingDefinitions;
 

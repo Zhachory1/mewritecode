@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Exported `compositeColumns(leftLines, rightLines, leftW, rightW, rows)`: composites two columns of pre-rendered lines with a `│` separator, truncating each side (ANSI- and cursor-marker-safe) and padding to its column width. Extracted from the side-panel renderer so two-pane layouts share one compositor.
+
 ## [1.3.1] - 2026-08-05
 
 ## [1.3.0] - 2026-08-04

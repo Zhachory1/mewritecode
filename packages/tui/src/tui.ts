@@ -9,7 +9,14 @@ import { performance } from "node:perf_hooks";
 import { isKeyRelease, matchesKey } from "./keys.js";
 import type { Terminal } from "./terminal.js";
 import { getCapabilities, isImageLine, setCellDimensions } from "./terminal-image.js";
-import { applyBackgroundToLine, extractSegments, sliceByColumn, sliceWithWidth, visibleWidth } from "./utils.js";
+import {
+	applyBackgroundToLine,
+	compositeColumns,
+	extractSegments,
+	sliceByColumn,
+	sliceWithWidth,
+	visibleWidth,
+} from "./utils.js";
 
 /**
  * Component interface - all components must implement this
@@ -818,20 +825,7 @@ export class TUI extends Container {
 		const leftW = isRight ? mainWidth : panelWidth;
 		const rightW = isRight ? panelWidth : mainWidth;
 
-		const result: string[] = [];
-		const RESET = "\x1b[0m";
-
-		for (let i = 0; i < maxRows; i++) {
-			const lRaw = leftLines[i] ?? "";
-			const rRaw = rightLines[i] ?? "";
-			const lTrunc = visibleWidth(lRaw) > leftW ? sliceByColumn(lRaw, 0, leftW, true) : lRaw;
-			const rTrunc = visibleWidth(rRaw) > rightW ? sliceByColumn(rRaw, 0, rightW, true) : rRaw;
-			const lPad = " ".repeat(Math.max(0, leftW - visibleWidth(lTrunc)));
-			const rPad = " ".repeat(Math.max(0, rightW - visibleWidth(rTrunc)));
-			result.push(`${lTrunc}${RESET}${lPad}│${rTrunc}${RESET}${rPad}`);
-		}
-
-		return result;
+		return compositeColumns(leftLines, rightLines, leftW, rightW, maxRows);
 	}
 
 	/** Composite all overlays into content lines (sorted by focusOrder, higher = on top). */

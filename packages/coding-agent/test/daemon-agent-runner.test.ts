@@ -128,6 +128,27 @@ describe("agent-backed daemon runner", () => {
 		expect(events).toContainEqual(expect.objectContaining({ type: "state", state: "idle" }));
 	});
 
+	it("seeds the agent with prior transcript history (excluding the current message)", async () => {
+		const emit: RunnerEmitter = () => true;
+		let seeded: Array<{ role: string; text: string }> | undefined;
+		const prior = [
+			{ role: "user", text: "what is 2+2" },
+			{ role: "assistant", text: "4" },
+		];
+		const runner = createAgentBackedRunnerFactory({
+			loadHistory: () => prior,
+			createSession: async (_session, history) => {
+				seeded = history;
+				return { session: new FakeSession() };
+			},
+		})(sessionRecord, emit);
+
+		await runner.send("and 3+3?");
+		await expect.poll(() => seeded !== undefined).toBe(true);
+		// The agent is seeded with the prior turns, NOT the message it's processing now.
+		expect(seeded).toEqual(prior);
+	});
+
 	it("reports encoded agent failures as error terminal state", async () => {
 		const events: unknown[] = [];
 		const emit: RunnerEmitter = (event) => {
