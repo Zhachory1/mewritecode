@@ -86,6 +86,14 @@ describe("buildSystemPrompt", () => {
 		});
 	});
 
+	describe("turn persistence guidance", () => {
+		test("instructs the agent to keep working through an approved plan across turns", () => {
+			const prompt = buildSystemPrompt({ selectedTools: [], contextFiles: [], skills: [] });
+			expect(prompt).toContain("keep working through it across turns");
+			expect(prompt).toContain("Progress updates are not a reason to yield the turn mid-task.");
+		});
+	});
+
 	describe("appendSystemPrompt", () => {
 		test("adds downstream text after defaults while preserving core sections", () => {
 			const prompt = buildSystemPrompt({

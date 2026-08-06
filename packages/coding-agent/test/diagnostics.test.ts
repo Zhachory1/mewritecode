@@ -71,6 +71,46 @@ describe("offline diagnostics", () => {
 		expect(event.attributes.apiKey).toBeUndefined();
 	});
 
+	it("records turn-end reasons to turns.jsonl", () => {
+		const manager = settings();
+		const recorder = createDiagnosticsRecorder({ agentDir, settingsManager: manager, sessionId: "session-1" });
+		recorder.turnEnded(
+			{
+				turnIndex: 0,
+				turnReason: "tool_batch_await",
+				stopReason: "toolUse",
+				toolCallCount: 2,
+				hadToolResults: true,
+			},
+			42,
+		);
+		recorder.turnEnded(
+			{ turnIndex: 1, turnReason: "end_turn", stopReason: "stop", toolCallCount: 0, hadToolResults: false },
+			7,
+		);
+		const file = join(getDiagnosticsPaths(agentDir).currentDir, "turns.jsonl");
+		const lines = readFileSync(file, "utf-8").trim().split("\n");
+		expect(lines).toHaveLength(2);
+		const first = JSON.parse(lines[0]) as { type: string; attributes: Record<string, unknown> };
+		expect(first.type).toBe("turn.ended");
+		expect(first.attributes.turnReason).toBe("tool_batch_await");
+		expect(first.attributes.toolCallCount).toBe(2);
+		const second = JSON.parse(lines[1]) as { attributes: Record<string, unknown> };
+		expect(second.attributes.turnReason).toBe("end_turn");
+	});
+
+	it("drops turn records when diagnostics are disabled", async () => {
+		const manager = settings();
+		manager.setDiagnosticsEnabled(false);
+		await manager.flush();
+		const recorder = createDiagnosticsRecorder({ agentDir, settingsManager: manager, sessionId: "session-1" });
+		recorder.turnEnded(
+			{ turnIndex: 0, turnReason: "end_turn", stopReason: "stop", toolCallCount: 0, hadToolResults: false },
+			1,
+		);
+		expect(existsSync(join(getDiagnosticsPaths(agentDir).currentDir, "turns.jsonl"))).toBe(false);
+	});
+
 	it("exports a reviewable tarball without optional sensitive sections", async () => {
 		const manager = settings();
 		const recorder = createDiagnosticsRecorder({ agentDir, settingsManager: manager, sessionId: "session-1" });

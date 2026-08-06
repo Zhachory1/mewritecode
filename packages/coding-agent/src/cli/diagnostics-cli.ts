@@ -5,7 +5,12 @@ import { APP_NAME, getAgentDir, VERSION } from "../config.js";
 import { SettingsManager } from "../core/settings-manager.js";
 import { exportDiagnostics } from "../diagnostics/export.js";
 import { createDiagnosticsRecorder } from "../diagnostics/recorder.js";
-import { DIAGNOSTICS_RETENTION_BYTES, DIAGNOSTICS_RETENTION_DAYS, getDiagnosticsPaths } from "../diagnostics/store.js";
+import {
+	DIAGNOSTICS_RETENTION_BYTES,
+	DIAGNOSTICS_RETENTION_DAYS,
+	getDiagnosticsPaths,
+	readDiagnosticsInputs,
+} from "../diagnostics/store.js";
 
 function formatBytes(bytes: number): string {
 	if (bytes < 1024) return `${bytes} B`;
@@ -24,9 +29,70 @@ function printUsage(): void {
 
 Commands:
   ${APP_NAME} diagnostics status
+  ${APP_NAME} diagnostics turns [--limit 20]
   ${APP_NAME} diagnostics export [--since 7d] [--until 2026-07-01]
   ${APP_NAME} diagnostics disable
   ${APP_NAME} diagnostics enable`);
+}
+
+interface TurnRecord {
+	timestamp: string;
+	sessionId: string;
+	durationMs?: number;
+	turnIndex?: number;
+	turnReason?: string;
+	stopReason?: string;
+	toolCallCount?: number;
+}
+
+function readRecentTurns(agentDir: string, limit: number): TurnRecord[] {
+	const turns: TurnRecord[] = [];
+	for (const file of readDiagnosticsInputs(agentDir)) {
+		if (file.name !== "turns.jsonl") continue;
+		for (const line of file.content.split("\n")) {
+			if (!line.trim()) continue;
+			try {
+				const event = JSON.parse(line) as {
+					timestamp?: string;
+					sessionId?: string;
+					durationMs?: number;
+					attributes?: Record<string, unknown>;
+				};
+				if (!event.timestamp) continue;
+				turns.push({
+					timestamp: event.timestamp,
+					sessionId: event.sessionId ?? "unknown",
+					durationMs: event.durationMs,
+					turnIndex: event.attributes?.turnIndex as number | undefined,
+					turnReason: event.attributes?.turnReason as string | undefined,
+					stopReason: event.attributes?.stopReason as string | undefined,
+					toolCallCount: event.attributes?.toolCallCount as number | undefined,
+				});
+			} catch {
+				// skip malformed line
+			}
+		}
+	}
+	turns.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+	return turns.slice(-limit);
+}
+
+function printTurns(agentDir: string, limit: number): void {
+	const turns = readRecentTurns(agentDir, limit);
+	if (turns.length === 0) {
+		console.log("No turn-end records found. Diagnostics may be disabled, or no turns have run yet.");
+		return;
+	}
+	console.log(chalk.bold(`Last ${turns.length} turn-end reasons (oldest first):`));
+	for (const turn of turns) {
+		const reason = turn.turnReason ?? "unknown";
+		const tools = turn.toolCallCount !== undefined ? `${turn.toolCallCount} tool call(s)` : "";
+		const duration = turn.durationMs !== undefined ? `${turn.durationMs}ms` : "";
+		const detail = [tools, duration].filter(Boolean).join(", ");
+		console.log(
+			`  ${chalk.dim(turn.timestamp)}  ${chalk.cyan(reason.padEnd(16))}${detail ? chalk.dim(` — ${detail}`) : ""}`,
+		);
+	}
 }
 
 function printStatus(settingsManager: SettingsManager, agentDir: string): void {
@@ -55,6 +121,17 @@ export async function handleDiagnosticsCommand(args: string[]): Promise<boolean>
 			printStatus(settingsManager, agentDir);
 			recorder.commandCompleted(
 				{ commandName: "diagnostics.status", commandKind: "cli", success: true },
+				Date.now() - startedAt,
+			);
+			await settingsManager.flush();
+			return true;
+		}
+		if (subcommand === "turns") {
+			const limitRaw = parseFlagValue(args, "--limit");
+			const limit = limitRaw ? Math.max(1, Number.parseInt(limitRaw, 10) || 20) : 20;
+			printTurns(agentDir, limit);
+			recorder.commandCompleted(
+				{ commandName: "diagnostics.turns", commandKind: "cli", success: true },
 				Date.now() - startedAt,
 			);
 			await settingsManager.flush();
