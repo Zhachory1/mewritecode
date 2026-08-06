@@ -5,6 +5,7 @@
 ### Added
 
 - Added `mewrite agents`: a standalone interactive view that lists running daemon agents (sessions) with live state, without a terminal multiplexer. Select an agent and press enter to attach; detaching returns to the list. Read-only monitor for now (an in-pane transcript/detail view is a planned fast-follow) ([#152](https://github.com/Zhachory1/mewritecode/issues/152)).
+- `mewrite agents` now shows a unified list of both daemon-hosted sessions and live interactive `mewrite` sessions, each tagged by kind (`[d]` hosted, `[i]` interactive). Interactive sessions self-publish a tiny liveness file (id, pid, cwd, state) under `~/.mewrite/agent/live`; the list reaps dead or stale entries and needs no daemon. Set `MEWRITE_NO_LIVE` to opt an interactive session out of publishing ([#152](https://github.com/Zhachory1/mewritecode/issues/152)).
 - Added turn-end reason diagnostics so mid-task stalls are diagnosable. Each turn now records why it ended (`tool_batch_await`, `end_turn`, `max_tokens`, `error`, `aborted`, or `pause`) to `~/.mewrite/agent/diagnostics/current/turns.jsonl` (gated by the existing local-logging setting, same redaction and retention as other diagnostics). View the last N with `mewrite diagnostics turns [--limit N]`; the records are also included in `mewrite diagnostics export` ([#154](https://github.com/Zhachory1/mewritecode/issues/154)).
 
 ### Fixed

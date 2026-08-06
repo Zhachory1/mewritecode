@@ -8,8 +8,9 @@
 
 import { ProcessTerminal, setKeybindings, TUI } from "@zhachory1/mewrite-tui";
 import chalk from "chalk";
-import { CaveClient, DEFAULT_DAEMON_HOST, DEFAULT_DAEMON_PORT } from "../core/daemon/index.js";
+import { CaveClient, DEFAULT_DAEMON_HOST, DEFAULT_DAEMON_PORT, type SessionRecord } from "../core/daemon/index.js";
 import { KeybindingsManager } from "../core/keybindings.js";
+import { type LiveRecord, listLiveInteractive } from "../core/live-registry.js";
 import { SettingsManager } from "../core/settings-manager.js";
 import { AgentListComponent } from "../modes/interactive/components/agent-list.js";
 import { initTheme } from "../modes/interactive/theme/theme.js";
@@ -65,6 +66,57 @@ Options:
   -h, --help      Show this help`);
 }
 
+export function liveToRecord(rec: LiveRecord): SessionRecord {
+	return {
+		id: rec.id,
+		createdAt: rec.updatedAt,
+		updatedAt: rec.updatedAt,
+		state: rec.state,
+		cwd: rec.cwd,
+		kind: "interactive",
+	};
+}
+
+/**
+ * Merge daemon-hosted sessions with live interactive sessions into one list.
+ * A down daemon yields no hosted rows (rather than throwing) so live rows still show.
+ */
+export async function loadRows(client: Pick<CaveClient, "listSessions">): Promise<SessionRecord[]> {
+	const [hosted, live] = await Promise.all([
+		client
+			.listSessions()
+			.then((rows) =>
+				rows.filter((r) => r.state !== "stopped").map((r): SessionRecord => ({ ...r, kind: "hosted" })),
+			)
+			.catch(() => [] as SessionRecord[]),
+		listLiveInteractive(),
+	]);
+	const byId = new Map<string, SessionRecord>();
+	for (const r of hosted) byId.set(r.id, r);
+	// Interactive wins on id collision.
+	for (const r of live) byId.set(r.id, liveToRecord(r));
+	return [...byId.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+/**
+ * True when an error (or any error in its `cause` chain) is a connection failure.
+ * undici's `fetch` throws `TypeError: fetch failed` and carries the real
+ * `ECONNREFUSED`/`ENOTFOUND` code in `error.cause`, so a top-level message match
+ * is not enough.
+ */
+export function isDaemonUnreachable(err: unknown): boolean {
+	const codes = ["ECONNREFUSED", "ENOTFOUND", "ECONNRESET", "ETIMEDOUT"];
+	let cur: unknown = err;
+	for (let depth = 0; cur && depth < 5; depth++) {
+		const e = cur as { code?: string; message?: string; cause?: unknown };
+		if (typeof e.code === "string" && codes.includes(e.code)) return true;
+		if (typeof e.message === "string" && codes.some((c) => e.message?.includes(c))) return true;
+		if (typeof e.message === "string" && e.message.includes("fetch failed")) return true;
+		cur = e.cause;
+	}
+	return false;
+}
+
 function connFlags(parsed: AgentsArgs): string[] {
 	const flags = ["--host", parsed.host, "--port", String(parsed.port)];
 	if (parsed.token) flags.push("--token", parsed.token);
@@ -87,18 +139,23 @@ export async function runAgents(args: string[]): Promise<number> {
 
 	const client = new CaveClient({ host: parsed.host, port: parsed.port, token: parsed.token });
 
-	// Probe the daemon before entering the TUI so a down daemon prints a hint.
+	// Probe the daemon before entering the TUI. Only bail when the daemon is down
+	// AND there are no live interactive sessions to show.
 	try {
 		await client.listSessions();
 	} catch (err) {
-		const msg = err instanceof Error ? err.message : String(err);
-		if (msg.includes("ECONNREFUSED")) {
+		// If any live interactive sessions exist, enter the TUI regardless — loadRows
+		// tolerates a down daemon and still shows them.
+		if ((await listLiveInteractive()).length > 0) {
+			// fall through into the TUI
+		} else if (isDaemonUnreachable(err)) {
 			console.error(chalk.yellow(`No daemon listening on ${parsed.host}:${parsed.port}.`));
 			console.error(chalk.dim(`Start one with: mewrite serve`));
 			return 2;
+		} else {
+			console.error(chalk.red(`Error: ${err instanceof Error ? err.message : String(err)}`));
+			return 1;
 		}
-		console.error(chalk.red(`Error: ${msg}`));
-		return 1;
 	}
 
 	setKeybindings(KeybindingsManager.create());
@@ -143,7 +200,7 @@ function runListView(client: CaveClient): Promise<ListAction> {
 
 		const poll = async (): Promise<void> => {
 			try {
-				list.setRows(await client.listSessions());
+				list.setRows(await loadRows(client));
 			} catch (err) {
 				// Keep last rows, but surface that the list may be stale.
 				list.setPollError(err instanceof Error ? err.message : String(err));

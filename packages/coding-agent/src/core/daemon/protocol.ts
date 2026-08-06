@@ -19,6 +19,8 @@ export interface SessionRecord {
 	title?: string;
 	model?: string;
 	worker?: string;
+	/** Set at merge time by `mewrite agents`; never persisted. */
+	kind?: "hosted" | "interactive";
 }
 
 export interface MessageRecord {

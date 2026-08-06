@@ -104,10 +104,11 @@ export class AgentListComponent implements Component, Focusable {
 		for (const s of this.rows) {
 			const selected = s.id === this.selectedId;
 			const glyph = STATE_GLYPH[s.state] ?? "?";
+			const tag = s.kind === "interactive" ? "[i]" : s.kind === "hosted" ? "[d]" : "   ";
 			const label = s.title ?? s.id.slice(0, 8);
 			const cwd = s.cwd ? basename(s.cwd) : "";
 			const updated = relativeTime(s.updatedAt);
-			const cols = `${glyph} ${label}`;
+			const cols = `${tag} ${glyph} ${label}`;
 			const meta = theme.fg("dim", `${s.state.padEnd(8)} ${cwd} ${updated}`);
 			const prefix = selected ? "› " : "  ";
 			const row = truncateToWidth(`${prefix}${cols}  ${meta}`, width);
