@@ -43,6 +43,7 @@ export interface AppKeybindings {
 	"app.message.editQueue": true;
 	"app.tools.shelfExpand": true;
 	"app.agents.back": true;
+	"app.agents.new": true;
 }
 
 export type AppKeybinding = keyof AppKeybindings;
@@ -147,6 +148,10 @@ export const KEYBINDINGS = {
 	"app.agents.back": {
 		defaultKeys: ["escape", "q"],
 		description: "Go back / quit the agents view",
+	},
+	"app.agents.new": {
+		defaultKeys: "n",
+		description: "Spawn a new agent in the agents view",
 	},
 } as const satisfies KeybindingDefinitions;
 

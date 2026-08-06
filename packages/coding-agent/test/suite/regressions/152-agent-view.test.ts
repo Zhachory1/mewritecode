@@ -88,6 +88,21 @@ describe("#152 agent view list", () => {
 		expect(quit).toBe(2);
 	});
 
+	it("n triggers onNew", () => {
+		let created = 0;
+		const list = new AgentListComponent(
+			() => {},
+			() => {},
+			() => {},
+			() => {
+				created++;
+			},
+		);
+		list.setRows([rec("x", "idle")]);
+		list.handleInput("n");
+		expect(created).toBe(1);
+	});
+
 	it("keeps selection stable across polls, clamps when it disappears", () => {
 		const attached: string[] = [];
 		const list = new AgentListComponent(
@@ -146,6 +161,6 @@ describe("#152 agent view list", () => {
 		list.setRows([]);
 		const out = list.render(80).map(stripAnsi).join("\n");
 		expect(out).toContain("No agents");
-		expect(out).toContain("mewrite serve");
+		expect(out).toContain("new agent");
 	});
 });

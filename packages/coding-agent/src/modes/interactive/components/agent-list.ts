@@ -42,6 +42,7 @@ export class AgentListComponent implements Component, Focusable {
 		private readonly requestRender: () => void,
 		private readonly onSelect: (row: SessionRecord) => void,
 		private readonly onQuit: () => void,
+		private readonly onNew: () => void = () => {},
 	) {}
 
 	setRows(rows: SessionRecord[]): void {
@@ -88,6 +89,8 @@ export class AgentListComponent implements Component, Focusable {
 		} else if (kb.matches(data, "tui.select.confirm")) {
 			const row = this.rows.find((r) => r.id === this.selectedId);
 			if (row) this.onSelect(row);
+		} else if (kb.matches(data, "app.agents.new")) {
+			this.onNew();
 		} else if (kb.matches(data, "tui.select.cancel") || kb.matches(data, "app.agents.back")) {
 			this.onQuit();
 		}
@@ -98,9 +101,9 @@ export class AgentListComponent implements Component, Focusable {
 		lines.push(theme.bold("Agents"));
 		if (this.rows.length === 0) {
 			lines.push("");
-			lines.push(theme.fg("dim", "No agents. Start one with `mewrite` or `mewrite serve`."));
+			lines.push(theme.fg("dim", "No agents yet."));
 			lines.push("");
-			lines.push(theme.fg("dim", "q/esc to quit"));
+			lines.push(theme.fg("dim", "n new agent · q/esc quit"));
 			return lines;
 		}
 		for (const s of this.rows) {
@@ -118,7 +121,7 @@ export class AgentListComponent implements Component, Focusable {
 		}
 		lines.push("");
 		if (this.pollError) lines.push(theme.fg("warning", `daemon unreachable: ${this.pollError}`));
-		lines.push(theme.fg("dim", "↑/↓ select · enter attach · q/esc quit"));
+		lines.push(theme.fg("dim", "↑/↓ select · enter attach · n new · q/esc quit"));
 		return lines;
 	}
 }

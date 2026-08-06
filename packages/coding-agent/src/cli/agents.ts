@@ -6,9 +6,10 @@
  * existing `attach` REPL, then returns to the list on detach.
  */
 
+import { spawn } from "node:child_process";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { ProcessTerminal, setKeybindings, TUI } from "@zhachory1/mewrite-tui";
+import { type Component, Input, ProcessTerminal, setKeybindings, TUI, truncateToWidth } from "@zhachory1/mewrite-tui";
 import chalk from "chalk";
 import { CaveClient, DEFAULT_DAEMON_HOST, DEFAULT_DAEMON_PORT, type SessionRecord } from "../core/daemon/index.js";
 import { KeybindingsManager } from "../core/keybindings.js";
@@ -17,12 +18,12 @@ import { getDefaultSessionDir, SessionManager } from "../core/session-manager.js
 import { SettingsManager } from "../core/settings-manager.js";
 import { AgentListComponent } from "../modes/interactive/components/agent-list.js";
 import { type TranscriptLine, TranscriptView } from "../modes/interactive/components/transcript-view.js";
-import { initTheme } from "../modes/interactive/theme/theme.js";
+import { initTheme, theme } from "../modes/interactive/theme/theme.js";
 import { runAttach } from "./attach.js";
 
 const POLL_MS = 1000;
 
-interface AgentsArgs {
+export interface AgentsArgs {
 	host: string;
 	port: number;
 	token?: string;
@@ -180,6 +181,115 @@ function connFlags(parsed: AgentsArgs): string[] {
 	return flags;
 }
 
+function isLoopbackHost(host: string): boolean {
+	return host === "127.0.0.1" || host === "::1" || host === "localhost";
+}
+
+const HEALTH_POLL_INTERVAL_MS = 100;
+
+async function pollHealthy(client: CaveClient, timeoutMs: number): Promise<boolean> {
+	const deadline = Date.now() + timeoutMs;
+	for (;;) {
+		try {
+			await client.health();
+			return true;
+		} catch {
+			if (Date.now() >= deadline) return false;
+			await new Promise((r) => setTimeout(r, HEALTH_POLL_INTERVAL_MS));
+		}
+	}
+}
+
+/** Injectable daemon spawner; returns a stderr getter + cleanup. Real impl spawns
+ * a detached `mewrite serve --runner agent`. */
+export type DaemonSpawner = (parsed: AgentsArgs) => { getStderr: () => string; cleanup: () => void };
+
+const realSpawner: DaemonSpawner = (parsed) => {
+	const child = spawn(
+		process.execPath,
+		[process.argv[1], "serve", "--runner", "agent", "--host", parsed.host, "--port", String(parsed.port)],
+		{ detached: true, stdio: ["ignore", "ignore", "pipe"] },
+	);
+	let stderr = "";
+	child.stderr?.on("data", (d) => {
+		stderr += String(d);
+	});
+	return {
+		getStderr: () => stderr,
+		cleanup: () => {
+			child.stderr?.destroy();
+			child.unref();
+		},
+	};
+};
+
+/**
+ * Ensure a healthy agent-runner daemon is reachable, auto-starting one if needed.
+ * Health is the source of truth (a pidfile can name a recycled PID). Auto-start is
+ * loopback-only. Returns the client, or an error code the caller should return.
+ * Injectable client + spawner + timeout for testing.
+ */
+export async function ensureDaemon(
+	parsed: AgentsArgs,
+	client: CaveClient = new CaveClient({ host: parsed.host, port: parsed.port, token: parsed.token }),
+	spawner: DaemonSpawner = realSpawner,
+	timeoutMs = 5000,
+): Promise<{ client: CaveClient } | { code: number }> {
+	// Already up?
+	try {
+		await client.health();
+		return { client };
+	} catch (err) {
+		if (!isDaemonUnreachable(err)) {
+			console.error(chalk.red(`Error: ${err instanceof Error ? err.message : String(err)}`));
+			return { code: 1 };
+		}
+	}
+
+	// Only auto-start on loopback (non-loopback requires a token + explicit intent).
+	if (!isLoopbackHost(parsed.host)) {
+		console.error(chalk.yellow(`No daemon at ${parsed.host}:${parsed.port}.`));
+		console.error(chalk.dim(`Start one with: mewrite serve --host ${parsed.host} --token <secret>`));
+		return { code: 2 };
+	}
+
+	const child = spawner(parsed);
+	const healthy = await pollHealthy(client, timeoutMs);
+	if (!healthy) {
+		// Another view may have won a race and bound the port; re-check once.
+		try {
+			await client.health();
+			child.cleanup();
+			return { client };
+		} catch {
+			/* genuinely failed */
+		}
+		console.error(chalk.red(`Auto-start failed (health timeout after ${Math.round(timeoutMs / 1000)}s).`));
+		const stderr = child.getStderr().trim();
+		if (stderr) console.error(chalk.dim(`  serve stderr: ${stderr}`));
+		console.error(chalk.dim(`Start manually: mewrite serve --runner agent`));
+		return { code: 2 };
+	}
+	child.cleanup();
+	return { client };
+}
+
+/**
+ * Spawn a new agent in the given cwd with a starting task. Returns the new session
+ * id, or null on cancel / failure (a failure is surfaced to stderr by the caller).
+ */
+export async function spawnAgent(
+	client: Pick<CaveClient, "createSession" | "send">,
+	cwd: string,
+	task: string,
+): Promise<SessionRecord | null> {
+	const trimmed = task.trim();
+	if (!trimmed) return null;
+	const session = await client.createSession({ cwd });
+	await client.send(session.id, { text: trimmed });
+	return session;
+}
+
 export async function runAgents(args: string[]): Promise<number> {
 	let parsed: AgentsArgs;
 	try {
@@ -194,38 +304,64 @@ export async function runAgents(args: string[]): Promise<number> {
 		return 0;
 	}
 
-	const client = new CaveClient({ host: parsed.host, port: parsed.port, token: parsed.token });
-
-	// Probe the daemon before entering the TUI. Only bail when the daemon is down
-	// AND there are no live interactive sessions to show.
-	try {
-		await client.listSessions();
-	} catch (err) {
-		// If any live interactive sessions exist, enter the TUI regardless — loadRows
-		// tolerates a down daemon and still shows them.
+	// Ensure a healthy agent daemon (auto-start on loopback). Spawning agents needs it.
+	const ensured = await ensureDaemon(parsed);
+	if ("code" in ensured) {
+		// If the daemon is unavailable but live interactive sessions exist, still show them.
 		if ((await listLiveInteractive()).length > 0) {
-			// fall through into the TUI
-		} else if (isDaemonUnreachable(err)) {
-			console.error(chalk.yellow(`No daemon listening on ${parsed.host}:${parsed.port}.`));
-			console.error(chalk.dim(`Start one with: mewrite serve`));
-			return 2;
-		} else {
-			console.error(chalk.red(`Error: ${err instanceof Error ? err.message : String(err)}`));
-			return 1;
+			return runViewLoop(
+				new CaveClient({ host: parsed.host, port: parsed.port, token: parsed.token }),
+				parsed,
+				false,
+			);
 		}
+		return ensured.code;
+	}
+	const client = ensured.client;
+
+	// Guard: an existing echo-mode daemon would make spawned agents silent no-ops.
+	let canSpawn = true;
+	try {
+		const health = await client.health();
+		if (health.capabilities.runnerKind !== "agent") {
+			canSpawn = false;
+			console.error(chalk.yellow(`Daemon at ${parsed.host}:${parsed.port} is running in 'echo' mode, not 'agent'.`));
+			console.error(
+				chalk.dim(`Spawning is disabled. Restart it: pkill -f 'mewrite serve'; mewrite serve --runner agent`),
+			);
+		}
+	} catch {
+		/* health raced away; treat as spawnable, errors surface on spawn */
 	}
 
 	setKeybindings(KeybindingsManager.create());
 	initTheme(SettingsManager.create().getTheme());
+	return runViewLoop(client, parsed, canSpawn);
+}
 
+async function runViewLoop(client: CaveClient, parsed: AgentsArgs, canSpawn: boolean): Promise<number> {
 	// Loop so each handoff rebuilds a fresh TUI (a stopped TUI is not reused).
 	for (;;) {
-		const action = await runListView(client);
+		const action = await runListView(client, canSpawn);
 		if (action.type === "quit") return 0;
 		if (action.type === "detail") {
-			await runDetailView(action.row, client);
-			// Wipe the transcript (screen + scrollback) so the list redraws clean.
+			// Wipe the list (screen + scrollback) so the sub-view renders on a clean screen.
 			process.stdout.write("\x1b[2J\x1b[H\x1b[3J");
+			await runDetailView(action.row, client);
+			process.stdout.write("\x1b[2J\x1b[H\x1b[3J");
+			continue;
+		}
+		if (action.type === "new") {
+			process.stdout.write("\x1b[2J\x1b[H\x1b[3J");
+			const task = await runNewAgentPrompt(process.cwd());
+			process.stdout.write("\x1b[2J\x1b[H\x1b[3J");
+			if (task) {
+				try {
+					await spawnAgent(client, process.cwd(), task);
+				} catch (err) {
+					console.error(chalk.red(`Failed to spawn agent: ${err instanceof Error ? err.message : String(err)}`));
+				}
+			}
 			continue;
 		}
 		// Hand off to the attach REPL. ui.stop() paused stdin; readline needs it flowing.
@@ -239,9 +375,13 @@ export async function runAgents(args: string[]): Promise<number> {
 	}
 }
 
-type ListAction = { type: "quit" } | { type: "attach"; id: string } | { type: "detail"; row: SessionRecord };
+type ListAction =
+	| { type: "quit" }
+	| { type: "attach"; id: string }
+	| { type: "detail"; row: SessionRecord }
+	| { type: "new" };
 
-function runListView(client: CaveClient): Promise<ListAction> {
+function runListView(client: CaveClient, canSpawn: boolean): Promise<ListAction> {
 	return new Promise<ListAction>((resolve) => {
 		const ui = new TUI(new ProcessTerminal());
 		let done = false;
@@ -259,6 +399,7 @@ function runListView(client: CaveClient): Promise<ListAction> {
 			() => ui.requestRender(),
 			(row) => finish(row.kind === "interactive" ? { type: "detail", row } : { type: "attach", id: row.id }),
 			() => finish({ type: "quit" }),
+			canSpawn ? () => finish({ type: "new" }) : undefined,
 		);
 
 		const poll = async (): Promise<void> => {
@@ -305,6 +446,41 @@ function runDetailView(row: SessionRecord, client: CaveClient): Promise<void> {
 		ui.start();
 		void poll();
 		timer = setInterval(() => void poll(), POLL_MS);
+	});
+}
+
+/**
+ * Prompt for a starting task for a new agent. Returns the task text, or null on
+ * cancel (esc) or empty submit. Header shows the spawn cwd so the user knows where
+ * the agent will run.
+ */
+function runNewAgentPrompt(cwd: string): Promise<string | null> {
+	return new Promise<string | null>((resolve) => {
+		const ui = new TUI(new ProcessTerminal());
+		let done = false;
+		const finish = (value: string | null): void => {
+			if (done) return;
+			done = true;
+			ui.stop();
+			resolve(value);
+		};
+
+		const input = new Input();
+		input.onSubmit = (value) => finish(value.trim() ? value : null);
+		input.onEscape = () => finish(null);
+
+		const header: Component = {
+			invalidate() {},
+			render: (width: number) => [
+				theme.bold(truncateToWidth(`New agent in ${cwd}`, width)),
+				theme.fg("dim", "Type a task and press enter · esc to cancel"),
+			],
+		};
+
+		ui.addChild(header);
+		ui.addChild(input);
+		ui.setFocus(input);
+		ui.start();
 	});
 }
 
