@@ -117,6 +117,18 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 	};
 	const webUiDir = getWebUiDir();
 
+	// Recover from an unclean shutdown: any session left in "running" has no live
+	// runner (they live only in this process's memory), so its state is stale. Reset
+	// it to "idle" so a fresh runner starts cleanly on the next message instead of
+	// tripping the "already processing" guard or answering the wrong prompt.
+	try {
+		for (const s of opts.store.listSessions({ state: "running" })) {
+			opts.store.updateSession(s.id, { state: "idle" });
+		}
+	} catch {
+		/* best-effort recovery; don't block startup */
+	}
+
 	const runners = new Map<string, AgentRunner>();
 	const clients = new Map<string, Set<AttachedClient>>();
 	// Accumulated text of the current, not-yet-persisted assistant turn per session.

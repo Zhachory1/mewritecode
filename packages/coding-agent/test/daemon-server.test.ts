@@ -541,6 +541,38 @@ describe("WS9 daemon — SQLite round-trip survives restart", () => {
 			rmSync(tmpDir, { recursive: true, force: true });
 		}
 	});
+
+	it("resets sessions stranded in 'running' to 'idle' on startup", async () => {
+		const tmpDir = mkdtempSync(join(tmpdir(), "cave-daemon-stale-"));
+		const dbPath = join(tmpDir, "sessions.db");
+		try {
+			// Simulate an unclean shutdown: a session left in "running" state with no
+			// live runner (as happens when the daemon is killed mid-turn).
+			const seed = openStore(dbPath);
+			const s = seed.createSession({ id: `sess-${Date.now()}`, cwd: "/tmp", title: "stranded", state: "running" });
+			expect(seed.getSession(s.id)?.state).toBe("running");
+			seed.close();
+
+			// A fresh daemon on that store must recover the stale state.
+			const store = openStore(dbPath);
+			const handle = await startDaemon({
+				host: "127.0.0.1",
+				port: 0,
+				store,
+				runnerFactory: createDefaultRunnerFactory({ tokensPerSecond: 2000 }),
+				version: "test",
+			});
+			try {
+				const client = new CaveClient({ host: handle.host, port: handle.port });
+				expect((await client.getSession(s.id)).state).toBe("idle");
+			} finally {
+				await handle.close();
+				store.close();
+			}
+		} finally {
+			rmSync(tmpDir, { recursive: true, force: true });
+		}
+	});
 });
 
 describe("WS9 daemon — WebSocket streaming", () => {
@@ -767,17 +799,19 @@ describe("WS9 daemon — WebSocket streaming", () => {
 				await new Promise((r) => setTimeout(r, 20)); // ensure the daemon buffered "AAA"
 
 				const late = client.attach(s.id); // attach AFTER the first half was emitted
-				await late.ready();
 				const tokens: string[] = [];
+				// Register the listener BEFORE ready() so the mid-stream replay token the
+				// server sends on attach isn't missed.
 				const done = new Promise<void>((res) => {
 					late.on("token", (p) => p?.text && tokens.push(p.text));
 					late.on("done", () => res());
 				});
-				await new Promise((r) => setTimeout(r, 20)); // let the replay arrive
+				await late.ready();
+				// Wait for the replayed prefix to arrive before releasing the rest.
+				await vi.waitFor(() => expect(tokens.join("")).toContain("AAA"), { timeout: 2000, interval: 10 });
 				releaseSecondHalf?.();
 				await done;
 
-				// The late attacher must see the full text, including the "AAA" prefix.
 				expect(tokens.join("")).toContain("AAA");
 				expect(tokens.join("")).toContain("BBB");
 				late.close();
