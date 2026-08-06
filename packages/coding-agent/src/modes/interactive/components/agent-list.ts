@@ -223,12 +223,9 @@ export class AgentListComponent implements Component, Focusable {
 		if (this.pollError)
 			lines.push(theme.fg("warning", truncateToWidth(`daemon unreachable: ${this.pollError}`, width)));
 		const allHint = this.showAll ? "a active-only" : hidden > 0 ? `a show all (+${hidden})` : "a show all";
-		lines.push(
-			theme.fg(
-				"dim",
-				truncateToWidth(`↑/↓ select · enter attach · n new · d delete · ${allHint} · q/esc quit`, width),
-			),
-		);
+		// Split across two lines so the hint isn't truncated in the narrow sidebar.
+		lines.push(theme.fg("dim", truncateToWidth(`↑/↓ select · enter attach · n new`, width)));
+		lines.push(theme.fg("dim", truncateToWidth(`d delete · ${allHint} · q/esc quit`, width)));
 		return lines;
 	}
 }
