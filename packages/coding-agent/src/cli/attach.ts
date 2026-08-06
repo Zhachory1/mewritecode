@@ -26,6 +26,23 @@ interface AttachArgs {
 	help?: boolean;
 }
 
+/** Colored one-line role label for transcript history and live-stream framing. */
+export function roleHeader(role: string): string {
+	switch (role) {
+		case "user":
+			return chalk.cyan.bold("you");
+		case "assistant":
+			return chalk.green.bold("agent");
+		case "tool":
+		case "toolResult":
+			return chalk.dim("tool");
+		case "system":
+			return chalk.dim("system");
+		default:
+			return chalk.bold(role);
+	}
+}
+
 function parseAttachArgs(args: string[]): AttachArgs {
 	const out: AttachArgs = {
 		host: process.env.CAVE_DAEMON_HOST ?? DEFAULT_DAEMON_HOST,
@@ -130,21 +147,51 @@ export async function runAttach(args: string[]): Promise<number> {
 		return 1;
 	}
 
+	// Print existing transcript so an attach isn't a blank screen until the next
+	// token. Best-effort: a fetch failure just skips history.
+	try {
+		const transcript = await client.getTranscript(parsed.sessionId);
+		for (const m of transcript.messages) {
+			if (m.text.trim()) process.stdout.write(`${roleHeader(m.role)}\n${m.text}\n\n`);
+		}
+	} catch {
+		/* no history available; continue to live stream */
+	}
+
 	const session = client.attach(parsed.sessionId);
 	const sessionId = parsed.sessionId;
 	let exitCode = 0;
 
-	session.on("token", (params) => {
-		if (params?.sessionId === sessionId && typeof params.text === "string") {
-			process.stdout.write(params.text);
+	// Frame the live stream by role: print a header when the streaming role changes
+	// so tokens don't glue onto the previous turn or the `> ` prompt.
+	let streamRole: string | null = null;
+	const endStream = (): void => {
+		if (streamRole !== null) {
+			process.stdout.write("\n\n");
+			streamRole = null;
 		}
+	};
+	session.on("token", (params) => {
+		if (params?.sessionId !== sessionId || typeof params.text !== "string") return;
+		if (params.role !== streamRole) {
+			if (streamRole !== null) process.stdout.write("\n\n");
+			process.stdout.write(`${roleHeader(params.role)}\n`);
+			streamRole = params.role;
+		}
+		process.stdout.write(params.text);
+	});
+	session.on("tool", (params) => {
+		if (params?.sessionId !== sessionId) return;
+		endStream();
+		process.stdout.write(chalk.dim(`  ⚙ ${params.name} (${params.status})\n`));
 	});
 	session.on("done", () => {
-		process.stdout.write("\n");
+		endStream();
 	});
 	session.on("state", (params) => {
 		if (params?.state === "error") {
-			console.error(chalk.red("\n[session entered error state]"));
+			endStream();
+			console.error(chalk.red("[session entered error state]"));
 		}
 	});
 	session.on("error", (err) => {
