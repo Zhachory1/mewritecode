@@ -11,6 +11,7 @@
 
 ### Fixed
 
+- Fixed `mewrite agents` not returning to the list on `q` from the transcript view, and leaving the transcript in the terminal scrollback after going back. `q` now maps to the configurable `app.agents.back` binding (default `escape`/`q`) in both the list and transcript views, and leaving the transcript wipes the screen so the list redraws clean ([#157](https://github.com/Zhachory1/mewritecode/issues/157)).
 - Fixed the agent yielding its turn mid-task during long multi-step work — narrating progress or asking for reassurance instead of continuing an already-approved plan, which read as the agent "pausing" and required repeated "continue" prompts. The system prompt now instructs the agent to keep working through an approved plan across turns and to only end its turn for a genuinely blocking decision, a destructive/irreversible action needing consent, or task completion ([#154](https://github.com/Zhachory1/mewritecode/issues/154)).
 
 ## [1.3.1] - 2026-08-05

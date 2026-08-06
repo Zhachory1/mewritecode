@@ -69,18 +69,23 @@ describe("#152 agent view list", () => {
 		expect(attached).toEqual(["second"]);
 	});
 
-	it("cancel quits", () => {
+	it("esc and q both quit", () => {
 		let quit = 0;
-		const list = new AgentListComponent(
-			() => {},
-			() => {},
-			() => {
-				quit++;
-			},
-		);
-		list.setRows([rec("x", "idle")]);
-		list.handleInput(ESC);
-		expect(quit).toBe(1);
+		const mk = () =>
+			new AgentListComponent(
+				() => {},
+				() => {},
+				() => {
+					quit++;
+				},
+			);
+		const esc = mk();
+		esc.setRows([rec("x", "idle")]);
+		esc.handleInput(ESC);
+		const q = mk();
+		q.setRows([rec("x", "idle")]);
+		q.handleInput("q");
+		expect(quit).toBe(2);
 	});
 
 	it("keeps selection stable across polls, clamps when it disappears", () => {

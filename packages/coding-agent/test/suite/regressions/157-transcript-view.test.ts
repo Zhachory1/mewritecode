@@ -22,6 +22,7 @@ const ENV_AGENT_DIR = "MEWRITE_CODING_AGENT_DIR";
 const ESC = "\x1b";
 const DOWN = "\x1b[B";
 const UP = "\x1b[A";
+const Q = "q";
 
 function stripAnsi(s: string): string {
 	return s.replace(/\x1b\[[0-9;]*m/g, "");
@@ -217,18 +218,24 @@ describe("#157 TranscriptView", () => {
 		expect(out).not.toContain("line-9"); // scrolled away from the tail
 	});
 
-	it("esc fires onBack", () => {
+	it("esc and q both fire onBack", () => {
 		let back = 0;
-		const view = new TranscriptView(
-			"t",
-			() => {},
-			() => {
-				back++;
-			},
-		);
-		view.setLines([{ role: "user", text: "x" }]);
-		view.handleInput(ESC);
-		expect(back).toBe(1);
+		const mk = () =>
+			new TranscriptView(
+				"t",
+				() => {},
+				() => {
+					back++;
+				},
+				() => 24,
+			);
+		const esc = mk();
+		esc.setLines([{ role: "user", text: "x" }]);
+		esc.handleInput(ESC);
+		const q = mk();
+		q.setLines([{ role: "user", text: "x" }]);
+		q.handleInput(Q);
+		expect(back).toBe(2);
 	});
 
 	it("scroll clamps and does not throw past the ends", () => {

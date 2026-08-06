@@ -120,7 +120,7 @@ export class TranscriptView implements Component, Focusable {
 			this.scrollBy(-this.viewportBodyRows());
 		} else if (kb.matches(data, "tui.select.pageDown")) {
 			this.scrollBy(this.viewportBodyRows());
-		} else if (kb.matches(data, "tui.select.cancel") || kb.matches(data, "tui.select.confirm")) {
+		} else if (kb.matches(data, "tui.select.cancel") || kb.matches(data, "app.agents.back")) {
 			this.onBack();
 		}
 	}
