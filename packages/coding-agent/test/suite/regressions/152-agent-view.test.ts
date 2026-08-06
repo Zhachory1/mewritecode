@@ -54,11 +54,11 @@ describe("#152 agent view list", () => {
 		expect(out).toContain("✗"); // error
 	});
 
-	it("moves selection down and confirm attaches to the selected id", () => {
+	it("moves selection down and confirm selects the highlighted row", () => {
 		const attached: string[] = [];
 		const list = new AgentListComponent(
 			() => {},
-			(id) => attached.push(id),
+			(row) => attached.push(row.id),
 			() => {},
 		);
 		list.setRows([rec("first", "idle"), rec("second", "idle"), rec("third", "idle")]);
@@ -87,7 +87,7 @@ describe("#152 agent view list", () => {
 		const attached: string[] = [];
 		const list = new AgentListComponent(
 			() => {},
-			(id) => attached.push(id),
+			(row) => attached.push(row.id),
 			() => {},
 		);
 		list.setRows([rec("a", "idle"), rec("b", "idle"), rec("c", "idle")]);

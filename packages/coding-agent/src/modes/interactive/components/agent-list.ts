@@ -1,8 +1,9 @@
 /**
  * #152 — Agent view list component.
  *
- * Read-only, scrollable list of daemon sessions ("agents"). Selecting a row and
- * pressing the confirm key hands off to `mewrite attach` (wired in agents.ts).
+ * Read-only, scrollable list of sessions ("agents"). Selecting a row and pressing
+ * the confirm key hands the selected row back to agents.ts, which routes by kind
+ * (hosted → attach REPL, interactive → read-only transcript view).
  */
 
 import { basename } from "node:path";
@@ -39,7 +40,7 @@ export class AgentListComponent implements Component, Focusable {
 
 	constructor(
 		private readonly requestRender: () => void,
-		private readonly onAttach: (id: string) => void,
+		private readonly onSelect: (row: SessionRecord) => void,
 		private readonly onQuit: () => void,
 	) {}
 
@@ -85,7 +86,8 @@ export class AgentListComponent implements Component, Focusable {
 		} else if (kb.matches(data, "tui.select.pageDown")) {
 			this.move(10);
 		} else if (kb.matches(data, "tui.select.confirm")) {
-			if (this.selectedId) this.onAttach(this.selectedId);
+			const row = this.rows.find((r) => r.id === this.selectedId);
+			if (row) this.onSelect(row);
 		} else if (kb.matches(data, "tui.select.cancel")) {
 			this.onQuit();
 		}
