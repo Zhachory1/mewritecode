@@ -138,7 +138,10 @@ export async function runServe(args: string[]): Promise<number> {
 	}
 
 	const store = openStore(parsed.dbPath);
-	const runnerFactory = parsed.runner === "agent" ? createAgentBackedRunnerFactory() : createDefaultRunnerFactory();
+	const runnerFactory =
+		parsed.runner === "agent"
+			? createAgentBackedRunnerFactory({ loadHistory: (id) => store.getTranscript(id) })
+			: createDefaultRunnerFactory();
 	let handle: DaemonHandle;
 	try {
 		handle = await startDaemon({
