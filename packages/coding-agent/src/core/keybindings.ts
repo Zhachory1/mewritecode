@@ -44,6 +44,7 @@ export interface AppKeybindings {
 	"app.tools.shelfExpand": true;
 	"app.agents.back": true;
 	"app.agents.new": true;
+	"app.agents.toggleAll": true;
 }
 
 export type AppKeybinding = keyof AppKeybindings;
@@ -152,6 +153,10 @@ export const KEYBINDINGS = {
 	"app.agents.new": {
 		defaultKeys: "n",
 		description: "Spawn a new agent in the agents view",
+	},
+	"app.agents.toggleAll": {
+		defaultKeys: "a",
+		description: "Toggle showing all (incl. old idle) agents",
 	},
 } as const satisfies KeybindingDefinitions;
 

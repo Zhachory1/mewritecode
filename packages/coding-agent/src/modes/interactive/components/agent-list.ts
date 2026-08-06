@@ -18,6 +18,21 @@ const STATE_GLYPH: Record<SessionState, string> = {
 	error: "✗",
 };
 
+/**
+ * Idle hosted sessions not updated within this window are hidden by default (they
+ * are usually finished/abandoned). Running/error/interactive rows always show, as
+ * do recently-active idle ones. Press `a` to reveal everything.
+ */
+const RECENT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function isActive(s: SessionRecord, now: number): boolean {
+	if (s.state === "running" || s.state === "error") return true;
+	if (s.kind === "interactive") return true; // a live liveness file means it's live
+	const updated = new Date(s.updatedAt).getTime();
+	if (Number.isNaN(updated)) return true; // don't hide rows with unparseable timestamps
+	return now - updated < RECENT_WINDOW_MS;
+}
+
 function relativeTime(iso: string): string {
 	const then = new Date(iso).getTime();
 	if (Number.isNaN(then)) return "";
@@ -37,6 +52,14 @@ export class AgentListComponent implements Component, Focusable {
 	private rows: SessionRecord[] = [];
 	private selectedId: string | null = null;
 	private pollError: string | null = null;
+	private showAll = false;
+
+	/** Rows currently visible given the active/show-all filter. */
+	private visibleRows(): SessionRecord[] {
+		if (this.showAll) return this.rows;
+		const now = Date.now();
+		return this.rows.filter((r) => isActive(r, now));
+	}
 
 	constructor(
 		private readonly requestRender: () => void,
@@ -47,10 +70,11 @@ export class AgentListComponent implements Component, Focusable {
 
 	setRows(rows: SessionRecord[]): void {
 		this.rows = rows;
-		if (rows.length === 0) {
+		const visible = this.visibleRows();
+		if (visible.length === 0) {
 			this.selectedId = null;
-		} else if (!this.selectedId || !rows.some((r) => r.id === this.selectedId)) {
-			this.selectedId = rows[0].id;
+		} else if (!this.selectedId || !visible.some((r) => r.id === this.selectedId)) {
+			this.selectedId = visible[0].id;
 		}
 		this.pollError = null;
 		this.requestRender();
@@ -65,14 +89,24 @@ export class AgentListComponent implements Component, Focusable {
 
 	private selectedIndex(): number {
 		if (!this.selectedId) return -1;
-		return this.rows.findIndex((r) => r.id === this.selectedId);
+		return this.visibleRows().findIndex((r) => r.id === this.selectedId);
 	}
 
 	private move(delta: number): void {
-		if (this.rows.length === 0) return;
+		const visible = this.visibleRows();
+		if (visible.length === 0) return;
 		const cur = Math.max(0, this.selectedIndex());
-		const next = Math.min(this.rows.length - 1, Math.max(0, cur + delta));
-		this.selectedId = this.rows[next].id;
+		const next = Math.min(visible.length - 1, Math.max(0, cur + delta));
+		this.selectedId = visible[next].id;
+		this.requestRender();
+	}
+
+	private toggleShowAll(): void {
+		this.showAll = !this.showAll;
+		const visible = this.visibleRows();
+		if (!visible.some((r) => r.id === this.selectedId)) {
+			this.selectedId = visible[0]?.id ?? null;
+		}
 		this.requestRender();
 	}
 
@@ -87,10 +121,12 @@ export class AgentListComponent implements Component, Focusable {
 		} else if (kb.matches(data, "tui.select.pageDown")) {
 			this.move(10);
 		} else if (kb.matches(data, "tui.select.confirm")) {
-			const row = this.rows.find((r) => r.id === this.selectedId);
+			const row = this.visibleRows().find((r) => r.id === this.selectedId);
 			if (row) this.onSelect(row);
 		} else if (kb.matches(data, "app.agents.new")) {
 			this.onNew();
+		} else if (kb.matches(data, "app.agents.toggleAll")) {
+			this.toggleShowAll();
 		} else if (kb.matches(data, "tui.select.cancel") || kb.matches(data, "app.agents.back")) {
 			this.onQuit();
 		}
@@ -98,15 +134,17 @@ export class AgentListComponent implements Component, Focusable {
 
 	render(width: number): string[] {
 		const lines: string[] = [];
-		lines.push(theme.bold("Agents"));
-		if (this.rows.length === 0) {
+		const visible = this.visibleRows();
+		const hidden = this.rows.length - visible.length;
+		lines.push(theme.bold(`Agents${this.showAll ? " (all)" : ""}`));
+		if (visible.length === 0) {
 			lines.push("");
-			lines.push(theme.fg("dim", "No agents yet."));
+			lines.push(theme.fg("dim", hidden > 0 ? `No active agents (${hidden} hidden).` : "No agents yet."));
 			lines.push("");
-			lines.push(theme.fg("dim", "n new agent · q/esc quit"));
+			lines.push(theme.fg("dim", hidden > 0 ? "n new agent · a show all · q/esc quit" : "n new agent · q/esc quit"));
 			return lines;
 		}
-		for (const s of this.rows) {
+		for (const s of visible) {
 			const selected = s.id === this.selectedId;
 			const glyph = STATE_GLYPH[s.state] ?? "?";
 			const tag = s.kind === "interactive" ? "[i]" : s.kind === "hosted" ? "[d]" : "   ";
@@ -121,7 +159,8 @@ export class AgentListComponent implements Component, Focusable {
 		}
 		lines.push("");
 		if (this.pollError) lines.push(theme.fg("warning", `daemon unreachable: ${this.pollError}`));
-		lines.push(theme.fg("dim", "↑/↓ select · enter attach · n new · q/esc quit"));
+		const allHint = this.showAll ? "a active-only" : hidden > 0 ? `a show all (+${hidden})` : "a show all";
+		lines.push(theme.fg("dim", `↑/↓ select · enter attach · n new · ${allHint} · q/esc quit`));
 		return lines;
 	}
 }

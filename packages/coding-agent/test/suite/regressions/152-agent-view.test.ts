@@ -30,6 +30,12 @@ function rec(id: string, state: SessionRecord["state"], title?: string, kind?: S
 	};
 }
 
+/** A row whose updatedAt is `daysAgo` days in the past. */
+function oldRec(id: string, state: SessionRecord["state"], daysAgo: number): SessionRecord {
+	const ts = new Date(Date.now() - daysAgo * 86400000).toISOString();
+	return { id, state, cwd: `/tmp/${id}`, kind: "hosted", createdAt: ts, updatedAt: ts };
+}
+
 function stripAnsi(s: string): string {
 	return s.replace(/\x1b\[[0-9;]*m/g, "");
 }
@@ -86,6 +92,43 @@ describe("#152 agent view list", () => {
 		q.setRows([rec("x", "idle")]);
 		q.handleInput("q");
 		expect(quit).toBe(2);
+	});
+
+	it("hides stale idle rows by default, keeps running/recent, and `a` reveals all", () => {
+		const list = new AgentListComponent(
+			() => {},
+			() => {},
+			() => {},
+		);
+		list.setRows([
+			oldRec("stale", "idle", 3), // 3d old idle -> hidden by default
+			oldRec("running-old", "running", 3), // running always shows
+			rec("fresh", "idle"), // recent idle shows
+		]);
+		let out = list.render(80).map(stripAnsi).join("\n");
+		expect(out).toContain("running-old");
+		expect(out).toContain("fresh");
+		expect(out).not.toContain("stale");
+		expect(out).toContain("show all (+1)");
+		// Toggle show-all with `a`.
+		list.handleInput("a");
+		out = list.render(80).map(stripAnsi).join("\n");
+		expect(out).toContain("stale");
+		expect(out).toContain("Agents (all)");
+	});
+
+	it("interactive rows are never hidden even if the timestamp is old", () => {
+		const list = new AgentListComponent(
+			() => {},
+			() => {},
+			() => {},
+		);
+		const ts = new Date(Date.now() - 10 * 86400000).toISOString();
+		list.setRows([
+			{ id: "live", state: "idle", cwd: "/tmp/live", kind: "interactive", createdAt: ts, updatedAt: ts },
+		]);
+		const out = list.render(80).map(stripAnsi).join("\n");
+		expect(out).toContain("live");
 	});
 
 	it("n triggers onNew", () => {
