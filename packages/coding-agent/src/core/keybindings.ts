@@ -43,6 +43,9 @@ export interface AppKeybindings {
 	"app.message.editQueue": true;
 	"app.tools.shelfExpand": true;
 	"app.agents.back": true;
+	"app.agents.new": true;
+	"app.agents.toggleAll": true;
+	"app.agents.delete": true;
 }
 
 export type AppKeybinding = keyof AppKeybindings;
@@ -147,6 +150,18 @@ export const KEYBINDINGS = {
 	"app.agents.back": {
 		defaultKeys: ["escape", "q"],
 		description: "Go back / quit the agents view",
+	},
+	"app.agents.new": {
+		defaultKeys: "n",
+		description: "Spawn a new agent in the agents view",
+	},
+	"app.agents.toggleAll": {
+		defaultKeys: "a",
+		description: "Toggle showing all (incl. old idle) agents",
+	},
+	"app.agents.delete": {
+		defaultKeys: "d",
+		description: "Delete the selected agent session",
 	},
 } as const satisfies KeybindingDefinitions;
 
