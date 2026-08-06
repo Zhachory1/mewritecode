@@ -144,7 +144,7 @@ describe("#157 TranscriptView", () => {
 		initTheme(undefined, false);
 	});
 
-	it("renders a header and role-prefixed lines", () => {
+	it("renders a header, an accent-barred user line, and plain assistant text", () => {
 		const view = new TranscriptView(
 			"[i] session-1  /tmp/proj",
 			() => {},
@@ -156,10 +156,11 @@ describe("#157 TranscriptView", () => {
 		]);
 		const out = view.render(80).map(stripAnsi).join("\n");
 		expect(out).toContain("[i] session-1");
-		expect(out).toContain("you");
-		expect(out).toContain("hello");
-		expect(out).toContain("agent");
+		// User message: accent left-bar prefix, no "you"/"agent" labels.
+		expect(out).toContain("│ hello");
 		expect(out).toContain("world");
+		expect(out).not.toContain("you");
+		expect(out).not.toContain("agent ");
 		expect(out).toContain("esc/q back");
 	});
 

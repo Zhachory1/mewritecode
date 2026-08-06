@@ -15,26 +15,16 @@ import {
 } from "@zhachory1/mewrite-tui";
 import { theme } from "../theme/theme.js";
 
-/** Columns consumed by the role label prefix (`"label ".padEnd(6) + " "`). */
-const PREFIX_WIDTH = 7;
-
 export interface TranscriptLine {
 	role: "user" | "assistant" | "toolResult" | "system" | "tool" | "error";
 	text: string;
 }
 
-const ROLE_LABEL: Record<TranscriptLine["role"], string> = {
-	user: "you",
-	assistant: "agent",
-	toolResult: "tool",
-	tool: "tool",
-	system: "system",
-	error: "error",
-};
+/** Columns consumed by the user-message accent prefix (`"│ "`). */
+const USER_PREFIX_WIDTH = 2;
 
-const ROLE_COLOR: Record<TranscriptLine["role"], Parameters<typeof theme.fg>[0]> = {
-	user: "accent",
-	assistant: "text",
+/** Non-user, non-assistant roles render dim (tool/system) or as a warning (error). */
+const NON_TEXT_COLOR: Partial<Record<TranscriptLine["role"], Parameters<typeof theme.fg>[0]>> = {
 	toolResult: "dim",
 	tool: "dim",
 	system: "dim",
@@ -68,12 +58,20 @@ export class TranscriptView implements Component, Focusable {
 
 	private renderBody(width: number): string[] {
 		const out: string[] = [];
-		const bodyWidth = Math.max(1, width - PREFIX_WIDTH);
 		for (const line of this.lines) {
-			const label = ROLE_LABEL[line.role] ?? line.role;
-			const color = ROLE_COLOR[line.role] ?? "text";
-			for (const wrapped of wrapTextWithAnsi(line.text, bodyWidth)) {
-				out.push(theme.fg(color, truncateToWidth(`${label.padEnd(6)} ${wrapped}`, width)));
+			if (out.length > 0) out.push("");
+			if (line.role === "user") {
+				// Accent left-bar prefix, matching interactive user messages.
+				const prefix = `${theme.fg("accent", "│")} `;
+				for (const wrapped of wrapTextWithAnsi(line.text, Math.max(1, width - USER_PREFIX_WIDTH))) {
+					out.push(truncateToWidth(prefix + wrapped, width));
+				}
+				continue;
+			}
+			const color = NON_TEXT_COLOR[line.role];
+			for (const wrapped of wrapTextWithAnsi(line.text, width)) {
+				const truncated = truncateToWidth(wrapped, width);
+				out.push(color ? theme.fg(color, truncated) : truncated);
 			}
 		}
 		return out;
