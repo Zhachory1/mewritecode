@@ -443,6 +443,7 @@ function runListView(client: CaveClient, canSpawn: boolean): Promise<ListAction>
 			onDelete: (row) => void confirmDelete(row),
 			loadTranscript: (row) => loadTranscript(row, client),
 			rows: () => process.stdout.rows || 24,
+			sidebarSide: SettingsManager.create().getAgentsSidebarSide(),
 		});
 
 		ui.addChild(view);

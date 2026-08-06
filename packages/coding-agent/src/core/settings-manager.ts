@@ -289,6 +289,8 @@ export interface Settings {
 	 * security perimeter (real containment = enforced sandbox, #46).
 	 */
 	approvalMode?: boolean;
+	/** Which side the sidebar renders on in the `mewrite agents` two-pane view. Default "left". */
+	agentsSidebarSide?: "left" | "right";
 }
 
 export interface ModelRef {
@@ -910,6 +912,10 @@ export class SettingsManager {
 
 	getTheme(): string | undefined {
 		return this.settings.theme;
+	}
+
+	getAgentsSidebarSide(): "left" | "right" {
+		return this.settings.agentsSidebarSide ?? "left";
 	}
 
 	setTheme(theme: string): void {

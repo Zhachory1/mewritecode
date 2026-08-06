@@ -21,7 +21,12 @@ import { type TranscriptLine, TranscriptView } from "./transcript-view.js";
 /** Terminals narrower than this render a single pane at a time. */
 const MIN_TWO_PANE_WIDTH = 80;
 /** Sidebar column width (the rest, minus the 1-col separator, is the focus pane). */
-const SIDEBAR_WIDTH = 34;
+const SIDEBAR_WIDTH = 44;
+
+/** Fixed, non-scrolling header row for a pane; highlights when that pane is focused. */
+function paneHeader(label: string, active: boolean): string {
+	return active ? theme.fg("accent", theme.bold(`▸ ${label}`)) : theme.fg("dim", `  ${label}`);
+}
 
 export interface TwoPaneCallbacks {
 	/** Selecting (enter) a hosted row — hand off to the attach REPL (phase 5a). */
@@ -33,6 +38,8 @@ export interface TwoPaneCallbacks {
 	loadTranscript: (row: SessionRecord) => Promise<TranscriptLine[]>;
 	/** Viewport height in rows (for the focus pane's live-tail windowing). */
 	rows: () => number;
+	/** Which side the sidebar renders on. Default "left". */
+	sidebarSide?: "left" | "right";
 }
 
 export class TwoPaneView implements Component, Focusable {
@@ -85,8 +92,10 @@ export class TwoPaneView implements Component, Focusable {
 			this.requestRender();
 			return;
 		}
-		const kind = row.kind === "interactive" ? "[i]" : "[d]";
-		const title = `${kind} ${row.title ?? row.id.slice(0, 8)}  ${row.cwd}`;
+		const tag = row.kind === "interactive" ? "[i] " : "";
+		const cwdName = row.cwd ? (row.cwd.split(/[/\\]/).pop() ?? "") : "";
+		const name = row.title || cwdName || row.id.slice(0, 8);
+		const title = `${tag}${name}  ${row.cwd}`;
 		this.focus = new TranscriptView(title, this.requestRender, () => this.setActive("sidebar"), this.cb.rows);
 		void this.refreshFocus();
 	}
@@ -132,19 +141,38 @@ export class TwoPaneView implements Component, Focusable {
 
 	render(width: number): string[] {
 		if (!this.twoPane(width)) {
-			// Single-pane fallback: show whichever pane is active.
-			if (this.active === "focus" && this.focus) return this.focus.render(width);
-			return this.sidebar.render(width);
+			// Single-pane fallback: show whichever pane is active, with its header.
+			const viewport = this.cb.rows();
+			if (this.active === "focus" && this.focus) {
+				return [
+					paneHeader("Focus  (ctrl+w)", true),
+					...this.focus.render(width).slice(0, Math.max(0, viewport - 1)),
+				];
+			}
+			return [
+				paneHeader("Your agents  (ctrl+w)", true),
+				...this.sidebar.render(width).slice(0, Math.max(0, viewport - 1)),
+			];
 		}
 		const sidebarW = SIDEBAR_WIDTH;
 		const focusW = Math.max(1, width - sidebarW - 1); // 1 for the separator
-		// A header line per column names the pane and marks which is active, so the
-		// bodies below render at exactly their column width (no marker corrupts it).
-		const cue = (label: string, on: boolean): string =>
-			on ? theme.fg("accent", `▸ ${label}`) : theme.fg("dim", `  ${label}`);
-		const left = [cue("agents", this.active === "sidebar"), ...this.sidebar.render(sidebarW)];
-		const right = [cue("focus (ctrl+w)", this.active === "focus"), ...(this.focus ? this.focus.render(focusW) : [])];
-		const rows = Math.max(left.length, right.length, this.cb.rows());
-		return compositeColumns(left, right, sidebarW, focusW, rows);
+		// Cap the whole view to the viewport so the FIXED header row (below) never
+		// scrolls off the top when the focus transcript is tall.
+		const viewport = this.cb.rows();
+		// A FIXED header row per column names the pane and highlights the active one.
+		const sidebarBody = this.sidebar.render(sidebarW).slice(0, Math.max(0, viewport - 1));
+		const focusBody = (this.focus ? this.focus.render(focusW) : [theme.fg("dim", " no session selected")]).slice(
+			0,
+			Math.max(0, viewport - 1),
+		);
+		const sidebarCol = [paneHeader("Your agents", this.active === "sidebar"), ...sidebarBody];
+		const focusCol = [paneHeader("Focus  (ctrl+w)", this.active === "focus"), ...focusBody];
+		const sidebarOnLeft = (this.cb.sidebarSide ?? "left") === "left";
+		const left = sidebarOnLeft ? sidebarCol : focusCol;
+		const right = sidebarOnLeft ? focusCol : sidebarCol;
+		const leftW = sidebarOnLeft ? sidebarW : focusW;
+		const rightW = sidebarOnLeft ? focusW : sidebarW;
+		const rows = Math.min(viewport, Math.max(left.length, right.length));
+		return compositeColumns(left, right, leftW, rightW, rows);
 	}
 }

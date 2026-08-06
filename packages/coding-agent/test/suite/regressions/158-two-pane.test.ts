@@ -34,6 +34,7 @@ function makeView(overrides: Partial<Parameters<typeof mk>[0]> = {}) {
 function mk(cb: {
 	loadTranscript: (row: SessionRecord) => Promise<TranscriptLine[]>;
 	onAttach?: (row: SessionRecord) => void;
+	sidebarSide?: "left" | "right";
 }) {
 	return new TwoPaneView(() => {}, {
 		onAttach: cb.onAttach ?? (() => {}),
@@ -41,6 +42,7 @@ function mk(cb: {
 		onDelete: () => {},
 		loadTranscript: cb.loadTranscript,
 		rows: () => 24,
+		sidebarSide: cb.sidebarSide,
 	});
 }
 
@@ -64,8 +66,8 @@ describe("#158 TwoPaneView", () => {
 			for (const line of out) expect(visibleWidth(line)).toBeLessThanOrEqual(width);
 			const joined = out.map(stripAnsi).join("\n");
 			expect(joined).toContain("│"); // column separator
-			expect(joined).toContain("agents");
-			expect(joined).toContain("focus");
+			expect(joined).toContain("Your agents");
+			expect(joined).toContain("Focus");
 			expect(joined).toContain("hello from focus"); // focus pane shows selected transcript
 		}
 	});
@@ -74,9 +76,9 @@ describe("#158 TwoPaneView", () => {
 		const view = makeView();
 		await seed(view, [rec("a", "idle")]);
 		const out = view.render(60).map(stripAnsi).join("\n");
-		// Sidebar only; no focus-pane header, still width-safe.
-		expect(out).toContain("Agents");
-		expect(out).not.toContain("focus (ctrl+w)");
+		// Sidebar pane only (active); its header shows, no Focus header.
+		expect(out).toContain("Your agents");
+		expect(out).not.toContain("Focus  (ctrl+w)");
 		for (const line of view.render(60)) expect(visibleWidth(line)).toBeLessThanOrEqual(60);
 	});
 
@@ -89,10 +91,21 @@ describe("#158 TwoPaneView", () => {
 		});
 		await seed(view, [rec("a", "idle")]);
 		let out = view.render(100).map(stripAnsi).join("\n");
-		expect(out).toContain("▸ agents"); // sidebar active
+		expect(out).toContain("▸ Your agents"); // sidebar active
 		view.handleInput(CTRL_W);
 		out = view.render(100).map(stripAnsi).join("\n");
-		expect(out).toContain("▸ focus (ctrl+w)"); // focus active
+		expect(out).toContain("▸ Focus  (ctrl+w)"); // focus active
+	});
+
+	it("honors sidebarSide: right puts the sidebar to the right of the separator", async () => {
+		const view = mk({
+			loadTranscript: async () => [{ role: "assistant", text: "focustext" }],
+			sidebarSide: "right",
+		});
+		await seed(view, [rec("a", "idle")]);
+		const headerRow = stripAnsi(view.render(100)[0]);
+		const sepAt = headerRow.indexOf("│");
+		expect(headerRow.indexOf("Your agents")).toBeGreaterThan(sepAt);
 	});
 
 	it("jump-to-attention selects the errored row", async () => {

@@ -7,7 +7,7 @@
  */
 
 import { basename } from "node:path";
-import { type Component, type Focusable, getKeybindings, truncateToWidth } from "@zhachory1/mewrite-tui";
+import { type Component, type Focusable, getKeybindings, truncateToWidth, visibleWidth } from "@zhachory1/mewrite-tui";
 import type { SessionRecord, SessionState } from "../../../core/daemon/index.js";
 import { theme } from "../theme/theme.js";
 
@@ -183,10 +183,12 @@ export class AgentListComponent implements Component, Focusable {
 	}
 
 	render(width: number): string[] {
+		// No own title line — the enclosing TwoPaneView renders the "Your agents" pane
+		// header. Only the "(all)" filter state is worth surfacing here.
 		const lines: string[] = [];
 		const visible = this.visibleRows();
 		const hidden = this.rows.length - visible.length;
-		lines.push(theme.bold(truncateToWidth(`Agents${this.showAll ? " (all)" : ""}`, width)));
+		if (this.showAll) lines.push(theme.fg("dim", truncateToWidth("(showing all)", width)));
 		if (visible.length === 0) {
 			const hint = hidden > 0 ? "n new agent · a show all · q/esc quit" : "n new agent · q/esc quit";
 			lines.push("");
@@ -203,15 +205,18 @@ export class AgentListComponent implements Component, Focusable {
 		for (const s of visible) {
 			const selected = s.id === this.selectedId;
 			const glyph = STATE_GLYPH[s.state] ?? "?";
-			const tag = s.kind === "interactive" ? "[i]" : s.kind === "hosted" ? "[d]" : "   ";
-			const attn = this.needsAttention(s) ? theme.fg("warning", "!") : " ";
-			const label = s.title ?? s.id.slice(0, 8);
-			const cwd = s.cwd ? basename(s.cwd) : "";
+			// Interactive (terminal) sessions get an [i] marker; daemon-hosted agents are
+			// the default and unmarked.
+			const tag = s.kind === "interactive" ? "[i] " : "";
+			const attn = this.needsAttention(s) ? theme.fg("warning", "! ") : "  ";
+			// Prefer a real title, then the working-directory name, then a short id.
+			const name = s.title ?? ((s.cwd ? basename(s.cwd) : "") || s.id.slice(0, 8));
 			const updated = relativeTime(s.updatedAt);
-			const cols = `${attn}${tag} ${glyph} ${label}`;
-			const meta = theme.fg("dim", `${s.state.padEnd(8)} ${cwd} ${updated}`);
 			const prefix = selected ? "› " : "  ";
-			const row = truncateToWidth(`${prefix}${cols}  ${meta}`, width);
+			const head = `${prefix}${attn}${glyph} ${tag}${name}`;
+			// Right-align the relative time when there's room.
+			const gap = Math.max(1, width - visibleWidth(head) - updated.length);
+			const row = truncateToWidth(`${head}${" ".repeat(gap)}${theme.fg("dim", updated)}`, width);
 			lines.push(selected ? theme.fg("accent", row) : row);
 		}
 		lines.push("");
