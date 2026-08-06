@@ -4,16 +4,23 @@
  * Read-only, scrollable view of a single session's transcript. Opened from the
  * agent list (agents.ts) when a row is selected; `esc`/`q` returns to the list.
  * No input handoff — this pane never sends, interrupts, or approves.
+ *
+ * Message text is rendered as markdown (reusing the interactive Markdown
+ * component). The view live-tails: it stays pinned to the newest content as new
+ * turns arrive, unless the user has scrolled up, in which case the scroll
+ * position is held.
  */
 
 import {
 	type Component,
 	type Focusable,
 	getKeybindings,
+	Markdown,
+	type MarkdownTheme,
 	truncateToWidth,
 	wrapTextWithAnsi,
 } from "@zhachory1/mewrite-tui";
-import { theme } from "../theme/theme.js";
+import { getMarkdownTheme, theme } from "../theme/theme.js";
 
 export interface TranscriptLine {
 	role: "user" | "assistant" | "toolResult" | "system" | "tool" | "error";
@@ -31,16 +38,23 @@ const NON_TEXT_COLOR: Partial<Record<TranscriptLine["role"], Parameters<typeof t
 	error: "warning",
 };
 
+/** Header + footer chrome lines that don't scroll. */
+const CHROME_ROWS = 3;
+
 export class TranscriptView implements Component, Focusable {
 	focused = true;
 	private lines: TranscriptLine[] = [];
-	private scroll = 0;
 	private error: string | null = null;
+	/** Rows the body is scrolled up from the bottom. 0 = pinned to tail (follow). */
+	private offsetFromBottom = 0;
+	private readonly markdownTheme: MarkdownTheme = getMarkdownTheme();
 
 	constructor(
 		private readonly title: string,
 		private readonly requestRender: () => void,
 		private readonly onBack: () => void,
+		/** Viewport height in rows; used to window the body for live-tail. */
+		private readonly rows: () => number = () => process.stdout.rows || 24,
 	) {}
 
 	setLines(lines: TranscriptLine[]): void {
@@ -63,11 +77,20 @@ export class TranscriptView implements Component, Focusable {
 			if (line.role === "user") {
 				// Accent left-bar prefix, matching interactive user messages.
 				const prefix = `${theme.fg("accent", "│")} `;
-				for (const wrapped of wrapTextWithAnsi(line.text, Math.max(1, width - USER_PREFIX_WIDTH))) {
-					out.push(truncateToWidth(prefix + wrapped, width));
+				const md = new Markdown(line.text, 0, 0, this.markdownTheme);
+				for (const rendered of md.render(Math.max(1, width - USER_PREFIX_WIDTH))) {
+					out.push(truncateToWidth(prefix + rendered, width));
 				}
 				continue;
 			}
+			if (line.role === "assistant") {
+				const md = new Markdown(line.text, 0, 0, this.markdownTheme);
+				for (const rendered of md.render(width)) {
+					out.push(truncateToWidth(rendered, width));
+				}
+				continue;
+			}
+			// Tool/system/error: plain, colored, no markdown.
 			const color = NON_TEXT_COLOR[line.role];
 			for (const wrapped of wrapTextWithAnsi(line.text, width)) {
 				const truncated = truncateToWidth(wrapped, width);
@@ -77,25 +100,27 @@ export class TranscriptView implements Component, Focusable {
 		return out;
 	}
 
-	private clampScroll(max: number): void {
-		this.scroll = Math.min(Math.max(0, this.scroll), Math.max(0, max));
+	/** Number of body rows visible after subtracting fixed header/footer chrome. */
+	private viewportBodyRows(): number {
+		return Math.max(1, this.rows() - CHROME_ROWS);
+	}
+
+	private scrollBy(delta: number): void {
+		this.offsetFromBottom = Math.max(0, this.offsetFromBottom - delta);
+		this.requestRender();
 	}
 
 	handleInput(data: string): void {
 		const kb = getKeybindings();
 		if (kb.matches(data, "tui.select.up")) {
-			this.scroll -= 1;
-			this.requestRender();
+			this.scrollBy(-1);
 		} else if (kb.matches(data, "tui.select.down")) {
-			this.scroll += 1;
-			this.requestRender();
+			this.scrollBy(1);
 		} else if (kb.matches(data, "tui.select.pageUp")) {
-			this.scroll -= 10;
-			this.requestRender();
+			this.scrollBy(-this.viewportBodyRows());
 		} else if (kb.matches(data, "tui.select.pageDown")) {
-			this.scroll += 10;
-			this.requestRender();
-		} else if (kb.matches(data, "tui.select.cancel") || kb.matches(data, "tui.select.confirm")) {
+			this.scrollBy(this.viewportBodyRows());
+		} else if (kb.matches(data, "tui.select.cancel") || kb.matches(data, "app.agents.back")) {
 			this.onBack();
 		}
 	}
@@ -114,12 +139,24 @@ export class TranscriptView implements Component, Focusable {
 		if (body.length === 0) {
 			lines.push("");
 			lines.push(theme.fg("dim", "No messages yet."));
-		} else {
-			this.clampScroll(body.length - 1);
-			lines.push(...body.slice(this.scroll));
+			lines.push("");
+			lines.push(theme.fg("dim", "esc/q back"));
+			return lines;
 		}
+
+		// Live-tail window: show the last `viewport` rows, offset upward by
+		// `offsetFromBottom`. offsetFromBottom==0 pins to the newest content.
+		const viewport = this.viewportBodyRows();
+		const maxOffset = Math.max(0, body.length - viewport);
+		this.offsetFromBottom = Math.min(this.offsetFromBottom, maxOffset);
+		const end = body.length - this.offsetFromBottom;
+		const start = Math.max(0, end - viewport);
+		lines.push(...body.slice(start, end));
+
 		lines.push("");
-		lines.push(theme.fg("dim", "↑/↓ scroll · esc/q back"));
+		const following = this.offsetFromBottom === 0;
+		const hint = following ? "↑/↓ scroll · esc/q back · following" : "↑/↓ scroll · esc/q back";
+		lines.push(theme.fg("dim", hint));
 		return lines;
 	}
 }

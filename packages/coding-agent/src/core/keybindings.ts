@@ -42,6 +42,7 @@ export interface AppKeybindings {
 	"app.help": true;
 	"app.message.editQueue": true;
 	"app.tools.shelfExpand": true;
+	"app.agents.back": true;
 }
 
 export type AppKeybinding = keyof AppKeybindings;
@@ -142,6 +143,10 @@ export const KEYBINDINGS = {
 	"app.tools.shelfExpand": {
 		defaultKeys: "alt+t",
 		description: "Toggle tool shelf expand",
+	},
+	"app.agents.back": {
+		defaultKeys: ["escape", "q"],
+		description: "Go back / quit the agents view",
 	},
 } as const satisfies KeybindingDefinitions;
 

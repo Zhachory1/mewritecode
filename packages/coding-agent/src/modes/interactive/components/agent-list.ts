@@ -88,7 +88,7 @@ export class AgentListComponent implements Component, Focusable {
 		} else if (kb.matches(data, "tui.select.confirm")) {
 			const row = this.rows.find((r) => r.id === this.selectedId);
 			if (row) this.onSelect(row);
-		} else if (kb.matches(data, "tui.select.cancel")) {
+		} else if (kb.matches(data, "tui.select.cancel") || kb.matches(data, "app.agents.back")) {
 			this.onQuit();
 		}
 	}

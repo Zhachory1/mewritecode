@@ -224,6 +224,8 @@ export async function runAgents(args: string[]): Promise<number> {
 		if (action.type === "quit") return 0;
 		if (action.type === "detail") {
 			await runDetailView(action.row, client);
+			// Wipe the transcript (screen + scrollback) so the list redraws clean.
+			process.stdout.write("\x1b[2J\x1b[H\x1b[3J");
 			continue;
 		}
 		// Hand off to the attach REPL. ui.stop() paused stdin; readline needs it flowing.
