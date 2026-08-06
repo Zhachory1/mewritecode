@@ -339,7 +339,8 @@ export async function runAgents(args: string[]): Promise<number> {
 	return runViewLoop(client, parsed, canSpawn);
 }
 
-async function runViewLoop(client: CaveClient, parsed: AgentsArgs, canSpawn: boolean): Promise<number> {
+async function runViewLoop(initialClient: CaveClient, parsed: AgentsArgs, canSpawn: boolean): Promise<number> {
+	let client = initialClient;
 	// Loop so each handoff rebuilds a fresh TUI (a stopped TUI is not reused).
 	for (;;) {
 		const action = await runListView(client, canSpawn);
@@ -359,7 +360,26 @@ async function runViewLoop(client: CaveClient, parsed: AgentsArgs, canSpawn: boo
 				try {
 					await spawnAgent(client, process.cwd(), task);
 				} catch (err) {
-					console.error(chalk.red(`Failed to spawn agent: ${err instanceof Error ? err.message : String(err)}`));
+					// The daemon may have died mid-session; re-ensure it once and retry.
+					if (isDaemonUnreachable(err)) {
+						const re = await ensureDaemon(parsed);
+						if ("client" in re) {
+							client = re.client;
+							try {
+								await spawnAgent(client, process.cwd(), task);
+							} catch (err2) {
+								console.error(
+									chalk.red(`Failed to spawn agent: ${err2 instanceof Error ? err2.message : String(err2)}`),
+								);
+							}
+						} else {
+							console.error(chalk.red(`Failed to spawn agent: daemon unavailable and could not be started.`));
+						}
+					} else {
+						console.error(
+							chalk.red(`Failed to spawn agent: ${err instanceof Error ? err.message : String(err)}`),
+						);
+					}
 				}
 			}
 			continue;
