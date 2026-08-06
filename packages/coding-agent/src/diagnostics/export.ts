@@ -119,6 +119,9 @@ function buildUsageSummary(events: DiagnosticsEvent[]): Record<string, unknown> 
 				? `${String(event.attributes.provider)}/${String(event.attributes.model)}`
 				: undefined,
 		),
+		turnReasons: countBy(events, (event) =>
+			event.type === "turn.ended" ? String(event.attributes.turnReason) : undefined,
+		),
 		validation: {
 			success: events.filter((event) => event.type === "validation.completed" && event.attributes.success === true)
 				.length,
@@ -210,6 +213,7 @@ export async function exportDiagnostics(options: DiagnosticsExportOptions): Prom
 		collectors: {
 			sessions: true,
 			commands: true,
+			turns: true,
 			modelRequests: true,
 			toolCalls: true,
 			subagents: true,

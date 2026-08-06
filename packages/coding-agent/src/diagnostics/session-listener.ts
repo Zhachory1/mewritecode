@@ -1,6 +1,19 @@
 import type { AssistantMessage } from "@zhachory1/mewrite-ai";
 import type { AgentSession, AgentSessionEvent } from "../core/agent-session.js";
+import type { TurnAttributes } from "./events.js";
 import type { DiagnosticsRecorder } from "./recorder.js";
+
+function turnReasonFrom(stopReason: string | undefined, toolCallCount: number): TurnAttributes["turnReason"] {
+	if (stopReason === "error") return "error";
+	if (stopReason === "aborted") return "aborted";
+	if (stopReason === "pause") return "pause";
+	if (stopReason === "length") return "max_tokens";
+	// "stop" and "toolUse" both resolve by whether tool calls were actually
+	// issued rather than the reported stop reason: that is what decides if the
+	// loop continues, so it stays correct even if a provider mislabels the stop.
+	if (toolCallCount > 0) return "tool_batch_await";
+	return "end_turn";
+}
 
 function toolCategory(toolName: string): "filesystem" | "shell" | "edit" | "search" | "subagent" | "other" {
 	if (toolName === "bash") return "shell";
@@ -65,9 +78,30 @@ export function attachDiagnosticsSessionListener(session: AgentSession, recorder
 	const toolStarts = new Map<string, { startedAt: number; toolName: string }>();
 	const assistantStarts = new Map<string, number>();
 	const subagentStarts = new Map<string, { startedAt: number; agentName: string }>();
+	let turnIndex = 0;
+	let turnStartedAt = 0;
 
 	return session.subscribe((event: AgentSessionEvent) => {
 		try {
+			if (event.type === "turn_start") {
+				turnStartedAt = Date.now();
+				return;
+			}
+			if (event.type === "turn_end" && isAssistantMessage(event.message)) {
+				const toolCallCount = event.message.content.filter((part) => part.type === "toolCall").length;
+				recorder.turnEnded(
+					{
+						turnIndex,
+						turnReason: turnReasonFrom(event.message.stopReason, toolCallCount),
+						stopReason: stringAttr(event.message.stopReason),
+						toolCallCount,
+						hadToolResults: event.toolResults.length > 0,
+					},
+					turnStartedAt ? Date.now() - turnStartedAt : 0,
+				);
+				turnIndex++;
+				return;
+			}
 			if (event.type === "message_end") {
 				const slashCommand = slashCommandFromMessage(event.message);
 				if (slashCommand) {
