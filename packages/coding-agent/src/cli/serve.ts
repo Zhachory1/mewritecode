@@ -164,6 +164,21 @@ export async function runServe(args: string[]): Promise<number> {
 	mkdirSync(dirname(parsed.pidFile), { recursive: true });
 	writeFileSync(parsed.pidFile, String(process.pid), "utf8");
 
+	// The daemon hosts many independent agents in one process. A stray unhandled
+	// error from one session (a torn WebSocket frame, a rejected background
+	// promise) must NOT crash the daemon and take down every other agent's work.
+	// Log and keep serving instead of the default process-exit behavior.
+	process.on("uncaughtException", (err) => {
+		console.error(chalk.red(`mewrite serve: uncaught exception (continuing): ${err?.stack ?? err}`));
+	});
+	process.on("unhandledRejection", (reason) => {
+		console.error(
+			chalk.red(
+				`mewrite serve: unhandled rejection (continuing): ${reason instanceof Error ? reason.stack : reason}`,
+			),
+		);
+	});
+
 	console.log(chalk.green(`mewrite serve listening on http://${handle.host}:${handle.port}`));
 	console.log(chalk.dim(`  web:  http://${handle.host}:${handle.port}/`));
 	console.log(chalk.dim(`  pid:  ${process.pid}`));

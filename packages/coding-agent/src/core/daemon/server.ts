@@ -937,7 +937,13 @@ function parseJsonChunks<T>(chunks: Buffer[]): T | undefined {
 
 function send(ws: WebSocket, env: RpcEnvelope): void {
 	if (ws.readyState !== WebSocket.OPEN) return;
-	ws.send(JSON.stringify(env));
+	try {
+		ws.send(JSON.stringify(env));
+	} catch {
+		// The socket can close between the readyState check and send under load.
+		// A failed frame to one client must never crash the daemon (and thus every
+		// other agent). Best-effort: drop it.
+	}
 }
 
 function notification<P>(method: string, params: P): RpcNotification<P> {

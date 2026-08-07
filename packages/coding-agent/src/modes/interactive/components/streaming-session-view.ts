@@ -27,7 +27,7 @@ import { UserMessageComponent } from "./user-message.js";
 const CHROME_ROWS = 4;
 
 type Block =
-	| { kind: "user"; comp: UserMessageComponent }
+	| { kind: "user"; comp: UserMessageComponent; raw: string }
 	| { kind: "assistant"; comp: StreamingMarkdown }
 	| { kind: "tool"; text: string };
 
@@ -96,7 +96,7 @@ export class StreamingSessionView implements Component, Focusable {
 	}
 
 	private pushUser(text: string): void {
-		this.blocks.push({ kind: "user", comp: new UserMessageComponent(text) });
+		this.blocks.push({ kind: "user", comp: new UserMessageComponent(text), raw: text });
 	}
 
 	private pushAssistantFinal(text: string): void {
@@ -182,16 +182,43 @@ export class StreamingSessionView implements Component, Focusable {
 	}
 
 	private renderBody(width: number): string[] {
+		const w = Math.max(1, width);
 		const out: string[] = [];
 		for (const b of this.blocks) {
 			if (out.length > 0) out.push("");
-			if (b.kind === "tool") out.push(theme.fg("dim", truncateToWidth(`  ${b.text}`, width)));
-			else for (const line of b.comp.render(width)) out.push(truncateToWidth(line, width));
+			if (b.kind === "tool") {
+				out.push(theme.fg("dim", truncateToWidth(`  ${b.text}`, w)));
+				continue;
+			}
+			// A single malformed markdown chunk from the live stream must not crash the
+			// whole pane (the TUI render loop, driven by WS events, has no guard). Fall
+			// back to the raw text if the markdown renderer throws.
+			try {
+				for (const line of b.comp.render(w)) out.push(truncateToWidth(line, w));
+			} catch {
+				const raw = b.kind === "user" ? b.raw : b.comp.getRawText();
+				for (const line of raw.split("\n")) out.push(truncateToWidth(line, w));
+			}
 		}
 		return out;
 	}
 
 	render(width: number): string[] {
+		try {
+			return this.renderInner(width);
+		} catch (err) {
+			// Last-resort guard: never let a render throw crash the agents view.
+			return [
+				theme.bold(truncateToWidth(this.title, Math.max(1, width))),
+				theme.fg(
+					"warning",
+					truncateToWidth(`render error: ${err instanceof Error ? err.message : String(err)}`, Math.max(1, width)),
+				),
+			];
+		}
+	}
+
+	private renderInner(width: number): string[] {
 		const viewport = Math.max(1, this.deps.rows());
 		const bodyRows = Math.max(1, viewport - CHROME_ROWS);
 		const body = this.renderBody(width);
