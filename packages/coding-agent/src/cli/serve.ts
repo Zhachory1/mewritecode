@@ -7,7 +7,7 @@
  * the same session over WS.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import chalk from "chalk";
 import { getAgentDir, VERSION } from "../config.js";
@@ -16,6 +16,7 @@ import {
 	createDefaultRunnerFactory,
 	type DaemonHandle,
 	openStore,
+	SpinGuard,
 	startDaemon,
 } from "../core/daemon/index.js";
 
@@ -164,20 +165,44 @@ export async function runServe(args: string[]): Promise<number> {
 	mkdirSync(dirname(parsed.pidFile), { recursive: true });
 	writeFileSync(parsed.pidFile, String(process.pid), "utf8");
 
+	// Remove (not blank) the pidfile on any exit so a stale pidfile never outlives
+	// the process. `ensureDaemon` treats health as source of truth, but a clean
+	// pidfile avoids confusing operators and double-start races.
+	const clearPidFile = (): void => {
+		try {
+			if (existsSync(parsed.pidFile) && readFileSync(parsed.pidFile, "utf8").trim() === String(process.pid)) {
+				rmSync(parsed.pidFile, { force: true });
+			}
+		} catch {
+			/* ignore */
+		}
+	};
+	process.once("exit", clearPidFile);
+
 	// The daemon hosts many independent agents in one process. A stray unhandled
-	// error from one session (a torn WebSocket frame, a rejected background
-	// promise) must NOT crash the daemon and take down every other agent's work.
-	// Log and keep serving instead of the default process-exit behavior.
-	process.on("uncaughtException", (err) => {
-		console.error(chalk.red(`mewrite serve: uncaught exception (continuing): ${err?.stack ?? err}`));
-	});
-	process.on("unhandledRejection", (reason) => {
+	// error from one session (a torn WebSocket frame, a rejected background promise)
+	// must NOT crash the daemon and take down every other agent's work — so we log
+	// and keep serving. BUT a self-perpetuating error (e.g. a broken transport
+	// retrying synchronously) would then spin the event loop at 100% CPU forever,
+	// hanging every request. Guard against that: if exceptions fire too fast, the
+	// daemon is wedged — shut down cleanly (reaping runners/MCP children) so it can
+	// be auto-restarted fresh rather than spinning silently.
+	const spinGuard = new SpinGuard();
+	const onFatal = (label: string, detail: unknown): void => {
 		console.error(
-			chalk.red(
-				`mewrite serve: unhandled rejection (continuing): ${reason instanceof Error ? reason.stack : reason}`,
-			),
+			chalk.red(`mewrite serve: ${label} (continuing): ${detail instanceof Error ? detail.stack : detail}`),
 		);
-	});
+		if (spinGuard.record()) {
+			console.error(
+				chalk.red(
+					`mewrite serve: ${spinGuard.count} errors in a few seconds — daemon is wedged, shutting down for a clean restart.`,
+				),
+			);
+			void shutdown("spin-guard");
+		}
+	};
+	process.on("uncaughtException", (err) => onFatal("uncaught exception", err));
+	process.on("unhandledRejection", (reason) => onFatal("unhandled rejection", reason));
 
 	console.log(chalk.green(`mewrite serve listening on http://${handle.host}:${handle.port}`));
 	console.log(chalk.dim(`  web:  http://${handle.host}:${handle.port}/`));
@@ -192,25 +217,21 @@ export async function runServe(args: string[]): Promise<number> {
 	console.log(chalk.dim(`  attach: mewrite attach <session-id>`));
 	console.log(chalk.dim(`  list:   mewrite sessions`));
 
+	let shuttingDown = false;
 	const shutdown = async (signal: string): Promise<void> => {
+		if (shuttingDown) return;
+		shuttingDown = true;
 		console.error(chalk.dim(`\ncave serve: received ${signal}, shutting down...`));
 		try {
+			// Closes every runner -> disposes AgentSessions -> MCP hub closeAll(), so
+			// no MCP subprocesses are orphaned on a clean shutdown.
 			await handle.close();
 			store.close();
-			try {
-				if (existsSync(parsed.pidFile)) {
-					const pid = Number.parseInt(readFileSync(parsed.pidFile, "utf8").trim(), 10);
-					if (pid === process.pid) {
-						writeFileSync(parsed.pidFile, "", "utf8");
-					}
-				}
-			} catch {
-				/* ignore */
-			}
+			clearPidFile();
 		} catch (err) {
 			console.error("shutdown error:", err);
 		}
-		process.exit(0);
+		process.exit(signal === "spin-guard" ? 1 : 0);
 	};
 	process.once("SIGINT", () => void shutdown("SIGINT"));
 	process.once("SIGTERM", () => void shutdown("SIGTERM"));

@@ -19,4 +19,5 @@ export {
 	type RunnerFactory,
 	startDaemon,
 } from "./server.js";
+export { SpinGuard } from "./spin-guard.js";
 export { openStore, type SessionStore, SqliteSessionStore } from "./store.js";
