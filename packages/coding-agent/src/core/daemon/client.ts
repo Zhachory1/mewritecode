@@ -172,6 +172,16 @@ export class AttachedSession extends EventEmitter {
 				reject(err instanceof Error ? err : new Error(String(err)));
 			});
 		});
+		// Never let `opened` become an unhandled rejection: callers may dispose the
+		// session (close the socket) before they ever await ready(), e.g. moving the
+		// sidebar selection fast in the agents view.
+		this.opened.catch(() => {});
+		// A raw `ws` `error` with no listener throws (Node EventEmitter). The
+		// `once("error")` above is consumed after the first error, so keep a
+		// persistent no-op listener: aborting a still-connecting socket emits a late
+		// error that must not become an uncaught exception (it is surfaced to
+		// AttachedSession listeners via the emit in the once handler).
+		ws.on("error", () => {});
 		ws.on("message", (raw) => this.onMessage(raw.toString()));
 		ws.on("close", () => this.emit("close"));
 	}
@@ -215,6 +225,19 @@ export class AttachedSession extends EventEmitter {
 
 	close(): void {
 		try {
+			if (this.ws.readyState === WebSocket.CONNECTING) {
+				// Defer until the handshake resolves, then close cleanly. Aborting a
+				// pending connect directly surfaces an "closed before established" error
+				// that can escape as an uncaught exception and exit the client.
+				this.ws.once("open", () => {
+					try {
+						this.ws.close();
+					} catch {
+						/* best-effort */
+					}
+				});
+				return;
+			}
 			this.ws.close();
 		} catch {
 			/* best-effort */

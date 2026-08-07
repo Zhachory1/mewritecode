@@ -584,6 +584,29 @@ describe("WS9 daemon — WebSocket streaming", () => {
 		await shutdown(f);
 	});
 
+	it("closing an attach before it connects does not throw or leak a rejection", async () => {
+		const s = await f.client.createSession({});
+		// Simulate the agents view moving selection fast: attach then immediately
+		// dispose, while the socket is still CONNECTING. Must not throw synchronously
+		// nor produce an unhandled rejection (which would exit the client TUI).
+		const rejections: unknown[] = [];
+		const onRejection = (r: unknown): void => {
+			rejections.push(r);
+		};
+		process.on("unhandledRejection", onRejection);
+		try {
+			for (let i = 0; i < 5; i++) {
+				const session = f.client.attach(s.id);
+				expect(() => session.close()).not.toThrow();
+			}
+			// Give any async connect errors a tick to surface.
+			await new Promise((r) => setTimeout(r, 50));
+			expect(rejections).toEqual([]);
+		} finally {
+			process.removeListener("unhandledRejection", onRejection);
+		}
+	});
+
 	it("streams tokens to an attached WS client and emits done", async () => {
 		const s = await f.client.createSession({});
 		const session = f.client.attach(s.id);
