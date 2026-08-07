@@ -21,10 +21,11 @@ import {
 } from "@zhachory1/mewrite-tui";
 import type { AttachedSession, CaveClient } from "../../../core/daemon/index.js";
 import { getMarkdownTheme, theme } from "../theme/theme.js";
+import { keyHint } from "./keybinding-hints.js";
 import { UserMessageComponent } from "./user-message.js";
 
 /** Header + status + input chrome rows that don't scroll with the transcript. */
-const CHROME_ROWS = 4;
+const CHROME_ROWS = 5;
 
 type Block =
 	| { kind: "user"; comp: UserMessageComponent; raw: string }
@@ -41,6 +42,8 @@ export interface StreamingSessionDeps {
 	onBack: () => void;
 	/** Viewport height in rows. */
 	rows: () => number;
+	/** Model id for the status line (from the session record). */
+	model?: string;
 }
 
 export class StreamingSessionView implements Component, Focusable {
@@ -233,17 +236,19 @@ export class StreamingSessionView implements Component, Focusable {
 		const lines: string[] = [];
 		lines.push(theme.bold(truncateToWidth(this.title, width)));
 		lines.push(...windowed);
-		const statusLabel =
-			this.state === "running" ? theme.fg("accent", "● running") : theme.fg("dim", `○ ${this.state}`);
-		const following = this.offsetFromBottom === 0 ? "" : "  ↑ scrolled";
-		lines.push(theme.fg("dim", truncateToWidth(`${stripToWidth(statusLabel, width)}${following}`, width)));
+		// A horizontal rule + status line, mirroring interactive mode's footer with the
+		// data the daemon exposes (state, model). Live context/token usage needs a
+		// richer daemon protocol (not streamed today), so it is omitted for now.
+		const scrolled = this.offsetFromBottom === 0 ? "" : "  ↑ scrolled";
+		lines.push(theme.fg("dim", "─".repeat(width)));
+		const dot = this.state === "running" ? theme.fg("accent", "●") : theme.fg("dim", "○");
+		const hints = [keyHint("app.interrupt", "stop"), keyHint("app.agents.switchPane", "list")].join(" · ");
+		const left = `${dot} ${this.state}${scrolled}   ${hints}`;
+		const right = this.deps.model ?? "";
+		const pad = Math.max(1, width - visibleWidth(left) - visibleWidth(right));
+		lines.push(truncateToWidth(`${theme.fg("dim", left)}${" ".repeat(pad)}${theme.fg("dim", right)}`, width));
 		// Input line (its own cursor marker positions the hardware cursor).
 		lines.push(...this.input.render(width));
 		return lines;
 	}
-}
-
-/** Truncate a possibly-ANSI status fragment without dropping its trailing reset. */
-function stripToWidth(s: string, width: number): string {
-	return visibleWidth(s) > width ? truncateToWidth(s, width) : s;
 }

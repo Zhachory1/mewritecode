@@ -123,6 +123,7 @@ export class TwoPaneView implements Component, Focusable {
 				requestRender: this.requestRender,
 				onBack: () => this.setActive("sidebar"),
 				rows: this.cb.rows,
+				model: row.model,
 			});
 		}
 		this.requestRender();
