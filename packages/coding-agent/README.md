@@ -625,6 +625,40 @@ Built-in tools: `read`, `bash`, `edit`, `write`, `grep`, `find`, `ls`
 
 ---
 
+## Debugging the Agents View / Daemon
+
+The `mewrite agents` view runs a background daemon that manages agent processes. To debug the daemon, agent runners, WebSocket connections, or the TUI pane, enable opt-in debug logging via `MEWRITE_AGENTS_DEBUG`:
+
+```bash
+# Log all events to default location (~/.mewrite/agent/agents-debug.log)
+export MEWRITE_AGENTS_DEBUG=1
+mewrite agents
+
+# Log only specific categories (runner, daemon, pane, serve)
+export MEWRITE_AGENTS_DEBUG=runner,daemon
+mewrite agents
+
+# Log specific categories to a custom path
+export MEWRITE_AGENTS_DEBUG="runner,ws=/tmp/debug.log"
+mewrite agents
+
+# Log all events to a custom path
+export MEWRITE_AGENTS_DEBUG=/tmp/agents.log
+mewrite agents
+```
+
+The log file contains timestamped events from both the daemon and client processes, so you can see the full request/stream lifecycle in one interleaved file. Events include:
+- `daemon`: HTTP server, WebSocket upgrades, session attachment
+- `runner`: Agent prompt execution, session creation, event emission
+- `pane`: TUI pane lifecycle (attach, WebSocket events)
+- `serve`: CLI serve command events
+
+**Rotation**: The log automatically rotates when it exceeds 50 MiB, keeping one `.1` backup. This prevents disk-fill from a flapping socket or runaway logging.
+
+**Zero cost when disabled**: When `MEWRITE_AGENTS_DEBUG` is unset, all logging is short-circuited with zero overhead.
+
+---
+
 ## Contributing
 
 Contribution guide: [../../CONTRIBUTING.md](../../CONTRIBUTING.md)
