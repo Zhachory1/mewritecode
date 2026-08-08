@@ -1,84 +1,14 @@
 /**
- * Unit tests for pidfile lock acquisition (issue #167).
+ * Unit tests for pidfile lock acquisition (issue #167). Imports the real helper
+ * from its own module (not serve.ts, which has CLI side effects) so the tests
+ * cannot drift from the implementation.
  */
 
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-
-// Inline acquirePidfileLock for testing without importing serve.ts
-function dirname(p: string): string {
-	return p.split("/").slice(0, -1).join("/") || "/";
-}
-
-function processAlive(pid: number): boolean {
-	try {
-		process.kill(pid, 0);
-		return true;
-	} catch {
-		return false;
-	}
-}
-
-function acquirePidfileLock(
-	pidFile: string,
-): { ok: true } | { ok: false; reason: "peer-alive" | "error"; pid?: number } {
-	mkdirSync(dirname(pidFile), { recursive: true });
-
-	// Try to atomically create the pidfile with O_EXCL
-	try {
-		const fd = openSync(pidFile, "wx");
-		writeFileSync(fd, String(process.pid), "utf8");
-		closeSync(fd);
-		return { ok: true };
-	} catch (err: unknown) {
-		if ((err as NodeJS.ErrnoException).code !== "EEXIST") {
-			// Unexpected error (permissions, etc.)
-			return { ok: false, reason: "error" };
-		}
-
-		// Pidfile exists; check if the process is alive
-		let existingPid: number;
-		try {
-			existingPid = Number.parseInt(readFileSync(pidFile, "utf8").trim(), 10);
-			if (Number.isNaN(existingPid)) {
-				// Corrupt pidfile; treat as stale
-				rmSync(pidFile, { force: true });
-				// Retry once
-				try {
-					const fd = openSync(pidFile, "wx");
-					writeFileSync(fd, String(process.pid), "utf8");
-					closeSync(fd);
-					return { ok: true };
-				} catch {
-					// Another process won during retry
-					return { ok: false, reason: "error" };
-				}
-			}
-		} catch {
-			// Cannot read pidfile
-			return { ok: false, reason: "error" };
-		}
-
-		if (processAlive(existingPid)) {
-			// A live daemon holds the lock
-			return { ok: false, reason: "peer-alive", pid: existingPid };
-		}
-
-		// Stale pidfile; reclaim
-		try {
-			rmSync(pidFile, { force: true });
-			const fd = openSync(pidFile, "wx");
-			writeFileSync(fd, String(process.pid), "utf8");
-			closeSync(fd);
-			return { ok: true };
-		} catch {
-			// Another process won during reclaim
-			return { ok: false, reason: "error" };
-		}
-	}
-}
+import { acquirePidfileLock } from "../src/core/daemon/pidfile-lock.js";
 
 describe("acquirePidfileLock", () => {
 	let testDir: string;

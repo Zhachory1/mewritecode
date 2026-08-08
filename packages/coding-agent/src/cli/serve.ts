@@ -7,11 +7,12 @@
  * the same session over WS.
  */
 
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import chalk from "chalk";
 import { getAgentDir, VERSION } from "../config.js";
 import { dlog } from "../core/daemon/debug-log.js";
+import { acquirePidfileLock } from "../core/daemon/pidfile-lock.js";
 import {
 	createAgentBackedRunnerFactory,
 	createDefaultRunnerFactory,
@@ -309,82 +310,11 @@ export async function runServe(args: string[]): Promise<number> {
 	return 0;
 }
 
-function processAlive(pid: number): boolean {
-	try {
-		process.kill(pid, 0);
-		return true;
-	} catch {
-		return false;
-	}
-}
-
 function isLoopbackHost(host: string): boolean {
 	const h = host.toLowerCase();
 	return h === "127.0.0.1" || h === "localhost" || h === "::1" || h === "[::1]";
 }
 
-/**
- * Atomically acquire the pidfile lock using O_EXCL. Returns success or a reason
- * for failure (peer-alive or error). Handles stale pidfile reclamation.
- */
-function acquirePidfileLock(
-	pidFile: string,
-): { ok: true } | { ok: false; reason: "peer-alive" | "error"; pid?: number } {
-	mkdirSync(dirname(pidFile), { recursive: true });
-
-	// Try to atomically create the pidfile with O_EXCL
-	try {
-		const fd = openSync(pidFile, "wx");
-		writeFileSync(fd, String(process.pid), "utf8");
-		closeSync(fd);
-		return { ok: true };
-	} catch (err: unknown) {
-		if ((err as NodeJS.ErrnoException).code !== "EEXIST") {
-			// Unexpected error (permissions, etc.)
-			return { ok: false, reason: "error" };
-		}
-
-		// Pidfile exists; check if the process is alive
-		let existingPid: number;
-		try {
-			existingPid = Number.parseInt(readFileSync(pidFile, "utf8").trim(), 10);
-			if (Number.isNaN(existingPid)) {
-				// Corrupt pidfile; treat as stale
-				rmSync(pidFile, { force: true });
-				// Retry once
-				try {
-					const fd = openSync(pidFile, "wx");
-					writeFileSync(fd, String(process.pid), "utf8");
-					closeSync(fd);
-					return { ok: true };
-				} catch {
-					// Another process won during retry
-					return { ok: false, reason: "error" };
-				}
-			}
-		} catch {
-			// Cannot read pidfile
-			return { ok: false, reason: "error" };
-		}
-
-		if (processAlive(existingPid)) {
-			// A live daemon holds the lock
-			return { ok: false, reason: "peer-alive", pid: existingPid };
-		}
-
-		// Stale pidfile; reclaim
-		try {
-			rmSync(pidFile, { force: true });
-			const fd = openSync(pidFile, "wx");
-			writeFileSync(fd, String(process.pid), "utf8");
-			closeSync(fd);
-			return { ok: true };
-		} catch {
-			// Another process won during reclaim
-			return { ok: false, reason: "error" };
-		}
-	}
-}
 
 /**
  * Dispatch hook for `main.ts`. Returns true if the args were consumed.
