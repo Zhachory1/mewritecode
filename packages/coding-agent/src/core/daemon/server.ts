@@ -963,11 +963,23 @@ function parseJsonChunks<T>(chunks: Buffer[]): T | undefined {
 function send(ws: WebSocket, env: RpcEnvelope): void {
 	if (ws.readyState !== WebSocket.OPEN) return;
 	try {
-		ws.send(JSON.stringify(env));
+		// CRITICAL: pass a write callback. Without it, an async write failure (EPIPE
+		// when the peer socket is already gone) is thrown as an UNCAUGHT exception from
+		// the socket write path — bypassing this try/catch and flooding the daemon with
+		// uncaught EPIPE errors (one per queued frame), which pegs CPU and stalls every
+		// agent. The callback captures that error so it stays a dropped frame.
+		ws.send(JSON.stringify(env), (err) => {
+			if (err) {
+				try {
+					ws.terminate();
+				} catch {
+					/* already gone */
+				}
+			}
+		});
 	} catch {
-		// The socket can close between the readyState check and send under load.
-		// A failed frame to one client must never crash the daemon (and thus every
-		// other agent). Best-effort: drop it.
+		// Sync failure (e.g. socket closed between the readyState check and send).
+		// A failed frame to one client must never crash the daemon.
 	}
 }
 
