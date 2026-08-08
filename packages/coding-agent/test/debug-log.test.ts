@@ -76,20 +76,22 @@ describe("debug-log", () => {
 		expect(content).not.toContain("blocked-2");
 	});
 
-	it("should support category with custom path", () => {
+	it("should support a single category with a custom path (tag=path syntax)", () => {
 		const logPath = join(testDir, "custom.log");
-		process.env.MEWRITE_AGENTS_DEBUG = `runner,ws=${logPath}`;
+		process.env.MEWRITE_AGENTS_DEBUG = `runner=${logPath}`;
 		resetDebugLogForTest();
 
 		dlog("runner", "test-event");
+		dlog("daemon", "filtered-out");
 
 		expect(existsSync(logPath)).toBe(true);
 		const content = readFileSync(logPath, "utf-8");
 		expect(content).toContain("test-event");
+		expect(content).not.toContain("filtered-out");
 	});
 
-	it("should log all categories when env is '1'", () => {
-		// Use a custom path for the test to avoid polluting home dir
+	it("logs all categories to a custom path (bare path syntax)", () => {
+		// A bare path means "all events -> this path" (no category filter).
 		const logPath = join(testDir, "all.log");
 		process.env.MEWRITE_AGENTS_DEBUG = logPath;
 		resetDebugLogForTest();

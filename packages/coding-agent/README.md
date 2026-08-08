@@ -639,7 +639,7 @@ export MEWRITE_AGENTS_DEBUG=runner,daemon
 mewrite agents
 
 # Log specific categories to a custom path
-export MEWRITE_AGENTS_DEBUG="runner,ws=/tmp/debug.log"
+export MEWRITE_AGENTS_DEBUG="runner,pane=/tmp/debug.log"
 mewrite agents
 
 # Log all events to a custom path
