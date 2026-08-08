@@ -426,6 +426,14 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 			socket.destroy();
 			return;
 		}
+		// If the ws server has been closed, handleUpgrade responds 503. Log it so a
+		// wedge (wss closed but process alive) is unambiguous in the debug trace.
+		if ((wss as unknown as { _state?: number })._state !== 0) {
+			dlog("daemon", "upgrade.wssNotRunning", {
+				id: sessionId,
+				wssState: (wss as unknown as { _state?: number })._state,
+			});
+		}
 		wss.handleUpgrade(req, socket, head, (ws) => {
 			attachClient(sessionId, session, ws);
 		});
@@ -581,6 +589,7 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 				}
 			}
 			clients.clear();
+			dlog("daemon", "handle.close.wssClosing", {});
 			await new Promise<void>((resolve) => {
 				wss.close(() => resolve());
 			});

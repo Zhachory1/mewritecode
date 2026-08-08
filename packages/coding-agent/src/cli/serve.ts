@@ -11,6 +11,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { dirname, join } from "node:path";
 import chalk from "chalk";
 import { getAgentDir, VERSION } from "../config.js";
+import { dlog } from "../core/daemon/debug-log.js";
 import {
 	createAgentBackedRunnerFactory,
 	createDefaultRunnerFactory,
@@ -189,15 +190,14 @@ export async function runServe(args: string[]): Promise<number> {
 	// be auto-restarted fresh rather than spinning silently.
 	const spinGuard = new SpinGuard();
 	const onFatal = (label: string, detail: unknown): void => {
-		console.error(
-			chalk.red(`mewrite serve: ${label} (continuing): ${detail instanceof Error ? detail.stack : detail}`),
-		);
+		const text = detail instanceof Error ? (detail.stack ?? detail.message) : String(detail);
+		console.error(chalk.red(`mewrite serve: ${label} (continuing): ${text}`));
+		// Always record the actual error to the debug log so intermittent crashes are
+		// diagnosable (stdout of an auto-started daemon is not captured).
+		dlog("serve", `fatal.${label.replace(/\s+/g, "_")}`, { err: text, count: spinGuard.count + 1 });
 		if (spinGuard.record()) {
-			console.error(
-				chalk.red(
-					`mewrite serve: ${spinGuard.count} errors in a few seconds — daemon is wedged, shutting down for a clean restart.`,
-				),
-			);
+			console.error(chalk.red(`mewrite serve: ${spinGuard.count} errors in a few seconds — forcing clean restart.`));
+			dlog("serve", "spinGuard.tripped", { count: spinGuard.count });
 			void shutdown("spin-guard");
 		}
 	};
