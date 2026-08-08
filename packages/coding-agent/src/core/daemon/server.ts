@@ -448,6 +448,22 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 		}
 		set.add(client);
 
+		// Swallow errors on the RAW underlying socket. The ws library's own internals
+		// (ping/pong keepalive, close-frame writes) can write to a half-dead socket
+		// outside our send() helper; without a listener on the raw socket an EPIPE there
+		// becomes an uncaught exception and, repeated per queued write, floods the daemon
+		// (millions of EPIPEs, 100% CPU, every agent stalls). A raw-socket 'error'
+		// listener keeps it a handled, dropped write.
+		const rawSocket = (ws as unknown as { _socket?: { on?: (e: string, cb: (err: unknown) => void) => void } })
+			._socket;
+		rawSocket?.on?.("error", () => {
+			try {
+				ws.terminate();
+			} catch {
+				/* already gone */
+			}
+		});
+
 		// Send initial state snapshot. Re-read from the store so it reflects the latest
 		// state (the `session` arg was captured at HTTP-upgrade time and may be stale).
 		const fresh = opts.store.getSession(sessionId) ?? session;

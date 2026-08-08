@@ -193,12 +193,26 @@ export async function runServe(args: string[]): Promise<number> {
 	// self-terminates the whole fleet. We keep the SpinGuard purely to LOG when the
 	// error rate looks pathological, for diagnosis — it never stops the process.
 	const spinGuard = new SpinGuard();
+	// Rate-limit fatal logging: a flapping socket can throw the same error thousands
+	// of times a second; logging each one (sync appendFileSync + stderr) would itself
+	// starve the loop. Coalesce bursts.
+	let fatalLogCount = 0;
+	let fatalWindowStart = 0;
 	const onFatal = (label: string, detail: unknown): void => {
-		const text = detail instanceof Error ? (detail.stack ?? detail.message) : String(detail);
-		console.error(chalk.red(`mewrite serve: ${label} (continuing): ${text}`));
-		// Always record the actual error to the debug log so intermittent crashes are
-		// diagnosable (stdout of an auto-started daemon is not captured).
-		dlog("serve", `fatal.${label.replace(/\s+/g, "_")}`, { err: text });
+		const now = Date.now();
+		if (now - fatalWindowStart > 1000) {
+			fatalWindowStart = now;
+			fatalLogCount = 0;
+		}
+		fatalLogCount++;
+		const suppress = fatalLogCount > 20; // at most ~20 logged per second
+		if (!suppress) {
+			const text = detail instanceof Error ? (detail.stack ?? detail.message) : String(detail);
+			console.error(chalk.red(`mewrite serve: ${label} (continuing): ${text}`));
+			// Record the real error so intermittent crashes are diagnosable (an
+			// auto-started daemon's stdout is not captured).
+			dlog("serve", `fatal.${label.replace(/\s+/g, "_")}`, { err: text });
+		}
 		if (spinGuard.record()) {
 			// Log-only: surface a likely spin for diagnosis, but keep serving so agents
 			// are never taken down by the guard itself.
