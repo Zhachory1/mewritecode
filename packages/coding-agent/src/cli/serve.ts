@@ -221,7 +221,22 @@ export async function runServe(args: string[]): Promise<number> {
 	const shutdown = async (signal: string): Promise<void> => {
 		if (shuttingDown) return;
 		shuttingDown = true;
+		const code = signal === "spin-guard" ? 1 : 0;
 		console.error(chalk.dim(`\ncave serve: received ${signal}, shutting down...`));
+		// Hard deadline: handle.close() awaits httpServer.close(), which blocks until
+		// every keep-alive connection drains — that can hang indefinitely and leave a
+		// half-open daemon (HTTP up, WS closed -> 503 on every attach, all sessions
+		// error). Force-exit if graceful close doesn't finish quickly.
+		const force = setTimeout(() => {
+			console.error(chalk.red("cave serve: graceful shutdown timed out — forcing exit."));
+			try {
+				clearPidFile();
+			} catch {
+				/* ignore */
+			}
+			process.exit(code);
+		}, 3000);
+		force.unref();
 		try {
 			// Closes every runner -> disposes AgentSessions -> MCP hub closeAll(), so
 			// no MCP subprocesses are orphaned on a clean shutdown.
@@ -231,7 +246,8 @@ export async function runServe(args: string[]): Promise<number> {
 		} catch (err) {
 			console.error("shutdown error:", err);
 		}
-		process.exit(signal === "spin-guard" ? 1 : 0);
+		clearTimeout(force);
+		process.exit(code);
 	};
 	process.once("SIGINT", () => void shutdown("SIGINT"));
 	process.once("SIGTERM", () => void shutdown("SIGTERM"));

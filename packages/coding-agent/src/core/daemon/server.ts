@@ -584,6 +584,10 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 			await new Promise<void>((resolve) => {
 				wss.close(() => resolve());
 			});
+			// httpServer.close() only stops accepting new connections and waits for
+			// existing keep-alive sockets to go idle — which can hang indefinitely.
+			// Force any lingering connections closed so close() actually resolves.
+			httpServer.closeAllConnections?.();
 			await new Promise<void>((resolve) => {
 				httpServer.close(() => resolve());
 			});
