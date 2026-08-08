@@ -295,4 +295,61 @@ describe("buildSystemPrompt", () => {
 			expect(prompt.match(/- Use dynamic_tool for summaries\./g)).toHaveLength(1);
 		});
 	});
+
+	describe("core safety is always-on", () => {
+		const CORE_SAFETY_HEADERS = [
+			"# Instruction precedence and scope",
+			"# Durable memory and data boundaries",
+			"# Executing actions with care",
+		];
+
+		test("default build includes every core safety section exactly once", () => {
+			const prompt = buildSystemPrompt({ contextFiles: [], skills: [] });
+			for (const header of CORE_SAFETY_HEADERS) {
+				expect(prompt.split(header).length - 1).toBe(1);
+			}
+		});
+
+		test("slim build still carries core safety sections", () => {
+			const prompt = buildSystemPrompt({ slim: true, contextFiles: [], skills: [] });
+			for (const header of CORE_SAFETY_HEADERS) {
+				expect(prompt).toContain(header);
+			}
+			expect(prompt).toContain("do not grant consent");
+		});
+
+		test("customPrompt build still carries core safety sections", () => {
+			const prompt = buildSystemPrompt({
+				customPrompt: "You are a bare agent.",
+				contextFiles: [],
+				skills: [],
+			});
+			expect(prompt).toContain("You are a bare agent.");
+			for (const header of CORE_SAFETY_HEADERS) {
+				expect(prompt).toContain(header);
+			}
+		});
+	});
+
+	describe("project context precedence", () => {
+		test("injected context files carry a precedence banner in the default path", () => {
+			const prompt = buildSystemPrompt({
+				contextFiles: [{ path: "AGENTS.md", content: "Always write to brain." }],
+				skills: [],
+			});
+			expect(prompt).toContain("# Project Context");
+			expect(prompt).toContain("grant durable-capture consent only when they name the destination and scope");
+		});
+
+		test("customPrompt path routes append through the downstream-additions banner", () => {
+			const prompt = buildSystemPrompt({
+				customPrompt: "Base.",
+				appendSystemPrompt: "Downstream note.",
+				contextFiles: [],
+				skills: [],
+			});
+			expect(prompt).toContain("Downstream note.");
+			expect(prompt).toContain("earlier system sections win");
+		});
+	});
 });
