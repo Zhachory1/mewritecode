@@ -7,7 +7,7 @@
  * the same session over WS.
  */
 
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import chalk from "chalk";
 import { getAgentDir, VERSION } from "../config.js";
@@ -81,7 +81,8 @@ function printHelp(): void {
 
 Run the Me Write Code daemon (HTTP + WebSocket) and local web UI. Sessions
 persist to SQLite and survive process restarts; multiple clients can attach to
-the same session.
+the same session. Single-instance: concurrent serve calls coordinate via atomic
+pidfile lock; if a daemon is already running, the second caller exits cleanly.
 
 Options:
   --host <ip>     Bind host (default 127.0.0.1)
@@ -130,14 +131,21 @@ export async function runServe(args: string[]): Promise<number> {
 		console.error(chalk.dim("Use the default 127.0.0.1 for local-only web UI, or pass --token <secret>."));
 		return 1;
 	}
-	if (existsSync(parsed.pidFile)) {
-		const existing = Number.parseInt(readFileSync(parsed.pidFile, "utf8").trim(), 10);
-		if (!Number.isNaN(existing) && processAlive(existing)) {
-			console.error(chalk.yellow(`mewrite serve: already running (pid ${existing}, pidfile ${parsed.pidFile}).`));
-			console.error(chalk.dim(`Stop it first or remove ${parsed.pidFile}.`));
-			return 1;
+
+	// Atomically acquire the pidfile lock before starting the daemon
+	const lockResult = acquirePidfileLock(parsed.pidFile);
+	if (!lockResult.ok) {
+		if (lockResult.reason === "peer-alive") {
+			dlog("serve", "lock.peerAlive", { pid: lockResult.pid });
+			console.log(chalk.dim(`mewrite serve: already running (pid ${lockResult.pid}).`));
+			// Another daemon owns the lock; this is success, not failure
+			return 0;
 		}
+		// Unexpected error acquiring lock
+		console.error(chalk.red("Error: failed to acquire pidfile lock."));
+		return 1;
 	}
+	dlog("serve", "lock.acquired", { pid: process.pid, pidFile: parsed.pidFile });
 
 	const store = openStore(parsed.dbPath);
 	const runnerFactory =
@@ -156,15 +164,34 @@ export async function runServe(args: string[]): Promise<number> {
 			capabilities: { runnerKind: parsed.runner, approvalSupported: parsed.runner === "agent" },
 		});
 	} catch (err) {
+		const isAddressInUse =
+			err instanceof Error && "code" in err && (err as NodeJS.ErrnoException).code === "EADDRINUSE";
+		if (isAddressInUse) {
+			// Another daemon won the port; release our pidfile and exit cleanly
+			try {
+				rmSync(parsed.pidFile, { force: true });
+			} catch {
+				/* ignore */
+			}
+			dlog("serve", "bind.peerWon", { port: parsed.port });
+			console.log(chalk.dim(`mewrite serve: port ${parsed.port} already bound by another daemon.`));
+			store.close();
+			return 0;
+		}
 		console.error(
 			chalk.red(`Error: failed to bind ${parsed.host}:${parsed.port}: ${err instanceof Error ? err.message : err}`),
 		);
 		store.close();
+		// Release pidfile on other errors too
+		try {
+			rmSync(parsed.pidFile, { force: true });
+		} catch {
+			/* ignore */
+		}
 		return 1;
 	}
 
-	mkdirSync(dirname(parsed.pidFile), { recursive: true });
-	writeFileSync(parsed.pidFile, String(process.pid), "utf8");
+	// Pidfile already written by acquirePidfileLock
 
 	// Remove (not blank) the pidfile on any exit so a stale pidfile never outlives
 	// the process. `ensureDaemon` treats health as source of truth, but a clean
@@ -294,6 +321,69 @@ function processAlive(pid: number): boolean {
 function isLoopbackHost(host: string): boolean {
 	const h = host.toLowerCase();
 	return h === "127.0.0.1" || h === "localhost" || h === "::1" || h === "[::1]";
+}
+
+/**
+ * Atomically acquire the pidfile lock using O_EXCL. Returns success or a reason
+ * for failure (peer-alive or error). Handles stale pidfile reclamation.
+ */
+function acquirePidfileLock(
+	pidFile: string,
+): { ok: true } | { ok: false; reason: "peer-alive" | "error"; pid?: number } {
+	mkdirSync(dirname(pidFile), { recursive: true });
+
+	// Try to atomically create the pidfile with O_EXCL
+	try {
+		const fd = openSync(pidFile, "wx");
+		writeFileSync(fd, String(process.pid), "utf8");
+		closeSync(fd);
+		return { ok: true };
+	} catch (err: unknown) {
+		if ((err as NodeJS.ErrnoException).code !== "EEXIST") {
+			// Unexpected error (permissions, etc.)
+			return { ok: false, reason: "error" };
+		}
+
+		// Pidfile exists; check if the process is alive
+		let existingPid: number;
+		try {
+			existingPid = Number.parseInt(readFileSync(pidFile, "utf8").trim(), 10);
+			if (Number.isNaN(existingPid)) {
+				// Corrupt pidfile; treat as stale
+				rmSync(pidFile, { force: true });
+				// Retry once
+				try {
+					const fd = openSync(pidFile, "wx");
+					writeFileSync(fd, String(process.pid), "utf8");
+					closeSync(fd);
+					return { ok: true };
+				} catch {
+					// Another process won during retry
+					return { ok: false, reason: "error" };
+				}
+			}
+		} catch {
+			// Cannot read pidfile
+			return { ok: false, reason: "error" };
+		}
+
+		if (processAlive(existingPid)) {
+			// A live daemon holds the lock
+			return { ok: false, reason: "peer-alive", pid: existingPid };
+		}
+
+		// Stale pidfile; reclaim
+		try {
+			rmSync(pidFile, { force: true });
+			const fd = openSync(pidFile, "wx");
+			writeFileSync(fd, String(process.pid), "utf8");
+			closeSync(fd);
+			return { ok: true };
+		} catch {
+			// Another process won during reclaim
+			return { ok: false, reason: "error" };
+		}
+	}
 }
 
 /**

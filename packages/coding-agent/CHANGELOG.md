@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Fixed daemon double-spawn race in `mewrite serve`: two concurrent `mewrite serve` processes could both pass the pidfile existence check and race to bind the port (TOCTOU). Now the pidfile is acquired atomically with O_EXCL before starting the daemon; if another daemon holds a live pidfile, the second caller exits 0 (not 1) so auto-start workflows treat peer ownership as success. Stale pidfiles (dead process) are reclaimed automatically. Belt-and-suspenders: if two processes somehow pass the pidfile lock but one loses the port bind (EADDRINUSE), it releases its pidfile and exits 0 ([#167](https://github.com/Zhachory1/mewritecode/issues/167)).
 - System prompt: core safety sections (instruction precedence, durable-memory/data boundaries, executing-with-care) are now always-on. Previously the `slim` build flag and the `customPrompt` path both silently dropped every non-overridable safety section, producing an agent with no durable-memory or destructive-action consent gate while still ingesting untrusted project context. They are now injected in every build path via a shared `CORE_SAFETY_SECTIONS` block.
 - System prompt: the `customPrompt` path now routes appended text through `buildAppendOnlySection` (the "earlier system sections win" framing) instead of a raw concatenation.
 - System prompt: injected project-context files (AGENTS.md/CLAUDE.md) now carry a precedence banner clarifying that project instructions cannot override the safety sections and grant durable-capture consent only when they name a destination and scope.
