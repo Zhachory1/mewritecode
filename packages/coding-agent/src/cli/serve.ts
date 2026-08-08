@@ -183,22 +183,31 @@ export async function runServe(args: string[]): Promise<number> {
 	// The daemon hosts many independent agents in one process. A stray unhandled
 	// error from one session (a torn WebSocket frame, a rejected background promise)
 	// must NOT crash the daemon and take down every other agent's work — so we log
-	// and keep serving. BUT a self-perpetuating error (e.g. a broken transport
-	// retrying synchronously) would then spin the event loop at 100% CPU forever,
-	// hanging every request. Guard against that: if exceptions fire too fast, the
-	// daemon is wedged — shut down cleanly (reaping runners/MCP children) so it can
-	// be auto-restarted fresh rather than spinning silently.
+	// and keep serving.
+	//
+	// We deliberately do NOT auto-shut-down on a burst of errors. A previous
+	// "spin guard" that shut the daemon down on high error frequency did far more
+	// harm than good: normal usage (switching between agents mid-turn) could trip it,
+	// and shutting down killed EVERY running agent's work. A busy or even briefly
+	// spinning daemon the user can restart is strictly better than one that
+	// self-terminates the whole fleet. We keep the SpinGuard purely to LOG when the
+	// error rate looks pathological, for diagnosis — it never stops the process.
 	const spinGuard = new SpinGuard();
 	const onFatal = (label: string, detail: unknown): void => {
 		const text = detail instanceof Error ? (detail.stack ?? detail.message) : String(detail);
 		console.error(chalk.red(`mewrite serve: ${label} (continuing): ${text}`));
 		// Always record the actual error to the debug log so intermittent crashes are
 		// diagnosable (stdout of an auto-started daemon is not captured).
-		dlog("serve", `fatal.${label.replace(/\s+/g, "_")}`, { err: text, count: spinGuard.count + 1 });
+		dlog("serve", `fatal.${label.replace(/\s+/g, "_")}`, { err: text });
 		if (spinGuard.record()) {
-			console.error(chalk.red(`mewrite serve: ${spinGuard.count} errors in a few seconds — forcing clean restart.`));
-			dlog("serve", "spinGuard.tripped", { count: spinGuard.count });
-			void shutdown("spin-guard");
+			// Log-only: surface a likely spin for diagnosis, but keep serving so agents
+			// are never taken down by the guard itself.
+			console.error(
+				chalk.red(
+					`mewrite serve: ${spinGuard.count} errors in a few seconds — possible spin (continuing to serve).`,
+				),
+			);
+			dlog("serve", "spinGuard.highErrorRate", { count: spinGuard.count });
 		}
 	};
 	process.on("uncaughtException", (err) => onFatal("uncaught exception", err));
