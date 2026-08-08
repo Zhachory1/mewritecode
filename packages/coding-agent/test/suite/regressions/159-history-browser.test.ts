@@ -25,17 +25,17 @@ describe("mewrite history (#159)", () => {
 	describe("formatResumeCommand", () => {
 		it("formats absolute path correctly", () => {
 			const path = "/Users/test/.mewrite/sessions/proj-123/2024-01-01_abc123.jsonl";
-			expect(formatResumeCommand(path)).toBe(`mewrite --resume ${path}`);
+			expect(formatResumeCommand(path)).toBe(`mewrite --session "${path}"`);
 		});
 
 		it("formats relative path correctly", () => {
 			const path = ".mewrite/sessions/proj-123/2024-01-01_abc123.jsonl";
-			expect(formatResumeCommand(path)).toBe(`mewrite --resume ${path}`);
+			expect(formatResumeCommand(path)).toBe(`mewrite --session "${path}"`);
 		});
 
 		it("handles paths with spaces", () => {
 			const path = "/Users/test/my project/.mewrite/sessions/abc.jsonl";
-			expect(formatResumeCommand(path)).toBe(`mewrite --resume ${path}`);
+			expect(formatResumeCommand(path)).toBe(`mewrite --session "${path}"`);
 		});
 	});
 

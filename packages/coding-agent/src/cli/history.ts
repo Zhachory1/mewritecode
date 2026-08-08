@@ -46,11 +46,13 @@ Options:
 }
 
 /**
- * Format the resume command for a given session path.
- * Exported as pure helper for testing.
+ * Format the command that resumes a specific session file. `--session <path>`
+ * takes a path (unlike `--resume`, which is a boolean that opens a picker). The
+ * path is double-quoted so paths containing spaces stay a single shell argument.
+ * Exported as a pure helper for testing.
  */
 export function formatResumeCommand(sessionPath: string): string {
-	return `mewrite --resume ${sessionPath}`;
+	return `mewrite --session "${sessionPath}"`;
 }
 
 export async function runHistory(args: string[]): Promise<number> {
