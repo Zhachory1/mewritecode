@@ -18,6 +18,7 @@ import { WebSocket, WebSocketServer } from "ws";
 import { getAgentDir, getWebUiDir } from "../../config.js";
 import { loadSkills } from "../skills.js";
 import { onFileMutation } from "../tools/file-mutation-queue.js";
+import { dlog } from "./debug-log.js";
 import {
 	type ApprovalDecision,
 	type ApprovalDecisionParams,
@@ -139,6 +140,14 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 
 	function emitForSession(sessionId: string): RunnerEmitter {
 		return (event) => {
+			if (event.type !== "token") {
+				const clientCount = clients.get(sessionId)?.size ?? 0;
+				dlog("daemon", `emit.${event.type}`, {
+					id: sessionId,
+					clients: clientCount,
+					...(event.type === "state" ? { state: event.state } : {}),
+				});
+			}
 			if (event.type === "message") {
 				opts.store.appendMessage(event.message);
 				// The turn is now persisted; drop the live buffer so late attachers read
@@ -417,6 +426,14 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 			socket.destroy();
 			return;
 		}
+		// If the ws server has been closed, handleUpgrade responds 503. Log it so a
+		// wedge (wss closed but process alive) is unambiguous in the debug trace.
+		if ((wss as unknown as { _state?: number })._state !== 0) {
+			dlog("daemon", "upgrade.wssNotRunning", {
+				id: sessionId,
+				wssState: (wss as unknown as { _state?: number })._state,
+			});
+		}
 		wss.handleUpgrade(req, socket, head, (ws) => {
 			attachClient(sessionId, session, ws);
 		});
@@ -431,8 +448,27 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 		}
 		set.add(client);
 
-		// Send initial state snapshot.
-		send(ws, notification("state", { sessionId, state: session.state } as StateParams));
+		// Swallow errors on the RAW underlying socket. The ws library's own internals
+		// (ping/pong keepalive, close-frame writes) can write to a half-dead socket
+		// outside our send() helper; without a listener on the raw socket an EPIPE there
+		// becomes an uncaught exception and, repeated per queued write, floods the daemon
+		// (millions of EPIPEs, 100% CPU, every agent stalls). A raw-socket 'error'
+		// listener keeps it a handled, dropped write.
+		const rawSocket = (ws as unknown as { _socket?: { on?: (e: string, cb: (err: unknown) => void) => void } })
+			._socket;
+		rawSocket?.on?.("error", () => {
+			try {
+				ws.terminate();
+			} catch {
+				/* already gone */
+			}
+		});
+
+		// Send initial state snapshot. Re-read from the store so it reflects the latest
+		// state (the `session` arg was captured at HTTP-upgrade time and may be stale).
+		const fresh = opts.store.getSession(sessionId) ?? session;
+		dlog("daemon", "attachClient", { id: sessionId, snapshotState: fresh.state, staleArgState: session.state });
+		send(ws, notification("state", { sessionId, state: fresh.state } as StateParams));
 
 		// Replay the in-progress assistant turn (if any) so a mid-stream attach doesn't
 		// miss the text emitted before it connected. The completed turn is not buffered
@@ -569,9 +605,14 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 				}
 			}
 			clients.clear();
+			dlog("daemon", "handle.close.wssClosing", {});
 			await new Promise<void>((resolve) => {
 				wss.close(() => resolve());
 			});
+			// httpServer.close() only stops accepting new connections and waits for
+			// existing keep-alive sockets to go idle — which can hang indefinitely.
+			// Force any lingering connections closed so close() actually resolves.
+			httpServer.closeAllConnections?.();
 			await new Promise<void>((resolve) => {
 				httpServer.close(() => resolve());
 			});
@@ -937,7 +978,25 @@ function parseJsonChunks<T>(chunks: Buffer[]): T | undefined {
 
 function send(ws: WebSocket, env: RpcEnvelope): void {
 	if (ws.readyState !== WebSocket.OPEN) return;
-	ws.send(JSON.stringify(env));
+	try {
+		// CRITICAL: pass a write callback. Without it, an async write failure (EPIPE
+		// when the peer socket is already gone) is thrown as an UNCAUGHT exception from
+		// the socket write path — bypassing this try/catch and flooding the daemon with
+		// uncaught EPIPE errors (one per queued frame), which pegs CPU and stalls every
+		// agent. The callback captures that error so it stays a dropped frame.
+		ws.send(JSON.stringify(env), (err) => {
+			if (err) {
+				try {
+					ws.terminate();
+				} catch {
+					/* already gone */
+				}
+			}
+		});
+	} catch {
+		// Sync failure (e.g. socket closed between the readyState check and send).
+		// A failed frame to one client must never crash the daemon.
+	}
 }
 
 function notification<P>(method: string, params: P): RpcNotification<P> {

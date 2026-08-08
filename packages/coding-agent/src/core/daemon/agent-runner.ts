@@ -3,6 +3,7 @@ import type { AgentMessage } from "@zhachory1/mewrite-agent";
 import type { AgentSession, AgentSessionEvent, ApprovalDecision, RequestApprovalFn } from "../agent-session.js";
 import { createAgentSession } from "../sdk.js";
 import { SessionManager } from "../session-manager.js";
+import { dlog } from "./debug-log.js";
 import type { MessageRecord, SessionRecord } from "./protocol.js";
 import type { AgentRunner, RunnerEmitter, RunnerFactory } from "./server.js";
 
@@ -55,6 +56,7 @@ class AgentBackedRunner implements AgentRunner {
 	) {}
 
 	async send(text: string): Promise<MessageRecord> {
+		dlog("runner", "send", { id: this.daemonSession.id, active: this.active, len: text.length });
 		if (this.active) throw new Error("agent runner is already processing");
 		const userMsg: MessageRecord = {
 			id: `m_${randomUUID()}`,
@@ -82,7 +84,8 @@ class AgentBackedRunner implements AgentRunner {
 		this.emit({ type: "message", message: userMsg });
 		this.emit({ type: "state", sessionId: this.daemonSession.id, state: "running" });
 		void this.runPrompt(text).catch((err) => {
-			const message = err instanceof Error ? err.message : String(err);
+			const message = err instanceof Error ? (err.stack ?? err.message) : String(err);
+			dlog("runner", "runPrompt.THREW", { id: this.daemonSession.id, err: message });
 			this.emitAssistantMessage(`Agent runner error: ${message}`);
 			this.emitTerminal("error");
 		});
@@ -111,14 +114,20 @@ class AgentBackedRunner implements AgentRunner {
 	}
 
 	private async runPrompt(text: string): Promise<void> {
+		const id = this.daemonSession.id;
+		dlog("runner", "runPrompt.start", { id, len: text.length });
 		const session = await this.ensureSession();
+		dlog("runner", "runPrompt.sessionReady", { id });
 		if (this.closed || this.cancelRequested) {
+			dlog("runner", "runPrompt.abortedBeforePrompt", { id, closed: this.closed, cancel: this.cancelRequested });
 			await session.abort?.();
 			session.dispose?.();
 			this.emitTerminal("stopped");
 			return;
 		}
+		dlog("runner", "runPrompt.callingPrompt", { id });
 		await session.prompt(text);
+		dlog("runner", "runPrompt.promptReturned", { id });
 	}
 
 	private pendingHistory?: HistoryMessage[];
@@ -127,11 +136,16 @@ class AgentBackedRunner implements AgentRunner {
 		if (!this.sessionPromise) {
 			const history = this.pendingHistory;
 			this.pendingHistory = undefined;
+			dlog("runner", "ensureSession.create", { id: this.daemonSession.id, historyLen: history?.length ?? 0 });
 			this.sessionPromise = this.createSession(this.daemonSession, history).then((result) => {
+				dlog("runner", "ensureSession.created", { id: this.daemonSession.id });
 				this.realizedSession = result.session;
 				result.session.setApprovalCallback?.(this.requestApproval);
 				this.unsubscribe = result.session.subscribe((event) => this.onEvent(event));
 				return result.session;
+			});
+			this.sessionPromise.catch((err) => {
+				dlog("runner", "ensureSession.FAILED", { id: this.daemonSession.id, err: String(err) });
 			});
 		}
 		return this.sessionPromise;
@@ -182,6 +196,7 @@ class AgentBackedRunner implements AgentRunner {
 
 	private onEvent(event: AgentSessionEvent): void {
 		if (this.closed) return;
+		if (event.type !== "message_update") dlog("runner", `event.${event.type}`, { id: this.daemonSession.id });
 		if (event.type === "message_update" && event.message.role === "assistant") {
 			const delta = readTextDelta(event.assistantMessageEvent);
 			if (delta) {
@@ -213,6 +228,11 @@ class AgentBackedRunner implements AgentRunner {
 		if (event.type === "agent_end") {
 			const lastAssistant = [...event.messages].reverse().find((message) => message.role === "assistant");
 			const stopReason = lastAssistant && "stopReason" in lastAssistant ? lastAssistant.stopReason : undefined;
+			const errText =
+				lastAssistant && "errorMessage" in lastAssistant
+					? (lastAssistant as { errorMessage?: string }).errorMessage
+					: undefined;
+			dlog("runner", "agent_end", { id: this.daemonSession.id, stopReason, errText });
 			if (stopReason === "error") {
 				const text = lastAssistant ? assistantDisplayText(lastAssistant) : "Agent runner error";
 				if (text && text !== this.lastAssistantMessageText) this.emitAssistantMessage(text);
@@ -252,6 +272,7 @@ class AgentBackedRunner implements AgentRunner {
 	}
 
 	private emitTerminal(state: "idle" | "stopped" | "error"): void {
+		dlog("runner", "emitTerminal", { id: this.daemonSession.id, state, alreadyEmitted: this.terminalEmitted });
 		if (this.terminalEmitted) return;
 		this.active = false;
 		this.terminalEmitted = true;

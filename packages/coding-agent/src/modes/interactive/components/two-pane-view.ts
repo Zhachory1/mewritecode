@@ -8,14 +8,15 @@
  *
  * Column compositing reuses the tui `compositeColumns` helper (the same one the
  * side-panel renderer uses) so truncation and cursor-marker handling live in one
- * place. Live streaming into the focus pane is phase 5b; here the right pane is the
- * existing read-only TranscriptView, refreshed on the sidebar's poll.
+ * place. Hosted sessions render live and interactive in the focus pane (phase 5b,
+ * StreamingSessionView); interactive `[i]` terminal sessions stay read-only.
  */
 
 import { type Component, compositeColumns, type Focusable, getKeybindings } from "@zhachory1/mewrite-tui";
-import type { SessionRecord } from "../../../core/daemon/index.js";
+import type { AttachedSession, CaveClient, SessionRecord } from "../../../core/daemon/index.js";
 import { theme } from "../theme/theme.js";
 import { AgentListComponent } from "./agent-list.js";
+import { StreamingSessionView } from "./streaming-session-view.js";
 import { type TranscriptLine, TranscriptView } from "./transcript-view.js";
 
 /** Terminals narrower than this render a single pane at a time. */
@@ -29,14 +30,16 @@ function paneHeader(label: string, active: boolean): string {
 }
 
 export interface TwoPaneCallbacks {
-	/** Selecting (enter) a hosted row — hand off to the attach REPL (phase 5a). */
-	onAttach: (row: SessionRecord) => void;
 	onQuit: () => void;
 	onNew?: () => void;
 	onDelete: (row: SessionRecord) => void;
-	/** Load a session's transcript for the focus pane. */
+	/** Load a session's transcript for the read-only focus pane (interactive rows). */
 	loadTranscript: (row: SessionRecord) => Promise<TranscriptLine[]>;
-	/** Viewport height in rows (for the focus pane's live-tail windowing). */
+	/** Open a live WS attach for a hosted session (drives the live focus pane). */
+	attach: (id: string) => AttachedSession;
+	/** Client for seeding the live focus pane's history. */
+	client: Pick<CaveClient, "getTranscript">;
+	/** Viewport height in rows (for the focus pane's windowing). */
 	rows: () => number;
 	/** Which side the sidebar renders on. Default "left". */
 	sidebarSide?: "left" | "right";
@@ -46,7 +49,8 @@ export class TwoPaneView implements Component, Focusable {
 	focused = true;
 	private active: "sidebar" | "focus" = "sidebar";
 	private readonly sidebar: AgentListComponent;
-	private focus: TranscriptView | null = null;
+	/** Live (hosted) or read-only (interactive) focus pane. */
+	private focus: StreamingSessionView | TranscriptView | null = null;
 	private focusRow: SessionRecord | null = null;
 	/** Guards against a stale async transcript load overwriting a newer selection. */
 	private loadToken = 0;
@@ -57,7 +61,8 @@ export class TwoPaneView implements Component, Focusable {
 	) {
 		this.sidebar = new AgentListComponent(
 			requestRender,
-			(row) => cb.onAttach(row),
+			// Enter on a row focuses the pane (hosted rows are interactive there).
+			() => this.setActive("focus"),
 			cb.onQuit,
 			cb.onNew,
 			(row) => cb.onDelete(row),
@@ -72,9 +77,11 @@ export class TwoPaneView implements Component, Focusable {
 		if (selected && selected.id !== this.focusRow?.id) {
 			this.onSidebarSelection(selected);
 		} else if (!selected) {
+			if (this.focus instanceof StreamingSessionView) this.focus.dispose();
 			this.focus = null;
 			this.focusRow = null;
-		} else if (this.focus) {
+		} else if (this.focus instanceof TranscriptView) {
+			// Read-only pane polls; the live pane updates itself over its WS.
 			void this.refreshFocus();
 		}
 	}
@@ -83,10 +90,18 @@ export class TwoPaneView implements Component, Focusable {
 		this.sidebar.setPollError(message);
 	}
 
+	/** Close any live focus-pane WebSocket. Call when leaving the view. */
+	dispose(): void {
+		if (this.focus instanceof StreamingSessionView) this.focus.dispose();
+	}
+
 	invalidate(): void {}
 
 	private onSidebarSelection(row: SessionRecord | null): void {
+		// Tear down any live session before switching (closes its WS).
+		if (this.focus instanceof StreamingSessionView) this.focus.dispose();
 		this.focusRow = row;
+		this.loadToken++;
 		if (!row) {
 			this.focus = null;
 			this.requestRender();
@@ -96,14 +111,28 @@ export class TwoPaneView implements Component, Focusable {
 		const cwdName = row.cwd ? (row.cwd.split(/[/\\]/).pop() ?? "") : "";
 		const name = row.title || cwdName || row.id.slice(0, 8);
 		const title = `${tag}${name}  ${row.cwd}`;
-		this.focus = new TranscriptView(title, this.requestRender, () => this.setActive("sidebar"), this.cb.rows);
-		void this.refreshFocus();
+		if (row.kind === "interactive") {
+			// Terminal sessions can't be driven remotely; show them read-only.
+			const view = new TranscriptView(title, this.requestRender, () => this.setActive("sidebar"), this.cb.rows);
+			this.focus = view;
+			void this.refreshFocus();
+		} else {
+			this.focus = new StreamingSessionView(row.id, title, {
+				attach: this.cb.attach,
+				client: this.cb.client,
+				requestRender: this.requestRender,
+				onBack: () => this.setActive("sidebar"),
+				rows: this.cb.rows,
+				model: row.model,
+			});
+		}
+		this.requestRender();
 	}
 
 	private async refreshFocus(): Promise<void> {
 		const row = this.focusRow;
 		const view = this.focus;
-		if (!row || !view) return;
+		if (!row || !(view instanceof TranscriptView)) return;
 		const token = ++this.loadToken;
 		const lines = await this.cb.loadTranscript(row);
 		if (token !== this.loadToken || this.focus !== view) return; // selection moved on
@@ -133,12 +162,6 @@ export class TwoPaneView implements Component, Focusable {
 			return;
 		}
 		if (this.active === "focus" && this.focus) {
-			// Enter on the focused session attaches to it (interactive rows have no
-			// attach handoff — they're already shown read-only here).
-			if (kb.matches(data, "tui.select.confirm")) {
-				if (this.focusRow) this.cb.onAttach(this.focusRow);
-				return;
-			}
 			this.focus.handleInput(data);
 		} else {
 			this.sidebar.handleInput(data);

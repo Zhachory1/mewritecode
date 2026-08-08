@@ -584,6 +584,29 @@ describe("WS9 daemon — WebSocket streaming", () => {
 		await shutdown(f);
 	});
 
+	it("closing an attach before it connects does not throw or leak a rejection", async () => {
+		const s = await f.client.createSession({});
+		// Simulate the agents view moving selection fast: attach then immediately
+		// dispose, while the socket is still CONNECTING. Must not throw synchronously
+		// nor produce an unhandled rejection (which would exit the client TUI).
+		const rejections: unknown[] = [];
+		const onRejection = (r: unknown): void => {
+			rejections.push(r);
+		};
+		process.on("unhandledRejection", onRejection);
+		try {
+			for (let i = 0; i < 5; i++) {
+				const session = f.client.attach(s.id);
+				expect(() => session.close()).not.toThrow();
+			}
+			// Give any async connect errors a tick to surface.
+			await new Promise((r) => setTimeout(r, 50));
+			expect(rejections).toEqual([]);
+		} finally {
+			process.removeListener("unhandledRejection", onRejection);
+		}
+	});
+
 	it("streams tokens to an attached WS client and emits done", async () => {
 		const s = await f.client.createSession({});
 		const session = f.client.attach(s.id);
@@ -730,6 +753,35 @@ describe("WS9 daemon — WebSocket streaming", () => {
 			store.close();
 			rmSync(tmpDir, { recursive: true, force: true });
 		}
+	});
+
+	it("survives a client that closes its socket mid-stream (no daemon crash)", async () => {
+		// A torn WebSocket frame to one client must never crash the daemon and take
+		// down every other agent. Attach, kick off a stream, then abruptly terminate
+		// the socket while tokens are in flight; the daemon must stay healthy.
+		const s = await f.client.createSession({});
+		for (let i = 0; i < 5; i++) {
+			await new Promise<void>((resolve) => {
+				const ws = new WebSocket(`ws://127.0.0.1:${f.handle.port}/v1/sessions/${s.id}/stream`);
+				ws.on("error", () => {});
+				ws.on("open", () => {
+					ws.send(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "send", params: { text: "x".repeat(400) } }));
+					// Terminate mid-stream, racing the server's coalesced token flush.
+					setTimeout(() => {
+						ws.terminate();
+						resolve();
+					}, 5);
+				});
+			});
+		}
+		// Let any in-flight echo streams drain so nothing writes to the store after
+		// the fixture closes it in afterEach.
+		await vi.waitFor(async () => expect((await f.client.getSession(s.id)).state).not.toBe("running"), {
+			timeout: 3000,
+			interval: 25,
+		});
+		// The daemon is still up and serving after all those torn streams.
+		await expect(f.client.health()).resolves.toMatchObject({ ok: true });
 	});
 
 	it("supports multiple clients attached to the same session", async () => {

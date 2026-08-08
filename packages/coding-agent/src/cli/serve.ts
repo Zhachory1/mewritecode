@@ -7,15 +7,17 @@
  * the same session over WS.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import chalk from "chalk";
 import { getAgentDir, VERSION } from "../config.js";
+import { dlog } from "../core/daemon/debug-log.js";
 import {
 	createAgentBackedRunnerFactory,
 	createDefaultRunnerFactory,
 	type DaemonHandle,
 	openStore,
+	SpinGuard,
 	startDaemon,
 } from "../core/daemon/index.js";
 
@@ -164,6 +166,67 @@ export async function runServe(args: string[]): Promise<number> {
 	mkdirSync(dirname(parsed.pidFile), { recursive: true });
 	writeFileSync(parsed.pidFile, String(process.pid), "utf8");
 
+	// Remove (not blank) the pidfile on any exit so a stale pidfile never outlives
+	// the process. `ensureDaemon` treats health as source of truth, but a clean
+	// pidfile avoids confusing operators and double-start races.
+	const clearPidFile = (): void => {
+		try {
+			if (existsSync(parsed.pidFile) && readFileSync(parsed.pidFile, "utf8").trim() === String(process.pid)) {
+				rmSync(parsed.pidFile, { force: true });
+			}
+		} catch {
+			/* ignore */
+		}
+	};
+	process.once("exit", clearPidFile);
+
+	// The daemon hosts many independent agents in one process. A stray unhandled
+	// error from one session (a torn WebSocket frame, a rejected background promise)
+	// must NOT crash the daemon and take down every other agent's work — so we log
+	// and keep serving.
+	//
+	// We deliberately do NOT auto-shut-down on a burst of errors. A previous
+	// "spin guard" that shut the daemon down on high error frequency did far more
+	// harm than good: normal usage (switching between agents mid-turn) could trip it,
+	// and shutting down killed EVERY running agent's work. A busy or even briefly
+	// spinning daemon the user can restart is strictly better than one that
+	// self-terminates the whole fleet. We keep the SpinGuard purely to LOG when the
+	// error rate looks pathological, for diagnosis — it never stops the process.
+	const spinGuard = new SpinGuard();
+	// Rate-limit fatal logging: a flapping socket can throw the same error thousands
+	// of times a second; logging each one (sync appendFileSync + stderr) would itself
+	// starve the loop. Coalesce bursts.
+	let fatalLogCount = 0;
+	let fatalWindowStart = 0;
+	const onFatal = (label: string, detail: unknown): void => {
+		const now = Date.now();
+		if (now - fatalWindowStart > 1000) {
+			fatalWindowStart = now;
+			fatalLogCount = 0;
+		}
+		fatalLogCount++;
+		const suppress = fatalLogCount > 20; // at most ~20 logged per second
+		if (!suppress) {
+			const text = detail instanceof Error ? (detail.stack ?? detail.message) : String(detail);
+			console.error(chalk.red(`mewrite serve: ${label} (continuing): ${text}`));
+			// Record the real error so intermittent crashes are diagnosable (an
+			// auto-started daemon's stdout is not captured).
+			dlog("serve", `fatal.${label.replace(/\s+/g, "_")}`, { err: text });
+		}
+		if (spinGuard.record()) {
+			// Log-only: surface a likely spin for diagnosis, but keep serving so agents
+			// are never taken down by the guard itself.
+			console.error(
+				chalk.red(
+					`mewrite serve: ${spinGuard.count} errors in a few seconds — possible spin (continuing to serve).`,
+				),
+			);
+			dlog("serve", "spinGuard.highErrorRate", { count: spinGuard.count });
+		}
+	};
+	process.on("uncaughtException", (err) => onFatal("uncaught exception", err));
+	process.on("unhandledRejection", (reason) => onFatal("unhandled rejection", reason));
+
 	console.log(chalk.green(`mewrite serve listening on http://${handle.host}:${handle.port}`));
 	console.log(chalk.dim(`  web:  http://${handle.host}:${handle.port}/`));
 	console.log(chalk.dim(`  pid:  ${process.pid}`));
@@ -177,25 +240,37 @@ export async function runServe(args: string[]): Promise<number> {
 	console.log(chalk.dim(`  attach: mewrite attach <session-id>`));
 	console.log(chalk.dim(`  list:   mewrite sessions`));
 
+	let shuttingDown = false;
 	const shutdown = async (signal: string): Promise<void> => {
+		if (shuttingDown) return;
+		shuttingDown = true;
+		const code = signal === "spin-guard" ? 1 : 0;
 		console.error(chalk.dim(`\ncave serve: received ${signal}, shutting down...`));
-		try {
-			await handle.close();
-			store.close();
+		// Hard deadline: handle.close() awaits httpServer.close(), which blocks until
+		// every keep-alive connection drains — that can hang indefinitely and leave a
+		// half-open daemon (HTTP up, WS closed -> 503 on every attach, all sessions
+		// error). Force-exit if graceful close doesn't finish quickly.
+		const force = setTimeout(() => {
+			console.error(chalk.red("cave serve: graceful shutdown timed out — forcing exit."));
 			try {
-				if (existsSync(parsed.pidFile)) {
-					const pid = Number.parseInt(readFileSync(parsed.pidFile, "utf8").trim(), 10);
-					if (pid === process.pid) {
-						writeFileSync(parsed.pidFile, "", "utf8");
-					}
-				}
+				clearPidFile();
 			} catch {
 				/* ignore */
 			}
+			process.exit(code);
+		}, 3000);
+		force.unref();
+		try {
+			// Closes every runner -> disposes AgentSessions -> MCP hub closeAll(), so
+			// no MCP subprocesses are orphaned on a clean shutdown.
+			await handle.close();
+			store.close();
+			clearPidFile();
 		} catch (err) {
 			console.error("shutdown error:", err);
 		}
-		process.exit(0);
+		clearTimeout(force);
+		process.exit(code);
 	};
 	process.once("SIGINT", () => void shutdown("SIGINT"));
 	process.once("SIGTERM", () => void shutdown("SIGTERM"));
