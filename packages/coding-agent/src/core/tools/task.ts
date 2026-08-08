@@ -930,18 +930,16 @@ export function createTaskToolDefinition(
 		label: "Task",
 		description: [
 			"Launch a subagent for delegated work. Each agent type has a specialized role and (often) its own tool subset, model tier, and permission mode.",
-			"Use this WHEN: the work is exploratory or research-heavy (prefer the `explore` agent over running grep/find/read manually); the work is a multi-step task that benefits from a focused subagent (review, critique, test-writing); independent units of work can run in parallel.",
+			"Use this WHEN: the work is a multi-step task that benefits from a focused subagent (review, critique, test-writing); independent units of work can run in parallel.",
 			"Do NOT use for: trivial single-file lookups where one Read or Grep would do; tasks the parent is already in the middle of and needs synchronous control over.",
 			`Modes (exactly one per call): single (agent + task), parallel (tasks: [{agent,task}], up to ${MAX_PARALLEL_SUBAGENTS}), chain (chain: [{agent,task}], "{previous}" substituted with prior step's output).`,
 			"Subagents inherit cwd; agents with `isolation: worktree` run in a fresh git worktree. Plan-mode agents are read-only.",
 			agentMenu,
 		].join(" "),
-		promptSnippet:
-			"Delegate to a subagent (use `explore` for codebase reconnaissance instead of running grep/find yourself)",
+		promptSnippet: "Delegate to a subagent for review, critique, or test-writing work",
 		promptGuidelines: [
-			"For codebase exploration ('where is X', 'how does Y work', 'what files touch Z'), prefer launching the `explore` subagent over running grep/find/read sequentially yourself.",
 			"For independent units of work, launch them in parallel via `task({ tasks: [...] })` rather than serially.",
-			"Always pick the most specific agent for the job; fall back to `explore` only when no specialist fits.",
+			"Pick the most specific agent for the job.",
 		],
 		parameters: TaskSchema,
 		async execute(toolCallId, params: TaskToolInput, signal) {

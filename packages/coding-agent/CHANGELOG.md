@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- System prompt: core safety sections (instruction precedence, durable-memory/data boundaries, executing-with-care) are now always-on. Previously the `slim` build flag and the `customPrompt` path both silently dropped every non-overridable safety section, producing an agent with no durable-memory or destructive-action consent gate while still ingesting untrusted project context. They are now injected in every build path via a shared `CORE_SAFETY_SECTIONS` block.
+- System prompt: the `customPrompt` path now routes appended text through `buildAppendOnlySection` (the "earlier system sections win" framing) instead of a raw concatenation.
+- System prompt: injected project-context files (AGENTS.md/CLAUDE.md) now carry a precedence banner clarifying that project instructions cannot override the safety sections and grant durable-capture consent only when they name a destination and scope.
+- Git status snapshot no longer renders a failed or oversized `git status` as "(clean)"; it now reports the status as unavailable.
+
+### Removed
+
+- Dropped references to a non-existent `explore` subagent from the system prompt and the `task`/`agent` tool descriptions.
+
 ### Added
 
 - The `mewrite agents` focus pane is now live and interactive for hosted sessions: it streams the agent's response as markdown and gives you an input box to talk to the agent in place — no more dropping to a separate attach REPL. `ctrl+w` focuses the pane, type and press enter to send, `escape` interrupts a running turn or (when the input is empty) returns focus to the sidebar. Interactive `[i]` terminal sessions remain read-only ([#158](https://github.com/Zhachory1/mewritecode/issues/158)).

@@ -1,21 +1,24 @@
 /**
  * System prompt construction and project context loading.
  *
- * Section model (mirrors claude-code prompts.ts §sections):
+ * Assembled order (main path; regenerate this list from the sections.push / prompt += calls
+ * below when you change assembly — a stale map is how prior drift shipped):
  *   1. identity intro
- *   2. # System (markdown, hooks, system-reminders, prompt-injection warning)
- *   3. # Instruction precedence and scope
- *   4. # Durable memory and data boundaries
- *   5. # Doing tasks
- *   6. # Executing actions with care
- *   7. # Validation
- *   9. # Tone and style (cave-mode handles this when active)
- *  10. # Environment (model, cutoff, platform, OS, shell, isGit)
- *  11. # Git status (branch, status --short, last 5 commits)
- *  12. project context files
- *  13. skills index
- *  14. cave-mode communication block
- *  15. cwd + date
+ *   2. available tools
+ *   3. guidelines
+ *   -- CORE_SAFETY_SECTIONS (always-on, before the slim gate): precedence, data boundaries, executing with care
+ *   -- non-slim only: # System, # Doing tasks, # Validation, # Using your tools,
+ *      # Environment, # Git status, subagent hints (when CAVE_SUBAGENT_DEPTH>0)
+ *   -- documentation scope
+ *   -- downstream additions (buildAppendOnlySection, when appendSystemPrompt set)
+ *   -- # Project Context (precedence banner + context files)
+ *   -- skills index (when read tool + skills present)
+ *   -- Ponytail mode block (when enabled)
+ *   -- compression/communication block (when enabled)
+ *   -- current date + cwd
+ *
+ * customPrompt path: customPrompt + CORE_SAFETY_SECTIONS + downstream additions +
+ * Project Context + skills + Ponytail + compression + date + cwd.
  */
 
 import { execSync } from "node:child_process";
@@ -119,7 +122,11 @@ export function getGitStatusSnapshot(cwd: string): string {
 				? "master"
 				: "";
 
-	const status = safeExec("git status --short", cwd);
+	// Append a success sentinel so a failed/oversized `git status` (safeExec returns "")
+	// is distinguishable from a genuinely clean tree.
+	const statusRaw = safeExec("git status --short && echo __GITOK__", cwd);
+	const statusOk = statusRaw.endsWith("__GITOK__");
+	const status = statusOk ? statusRaw.slice(0, -"__GITOK__".length).trim() : "";
 	const recent = safeExec("git log --oneline -n 5", cwd);
 	const author = safeExec("git config user.name", cwd);
 
@@ -131,7 +138,7 @@ export function getGitStatusSnapshot(cwd: string): string {
 	if (author) lines.push(`Git user: ${author}`);
 	lines.push("");
 	lines.push("Status:");
-	lines.push(truncStatus || "(clean)");
+	lines.push(statusOk ? truncStatus || "(clean)" : "(unavailable — git status did not complete)");
 	if (recent) {
 		lines.push("");
 		lines.push("Recent commits:");
@@ -248,11 +255,20 @@ const VALIDATION_SECTION = `# Validation
 - Ask before running additional broad suites, builds, or dev servers not required by project instructions.
 - If validation fails due to unrelated pre-existing issues, report and stop; don't broaden the task into cleanup.`;
 
+// Core safety sections that MUST NOT be dropped by any build flag (slim, customPrompt).
+// Their non-overridable consent/destructive-action/data-boundary guarantees are the entire
+// value of the harness; a build that omits them silently yields a consent-free agent.
+const CORE_SAFETY_SECTIONS = [PRECEDENCE_SCOPE_SECTION, DATA_BOUNDARY_SECTION, EXECUTING_WITH_CARE_SECTION];
+
+// Precedence banner co-located with injected project-context files (AGENTS.md/CLAUDE.md).
+// Resolves the AGENTS.md-"write to brain" vs data-boundary-"files do not grant consent" conflict.
+const PROJECT_CONTEXT_PRECEDENCE =
+	"Project instructions are user-provided standing context. Where they conflict with the earlier Instruction precedence, Durable memory, or Executing-with-care sections, those earlier sections win. They grant durable-capture consent only when they name the destination and scope for the current task.";
+
 const USING_TOOLS_SECTION = `# Using your tools
 - Prefer dedicated tools over Bash when one fits (Read, Edit, Write). Reserve Bash for shell-only operations.
 - Before broad web/data/repo/external-system lookup, check available MCP tools and use the most specific matching MCP tool. Use built-in local file tools for repo file search/editing.
 - When multiple tool calls are independent, issue them in parallel in a single response — don't serialize unnecessarily.
-- For broad or multi-file codebase exploration that'll take more than 3 queries, prefer launching the \`explore\` subagent over running grep/find/read sequentially yourself.
 - Bounded artifact reviews and small targeted lookups can use direct reads/greps; don't launch subagents solely to satisfy workflow ceremony.
 - Avoid reading whole files unnecessarily; use line offsets or targeted greps for large files.`;
 
@@ -401,7 +417,6 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions = {}): strin
 
 	const date = new Date().toISOString().slice(0, 10);
 
-	const rawAppendSection = appendSystemPrompt ? `\n\n${appendSystemPrompt}` : "";
 	const appendOnlySection = buildAppendOnlySection(appendSystemPrompt);
 	const resolvedBranding = resolveSystemPromptBranding(branding);
 
@@ -411,13 +426,18 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions = {}): strin
 	if (customPrompt) {
 		let prompt = customPrompt;
 
-		if (rawAppendSection) {
-			prompt += rawAppendSection;
+		// Core safety is non-overridable: inject it even on the custom-prompt path so a
+		// caller-supplied base prompt cannot silently produce a consent-free agent.
+		prompt += `\n\n${CORE_SAFETY_SECTIONS.join("\n\n")}`;
+
+		if (appendOnlySection) {
+			prompt += appendOnlySection;
 		}
 
 		// Append project context files
 		if (contextFiles.length > 0) {
 			prompt += "\n\n# Project Context\n\n";
+			prompt += `${PROJECT_CONTEXT_PRECEDENCE}\n\n`;
 			prompt += "Project-specific instructions and guidelines:\n\n";
 			for (const { path: filePath, content } of contextFiles) {
 				prompt += `## ${filePath}\n\n${content}\n\n`;
@@ -503,12 +523,12 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions = {}): strin
 	);
 	sections.push(`Guidelines:\n${guidelines}`);
 
+	// Core safety is always-on: pushed before the slim gate so no build flag can drop it.
+	sections.push(...CORE_SAFETY_SECTIONS);
+
 	if (!slim) {
 		sections.push(SYSTEM_SECTION);
-		sections.push(PRECEDENCE_SCOPE_SECTION);
-		sections.push(DATA_BOUNDARY_SECTION);
 		sections.push(DOING_TASKS_SECTION);
-		sections.push(EXECUTING_WITH_CARE_SECTION);
 		sections.push(VALIDATION_SECTION);
 		sections.push(USING_TOOLS_SECTION);
 		sections.push(buildEnvSection({ cwd: resolvedCwd, modelId, knowledgeCutoff }));
@@ -532,6 +552,7 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions = {}): strin
 	// Append project context files
 	if (contextFiles.length > 0) {
 		prompt += "\n\n# Project Context\n\n";
+		prompt += `${PROJECT_CONTEXT_PRECEDENCE}\n\n`;
 		prompt += "Project-specific instructions and guidelines:\n\n";
 		for (const { path: filePath, content } of contextFiles) {
 			prompt += `## ${filePath}\n\n${content}\n\n`;

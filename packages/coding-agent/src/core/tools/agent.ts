@@ -55,12 +55,12 @@ export function createAgentToolDefinition(
 		name: "agent",
 		label: "Agent",
 		description: [
-			"Invoke a single named subagent on a task. Use this when delegating to a specialist (e.g. the `explore` agent for codebase reconnaissance instead of running grep/find/read manually).",
+			"Invoke a single named subagent on a task. Use this when delegating to a specialist reviewer.",
 			"For parallel fan-out across multiple agents, use the `task` tool with `tasks: [...]` instead.",
 			"Subagent definitions live at `.cave/agents/<name>.md`; bundled defaults ship with cave.",
 			agentMenu,
 		].join(" "),
-		promptSnippet: "Invoke one named subagent (prefer `explore` over manual grep for codebase questions)",
+		promptSnippet: "Invoke one named subagent for a specialist review task",
 		parameters: AgentSchema,
 		async execute(id, params: AgentToolInput, signal, _onUpdate, ctx) {
 			// Delegate to Task's single mode.
