@@ -18,6 +18,7 @@ import { WebSocket, WebSocketServer } from "ws";
 import { getAgentDir, getWebUiDir } from "../../config.js";
 import { loadSkills } from "../skills.js";
 import { onFileMutation } from "../tools/file-mutation-queue.js";
+import { dlog } from "./debug-log.js";
 import {
 	type ApprovalDecision,
 	type ApprovalDecisionParams,
@@ -139,6 +140,14 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 
 	function emitForSession(sessionId: string): RunnerEmitter {
 		return (event) => {
+			if (event.type !== "token") {
+				const clientCount = clients.get(sessionId)?.size ?? 0;
+				dlog("daemon", `emit.${event.type}`, {
+					id: sessionId,
+					clients: clientCount,
+					...(event.type === "state" ? { state: event.state } : {}),
+				});
+			}
 			if (event.type === "message") {
 				opts.store.appendMessage(event.message);
 				// The turn is now persisted; drop the live buffer so late attachers read
@@ -431,8 +440,11 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 		}
 		set.add(client);
 
-		// Send initial state snapshot.
-		send(ws, notification("state", { sessionId, state: session.state } as StateParams));
+		// Send initial state snapshot. Re-read from the store so it reflects the latest
+		// state (the `session` arg was captured at HTTP-upgrade time and may be stale).
+		const fresh = opts.store.getSession(sessionId) ?? session;
+		dlog("daemon", "attachClient", { id: sessionId, snapshotState: fresh.state, staleArgState: session.state });
+		send(ws, notification("state", { sessionId, state: fresh.state } as StateParams));
 
 		// Replay the in-progress assistant turn (if any) so a mid-stream attach doesn't
 		// miss the text emitted before it connected. The completed turn is not buffered

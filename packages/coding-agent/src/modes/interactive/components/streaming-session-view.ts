@@ -19,6 +19,7 @@ import {
 	truncateToWidth,
 	visibleWidth,
 } from "@zhachory1/mewrite-tui";
+import { dlog } from "../../../core/daemon/debug-log.js";
 import type { AttachedSession, CaveClient } from "../../../core/daemon/index.js";
 import { getMarkdownTheme, theme } from "../theme/theme.js";
 import { keyHint } from "./keybinding-hints.js";
@@ -85,16 +86,25 @@ export class StreamingSessionView implements Component, Focusable {
 			/* no history available */
 		}
 		if (this.disposed) return;
+		dlog("pane", "attach", { id: this.sessionId });
 		const s = this.deps.attach(this.sessionId);
 		this.session = s;
 		s.on("token", (p) => this.onToken(p as { text?: string; role?: string }));
 		s.on("tool", (p) => this.onTool(p as { name?: string; status?: string }));
 		s.on("state", (p) => this.onState(p as { state?: string }));
-		s.on("done", () => this.endStream());
-		s.on("error", () => {
+		s.on("done", () => {
+			dlog("pane", "ws.done", { id: this.sessionId });
+			this.endStream();
+		});
+		s.on("error", (err) => {
+			dlog("pane", "ws.error", { id: this.sessionId, err: err instanceof Error ? err.message : String(err) });
 			this.state = "error";
 			this.deps.requestRender();
 		});
+		s.on("close", () => dlog("pane", "ws.close", { id: this.sessionId }));
+		s.ready()
+			.then(() => dlog("pane", "ws.ready", { id: this.sessionId }))
+			.catch((err) => dlog("pane", "ws.readyFailed", { id: this.sessionId, err: String(err) }));
 		this.deps.requestRender();
 	}
 
@@ -129,6 +139,7 @@ export class StreamingSessionView implements Component, Focusable {
 	}
 
 	private onState(p: { state?: string }): void {
+		dlog("pane", "ws.state", { id: this.sessionId, state: p.state });
 		if (typeof p.state === "string") {
 			this.state = p.state;
 			this.deps.requestRender();
