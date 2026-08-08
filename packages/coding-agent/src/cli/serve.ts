@@ -8,11 +8,10 @@
  */
 
 import { existsSync, readFileSync, rmSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import chalk from "chalk";
 import { getAgentDir, VERSION } from "../config.js";
 import { dlog } from "../core/daemon/debug-log.js";
-import { acquirePidfileLock } from "../core/daemon/pidfile-lock.js";
 import {
 	createAgentBackedRunnerFactory,
 	createDefaultRunnerFactory,
@@ -21,6 +20,7 @@ import {
 	SpinGuard,
 	startDaemon,
 } from "../core/daemon/index.js";
+import { acquirePidfileLock } from "../core/daemon/pidfile-lock.js";
 
 interface ServeArgs {
 	host: string;
@@ -314,7 +314,6 @@ function isLoopbackHost(host: string): boolean {
 	const h = host.toLowerCase();
 	return h === "127.0.0.1" || h === "localhost" || h === "::1" || h === "[::1]";
 }
-
 
 /**
  * Dispatch hook for `main.ts`. Returns true if the args were consumed.
