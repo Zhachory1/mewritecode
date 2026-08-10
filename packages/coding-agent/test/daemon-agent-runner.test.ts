@@ -74,6 +74,38 @@ class ErrorEndSession extends FakeSession {
 	}
 }
 
+// Emits agent_end(error, aborted-for-retry) -> auto_retry_start -> agent_end(stop),
+// mirroring a provider stall that recovers on auto-retry. The daemon runner must
+// end at "idle", not stay stuck on the premature "error".
+class RetryThenSucceedSession extends FakeSession {
+	override async prompt(_text: string): Promise<void> {
+		this.listener?.({
+			type: "agent_end",
+			messages: [
+				{
+					role: "assistant",
+					content: [],
+					errorMessage: "Model stream idle for 120000ms; aborted for retry",
+					stopReason: "error",
+					timestamp: Date.now(),
+				},
+			],
+		} as unknown as AgentSessionEvent);
+		this.listener?.({
+			type: "auto_retry_start",
+			attempt: 1,
+			maxAttempts: 3,
+			delayMs: 0,
+			errorMessage: "idle timeout",
+		} as unknown as AgentSessionEvent);
+		this.listener?.({ type: "auto_retry_end", success: true, attempt: 1 } as unknown as AgentSessionEvent);
+		this.listener?.({
+			type: "agent_end",
+			messages: [{ role: "assistant", content: [], stopReason: "stop", timestamp: Date.now() }],
+		} as unknown as AgentSessionEvent);
+	}
+}
+
 class ApprovalSession extends FakeSession {
 	decision?: string;
 	override async prompt(_text: string): Promise<void> {
@@ -169,6 +201,27 @@ describe("agent-backed daemon runner", () => {
 				message: expect.objectContaining({ role: "assistant", text: "provider failed" }),
 			}),
 		);
+	});
+
+	it("recovers to idle when an aborted-for-retry turn succeeds on auto-retry", async () => {
+		const events: { type?: string; state?: string }[] = [];
+		const emit: RunnerEmitter = (event) => {
+			events.push(event as { type?: string; state?: string });
+			return true;
+		};
+		const runner = createAgentBackedRunnerFactory({
+			createSession: async () => ({ session: new RetryThenSucceedSession() }),
+		})(sessionRecord, emit);
+
+		await runner.send("do it");
+		await expect.poll(() => events.filter((e) => e.type === "done").length >= 1).toBe(true);
+
+		// The final terminal state must be idle, not the premature error.
+		const states = events.filter((e) => e.type === "state").map((e) => e.state);
+		expect(states[states.length - 1]).toBe("idle");
+		// It did pass through error->running->idle (premature error undone by retry).
+		expect(states).toContain("error");
+		expect(states).toContain("running");
 	});
 
 	it("rejects concurrent sends while an agent run is active", async () => {

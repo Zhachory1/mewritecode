@@ -212,6 +212,19 @@ class AgentBackedRunner implements AgentRunner {
 			this.lastAssistantMessageText = text;
 			return;
 		}
+		// An auto-retry means the preceding agent_end(error) was NOT terminal — the
+		// agent aborted a stalled turn and is retrying. Undo any premature terminal
+		// state so the eventual real agent_end sets the correct final state, and put
+		// the session back to running. Without this, a turn that errors-then-recovers
+		// stays stuck showing "error" (the terminalEmitted latch blocks the later idle).
+		if (event.type === "auto_retry_start") {
+			if (this.terminalEmitted) {
+				this.terminalEmitted = false;
+				this.active = true;
+				this.emit({ type: "state", sessionId: this.daemonSession.id, state: "running" });
+			}
+			return;
+		}
 		if (event.type === "tool_execution_start") {
 			this.emit({ type: "tool", sessionId: this.daemonSession.id, name: event.toolName, status: "start" });
 			return;
