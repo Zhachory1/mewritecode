@@ -19,6 +19,26 @@ const STATE_GLYPH: Record<SessionState, string> = {
 };
 
 /**
+ * Status buckets for the grouped list (agents view v2, #185). v1 ships three:
+ * working / errored / completed. `waiting for input` is deferred until the
+ * steer/pause channel lands (see #185 Phase C+). Order = attention-first:
+ * working (live), then errored (needs you), then completed.
+ */
+type Bucket = "working" | "errored" | "completed";
+const BUCKET_ORDER: readonly Bucket[] = ["working", "errored", "completed"];
+const BUCKET_LABEL: Record<Bucket, string> = {
+	working: "WORKING",
+	errored: "ERRORED",
+	completed: "COMPLETED",
+};
+
+function bucketOf(state: SessionState): Bucket {
+	if (state === "running") return "working";
+	if (state === "error") return "errored";
+	return "completed"; // idle / stopped
+}
+
+/**
  * Idle hosted sessions not updated within this window are hidden by default (they
  * are usually finished/abandoned). Running/error/interactive rows always show, as
  * do recently-active idle ones. Press `a` to reveal everything.
@@ -72,11 +92,21 @@ export class AgentListComponent implements Component, Focusable {
 		return this.selectAttention((r) => this.needsAttention(r));
 	}
 
-	/** Rows currently visible given the active/show-all filter. */
+	/**
+	 * Rows currently visible given the active/show-all filter, ordered by status
+	 * bucket (working, errored, completed) then recency. Selection and keyboard nav
+	 * operate on this flat ordered list; the group headers in render() are purely
+	 * visual and are not selectable.
+	 */
 	private visibleRows(): SessionRecord[] {
-		if (this.showAll) return this.rows;
 		const now = Date.now();
-		return this.rows.filter((r) => isActive(r, now));
+		const filtered = this.showAll ? this.rows : this.rows.filter((r) => isActive(r, now));
+		return [...filtered].sort((a, b) => {
+			const ba = BUCKET_ORDER.indexOf(bucketOf(a.state));
+			const bb = BUCKET_ORDER.indexOf(bucketOf(b.state));
+			if (ba !== bb) return ba - bb;
+			return b.updatedAt.localeCompare(a.updatedAt);
+		});
 	}
 
 	constructor(
@@ -208,7 +238,15 @@ export class AgentListComponent implements Component, Focusable {
 			lines.push(theme.fg("dim", truncateToWidth(hint, width)));
 			return lines;
 		}
+		let lastBucket: Bucket | null = null;
 		for (const s of visible) {
+			const bucket = bucketOf(s.state);
+			if (bucket !== lastBucket) {
+				const count = visible.filter((r) => bucketOf(r.state) === bucket).length;
+				if (lastBucket !== null) lines.push("");
+				lines.push(theme.fg("dim", truncateToWidth(`${BUCKET_LABEL[bucket]} (${count})`, width)));
+				lastBucket = bucket;
+			}
 			const selected = s.id === this.selectedId;
 			const glyph = STATE_GLYPH[s.state] ?? "?";
 			// Interactive (terminal) sessions get an [i] marker; daemon-hosted agents are

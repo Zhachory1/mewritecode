@@ -60,6 +60,29 @@ describe("#152 agent view list", () => {
 		expect(out).toContain("✗"); // error
 	});
 
+	it("groups rows by status bucket (working / errored / completed) with headers, attention order", () => {
+		const list = new AgentListComponent(
+			() => {},
+			() => {},
+			() => {},
+		);
+		list.setRows([rec("done1", "idle", "finished"), rec("run1", "running", "busy"), rec("err1", "error", "broke")]);
+		const lines = list.render(80).map(stripAnsi);
+		const out = lines.join("\n");
+		expect(out).toContain("WORKING (1)");
+		expect(out).toContain("ERRORED (1)");
+		expect(out).toContain("COMPLETED (1)");
+		// Buckets appear in attention order: working, then errored, then completed.
+		const iWorking = lines.findIndex((l) => l.includes("WORKING"));
+		const iErrored = lines.findIndex((l) => l.includes("ERRORED"));
+		const iCompleted = lines.findIndex((l) => l.includes("COMPLETED"));
+		expect(iWorking).toBeLessThan(iErrored);
+		expect(iErrored).toBeLessThan(iCompleted);
+		// And the busy (working) row sorts above the finished (completed) row.
+		expect(out.indexOf("busy")).toBeLessThan(out.indexOf("broke"));
+		expect(out.indexOf("broke")).toBeLessThan(out.indexOf("finished"));
+	});
+
 	it("moves selection down and confirm selects the highlighted row", () => {
 		const attached: string[] = [];
 		const list = new AgentListComponent(

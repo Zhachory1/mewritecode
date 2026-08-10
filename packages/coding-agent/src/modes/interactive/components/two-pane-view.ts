@@ -12,17 +12,12 @@
  * StreamingSessionView); interactive `[i]` terminal sessions stay read-only.
  */
 
-import { type Component, compositeColumns, type Focusable, getKeybindings } from "@zhachory1/mewrite-tui";
+import { type Component, type Focusable, getKeybindings } from "@zhachory1/mewrite-tui";
 import type { AttachedSession, CaveClient, SessionRecord } from "../../../core/daemon/index.js";
 import { theme } from "../theme/theme.js";
 import { AgentListComponent } from "./agent-list.js";
 import { StreamingSessionView } from "./streaming-session-view.js";
 import { type TranscriptLine, TranscriptView } from "./transcript-view.js";
-
-/** Terminals narrower than this render a single pane at a time. */
-const MIN_TWO_PANE_WIDTH = 80;
-/** Sidebar column width (the rest, minus the 1-col separator, is the focus pane). */
-const SIDEBAR_WIDTH = 44;
 
 /** Fixed, non-scrolling header row for a pane; highlights when that pane is focused. */
 function paneHeader(label: string, active: boolean): string {
@@ -41,7 +36,7 @@ export interface TwoPaneCallbacks {
 	client: Pick<CaveClient, "getTranscript">;
 	/** Viewport height in rows (for the focus pane's windowing). */
 	rows: () => number;
-	/** Which side the sidebar renders on. Default "left". */
+	/** Retained for compatibility; the side-by-side split is retired (#185), so unused. */
 	sidebarSide?: "left" | "right";
 }
 
@@ -146,10 +141,6 @@ export class TwoPaneView implements Component, Focusable {
 		this.requestRender();
 	}
 
-	private twoPane(width: number): boolean {
-		return width >= MIN_TWO_PANE_WIDTH && this.focus !== null;
-	}
-
 	handleInput(data: string): void {
 		const kb = getKeybindings();
 		if (kb.matches(data, "app.agents.switchPane")) {
@@ -169,39 +160,15 @@ export class TwoPaneView implements Component, Focusable {
 	}
 
 	render(width: number): string[] {
-		if (!this.twoPane(width)) {
-			// Single-pane fallback: show whichever pane is active, with its header.
-			const viewport = this.cb.rows();
-			if (this.active === "focus" && this.focus) {
-				return [
-					paneHeader("Focus  (ctrl+w)", true),
-					...this.focus.render(width).slice(0, Math.max(0, viewport - 1)),
-				];
-			}
-			return [
-				paneHeader("Your agents  (ctrl+w)", true),
-				...this.sidebar.render(width).slice(0, Math.max(0, viewport - 1)),
-			];
-		}
-		const sidebarW = SIDEBAR_WIDTH;
-		const focusW = Math.max(1, width - sidebarW - 1); // 1 for the separator
-		// Cap the whole view to the viewport so the FIXED header row (below) never
-		// scrolls off the top when the focus transcript is tall.
+		// Agents view v2 (#185): no side-by-side. Full-screen single pane — the list,
+		// or the focus view once a row is selected. list → focus → back.
 		const viewport = this.cb.rows();
-		// A FIXED header row per column names the pane and highlights the active one.
-		const sidebarBody = this.sidebar.render(sidebarW).slice(0, Math.max(0, viewport - 1));
-		const focusBody = (this.focus ? this.focus.render(focusW) : [theme.fg("dim", " no session selected")]).slice(
-			0,
-			Math.max(0, viewport - 1),
-		);
-		const sidebarCol = [paneHeader("Your agents", this.active === "sidebar"), ...sidebarBody];
-		const focusCol = [paneHeader("Focus  (ctrl+w)", this.active === "focus"), ...focusBody];
-		const sidebarOnLeft = (this.cb.sidebarSide ?? "left") === "left";
-		const left = sidebarOnLeft ? sidebarCol : focusCol;
-		const right = sidebarOnLeft ? focusCol : sidebarCol;
-		const leftW = sidebarOnLeft ? sidebarW : focusW;
-		const rightW = sidebarOnLeft ? focusW : sidebarW;
-		const rows = Math.min(viewport, Math.max(left.length, right.length));
-		return compositeColumns(left, right, leftW, rightW, rows);
+		if (this.active === "focus" && this.focus) {
+			return [paneHeader("Focus  (ctrl+w)", true), ...this.focus.render(width).slice(0, Math.max(0, viewport - 1))];
+		}
+		return [
+			paneHeader("Your agents  (ctrl+w)", true),
+			...this.sidebar.render(width).slice(0, Math.max(0, viewport - 1)),
+		];
 	}
 }

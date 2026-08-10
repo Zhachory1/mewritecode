@@ -16,6 +16,7 @@ import { KeybindingsManager } from "../core/keybindings.js";
 import { type LiveRecord, listLiveInteractive } from "../core/live-registry.js";
 import { getDefaultSessionDir, SessionManager } from "../core/session-manager.js";
 import { SettingsManager } from "../core/settings-manager.js";
+import { PENCIL_LOGO, renderPencilLogo } from "../modes/interactive/components/banner.js";
 import { showConfirmPrompt } from "../modes/interactive/components/confirm-prompt.js";
 import type { TranscriptLine } from "../modes/interactive/components/transcript-view.js";
 import { TwoPaneView } from "../modes/interactive/components/two-pane-view.js";
@@ -375,8 +376,24 @@ async function runViewLoop(initialClient: CaveClient, parsed: AgentsArgs, canSpa
 
 type ListAction = { type: "quit" } | { type: "new" };
 
+/**
+ * Agents view launch header: the shared pencil logo (brand text to its right),
+ * plus a trailing spacer above the list.
+ */
+const agentsHeader: Component = {
+	invalidate() {},
+	render(width: number): string[] {
+		return [...renderPencilLogo(width), ""];
+	},
+};
+
+/** Rows the header occupies: logo + spacer. */
+const AGENTS_HEADER_ROWS = PENCIL_LOGO.length + 1;
+
 function runListView(client: CaveClient, canSpawn: boolean): Promise<ListAction> {
 	return new Promise<ListAction>((resolve) => {
+		// Full-screen wipe so the launch is clean (matches the spawn-prompt wipe below).
+		process.stdout.write("\x1b[2J\x1b[H\x1b[3J");
 		const ui = new TUI(new ProcessTerminal());
 		let done = false;
 		let timer: ReturnType<typeof setInterval> | null = null;
@@ -424,10 +441,13 @@ function runListView(client: CaveClient, canSpawn: boolean): Promise<ListAction>
 			loadTranscript: (row) => loadTranscript(row, client),
 			attach: (id) => client.attach(id),
 			client,
-			rows: () => process.stdout.rows || 24,
+			// Reserve space for the wordmark header above the list so the combined
+			// height doesn't overflow the terminal.
+			rows: () => Math.max(1, (process.stdout.rows || 24) - AGENTS_HEADER_ROWS),
 			sidebarSide: SettingsManager.create().getAgentsSidebarSide(),
 		});
 
+		ui.addChild(agentsHeader);
 		ui.addChild(view);
 		ui.setFocus(view);
 		ui.start();
