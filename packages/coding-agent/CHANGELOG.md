@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- `mewrite agents`: a hosted session that aborted a stalled turn for auto-retry (e.g. "Model stream idle for 120000ms") no longer stays stuck showing `error` after the retry succeeds. The daemon runner treated the pre-retry `agent_end(error)` as terminal and latched, so the later successful `agent_end(stop)` couldn't clear it. On `auto_retry_start` the runner now undoes the premature terminal state and returns the session to `running`, so the final state reflects the retry's outcome ([#158](https://github.com/Zhachory1/mewritecode/issues/158)).
+
 - System prompt: core safety sections (instruction precedence, durable-memory/data boundaries, executing-with-care) are now always-on. Previously the `slim` build flag and the `customPrompt` path both silently dropped every non-overridable safety section, producing an agent with no durable-memory or destructive-action consent gate while still ingesting untrusted project context. They are now injected in every build path via a shared `CORE_SAFETY_SECTIONS` block.
 - System prompt: the `customPrompt` path now routes appended text through `buildAppendOnlySection` (the "earlier system sections win" framing) instead of a raw concatenation.
 - System prompt: injected project-context files (AGENTS.md/CLAUDE.md) now carry a precedence banner clarifying that project instructions cannot override the safety sections and grant durable-capture consent only when they name a destination and scope.
