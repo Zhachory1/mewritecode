@@ -219,7 +219,14 @@ mewrite -r                    # browse sessions
 mewrite --session <path|id>   # open specific session
 mewrite --fork <path|id>      # fork into new session
 mewrite --no-session          # ephemeral mode
+mewrite history               # standalone browser for local sessions
 ```
+
+**Session management commands:**
+- `mewrite -r` / `--resume` — browse sessions when starting a new interactive session
+- `mewrite history` — standalone TUI to browse all local sessions and get resume commands
+- `mewrite agents` — live monitor of running daemon agents (separate from local session files)
+- `mewrite sessions` — list daemon-hosted sessions via client (alias: `ps`)
 
 ### Branching
 
@@ -572,6 +579,7 @@ mewrite [options] [@files...] [messages...]
 | `mewrite run-recipe <name>` | Run YAML workflows |
 | `mewrite rollback N` | Revert to checkpoint N |
 | `mewrite models <subcmd>` | Manage model registry |
+| `mewrite history` | Browse and resume local sessions |
 | `mewrite serve` / `attach` | Daemon mode |
 
 ### Core options

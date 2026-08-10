@@ -16,6 +16,7 @@
 
 ### Added
 
+- Added `mewrite history`: a standalone TUI to browse and resume persisted local JSONL sessions. Select a session and press enter to see the exact `mewrite --session <path>` command to copy and run. This is separate from the live daemon monitor (`mewrite agents`) and from `mewrite sessions` (which lists daemon-hosted sessions via the client). Read-only: no delete or rename, just browse and get the resume command ([#159](https://github.com/Zhachory1/mewritecode/issues/159)).
 - Enhanced debug logging (`MEWRITE_AGENTS_DEBUG`) with automatic log rotation (50 MiB cap, keeps one `.1` backup), category filtering (log only specific tags like `runner,daemon`), and support for custom log paths via `tag=path` syntax. Prevents disk-fill from flapping sockets while remaining zero-cost when disabled ([#168](https://github.com/Zhachory1/mewritecode/issues/168)).
 - The `mewrite agents` focus pane is now live and interactive for hosted sessions: it streams the agent's response as markdown and gives you an input box to talk to the agent in place — no more dropping to a separate attach REPL. `ctrl+w` focuses the pane, type and press enter to send, `escape` interrupts a running turn or (when the input is empty) returns focus to the sidebar. Interactive `[i]` terminal sessions remain read-only ([#158](https://github.com/Zhachory1/mewritecode/issues/158)).
 
