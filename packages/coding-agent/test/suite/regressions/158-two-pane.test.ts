@@ -1,8 +1,10 @@
 /**
- * #158 phase 5a — two-pane agents view.
+ * #158 phase 5a — agents view (now full-screen single pane after #185).
  *
- * Covers: two-column render (separator, per-column width, no overflow), ctrl+w
- * pane switch, single-pane fallback below the min width, and jump-to-attention.
+ * The side-by-side split was retired in agents view v2 (#185): the flow is
+ * list → (select/ctrl+w) → full-screen focus → back. These cover the full-screen
+ * render (no separator, no overflow), pane switching, enter-to-focus, and
+ * jump-to-attention.
  */
 
 import { EventEmitter } from "node:events";
@@ -82,54 +84,32 @@ describe("#158 TwoPaneView", () => {
 		initTheme(undefined, false);
 	});
 
-	it("renders two columns with a separator and never exceeds the width", async () => {
+	it("renders a single full-screen pane (no split separator) within the width", async () => {
 		const view = makeView();
 		await seed(view, [rec("a", "idle"), rec("b", "running")]);
 		for (const width of [80, 100, 133]) {
 			const out = view.render(width);
 			for (const line of out) expect(visibleWidth(line)).toBeLessThanOrEqual(width);
 			const joined = out.map(stripAnsi).join("\n");
-			expect(joined).toContain("│"); // column separator
-			expect(joined).toContain("Your agents");
-			expect(joined).toContain("Focus");
-			expect(joined).toContain("hello from focus"); // focus pane shows selected transcript
+			expect(joined).not.toContain("│"); // no side-by-side separator
+			expect(joined).toContain("Your agents"); // list is the initial full-screen pane
+			expect(joined).not.toContain("Focus  (ctrl+w)"); // focus not shown until selected
 		}
 	});
 
-	it("falls back to a single pane below the min width", async () => {
-		const view = makeView();
-		await seed(view, [rec("a", "idle")]);
-		const out = view.render(60).map(stripAnsi).join("\n");
-		// Sidebar pane only (active); its header shows, no Focus header.
-		expect(out).toContain("Your agents");
-		expect(out).not.toContain("Focus  (ctrl+w)");
-		for (const line of view.render(60)) expect(visibleWidth(line)).toBeLessThanOrEqual(60);
-	});
-
-	it("ctrl+w routes input to the focus pane", async () => {
-		// A tall transcript so the focus pane has something to scroll; we assert the
-		// switch by observing the active-pane cue moving to the focus column.
+	it("ctrl+w switches to the full-screen focus pane", async () => {
 		const view = makeView({
 			loadTranscript: async () =>
 				Array.from({ length: 40 }, (_, i) => ({ role: "assistant" as const, text: `line-${i}` })),
 		});
 		await seed(view, [rec("a", "idle")]);
 		let out = view.render(100).map(stripAnsi).join("\n");
-		expect(out).toContain("▸ Your agents"); // sidebar active
+		expect(out).toContain("▸ Your agents"); // list active, no focus column
+		expect(out).not.toContain("Focus  (ctrl+w)");
 		view.handleInput(CTRL_W);
 		out = view.render(100).map(stripAnsi).join("\n");
-		expect(out).toContain("▸ Focus  (ctrl+w)"); // focus active
-	});
-
-	it("honors sidebarSide: right puts the sidebar to the right of the separator", async () => {
-		const view = mk({
-			loadTranscript: async () => [{ role: "assistant", text: "focustext" }],
-			sidebarSide: "right",
-		});
-		await seed(view, [rec("a", "idle")]);
-		const headerRow = stripAnsi(view.render(100)[0]);
-		const sepAt = headerRow.indexOf("│");
-		expect(headerRow.indexOf("Your agents")).toBeGreaterThan(sepAt);
+		expect(out).toContain("▸ Focus  (ctrl+w)"); // focus now full-screen
+		expect(out).not.toContain("Your agents"); // list not shown alongside
 	});
 
 	it("enter focuses the pane (hosted rows are interactive in place)", async () => {
