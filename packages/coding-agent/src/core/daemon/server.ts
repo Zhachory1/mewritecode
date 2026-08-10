@@ -68,6 +68,8 @@ export interface AgentRunner {
 	respondApproval?(approvalId: string, decision: ApprovalDecision): void;
 	cancelApprovals?(): void;
 	setThinking?(level: string): void;
+	/** Re-emit the current usage snapshot (for a client attaching to an idle session). */
+	requestUsage?(): void;
 }
 
 export type RunnerEvent =
@@ -525,6 +527,11 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 		if (pending?.text) {
 			send(ws, notification("token", { sessionId, text: pending.text, role: pending.role } as TokenParams));
 		}
+
+		// Ask the runner (if one exists for this session) to re-emit its current usage
+		// snapshot, so a client attaching to an idle session that already ran a turn gets
+		// a populated context meter instead of a blank one until the next turn.
+		runners.get(sessionId)?.requestUsage?.();
 
 		ws.on("message", async (raw) => {
 			let env: RpcEnvelope | undefined;
