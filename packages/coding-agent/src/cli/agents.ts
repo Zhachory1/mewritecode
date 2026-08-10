@@ -9,9 +9,16 @@
 import { spawn } from "node:child_process";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { type Component, Input, ProcessTerminal, setKeybindings, TUI, truncateToWidth } from "@zhachory1/mewrite-tui";
+import {
+	type Component,
+	Input,
+	ProcessTerminal,
+	setKeybindings,
+	TUI,
+	truncateToWidth,
+	visibleWidth,
+} from "@zhachory1/mewrite-tui";
 import chalk from "chalk";
-import { BANNER_PRIMARY_WORDMARK, BANNER_TAGLINE } from "../config.js";
 import { CaveClient, DEFAULT_DAEMON_HOST, DEFAULT_DAEMON_PORT, type SessionRecord } from "../core/daemon/index.js";
 import { KeybindingsManager } from "../core/keybindings.js";
 import { type LiveRecord, listLiveInteractive } from "../core/live-registry.js";
@@ -376,23 +383,57 @@ async function runViewLoop(initialClient: CaveClient, parsed: AgentsArgs, canSpa
 
 type ListAction = { type: "quit" } | { type: "new" };
 
+/** Pencil logo (code shaft). Terminal-safe box-drawing; no image component. */
+const PENCIL_LOGO: readonly string[] = [
+	" (░▒░)",
+	" │▒▒▒│",
+	"╭┴───┴╮",
+	"│ < > │",
+	"│ { } │",
+	"│ ( ) │",
+	"│ / / │",
+	"│ [ ] │",
+	"│ ░ ░ │",
+	"╰┬───┬╯",
+	" \\░░░/",
+	"  \\█/",
+	"   ▼",
+];
+
+/** Brand text shown to the right of the pencil, vertically centered. */
+const BRAND_TITLE = "Me Write Code";
+const BRAND_TAGLINES = ["me write less,", "me do more"];
+
 /**
- * Compact wordmark header for the agents view launch. Reuses the interactive
- * banner's ASCII wordmark + tagline (config-driven, terminal-safe — no image
- * component), rendered dim/accent above the agent list.
+ * Agents view launch header: the pencil logo on the left with the brand text
+ * vertically centered to its right. Terminal-safe (box-drawing, no image).
  */
 const agentsHeader: Component = {
 	invalidate() {},
 	render(width: number): string[] {
-		const lines = BANNER_PRIMARY_WORDMARK.map((row) => (row ? theme.fg("accent", truncateToWidth(row, width)) : ""));
-		lines.push(theme.fg("dim", truncateToWidth(BANNER_TAGLINE, width)));
+		const logoW = Math.max(...PENCIL_LOGO.map((r) => visibleWidth(r)));
+		const gap = "   ";
+		// Center the 3-line text block against the 13-line logo.
+		const textStart = Math.floor((PENCIL_LOGO.length - 3) / 2);
+		const textRows = [
+			theme.bold(theme.fg("accent", BRAND_TITLE)),
+			theme.fg("dim", BRAND_TAGLINES[0]),
+			theme.fg("dim", BRAND_TAGLINES[1]),
+		];
+		const lines = PENCIL_LOGO.map((row, i) => {
+			const pad = " ".repeat(Math.max(0, logoW - visibleWidth(row)));
+			const logo = theme.fg("accent", row) + pad;
+			const textIdx = i - textStart;
+			const text = textIdx >= 0 && textIdx < textRows.length ? gap + textRows[textIdx] : "";
+			return truncateToWidth(logo + text, width);
+		});
 		lines.push("");
 		return lines;
 	},
 };
 
-/** Rows the header occupies: wordmark + tagline + spacer. */
-const AGENTS_HEADER_ROWS = BANNER_PRIMARY_WORDMARK.length + 2;
+/** Rows the header occupies: logo + spacer. */
+const AGENTS_HEADER_ROWS = PENCIL_LOGO.length + 1;
 
 function runListView(client: CaveClient, canSpawn: boolean): Promise<ListAction> {
 	return new Promise<ListAction>((resolve) => {
