@@ -55,6 +55,11 @@ export class TranscriptView implements Component, Focusable {
 		private readonly onBack: () => void,
 		/** Viewport height in rows; used to window the body for live-tail. */
 		private readonly rows: () => number = () => process.stdout.rows || 24,
+		/**
+		 * When monitoring a running agent (#185 phase C+), controls to steer/interrupt
+		 * it. Absent for read-only history of an idle/finished session.
+		 */
+		private readonly controls?: { onSteer: () => void; onInterrupt: () => void },
 	) {}
 
 	setLines(lines: TranscriptLine[]): void {
@@ -120,6 +125,10 @@ export class TranscriptView implements Component, Focusable {
 			this.scrollBy(-this.viewportBodyRows());
 		} else if (kb.matches(data, "tui.select.pageDown")) {
 			this.scrollBy(this.viewportBodyRows());
+		} else if (this.controls && kb.matches(data, "app.agents.steer")) {
+			this.controls.onSteer();
+		} else if (this.controls && kb.matches(data, "app.agents.interrupt")) {
+			this.controls.onInterrupt();
 		} else if (kb.matches(data, "tui.select.cancel") || kb.matches(data, "app.agents.back")) {
 			this.onBack();
 		}
@@ -155,8 +164,10 @@ export class TranscriptView implements Component, Focusable {
 
 		lines.push("");
 		const following = this.offsetFromBottom === 0;
-		const hint = following ? "↑/↓ scroll · esc/q back · following" : "↑/↓ scroll · esc/q back";
-		lines.push(theme.fg("dim", hint));
+		const parts = ["↑/↓ scroll", "esc/q back"];
+		if (this.controls) parts.push("s steer", "x stop");
+		if (following) parts.push("following");
+		lines.push(theme.fg("dim", parts.join(" · ")));
 		return lines;
 	}
 }

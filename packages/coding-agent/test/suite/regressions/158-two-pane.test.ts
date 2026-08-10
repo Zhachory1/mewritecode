@@ -49,6 +49,8 @@ function mk(cb: {
 	sidebarSide?: "left" | "right";
 	transcript?: TranscriptLine[];
 	onResume?: (row: SessionRecord) => void;
+	onSteer?: (row: SessionRecord) => void;
+	onInterrupt?: (row: SessionRecord) => void;
 }) {
 	const client = {
 		getTranscript: async () => ({
@@ -66,6 +68,8 @@ function mk(cb: {
 		onQuit: () => {},
 		onDelete: () => {},
 		onResume: cb.onResume,
+		onSteer: cb.onSteer,
+		onInterrupt: cb.onInterrupt,
 		loadTranscript: cb.loadTranscript,
 		attach: () => stubAttach(),
 		client,
@@ -153,6 +157,25 @@ describe("#158 TwoPaneView", () => {
 		expect(out).toContain("▸ Focus  (ctrl+w)");
 		expect(out).toContain("live monitor (read-only)");
 		expect(out).toContain("working...");
+	});
+
+	it("steer/interrupt controls fire for a monitored running agent", async () => {
+		const steered: string[] = [];
+		const interrupted: string[] = [];
+		const view = mk({
+			loadTranscript: async () => [{ role: "assistant", text: "working..." }],
+			onSteer: (row) => steered.push(row.id),
+			onInterrupt: (row) => interrupted.push(row.id),
+		});
+		await seed(view, [rec("busy1", "running", "interactive")]);
+		view.handleInput("\r"); // open the monitor
+		const out = view.render(100).map(stripAnsi).join("\n");
+		expect(out).toContain("s steer");
+		expect(out).toContain("x stop");
+		view.handleInput("s");
+		view.handleInput("x");
+		expect(steered).toEqual(["busy1"]);
+		expect(interrupted).toEqual(["busy1"]);
 	});
 
 	it("jump-to-attention focuses the errored session in the focus pane", async () => {

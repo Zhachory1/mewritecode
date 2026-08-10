@@ -13,12 +13,14 @@ import { join } from "node:path";
 import { type Component, Input, ProcessTerminal, setKeybindings, TUI, truncateToWidth } from "@zhachory1/mewrite-tui";
 import chalk from "chalk";
 import { APP_NAME, getAgentDir } from "../config.js";
+import { sendAgentSteer } from "../core/agent-inbox.js";
 import { CaveClient, DEFAULT_DAEMON_HOST, DEFAULT_DAEMON_PORT, type SessionRecord } from "../core/daemon/index.js";
 import { KeybindingsManager } from "../core/keybindings.js";
 import { type LiveRecord, listLiveInteractive } from "../core/live-registry.js";
 import { getDefaultSessionDir, SessionManager } from "../core/session-manager.js";
 import { SettingsManager } from "../core/settings-manager.js";
 import { PENCIL_LOGO, renderPencilLogo } from "../modes/interactive/components/banner.js";
+import { promptClarify } from "../modes/interactive/components/clarify-prompt.js";
 import { showConfirmPrompt } from "../modes/interactive/components/confirm-prompt.js";
 import type { TranscriptLine } from "../modes/interactive/components/transcript-view.js";
 import { TwoPaneView } from "../modes/interactive/components/two-pane-view.js";
@@ -83,6 +85,7 @@ export function liveToRecord(rec: LiveRecord): SessionRecord {
 		state: rec.state,
 		cwd: rec.cwd,
 		kind: "interactive",
+		pid: rec.pid,
 	};
 }
 
@@ -335,10 +338,37 @@ function runListView(client: CaveClient, canSpawn: boolean): Promise<ListAction>
 			ui.requestRender();
 		};
 
+		const steerAgent = async (row: SessionRecord): Promise<void> => {
+			const text = await promptClarify(ui, {
+				question: `redirect ${row.title ?? row.id.slice(0, 8)} — type a steering message`,
+				allowFreeText: true,
+			});
+			if (text?.trim()) {
+				try {
+					sendAgentSteer(row.id, text.trim());
+				} catch (err) {
+					view.setPollError(err instanceof Error ? err.message : String(err));
+				}
+			}
+			ui.setFocus(view);
+			ui.requestRender();
+		};
+		const interruptAgent = (row: SessionRecord): void => {
+			if (typeof row.pid === "number") {
+				try {
+					process.kill(row.pid, "SIGINT");
+				} catch {
+					/* already gone */
+				}
+			}
+		};
+
 		const view = new TwoPaneView(() => ui.requestRender(), {
 			onQuit: () => finish({ type: "quit" }),
 			onNew: canSpawn ? () => finish({ type: "new" }) : undefined,
 			onResume: (row) => finish({ type: "resume", row }),
+			onSteer: (row) => void steerAgent(row),
+			onInterrupt: (row) => interruptAgent(row),
 			onDelete: (row) => void confirmDelete(row),
 			loadTranscript: (row) => loadTranscript(row, client),
 			attach: (id) => client.attach(id),

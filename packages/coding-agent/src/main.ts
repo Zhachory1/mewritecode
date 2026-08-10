@@ -43,6 +43,7 @@ import {
 	getModelsPath,
 	VERSION,
 } from "./config.js";
+import { startInboxSteer } from "./core/agent-inbox.js";
 import { type CreateAgentSessionRuntimeFactory, createAgentSessionRuntime } from "./core/agent-session-runtime.js";
 import {
 	type AgentSessionRuntimeDiagnostic,
@@ -1024,16 +1025,18 @@ export async function main(args: string[]) {
 		// An agent spawned by `mewrite agents` runs headless (print mode) but must be
 		// visible in the agents list and resumable, so publish liveness here too. Gated
 		// on the spawn marker so ordinary `mewrite -p` / CI runs stay out of the registry.
-		const disposeLive =
-			process.env.MEWRITE_AGENT_SPAWN && !parsed.noSession
-				? attachLiveRegistry(session, sessionManager.getCwd())
-				: undefined;
+		const isSpawnedAgent = Boolean(process.env.MEWRITE_AGENT_SPAWN) && !parsed.noSession;
+		const disposeLive = isSpawnedAgent ? attachLiveRegistry(session, sessionManager.getCwd()) : undefined;
+		// A spawned agent also watches its steering inbox so the agents view can
+		// redirect a runaway mid-run (#185 phase C+). Injects into the steering queue.
+		const disposeInbox = isSpawnedAgent ? startInboxSteer(session, session.sessionId) : undefined;
 		const exitCode = await runPrintMode(runtime, {
 			mode: toPrintOutputMode(appMode),
 			messages: parsed.messages,
 			initialMessage,
 			initialImages,
 		});
+		disposeInbox?.();
 		disposeLive?.();
 		stopThemeWatcher();
 		restoreStdout();

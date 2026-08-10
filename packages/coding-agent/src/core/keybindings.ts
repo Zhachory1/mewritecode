@@ -48,6 +48,8 @@ export interface AppKeybindings {
 	"app.agents.delete": true;
 	"app.agents.switchPane": true;
 	"app.agents.attention": true;
+	"app.agents.steer": true;
+	"app.agents.interrupt": true;
 }
 
 export type AppKeybinding = keyof AppKeybindings;
@@ -172,6 +174,14 @@ export const KEYBINDINGS = {
 	"app.agents.attention": {
 		defaultKeys: "!",
 		description: "Jump to the first agent needing attention",
+	},
+	"app.agents.steer": {
+		defaultKeys: "s",
+		description: "Steer (redirect) the monitored running agent",
+	},
+	"app.agents.interrupt": {
+		defaultKeys: "x",
+		description: "Interrupt (stop) the monitored running agent",
 	},
 } as const satisfies KeybindingDefinitions;
 
