@@ -32,10 +32,28 @@ const CHROME_ROWS = 5;
 /** Bar cells for the context-usage meter in the focus-pane status line. */
 const STATUS_BAR_CELLS = 15;
 
+/**
+ * Thinking levels in cycle order. Mirrors THINKING_LEVELS in agent-session.ts.
+ * The daemon clamps to the model's actual capabilities and echoes the applied
+ * level back via `usage`, so the pane can cycle optimistically without knowing
+ * whether the remote model supports each level.
+ */
+const THINKING_CYCLE: readonly string[] = ["off", "minimal", "low", "medium", "high"];
+
+type ToolBlock = {
+	kind: "tool";
+	toolCallId?: string;
+	name: string;
+	status: string;
+	args?: unknown;
+	result?: unknown;
+	isError?: boolean;
+};
+
 type Block =
 	| { kind: "user"; comp: UserMessageComponent; raw: string }
 	| { kind: "assistant"; comp: StreamingMarkdown }
-	| { kind: "tool"; text: string };
+	| ToolBlock;
 
 export interface StreamingSessionDeps {
 	/** Open a live WS attach for the session id. */
@@ -66,6 +84,8 @@ export class StreamingSessionView implements Component, Focusable {
 	private streamRole: "assistant" | null = null;
 	private disposed = false;
 	private offsetFromBottom = 0;
+	/** ctrl+o toggles tool activity between the compact one-liner and expanded args/result. */
+	private toolsExpanded = false;
 
 	constructor(
 		private readonly sessionId: string,
@@ -100,7 +120,18 @@ export class StreamingSessionView implements Component, Focusable {
 		const s = this.deps.attach(this.sessionId);
 		this.session = s;
 		s.on("token", (p) => this.onToken(p as { text?: string; role?: string }));
-		s.on("tool", (p) => this.onTool(p as { name?: string; status?: string }));
+		s.on("tool", (p) =>
+			this.onTool(
+				p as {
+					name?: string;
+					status?: string;
+					toolCallId?: string;
+					args?: unknown;
+					result?: unknown;
+					isError?: boolean;
+				},
+			),
+		);
 		s.on("state", (p) => this.onState(p as { state?: string }));
 		s.on("usage", (p) =>
 			this.onUsage(
@@ -147,10 +178,48 @@ export class StreamingSessionView implements Component, Focusable {
 		this.deps.requestRender();
 	}
 
-	private onTool(p: { name?: string; status?: string }): void {
+	private onTool(p: {
+		name?: string;
+		status?: string;
+		toolCallId?: string;
+		args?: unknown;
+		result?: unknown;
+		isError?: boolean;
+	}): void {
 		this.endStream();
-		this.blocks.push({ kind: "tool", text: `⚙ ${p.name ?? "tool"} (${p.status ?? ""})` });
+		const name = p.name ?? "tool";
+		const status = p.status ?? "";
+		// Correlate the end event back onto the start block by toolCallId so one card
+		// carries args (from start) and result/isError (from end). Fall back to a new
+		// block when there's no id or no matching start (e.g. old daemon).
+		if (p.toolCallId && status !== "start") {
+			const existing = this.findToolBlock(p.toolCallId);
+			if (existing) {
+				existing.status = status;
+				existing.result = p.result;
+				existing.isError = p.isError;
+				this.deps.requestRender();
+				return;
+			}
+		}
+		this.blocks.push({
+			kind: "tool",
+			toolCallId: p.toolCallId,
+			name,
+			status,
+			args: p.args,
+			result: p.result,
+			isError: p.isError,
+		});
 		this.deps.requestRender();
+	}
+
+	private findToolBlock(toolCallId: string): ToolBlock | undefined {
+		for (let i = this.blocks.length - 1; i >= 0; i--) {
+			const b = this.blocks[i];
+			if (b.kind === "tool" && b.toolCallId === toolCallId) return b;
+		}
+		return undefined;
 	}
 
 	private onState(p: { state?: string }): void {
@@ -180,6 +249,18 @@ export class StreamingSessionView implements Component, Focusable {
 		this.streamRole = null;
 	}
 
+	/**
+	 * Cycle the remote session's thinking level via the daemon `set_thinking` RPC.
+	 * The current level comes from the latest `usage` event; the daemon clamps to the
+	 * model's capabilities and echoes a fresh `usage`, which updates the status line.
+	 */
+	private cycleThinking(): void {
+		const current = this.usage?.thinkingLevel ?? "off";
+		const idx = THINKING_CYCLE.indexOf(current);
+		const next = THINKING_CYCLE[(idx < 0 ? 0 : idx + 1) % THINKING_CYCLE.length];
+		void this.session?.setThinking(next).catch(() => {});
+	}
+
 	private submit(value: string): void {
 		const text = value.trim();
 		if (!text) return;
@@ -188,7 +269,7 @@ export class StreamingSessionView implements Component, Focusable {
 		this.offsetFromBottom = 0;
 		this.endStream();
 		void this.session?.send(text).catch(() => {
-			this.blocks.push({ kind: "tool", text: "(failed to send)" });
+			this.blocks.push({ kind: "tool", name: "(failed to send)", status: "err", isError: true });
 			this.deps.requestRender();
 		});
 		this.deps.requestRender();
@@ -210,6 +291,15 @@ export class StreamingSessionView implements Component, Focusable {
 			this.deps.requestRender();
 			return;
 		}
+		if (kb.matches(data, "app.thinking.cycle")) {
+			this.cycleThinking();
+			return;
+		}
+		if (kb.matches(data, "app.tools.expand")) {
+			this.toolsExpanded = !this.toolsExpanded;
+			this.deps.requestRender();
+			return;
+		}
 		// Everything else goes to the input editor.
 		this.input.handleInput(data);
 	}
@@ -225,13 +315,34 @@ export class StreamingSessionView implements Component, Focusable {
 		this.session = null;
 	}
 
+	/**
+	 * Render a tool block. Compact: a dim one-liner `⚙ name (status)`. Expanded (ctrl+o):
+	 * the same header plus indented args and result/error. Oversized payloads may arrive
+	 * as `{ truncated: true }` from the daemon; they render as-is.
+	 */
+	private renderTool(b: ToolBlock, w: number): string[] {
+		const header = `⚙ ${b.name} (${b.status})`;
+		if (!this.toolsExpanded) return [theme.fg("dim", truncateToWidth(`  ${header}`, w))];
+		const out = [theme.fg("dim", truncateToWidth(`  ${header}`, w))];
+		const addField = (label: string, value: unknown): void => {
+			if (value === undefined) return;
+			const text = typeof value === "string" ? value : safeStringify(value);
+			for (const raw of `${label}: ${text}`.split("\n")) {
+				out.push(theme.fg("dim", truncateToWidth(`      ${raw}`, w)));
+			}
+		};
+		addField("args", b.args);
+		addField(b.isError ? "error" : "result", b.result);
+		return out;
+	}
+
 	private renderBody(width: number): string[] {
 		const w = Math.max(1, width);
 		const out: string[] = [];
 		for (const b of this.blocks) {
 			if (out.length > 0) out.push("");
 			if (b.kind === "tool") {
-				out.push(theme.fg("dim", truncateToWidth(`  ${b.text}`, w)));
+				for (const line of this.renderTool(b, w)) out.push(line);
 				continue;
 			}
 			// A single malformed markdown chunk from the live stream must not crash the
@@ -283,7 +394,12 @@ export class StreamingSessionView implements Component, Focusable {
 		const scrolled = this.offsetFromBottom === 0 ? "" : "  ↑ scrolled";
 		lines.push(theme.fg("dim", "─".repeat(width)));
 		const dot = this.state === "running" ? theme.fg("accent", "●") : theme.fg("dim", "○");
-		const hints = [keyHint("app.interrupt", "stop"), keyHint("app.agents.switchPane", "list")].join(" · ");
+		const hints = [
+			keyHint("app.interrupt", "stop"),
+			keyHint("app.thinking.cycle", "think"),
+			keyHint("app.tools.expand", this.toolsExpanded ? "tools−" : "tools+"),
+			keyHint("app.agents.switchPane", "list"),
+		].join(" · ");
 		const left = `${dot} ${this.state}${scrolled}   ${hints}`;
 		const right = this.statusRight();
 		const pad = Math.max(1, width - visibleWidth(left) - visibleWidth(right));
@@ -306,5 +422,14 @@ export class StreamingSessionView implements Component, Focusable {
 		const modelWithThinking = u.thinkingLevel && u.thinkingLevel !== "off" ? `${model} · ${u.thinkingLevel}` : model;
 		const bar = renderContextBar({ tokens: u.tokens, percent: u.percent }, STATUS_BAR_CELLS);
 		return modelWithThinking ? `${bar}  ${modelWithThinking}` : bar;
+	}
+}
+
+/** Stringify tool args/result for expanded display; never throws. */
+function safeStringify(value: unknown): string {
+	try {
+		return JSON.stringify(value);
+	} catch {
+		return String(value);
 	}
 }
