@@ -388,6 +388,29 @@ describe("agent-backed daemon runner", () => {
 		expect(terminal?.stopReason).toBe("max_tokens");
 	});
 
+	it("requestUsage re-emits a usage snapshot after a turn, and is a no-op before realization", async () => {
+		const events: { type?: string; thinkingLevel?: string; tokens?: number | null }[] = [];
+		const runner = createAgentBackedRunnerFactory({
+			createSession: async () => ({ session: new FakeSession() }),
+		})(sessionRecord, (event) => {
+			events.push(event as { type?: string; thinkingLevel?: string; tokens?: number | null });
+			return true;
+		});
+
+		// Before the session is realized, requestUsage emits nothing (usage unknown).
+		runner.requestUsage?.();
+		expect(events.filter((e) => e.type === "usage")).toHaveLength(0);
+
+		// Run a turn so the session is realized, then a fresh attach re-requests usage.
+		await runner.send("hello");
+		await expect.poll(() => events.some((e) => e.type === "done")).toBe(true);
+		const before = events.filter((e) => e.type === "usage").length;
+		runner.requestUsage?.();
+		const after = events.filter((e) => e.type === "usage");
+		expect(after.length).toBe(before + 1);
+		expect(after.at(-1)).toMatchObject({ tokens: 1000, contextWindow: 200000 });
+	});
+
 	it("set_thinking updates the session and echoes a usage event", async () => {
 		const events: { type?: string; thinkingLevel?: string }[] = [];
 		const session = new NeverEndingSession();

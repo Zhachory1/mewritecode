@@ -276,6 +276,16 @@ class AgentBackedRunner implements AgentRunner {
 		this.emitUsage();
 	}
 
+	/**
+	 * Re-emit the current usage snapshot on demand (e.g. when a client attaches to an
+	 * idle session that already ran a turn, so its context meter isn't blank until the
+	 * next turn). No-op if the underlying session isn't realized yet — usage is genuinely
+	 * unknown until the agent has run at least once.
+	 */
+	requestUsage(): void {
+		if (this.realizedSession?.getContextUsage) this.emitUsage();
+	}
+
 	private emitUsage(): void {
 		const session = this.realizedSession;
 		if (!session?.getContextUsage) return;
