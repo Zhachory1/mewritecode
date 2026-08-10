@@ -62,10 +62,13 @@ export class TwoPaneView implements Component, Focusable {
 	) {
 		this.sidebar = new AgentListComponent(
 			requestRender,
-			// Enter on a row: interactive rows resume as a real session (replace-and-
-			// return) when onResume is wired; hosted rows focus the live pane.
+			// Enter on a row:
+			//  - interactive + running -> open the read-only live monitor (tail its JSONL);
+			//    another process owns the live turn, so we can't drive it in place.
+			//  - interactive + not running -> resume it as a real session (replace-and-return).
+			//  - hosted -> focus the live WS pane.
 			(row) => {
-				if (row.kind === "interactive" && cb.onResume) cb.onResume(row);
+				if (row.kind === "interactive" && row.state !== "running" && cb.onResume) cb.onResume(row);
 				else this.setActive("focus");
 			},
 			cb.onQuit,
@@ -115,7 +118,10 @@ export class TwoPaneView implements Component, Focusable {
 		const tag = row.kind === "interactive" ? "[i] " : "";
 		const cwdName = row.cwd ? (row.cwd.split(/[/\\]/).pop() ?? "") : "";
 		const name = row.title || cwdName || row.id.slice(0, 8);
-		const title = `${tag}${name}  ${row.cwd}`;
+		// A running agent is monitored read-only (another process owns its live turn);
+		// call it out so the pane isn't mistaken for an interactive session.
+		const monitorHint = row.kind === "interactive" && row.state === "running" ? "  — live monitor (read-only)" : "";
+		const title = `${tag}${name}  ${row.cwd}${monitorHint}`;
 		if (row.kind === "interactive") {
 			// Terminal sessions can't be driven remotely; show them read-only.
 			const view = new TranscriptView(title, this.requestRender, () => this.setActive("sidebar"), this.cb.rows);
