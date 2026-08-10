@@ -42,10 +42,12 @@ import {
 	type SendMessageRequest,
 	type SessionRecord,
 	type StateParams,
+	type StopReason,
 	TOKEN_TICK_MS,
 	type TokenParams,
 	type ToolParams,
 	type Transcript,
+	type UsageParams,
 	type WorkerRecord,
 	type WriteFileRequest,
 	type WriteFileResponse,
@@ -65,12 +67,30 @@ export interface AgentRunner {
 	close(): void;
 	respondApproval?(approvalId: string, decision: ApprovalDecision): void;
 	cancelApprovals?(): void;
+	setThinking?(level: string): void;
 }
 
 export type RunnerEvent =
 	| { type: "token"; sessionId: string; text: string; role: Role }
-	| { type: "tool"; sessionId: string; name: string; status: "start" | "ok" | "err" }
-	| { type: "state"; sessionId: string; state: SessionRecord["state"] }
+	| {
+			type: "tool";
+			sessionId: string;
+			name: string;
+			status: "start" | "ok" | "err";
+			toolCallId?: string;
+			args?: unknown;
+			result?: unknown;
+			isError?: boolean;
+	  }
+	| { type: "state"; sessionId: string; state: SessionRecord["state"]; stopReason?: StopReason }
+	| {
+			type: "usage";
+			sessionId: string;
+			tokens: number | null;
+			contextWindow: number;
+			percent: number | null;
+			thinkingLevel: string;
+	  }
 	| { type: "approval"; sessionId: string; approvalId: string; toolName: string; args: unknown; tier: string }
 	| { type: "message"; message: MessageRecord }
 	| { type: "done"; sessionId: string };
@@ -115,6 +135,7 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 	const capabilities: HealthCapabilities = {
 		runnerKind: opts.capabilities?.runnerKind ?? "echo",
 		approvalSupported: opts.capabilities?.approvalSupported ?? false,
+		richEvents: opts.capabilities?.richEvents ?? false,
 	};
 	const webUiDir = getWebUiDir();
 
@@ -178,9 +199,30 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 						c.tickHandle = setTimeout(() => flushTokens(c), TOKEN_TICK_MS);
 					}
 				} else if (event.type === "tool") {
-					send(c.ws, notification("tool", { sessionId, name: event.name, status: event.status } as ToolParams));
+					const params: ToolParams = { sessionId, name: event.name, status: event.status };
+					if (event.toolCallId !== undefined) params.toolCallId = event.toolCallId;
+					if (event.status === "start") {
+						if (event.args !== undefined) params.args = truncateForWire(event.args);
+					} else {
+						if (event.result !== undefined) params.result = truncateForWire(event.result);
+						if (event.isError !== undefined) params.isError = event.isError;
+					}
+					send(c.ws, notification("tool", params));
 				} else if (event.type === "state") {
-					send(c.ws, notification("state", { sessionId, state: event.state } as StateParams));
+					const params: StateParams = { sessionId, state: event.state };
+					if (event.stopReason !== undefined) params.stopReason = event.stopReason;
+					send(c.ws, notification("state", params));
+				} else if (event.type === "usage") {
+					send(
+						c.ws,
+						notification("usage", {
+							sessionId,
+							tokens: event.tokens,
+							contextWindow: event.contextWindow,
+							percent: event.percent,
+							thinkingLevel: event.thinkingLevel,
+						} as UsageParams),
+					);
 				} else if (event.type === "approval") {
 					send(c.ws, notification("approval", event as ApprovalParams));
 				} else if (event.type === "done") {
@@ -517,6 +559,15 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 					}
 					const runner = runners.get(sessionId);
 					runner?.respondApproval?.(params.approvalId, params.decision);
+					send(ws, okResponse(req.id, { ok: true }));
+				} else if (req.method === "set_thinking") {
+					const params = (req.params as { level?: unknown } | undefined) ?? undefined;
+					if (typeof params?.level !== "string") {
+						send(ws, errorResponse(req.id, -32602, "missing thinking level"));
+						return;
+					}
+					const runner = runners.get(sessionId);
+					runner?.setThinking?.(params.level);
 					send(ws, okResponse(req.id, { ok: true }));
 				} else if (req.method === "ping") {
 					send(ws, okResponse(req.id, { pong: true }));
@@ -997,6 +1048,26 @@ function send(ws: WebSocket, env: RpcEnvelope): void {
 		// Sync failure (e.g. socket closed between the readyState check and send).
 		// A failed frame to one client must never crash the daemon.
 	}
+}
+
+const MAX_WIRE_JSON_BYTES = 16 * 1024;
+
+/**
+ * Cap tool args/results sent over the wire so a huge payload (e.g. a full file
+ * read result) can't bloat a frame. If the JSON exceeds the cap, replace it with
+ * a small marker; clients that need the full value fetch it via the REST
+ * transcript. Non-serializable values collapse to the same marker.
+ */
+function truncateForWire(value: unknown): unknown {
+	let json: string;
+	try {
+		json = JSON.stringify(value);
+	} catch {
+		return { truncated: true };
+	}
+	if (json === undefined) return value;
+	if (Buffer.byteLength(json, "utf8") <= MAX_WIRE_JSON_BYTES) return value;
+	return { truncated: true, bytes: Buffer.byteLength(json, "utf8") };
 }
 
 function notification<P>(method: string, params: P): RpcNotification<P> {

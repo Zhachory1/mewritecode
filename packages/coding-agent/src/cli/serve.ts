@@ -2,7 +2,7 @@
  * WS9 — `mewrite serve` subcommand.
  *
  * Boots the daemon (HTTP + WS) on the requested port. Persists sessions to
- * SQLite at `~/.cave/daemon/sessions.db`. Multi-client safe: any number of
+ * SQLite at `~/.mewrite/agent/daemon/sessions.db`. Multi-client safe: any number of
  * `mewrite attach` clients (or `@zhachory1/mewrite-sdk`-using applications) can connect to
  * the same session over WS.
  */
@@ -90,8 +90,8 @@ Options:
   --port <n>      Bind port (default 7421)
   --token <s>     Require Bearer <token> on every API/WebSocket request
   --runner <mode> agent (default) or echo
-  --db <path>     SQLite session store (default ~/.cave/daemon/sessions.db)
-  --pid <path>    Pid file (default ~/.cave/daemon/daemon.pid)
+  --db <path>     SQLite session store (default ~/.mewrite/agent/daemon/sessions.db)
+  --pid <path>    Pid file (default ~/.mewrite/agent/daemon/daemon.pid)
   -h, --help      Show this help
 
 Web UI:
@@ -162,7 +162,11 @@ export async function runServe(args: string[]): Promise<number> {
 			store,
 			runnerFactory,
 			version: VERSION,
-			capabilities: { runnerKind: parsed.runner, approvalSupported: parsed.runner === "agent" },
+			capabilities: {
+				runnerKind: parsed.runner,
+				approvalSupported: parsed.runner === "agent",
+				richEvents: parsed.runner === "agent",
+			},
 		});
 	} catch (err) {
 		const isAddressInUse =

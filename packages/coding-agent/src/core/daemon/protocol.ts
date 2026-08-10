@@ -97,6 +97,12 @@ export type RunnerKind = "echo" | "agent";
 export interface HealthCapabilities {
 	runnerKind: RunnerKind;
 	approvalSupported: boolean;
+	/**
+	 * Server streams the Phase 5c rich events: typed tool events (toolCallId/args/
+	 * result), `usage` notifications, `stopReason` on state, and accepts the
+	 * `set_thinking` RPC. Lets clients feature-detect before rendering meters.
+	 */
+	richEvents?: boolean;
 }
 
 export interface Health {
@@ -186,11 +192,37 @@ export interface ToolParams {
 	sessionId: string;
 	name: string;
 	status: "start" | "ok" | "err";
+	/** Correlates start↔end (5c). Present when the runner emits rich events. */
+	toolCallId?: string;
+	/** Tool call arguments, present on `status:"start"`. May be truncated over the wire. */
+	args?: unknown;
+	/** Tool result, present on `status:"ok"|"err"`. May be truncated over the wire. */
+	result?: unknown;
+	/** Mirrors status==="err"; kept explicit so clients don't re-derive it. */
+	isError?: boolean;
+}
+
+export type StopReason = "stop" | "max_tokens" | "error" | "aborted";
+
+export interface UsageParams {
+	sessionId: string;
+	/** Estimated context tokens, or null if unknown (e.g. right after compaction). */
+	tokens: number | null;
+	contextWindow: number;
+	/** Context usage percentage, or null if tokens is unknown. */
+	percent: number | null;
+	thinkingLevel: string;
 }
 
 export interface StateParams {
 	sessionId: string;
 	state: SessionState;
+	/** Why the turn ended, populated on the terminal state of a turn (5c). */
+	stopReason?: StopReason;
+}
+
+export interface SetThinkingParams {
+	level: string;
 }
 
 export interface DoneParams {

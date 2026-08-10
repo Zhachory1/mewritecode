@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto";
-import type { AgentMessage } from "@zhachory1/mewrite-agent";
+import type { AgentMessage, ThinkingLevel } from "@zhachory1/mewrite-agent";
 import type { AgentSession, AgentSessionEvent, ApprovalDecision, RequestApprovalFn } from "../agent-session.js";
+import type { ContextUsage } from "../extensions/types.js";
 import { createAgentSession } from "../sdk.js";
 import { SessionManager } from "../session-manager.js";
 import { dlog } from "./debug-log.js";
-import type { MessageRecord, SessionRecord } from "./protocol.js";
+import type { MessageRecord, SessionRecord, StopReason } from "./protocol.js";
 import type { AgentRunner, RunnerEmitter, RunnerFactory } from "./server.js";
 
 interface AgentSessionLike {
@@ -13,6 +14,9 @@ interface AgentSessionLike {
 	abort?(): Promise<void>;
 	dispose?(): void;
 	setApprovalCallback?(cb: RequestApprovalFn | undefined): void;
+	getContextUsage?(): ContextUsage | undefined;
+	setThinkingLevel?(level: ThinkingLevel): void;
+	readonly thinkingLevel?: ThinkingLevel;
 }
 
 export interface AgentBackedRunnerOptions {
@@ -210,6 +214,7 @@ class AgentBackedRunner implements AgentRunner {
 			this.emitAssistantFinalDelta(text);
 			this.emitAssistantMessage(text);
 			this.lastAssistantMessageText = text;
+			this.emitUsage();
 			return;
 		}
 		// An auto-retry means the preceding agent_end(error) was NOT terminal — the
@@ -226,7 +231,14 @@ class AgentBackedRunner implements AgentRunner {
 			return;
 		}
 		if (event.type === "tool_execution_start") {
-			this.emit({ type: "tool", sessionId: this.daemonSession.id, name: event.toolName, status: "start" });
+			this.emit({
+				type: "tool",
+				sessionId: this.daemonSession.id,
+				name: event.toolName,
+				status: "start",
+				toolCallId: event.toolCallId,
+				args: event.args,
+			});
 			return;
 		}
 		if (event.type === "tool_execution_end") {
@@ -235,6 +247,9 @@ class AgentBackedRunner implements AgentRunner {
 				sessionId: this.daemonSession.id,
 				name: event.toolName,
 				status: event.isError ? "err" : "ok",
+				toolCallId: event.toolCallId,
+				result: event.result,
+				isError: event.isError,
 			});
 			return;
 		}
@@ -249,11 +264,30 @@ class AgentBackedRunner implements AgentRunner {
 			if (stopReason === "error") {
 				const text = lastAssistant ? assistantDisplayText(lastAssistant) : "Agent runner error";
 				if (text && text !== this.lastAssistantMessageText) this.emitAssistantMessage(text);
-				this.emitTerminal("error");
+				this.emitTerminal("error", "error");
 			} else {
-				this.emitTerminal("idle");
+				this.emitTerminal("idle", mapStopReason(stopReason));
 			}
 		}
+	}
+
+	setThinking(level: string): void {
+		this.realizedSession?.setThinkingLevel?.(level as ThinkingLevel);
+		this.emitUsage();
+	}
+
+	private emitUsage(): void {
+		const session = this.realizedSession;
+		if (!session?.getContextUsage) return;
+		const usage = session.getContextUsage();
+		this.emit({
+			type: "usage",
+			sessionId: this.daemonSession.id,
+			tokens: usage?.tokens ?? null,
+			contextWindow: usage?.contextWindow ?? 0,
+			percent: usage?.percent ?? null,
+			thinkingLevel: session.thinkingLevel ?? "off",
+		});
 	}
 
 	private cancelPendingApprovals(): void {
@@ -284,12 +318,13 @@ class AgentBackedRunner implements AgentRunner {
 		});
 	}
 
-	private emitTerminal(state: "idle" | "stopped" | "error"): void {
+	private emitTerminal(state: "idle" | "stopped" | "error", stopReason?: StopReason): void {
 		dlog("runner", "emitTerminal", { id: this.daemonSession.id, state, alreadyEmitted: this.terminalEmitted });
 		if (this.terminalEmitted) return;
 		this.active = false;
 		this.terminalEmitted = true;
-		this.emit({ type: "state", sessionId: this.daemonSession.id, state });
+		const reason = stopReason ?? (state === "stopped" ? "aborted" : state === "error" ? "error" : undefined);
+		this.emit({ type: "state", sessionId: this.daemonSession.id, state, stopReason: reason });
 		this.emit({ type: "done", sessionId: this.daemonSession.id });
 	}
 }
@@ -332,6 +367,20 @@ async function defaultCreateSession(
 		}
 	}
 	return createAgentSession({ cwd: session.cwd, sessionManager });
+}
+
+function mapStopReason(stopReason: unknown): StopReason {
+	switch (stopReason) {
+		case "length":
+		case "max_tokens":
+			return "max_tokens";
+		case "error":
+			return "error";
+		case "aborted":
+			return "aborted";
+		default:
+			return "stop";
+	}
 }
 
 function readTextDelta(event: unknown): string | undefined {
