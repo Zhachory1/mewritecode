@@ -22,6 +22,7 @@ import {
 import { dlog } from "../../../core/daemon/debug-log.js";
 import type { AttachedSession, CaveClient } from "../../../core/daemon/index.js";
 import { getMarkdownTheme, theme } from "../theme/theme.js";
+import { formatTokens } from "./context-meter.js";
 import { keyHint } from "./keybinding-hints.js";
 import { UserMessageComponent } from "./user-message.js";
 
@@ -53,6 +54,12 @@ export class StreamingSessionView implements Component, Focusable {
 	private blocks: Block[] = [];
 	private session: AttachedSession | null = null;
 	private state = "idle";
+	private usage: {
+		tokens: number | null;
+		contextWindow: number;
+		percent: number | null;
+		thinkingLevel: string;
+	} | null = null;
 	private streamRole: "assistant" | null = null;
 	private disposed = false;
 	private offsetFromBottom = 0;
@@ -92,6 +99,11 @@ export class StreamingSessionView implements Component, Focusable {
 		s.on("token", (p) => this.onToken(p as { text?: string; role?: string }));
 		s.on("tool", (p) => this.onTool(p as { name?: string; status?: string }));
 		s.on("state", (p) => this.onState(p as { state?: string }));
+		s.on("usage", (p) =>
+			this.onUsage(
+				p as { tokens?: number | null; contextWindow?: number; percent?: number | null; thinkingLevel?: string },
+			),
+		);
 		s.on("done", () => {
 			dlog("pane", "ws.done", { id: this.sessionId });
 			this.endStream();
@@ -144,6 +156,21 @@ export class StreamingSessionView implements Component, Focusable {
 			this.state = p.state;
 			this.deps.requestRender();
 		}
+	}
+
+	private onUsage(p: {
+		tokens?: number | null;
+		contextWindow?: number;
+		percent?: number | null;
+		thinkingLevel?: string;
+	}): void {
+		this.usage = {
+			tokens: p.tokens ?? null,
+			contextWindow: p.contextWindow ?? 0,
+			percent: p.percent ?? null,
+			thinkingLevel: p.thinkingLevel ?? "off",
+		};
+		this.deps.requestRender();
 	}
 
 	private endStream(): void {
@@ -248,18 +275,34 @@ export class StreamingSessionView implements Component, Focusable {
 		lines.push(theme.bold(truncateToWidth(this.title, width)));
 		lines.push(...windowed);
 		// A horizontal rule + status line, mirroring interactive mode's footer with the
-		// data the daemon exposes (state, model). Live context/token usage needs a
-		// richer daemon protocol (not streamed today), so it is omitted for now.
+		// data the daemon streams: state + keybinds on the left, context meter + thinking
+		// level + model on the right (usage arrives via the daemon `usage` notification).
 		const scrolled = this.offsetFromBottom === 0 ? "" : "  ↑ scrolled";
 		lines.push(theme.fg("dim", "─".repeat(width)));
 		const dot = this.state === "running" ? theme.fg("accent", "●") : theme.fg("dim", "○");
 		const hints = [keyHint("app.interrupt", "stop"), keyHint("app.agents.switchPane", "list")].join(" · ");
 		const left = `${dot} ${this.state}${scrolled}   ${hints}`;
-		const right = this.deps.model ?? "";
+		const right = this.statusRight();
 		const pad = Math.max(1, width - visibleWidth(left) - visibleWidth(right));
 		lines.push(truncateToWidth(`${theme.fg("dim", left)}${" ".repeat(pad)}${theme.fg("dim", right)}`, width));
 		// Input line (its own cursor marker positions the hardware cursor).
 		lines.push(...this.input.render(width));
 		return lines;
+	}
+
+	/**
+	 * Right side of the status line: context meter + thinking level + model, mirroring
+	 * the interactive footer's `{percent}%/{tokens}` + `model · thinking` layout. Uses
+	 * the latest daemon `usage` notification; falls back to just the model id until the
+	 * first usage event (or if the session never streams one).
+	 */
+	private statusRight(): string {
+		const model = this.deps.model ?? "";
+		const u = this.usage;
+		if (!u || u.contextWindow <= 0) return model;
+		const percent = u.percent !== null ? `${u.percent.toFixed(0)}%` : "?";
+		const context = `${percent}/${formatTokens(u.contextWindow)}`;
+		const modelWithThinking = u.thinkingLevel && u.thinkingLevel !== "off" ? `${model} · ${u.thinkingLevel}` : model;
+		return modelWithThinking ? `${context}  ${modelWithThinking}` : context;
 	}
 }

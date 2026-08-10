@@ -8,7 +8,7 @@ const SIDE_PADDING = 1;
 const MIN_BAR_CELLS = 8;
 const MAX_BAR_CELLS = 16;
 
-function formatTokens(n: number): string {
+export function formatTokens(n: number): string {
 	if (n < 1000) return `${n}`;
 	if (n < 10_000) return `${(n / 1000).toFixed(1)}k`;
 	if (n < 1_000_000) return `${Math.round(n / 1000)}k`;
