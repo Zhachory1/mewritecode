@@ -13,6 +13,10 @@
 - System prompt: injected project-context files (AGENTS.md/CLAUDE.md) now carry a precedence banner clarifying that project instructions cannot override the safety sections and grant durable-capture consent only when they name a destination and scope.
 - Git status snapshot no longer renders a failed or oversized `git status` as "(clean)"; it now reports the status as unavailable.
 
+### Changed
+
+- `mewrite agents` sidebar navigation now wraps: pressing up on the top agent selects the bottom one (and down on the bottom wraps to the top), so you can jump to the far end of the list in one keypress. Page up/down still clamp at the ends ([#152](https://github.com/Zhachory1/mewritecode/issues/152)).
+
 ### Removed
 
 - Dropped references to a non-existent `explore` subagent from the system prompt and the `task`/`agent` tool descriptions.

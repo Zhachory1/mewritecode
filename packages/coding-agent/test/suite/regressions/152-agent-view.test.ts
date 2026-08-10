@@ -75,6 +75,35 @@ describe("#152 agent view list", () => {
 		expect(attached).toEqual(["second"]);
 	});
 
+	it("wraps to the bottom row when pressing up on the top row", () => {
+		const attached: string[] = [];
+		const list = new AgentListComponent(
+			() => {},
+			(row) => attached.push(row.id),
+			() => {},
+		);
+		list.setRows([rec("first", "idle"), rec("second", "idle"), rec("third", "idle")]);
+		// Start on the top row; up should wrap to the last row.
+		list.handleInput(UP);
+		list.handleInput(ENTER);
+		expect(attached).toEqual(["third"]);
+	});
+
+	it("wraps to the top row when pressing down on the bottom row", () => {
+		const attached: string[] = [];
+		const list = new AgentListComponent(
+			() => {},
+			(row) => attached.push(row.id),
+			() => {},
+		);
+		list.setRows([rec("first", "idle"), rec("second", "idle"), rec("third", "idle")]);
+		list.handleInput(DOWN);
+		list.handleInput(DOWN); // now on "third" (bottom)
+		list.handleInput(DOWN); // wraps to "first"
+		list.handleInput(ENTER);
+		expect(attached).toEqual(["first"]);
+	});
+
 	it("esc and q both quit", () => {
 		let quit = 0;
 		const mk = () =>
