@@ -18,6 +18,7 @@ import { runDoctor } from "./cli/doctor.js";
 import { handleExecCommand } from "./cli/exec.js";
 import { processFileArguments } from "./cli/file-processor.js";
 import { handleGoalCommand } from "./cli/goal-cli.js";
+import { handleHistoryCommand } from "./cli/history.js";
 import { buildInitialMessage } from "./cli/initial-message.js";
 import { handleListCommand } from "./cli/list.js";
 import { listModels } from "./cli/list-models.js";
@@ -603,6 +604,9 @@ export async function main(args: string[]) {
 		return;
 	}
 	if (await handleAgentsCommand(args)) {
+		return;
+	}
+	if (await handleHistoryCommand(args)) {
 		return;
 	}
 	if (await handleWorkerCommand(args)) {
