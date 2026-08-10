@@ -137,7 +137,13 @@ export class AgentListComponent implements Component, Focusable {
 		const visible = this.visibleRows();
 		if (visible.length === 0) return;
 		const cur = Math.max(0, this.selectedIndex());
-		const next = Math.min(visible.length - 1, Math.max(0, cur + delta));
+		// Single-step up/down wraps around (top→bottom, bottom→top) so you can jump to
+		// the far end in one press. Page up/down still clamps — a 10-row jump shouldn't
+		// teleport across both ends.
+		const next =
+			Math.abs(delta) === 1
+				? (cur + delta + visible.length) % visible.length
+				: Math.min(visible.length - 1, Math.max(0, cur + delta));
 		if (visible[next].id !== this.selectedId) {
 			this.selectedId = visible[next].id;
 			this.emitSelection();
