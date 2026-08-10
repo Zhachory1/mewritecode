@@ -69,7 +69,7 @@ describe("WS9 daemon — boot + health", () => {
 		expect(h.ok).toBe(true);
 		expect(h.version).toBe("test");
 		expect(h.uptimeSec).toBeGreaterThanOrEqual(0);
-		expect(h.capabilities).toEqual({ runnerKind: "echo", approvalSupported: false });
+		expect(h.capabilities).toEqual({ runnerKind: "echo", approvalSupported: false, richEvents: false });
 	});
 
 	it("serves the local web UI shell", async () => {
@@ -924,6 +924,181 @@ describe("WS9 daemon — WebSocket streaming", () => {
 		} finally {
 			rmSync(insideCwd, { recursive: true, force: true });
 			rmSync(outsideCwd, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("WS9 daemon — rich events (5c)", () => {
+	async function bootRich(): Promise<{ handle: DaemonHandle; store: SessionStore; tmpDir: string }> {
+		const tmpDir = mkdtempSync(join(tmpdir(), "cave-daemon-rich-"));
+		const store = openStore(join(tmpDir, "sessions.db"));
+		const handle = await startDaemon({
+			host: "127.0.0.1",
+			port: 0,
+			store,
+			runnerFactory: (session, emit) => ({
+				async send(text) {
+					emit({ type: "state", sessionId: session.id, state: "running" });
+					emit({
+						type: "tool",
+						sessionId: session.id,
+						name: "read",
+						status: "start",
+						toolCallId: "tc-1",
+						args: { path: "a.txt" },
+					});
+					emit({
+						type: "tool",
+						sessionId: session.id,
+						name: "read",
+						status: "ok",
+						toolCallId: "tc-1",
+						result: { text: "contents" },
+						isError: false,
+					});
+					emit({
+						type: "tool",
+						sessionId: session.id,
+						name: "read",
+						status: "ok",
+						toolCallId: "tc-big",
+						result: { text: "x".repeat(20000) },
+						isError: false,
+					});
+					emit({
+						type: "usage",
+						sessionId: session.id,
+						tokens: 1234,
+						contextWindow: 200000,
+						percent: 0.6,
+						thinkingLevel: "medium",
+					});
+					emit({ type: "state", sessionId: session.id, state: "idle", stopReason: "stop" });
+					emit({ type: "done", sessionId: session.id });
+					return {
+						id: "m_user",
+						sessionId: session.id,
+						role: "user" as const,
+						text,
+						createdAt: new Date().toISOString(),
+					};
+				},
+				interrupt() {},
+				close() {},
+			}),
+			version: "test",
+			capabilities: { runnerKind: "agent", approvalSupported: true, richEvents: true },
+		});
+		return { handle, store, tmpDir };
+	}
+
+	it("advertises the richEvents capability", async () => {
+		const { handle, store, tmpDir } = await bootRich();
+		try {
+			const client = new CaveClient({ host: handle.host, port: handle.port });
+			const h = await client.health();
+			expect(h.capabilities.richEvents).toBe(true);
+		} finally {
+			await handle.close();
+			store.close();
+			rmSync(tmpDir, { recursive: true, force: true });
+		}
+	});
+
+	it("streams typed tool events, usage, and stopReason; truncates oversized results", async () => {
+		const { handle, store, tmpDir } = await bootRich();
+		try {
+			const client = new CaveClient({ host: handle.host, port: handle.port });
+			const s = await client.createSession({});
+			const attached = client.attach(s.id);
+			const tools: Array<Record<string, unknown>> = [];
+			let usage: Record<string, unknown> | undefined;
+			let idleStopReason: string | undefined;
+			const done = new Promise<void>((resolve) => {
+				attached.on("tool", (p) => tools.push(p as Record<string, unknown>));
+				attached.on("usage", (p) => {
+					usage = p as Record<string, unknown>;
+				});
+				attached.on("state", (p) => {
+					if ((p as { state?: string }).state === "idle")
+						idleStopReason = (p as { stopReason?: string }).stopReason;
+				});
+				attached.on("done", () => resolve());
+			});
+			await attached.ready();
+			await client.send(s.id, { text: "go" });
+			await done;
+
+			const start = tools.find((t) => t.status === "start");
+			expect(start).toMatchObject({ toolCallId: "tc-1", name: "read", args: { path: "a.txt" } });
+			const ok = tools.find((t) => t.status === "ok" && t.toolCallId === "tc-1");
+			expect(ok).toMatchObject({ toolCallId: "tc-1", isError: false, result: { text: "contents" } });
+			const big = tools.find((t) => t.toolCallId === "tc-big");
+			expect(big?.result).toEqual(expect.objectContaining({ truncated: true }));
+			expect(usage).toMatchObject({ tokens: 1234, contextWindow: 200000, thinkingLevel: "medium" });
+			expect(idleStopReason).toBe("stop");
+			attached.close();
+		} finally {
+			await handle.close();
+			store.close();
+			rmSync(tmpDir, { recursive: true, force: true });
+		}
+	});
+
+	it("routes set_thinking to the runner", async () => {
+		const tmpDir = mkdtempSync(join(tmpdir(), "cave-daemon-think-"));
+		const store = openStore(join(tmpDir, "sessions.db"));
+		let thinking: string | undefined;
+		const handle = await startDaemon({
+			host: "127.0.0.1",
+			port: 0,
+			store,
+			runnerFactory: (session, emit) => ({
+				async send(text) {
+					return {
+						id: "m_user",
+						sessionId: session.id,
+						role: "user" as const,
+						text,
+						createdAt: new Date().toISOString(),
+					};
+				},
+				interrupt() {},
+				close() {},
+				setThinking(level) {
+					thinking = level;
+					emit({
+						type: "usage",
+						sessionId: session.id,
+						tokens: null,
+						contextWindow: 200000,
+						percent: null,
+						thinkingLevel: level,
+					});
+				},
+			}),
+			version: "test",
+			capabilities: { runnerKind: "agent", approvalSupported: true, richEvents: true },
+		});
+		try {
+			const client = new CaveClient({ host: handle.host, port: handle.port });
+			const s = await client.createSession({});
+			const attached = client.attach(s.id);
+			// Realize the runner so the RPC has a target.
+			await client.send(s.id, { text: "hi" });
+			const gotUsage = new Promise<Record<string, unknown>>((resolve) => {
+				attached.on("usage", (p) => resolve(p as Record<string, unknown>));
+			});
+			await attached.ready();
+			await attached.setThinking("high");
+			const usage = await gotUsage;
+			expect(thinking).toBe("high");
+			expect(usage.thinkingLevel).toBe("high");
+			attached.close();
+		} finally {
+			await handle.close();
+			store.close();
+			rmSync(tmpDir, { recursive: true, force: true });
 		}
 	});
 });

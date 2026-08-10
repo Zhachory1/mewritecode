@@ -141,8 +141,23 @@ export interface AttachedSessionEvents {
 	close: () => void;
 	error: (err: Error) => void;
 	token: (params: { sessionId: string; text: string; role: string }) => void;
-	tool: (params: { sessionId: string; name: string; status: string }) => void;
-	state: (params: { sessionId: string; state: string }) => void;
+	tool: (params: {
+		sessionId: string;
+		name: string;
+		status: string;
+		toolCallId?: string;
+		args?: unknown;
+		result?: unknown;
+		isError?: boolean;
+	}) => void;
+	state: (params: { sessionId: string; state: string; stopReason?: string }) => void;
+	usage: (params: {
+		sessionId: string;
+		tokens: number | null;
+		contextWindow: number;
+		percent: number | null;
+		thinkingLevel: string;
+	}) => void;
 	done: (params: { sessionId: string }) => void;
 	file: (params: { sessionId: string; path: string; at: number }) => void;
 	approval: (params: { sessionId: string; approvalId: string; toolName: string; args: unknown; tier: string }) => void;
@@ -221,6 +236,11 @@ export class AttachedSession extends EventEmitter {
 	async interrupt(): Promise<{ ok: true }> {
 		await this.opened;
 		return this.rpc<{ ok: true }>("interrupt", {});
+	}
+
+	async setThinking(level: string): Promise<{ ok: true }> {
+		await this.opened;
+		return this.rpc<{ ok: true }>("set_thinking", { level });
 	}
 
 	close(): void {

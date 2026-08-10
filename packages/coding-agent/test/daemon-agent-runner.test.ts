@@ -1,3 +1,4 @@
+import type { ThinkingLevel } from "@zhachory1/mewrite-agent";
 import { describe, expect, it } from "vitest";
 import type { AgentSessionEvent, RequestApprovalFn } from "../src/core/agent-session.js";
 import { createAgentBackedRunnerFactory } from "../src/core/daemon/agent-runner.js";
@@ -27,6 +28,17 @@ class FakeSession {
 
 	setApprovalCallback(cb: RequestApprovalFn | undefined): void {
 		this.approvalCallback = cb;
+	}
+
+	thinkingLevel: ThinkingLevel = "medium";
+	lastThinking?: ThinkingLevel;
+	setThinkingLevel(level: ThinkingLevel): void {
+		this.thinkingLevel = level;
+		this.lastThinking = level;
+	}
+
+	getContextUsage(): { tokens: number | null; contextWindow: number; percent: number | null } | undefined {
+		return { tokens: 1000, contextWindow: 200000, percent: 0.5 };
 	}
 
 	async prompt(_text: string): Promise<void> {
@@ -149,8 +161,22 @@ describe("agent-backed daemon runner", () => {
 		expect(events).toContainEqual(expect.objectContaining({ type: "state", state: "running" }));
 		expect(events).toContainEqual(expect.objectContaining({ type: "token", text: "hel" }));
 		expect(events).toContainEqual(expect.objectContaining({ type: "token", text: "lo" }));
-		expect(events).toContainEqual(expect.objectContaining({ type: "tool", name: "read", status: "start" }));
-		expect(events).toContainEqual(expect.objectContaining({ type: "tool", name: "read", status: "ok" }));
+		expect(events).toContainEqual(
+			expect.objectContaining({ type: "tool", name: "read", status: "start", toolCallId: "tool-1", args: {} }),
+		);
+		expect(events).toContainEqual(
+			expect.objectContaining({
+				type: "tool",
+				name: "read",
+				status: "ok",
+				toolCallId: "tool-1",
+				isError: false,
+				result: {},
+			}),
+		);
+		expect(events).toContainEqual(
+			expect.objectContaining({ type: "usage", tokens: 1000, contextWindow: 200000, thinkingLevel: "medium" }),
+		);
 		expect(events).toContainEqual(
 			expect.objectContaining({
 				type: "message",
@@ -321,5 +347,63 @@ describe("agent-backed daemon runner", () => {
 
 		await runner.send("approve");
 		await expect.poll(() => session.decision).toBe("deny");
+	});
+
+	it("emits stopReason on the terminal state", async () => {
+		const events: { type?: string; state?: string; stopReason?: string }[] = [];
+		const emit: RunnerEmitter = (event) => {
+			events.push(event as { type?: string; state?: string; stopReason?: string });
+			return true;
+		};
+		const runner = createAgentBackedRunnerFactory({
+			createSession: async () => ({ session: new FakeSession() }),
+		})(sessionRecord, emit);
+
+		await runner.send("hello");
+		await expect.poll(() => events.some((e) => e.type === "done")).toBe(true);
+		const terminal = events.filter((e) => e.type === "state" && e.state === "idle").at(-1);
+		expect(terminal?.stopReason).toBe("stop");
+	});
+
+	it("maps a max_tokens stop reason", async () => {
+		class MaxTokensSession extends FakeSession {
+			override async prompt(_text: string): Promise<void> {
+				this.listener?.({
+					type: "agent_end",
+					messages: [{ role: "assistant", content: [], stopReason: "length", timestamp: Date.now() }],
+				} as unknown as AgentSessionEvent);
+			}
+		}
+		const events: { type?: string; state?: string; stopReason?: string }[] = [];
+		const runner = createAgentBackedRunnerFactory({
+			createSession: async () => ({ session: new MaxTokensSession() }),
+		})(sessionRecord, (event) => {
+			events.push(event as { type?: string; state?: string; stopReason?: string });
+			return true;
+		});
+
+		await runner.send("go");
+		await expect.poll(() => events.some((e) => e.type === "done")).toBe(true);
+		const terminal = events.filter((e) => e.type === "state" && e.state === "idle").at(-1);
+		expect(terminal?.stopReason).toBe("max_tokens");
+	});
+
+	it("set_thinking updates the session and echoes a usage event", async () => {
+		const events: { type?: string; thinkingLevel?: string }[] = [];
+		const session = new NeverEndingSession();
+		const runner = createAgentBackedRunnerFactory({
+			createSession: async () => ({ session }),
+		})(sessionRecord, (event) => {
+			events.push(event as { type?: string; thinkingLevel?: string });
+			return true;
+		});
+
+		await runner.send("first");
+		await expect.poll(() => typeof session.release).toBe("function");
+		runner.setThinking?.("high");
+		expect(session.lastThinking).toBe("high");
+		const usage = events.filter((e) => e.type === "usage").at(-1);
+		expect(usage?.thinkingLevel).toBe("high");
+		session.release();
 	});
 });
