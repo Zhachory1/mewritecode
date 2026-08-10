@@ -15,7 +15,7 @@
 
 ### Changed
 
-- `mewrite agents` is now a single full-screen status-grouped list instead of a sidebar + side-by-side focus pane. Agents are grouped under `WORKING` / `ERRORED` / `COMPLETED` headers (attention order), and selecting one opens it full-screen (`ctrl+w` / enter to focus, back to return) rather than in a split. This is Phase A of the agents view v2 redesign toward a local process-registry model ([#185](https://github.com/Zhachory1/mewritecode/issues/185)).
+- `mewrite agents` is now a single full-screen status-grouped list instead of a sidebar + side-by-side focus pane. On launch the screen is wiped and the Me Write Code wordmark is shown above the list. Agents are grouped under `WORKING` / `ERRORED` / `COMPLETED` headers (attention order), and selecting one opens it full-screen (`ctrl+w` / enter to focus, back to return) rather than in a split. This is Phase A of the agents view v2 redesign toward a local process-registry model ([#185](https://github.com/Zhachory1/mewritecode/issues/185)).
 - `mewrite agents` sidebar navigation now wraps: pressing up on the top agent selects the bottom one (and down on the bottom wraps to the top), so you can jump to the far end of the list in one keypress. Page up/down still clamp at the ends ([#152](https://github.com/Zhachory1/mewritecode/issues/152)).
 
 ### Removed

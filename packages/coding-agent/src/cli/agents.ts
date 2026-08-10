@@ -11,6 +11,7 @@ import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { type Component, Input, ProcessTerminal, setKeybindings, TUI, truncateToWidth } from "@zhachory1/mewrite-tui";
 import chalk from "chalk";
+import { BANNER_PRIMARY_WORDMARK, BANNER_TAGLINE } from "../config.js";
 import { CaveClient, DEFAULT_DAEMON_HOST, DEFAULT_DAEMON_PORT, type SessionRecord } from "../core/daemon/index.js";
 import { KeybindingsManager } from "../core/keybindings.js";
 import { type LiveRecord, listLiveInteractive } from "../core/live-registry.js";
@@ -375,8 +376,28 @@ async function runViewLoop(initialClient: CaveClient, parsed: AgentsArgs, canSpa
 
 type ListAction = { type: "quit" } | { type: "new" };
 
+/**
+ * Compact wordmark header for the agents view launch. Reuses the interactive
+ * banner's ASCII wordmark + tagline (config-driven, terminal-safe — no image
+ * component), rendered dim/accent above the agent list.
+ */
+const agentsHeader: Component = {
+	invalidate() {},
+	render(width: number): string[] {
+		const lines = BANNER_PRIMARY_WORDMARK.map((row) => (row ? theme.fg("accent", truncateToWidth(row, width)) : ""));
+		lines.push(theme.fg("dim", truncateToWidth(BANNER_TAGLINE, width)));
+		lines.push("");
+		return lines;
+	},
+};
+
+/** Rows the header occupies: wordmark + tagline + spacer. */
+const AGENTS_HEADER_ROWS = BANNER_PRIMARY_WORDMARK.length + 2;
+
 function runListView(client: CaveClient, canSpawn: boolean): Promise<ListAction> {
 	return new Promise<ListAction>((resolve) => {
+		// Full-screen wipe so the launch is clean (matches the spawn-prompt wipe below).
+		process.stdout.write("\x1b[2J\x1b[H\x1b[3J");
 		const ui = new TUI(new ProcessTerminal());
 		let done = false;
 		let timer: ReturnType<typeof setInterval> | null = null;
@@ -424,10 +445,13 @@ function runListView(client: CaveClient, canSpawn: boolean): Promise<ListAction>
 			loadTranscript: (row) => loadTranscript(row, client),
 			attach: (id) => client.attach(id),
 			client,
-			rows: () => process.stdout.rows || 24,
+			// Reserve space for the wordmark header above the list so the combined
+			// height doesn't overflow the terminal.
+			rows: () => Math.max(1, (process.stdout.rows || 24) - AGENTS_HEADER_ROWS),
 			sidebarSide: SettingsManager.create().getAgentsSidebarSide(),
 		});
 
+		ui.addChild(agentsHeader);
 		ui.addChild(view);
 		ui.setFocus(view);
 		ui.start();
