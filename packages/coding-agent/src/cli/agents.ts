@@ -9,21 +9,14 @@
 import { spawn } from "node:child_process";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import {
-	type Component,
-	Input,
-	ProcessTerminal,
-	setKeybindings,
-	TUI,
-	truncateToWidth,
-	visibleWidth,
-} from "@zhachory1/mewrite-tui";
+import { type Component, Input, ProcessTerminal, setKeybindings, TUI, truncateToWidth } from "@zhachory1/mewrite-tui";
 import chalk from "chalk";
 import { CaveClient, DEFAULT_DAEMON_HOST, DEFAULT_DAEMON_PORT, type SessionRecord } from "../core/daemon/index.js";
 import { KeybindingsManager } from "../core/keybindings.js";
 import { type LiveRecord, listLiveInteractive } from "../core/live-registry.js";
 import { getDefaultSessionDir, SessionManager } from "../core/session-manager.js";
 import { SettingsManager } from "../core/settings-manager.js";
+import { PENCIL_LOGO, renderPencilLogo } from "../modes/interactive/components/banner.js";
 import { showConfirmPrompt } from "../modes/interactive/components/confirm-prompt.js";
 import type { TranscriptLine } from "../modes/interactive/components/transcript-view.js";
 import { TwoPaneView } from "../modes/interactive/components/two-pane-view.js";
@@ -383,52 +376,14 @@ async function runViewLoop(initialClient: CaveClient, parsed: AgentsArgs, canSpa
 
 type ListAction = { type: "quit" } | { type: "new" };
 
-/** Pencil logo (code shaft). Terminal-safe box-drawing; no image component. */
-const PENCIL_LOGO: readonly string[] = [
-	" (░▒░)",
-	" │▒▒▒│",
-	"╭┴───┴╮",
-	"│ < > │",
-	"│ { } │",
-	"│ ( ) │",
-	"│ / / │",
-	"│ [ ] │",
-	"│ ░ ░ │",
-	"╰┬───┬╯",
-	" \\░░░/",
-	"  \\█/",
-	"   ▼",
-];
-
-/** Brand text shown to the right of the pencil, vertically centered. */
-const BRAND_TITLE = "Me Write Code";
-const BRAND_TAGLINES = ["me write less,", "me do more"];
-
 /**
- * Agents view launch header: the pencil logo on the left with the brand text
- * vertically centered to its right. Terminal-safe (box-drawing, no image).
+ * Agents view launch header: the shared pencil logo (brand text to its right),
+ * plus a trailing spacer above the list.
  */
 const agentsHeader: Component = {
 	invalidate() {},
 	render(width: number): string[] {
-		const logoW = Math.max(...PENCIL_LOGO.map((r) => visibleWidth(r)));
-		const gap = "   ";
-		// Center the 3-line text block against the 13-line logo.
-		const textStart = Math.floor((PENCIL_LOGO.length - 3) / 2);
-		const textRows = [
-			theme.bold(theme.fg("accent", BRAND_TITLE)),
-			theme.fg("dim", BRAND_TAGLINES[0]),
-			theme.fg("dim", BRAND_TAGLINES[1]),
-		];
-		const lines = PENCIL_LOGO.map((row, i) => {
-			const pad = " ".repeat(Math.max(0, logoW - visibleWidth(row)));
-			const logo = theme.fg("accent", row) + pad;
-			const textIdx = i - textStart;
-			const text = textIdx >= 0 && textIdx < textRows.length ? gap + textRows[textIdx] : "";
-			return truncateToWidth(logo + text, width);
-		});
-		lines.push("");
-		return lines;
+		return [...renderPencilLogo(width), ""];
 	},
 };
 

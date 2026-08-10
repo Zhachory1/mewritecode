@@ -21,14 +21,15 @@ vi.mock("@zhachory1/mewrite-tui", () => {
 		Container,
 		Image,
 		truncateToWidth: (text: string) => text,
+		visibleWidth: (text: string) => text.replace(new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g"), "").length,
 	};
 });
 
 describe("BannerComponent", () => {
-	test("re-renders wordmark colors from the current theme", async () => {
+	test("re-renders the pencil-logo brand colors from the current theme", async () => {
 		const { BannerComponent } = await import("../src/modes/interactive/components/banner.js");
 		const { initTheme } = await import("../src/modes/interactive/theme/theme.js");
-		const banner = new BannerComponent({ version: "0.0.0", showSecondaryWordmark: true });
+		const banner = new BannerComponent({ version: "0.0.0" });
 
 		initTheme("dark");
 		const dark = banner.render(120).join("\n");
@@ -37,7 +38,7 @@ describe("BannerComponent", () => {
 		const light = banner.render(120).join("\n");
 
 		expect(dark).not.toBe(light);
-		expect(dark).toContain("Any Model");
-		expect(light).toContain("Any Model");
+		expect(dark).toContain("Me Write Code");
+		expect(light).toContain("Me Write Code");
 	});
 });
