@@ -7,10 +7,12 @@
  */
 
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { type Component, Input, ProcessTerminal, setKeybindings, TUI, truncateToWidth } from "@zhachory1/mewrite-tui";
 import chalk from "chalk";
+import { APP_NAME } from "../config.js";
 import { CaveClient, DEFAULT_DAEMON_HOST, DEFAULT_DAEMON_PORT, type SessionRecord } from "../core/daemon/index.js";
 import { KeybindingsManager } from "../core/keybindings.js";
 import { type LiveRecord, listLiveInteractive } from "../core/live-registry.js";
@@ -270,6 +272,38 @@ export async function ensureDaemon(
 }
 
 /**
+ * Resume an interactive `[i]` session as a real interactive `mewrite` process
+ * (replace-and-return): re-exec `mewrite --session <jsonl>` with the terminal
+ * attached, wait for it to exit, then the caller rebuilds the list. The list TUI
+ * is already stopped by the time this runs. Reuses the full interactive UI rather
+ * than reimplementing it in a pane.
+ */
+async function resumeInteractive(row: SessionRecord): Promise<void> {
+	const path = await findInteractiveTranscript(row.cwd, row.id);
+	if (!path) {
+		console.error(chalk.red(`Could not find a session file to resume for ${row.id.slice(0, 8)}.`));
+		return;
+	}
+	// Clear before handing the screen to the interactive session.
+	process.stdout.write("\x1b[2J\x1b[H\x1b[3J");
+	// Re-exec this same binary in --session mode. Mirrors resolveCaveInvocation in
+	// task.ts: prefer the current script under the node/bun runtime.
+	const script = process.argv[1];
+	const command = script && existsSync(script) ? process.execPath : APP_NAME;
+	const args = script && existsSync(script) ? [script, "--session", path] : ["--session", path];
+	await new Promise<void>((resolve) => {
+		const child = spawn(command, args, { cwd: row.cwd, stdio: "inherit" });
+		child.on("error", (err) => {
+			console.error(chalk.red(`Failed to resume session: ${err instanceof Error ? err.message : String(err)}`));
+			resolve();
+		});
+		child.on("close", () => resolve());
+	});
+	// Clear the interactive session's output before the list is rebuilt.
+	process.stdout.write("\x1b[2J\x1b[H\x1b[3J");
+}
+
+/**
  * Spawn a new agent in the given cwd with a starting task. Returns the new session
  * id, or null on cancel / failure (a failure is surfaced to stderr by the caller).
  */
@@ -340,6 +374,10 @@ async function runViewLoop(initialClient: CaveClient, parsed: AgentsArgs, canSpa
 	for (;;) {
 		const action = await runListView(client, canSpawn);
 		if (action.type === "quit") return 0;
+		if (action.type === "resume") {
+			await resumeInteractive(action.row);
+			continue;
+		}
 		if (action.type === "new") {
 			process.stdout.write("\x1b[2J\x1b[H\x1b[3J");
 			const task = await runNewAgentPrompt(process.cwd());
@@ -374,7 +412,7 @@ async function runViewLoop(initialClient: CaveClient, parsed: AgentsArgs, canSpa
 	}
 }
 
-type ListAction = { type: "quit" } | { type: "new" };
+type ListAction = { type: "quit" } | { type: "new" } | { type: "resume"; row: SessionRecord };
 
 /**
  * Agents view launch header: the shared pencil logo (brand text to its right),
@@ -437,6 +475,7 @@ function runListView(client: CaveClient, canSpawn: boolean): Promise<ListAction>
 		const view = new TwoPaneView(() => ui.requestRender(), {
 			onQuit: () => finish({ type: "quit" }),
 			onNew: canSpawn ? () => finish({ type: "new" }) : undefined,
+			onResume: (row) => finish({ type: "resume", row }),
 			onDelete: (row) => void confirmDelete(row),
 			loadTranscript: (row) => loadTranscript(row, client),
 			attach: (id) => client.attach(id),

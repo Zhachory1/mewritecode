@@ -28,6 +28,12 @@ export interface TwoPaneCallbacks {
 	onQuit: () => void;
 	onNew?: () => void;
 	onDelete: (row: SessionRecord) => void;
+	/**
+	 * Resume an interactive `[i]` row as a real interactive session (replace-and-
+	 * return). When set, selecting an interactive row calls this instead of opening
+	 * the read-only transcript pane. Hosted rows still open the live focus pane.
+	 */
+	onResume?: (row: SessionRecord) => void;
 	/** Load a session's transcript for the read-only focus pane (interactive rows). */
 	loadTranscript: (row: SessionRecord) => Promise<TranscriptLine[]>;
 	/** Open a live WS attach for a hosted session (drives the live focus pane). */
@@ -56,8 +62,12 @@ export class TwoPaneView implements Component, Focusable {
 	) {
 		this.sidebar = new AgentListComponent(
 			requestRender,
-			// Enter on a row focuses the pane (hosted rows are interactive there).
-			() => this.setActive("focus"),
+			// Enter on a row: interactive rows resume as a real session (replace-and-
+			// return) when onResume is wired; hosted rows focus the live pane.
+			(row) => {
+				if (row.kind === "interactive" && cb.onResume) cb.onResume(row);
+				else this.setActive("focus");
+			},
 			cb.onQuit,
 			cb.onNew,
 			(row) => cb.onDelete(row),
