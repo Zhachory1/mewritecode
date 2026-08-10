@@ -15,6 +15,7 @@
 
 ### Changed
 
+- `mewrite agents` focus pane now supports two steering controls from interactive mode: `shift+tab` (`app.thinking.cycle`) cycles the remote session's thinking level via the daemon `set_thinking` RPC — the status-line thinking level updates on the echoed `usage` — and `ctrl+o` (`app.tools.expand`) toggles tool activity between the compact one-liner and an expanded card showing the tool's args and result/error. Tool start/end are correlated into a single card by tool-call id. Both reuse the existing configurable keybindings ([#175](https://github.com/Zhachory1/mewritecode/issues/175)).
 - `mewrite agents` sidebar navigation now wraps: pressing up on the top agent selects the bottom one (and down on the bottom wraps to the top), so you can jump to the far end of the list in one keypress. Page up/down still clamp at the ends ([#152](https://github.com/Zhachory1/mewritecode/issues/152)).
 
 ### Removed
