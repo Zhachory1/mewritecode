@@ -48,6 +48,7 @@ function mk(cb: {
 	loadTranscript: (row: SessionRecord) => Promise<TranscriptLine[]>;
 	sidebarSide?: "left" | "right";
 	transcript?: TranscriptLine[];
+	onResume?: (row: SessionRecord) => void;
 }) {
 	const client = {
 		getTranscript: async () => ({
@@ -64,6 +65,7 @@ function mk(cb: {
 	return new TwoPaneView(() => {}, {
 		onQuit: () => {},
 		onDelete: () => {},
+		onResume: cb.onResume,
 		loadTranscript: cb.loadTranscript,
 		attach: () => stubAttach(),
 		client,
@@ -120,6 +122,21 @@ describe("#158 TwoPaneView", () => {
 		view.handleInput("\r"); // enter focuses the focus pane
 		out = view.render(100).map(stripAnsi).join("\n");
 		expect(out).toContain("▸ Focus  (ctrl+w)");
+	});
+
+	it("enter on an interactive [i] row resumes (does not open the focus pane)", async () => {
+		const resumed: string[] = [];
+		const view = mk({
+			loadTranscript: async () => [{ role: "assistant", text: "x" }],
+			onResume: (row) => resumed.push(row.id),
+		});
+		await seed(view, [rec("live1", "idle", "interactive")]);
+		view.handleInput("\r"); // enter on the interactive row
+		expect(resumed).toEqual(["live1"]);
+		// It did NOT switch to the focus pane.
+		const out = view.render(100).map(stripAnsi).join("\n");
+		expect(out).toContain("▸ Your agents");
+		expect(out).not.toContain("▸ Focus  (ctrl+w)");
 	});
 
 	it("jump-to-attention focuses the errored session in the focus pane", async () => {
