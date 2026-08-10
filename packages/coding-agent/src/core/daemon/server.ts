@@ -153,6 +153,11 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 
 	const runners = new Map<string, AgentRunner>();
 	const clients = new Map<string, Set<AttachedClient>>();
+	// Set at the top of close(). An un-awaited runner turn (e.g. the echo runner's
+	// async streamReply) can emit after the store is closed, throwing "database
+	// connection is not open". Once closed, the emitter drops events instead of
+	// touching the store or dead sockets.
+	let closed = false;
 	// Accumulated text of the current, not-yet-persisted assistant turn per session.
 	// A client that attaches mid-stream gets this replayed so it doesn't miss the
 	// portion already emitted before it connected. Cleared when the turn completes
@@ -161,6 +166,7 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 
 	function emitForSession(sessionId: string): RunnerEmitter {
 		return (event) => {
+			if (closed) return false;
 			if (event.type !== "token") {
 				const clientCount = clients.get(sessionId)?.size ?? 0;
 				dlog("daemon", `emit.${event.type}`, {
@@ -637,6 +643,7 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
 		port: (httpServer.address() as { port: number } | null)?.port ?? port,
 		server: httpServer,
 		async close() {
+			closed = true;
 			unsubscribeFileMutations();
 			for (const r of runners.values()) {
 				try {
