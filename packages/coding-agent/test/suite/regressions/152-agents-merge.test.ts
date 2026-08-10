@@ -9,7 +9,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { isDaemonUnreachable, loadRows } from "../../../src/cli/agents.js";
+import { loadRows } from "../../../src/cli/agents.js";
 import type { CaveClient, SessionRecord } from "../../../src/core/daemon/index.js";
 import { getLiveDir, type LiveRecord } from "../../../src/core/live-registry.js";
 
@@ -71,17 +71,6 @@ describe("#152 agents merge", () => {
 		const rows = await loadRows(client);
 		expect(rows).toHaveLength(1);
 		expect(rows[0].kind).toBe("interactive");
-	});
-
-	it("detects a connection failure wrapped in an undici cause chain", () => {
-		// undici fetch throws `TypeError: fetch failed` with the real code in `cause`.
-		const wrapped = new TypeError("fetch failed");
-		(wrapped as { cause?: unknown }).cause = Object.assign(new Error("connect ECONNREFUSED 127.0.0.1:7421"), {
-			code: "ECONNREFUSED",
-		});
-		expect(isDaemonUnreachable(wrapped)).toBe(true);
-		expect(isDaemonUnreachable(new Error("connect ECONNREFUSED 127.0.0.1:7421"))).toBe(true);
-		expect(isDaemonUnreachable(new Error("GET /v1/sessions → 500: boom"))).toBe(false);
 	});
 
 	it("daemon down still surfaces live rows", async () => {

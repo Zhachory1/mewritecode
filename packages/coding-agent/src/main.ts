@@ -1021,12 +1021,20 @@ export async function main(args: string[]) {
 		}
 	} else {
 		printTimings();
+		// An agent spawned by `mewrite agents` runs headless (print mode) but must be
+		// visible in the agents list and resumable, so publish liveness here too. Gated
+		// on the spawn marker so ordinary `mewrite -p` / CI runs stay out of the registry.
+		const disposeLive =
+			process.env.MEWRITE_AGENT_SPAWN && !parsed.noSession
+				? attachLiveRegistry(session, sessionManager.getCwd())
+				: undefined;
 		const exitCode = await runPrintMode(runtime, {
 			mode: toPrintOutputMode(appMode),
 			messages: parsed.messages,
 			initialMessage,
 			initialImages,
 		});
+		disposeLive?.();
 		stopThemeWatcher();
 		restoreStdout();
 		if (exitCode !== 0) {
