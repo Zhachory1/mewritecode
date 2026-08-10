@@ -1,131 +1,44 @@
 /**
- * #158 phase 4 — spawn agents from `mewrite agents` + auto-start the daemon.
+ * #185 — agents view v2: spawn agents as independent detached processes.
  *
- * Covers ensureDaemon (health-ok fast path, auto-start + health-poll, spawn-timeout
- * honest failure, race where a peer binds during our poll, non-loopback no-spawn)
- * and spawnAgent (createSession(cwd)+send, empty-task no-op).
+ * The daemon-based spawn + ensureDaemon auto-start were retired (agents view v2,
+ * Phase B2). spawnAgent now launches a detached `mewrite -p` process; here we
+ * cover the no-op-on-empty-task contract and that a real task launches (returns
+ * true and writes a log file under the agent dir) without throwing.
  */
 
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
 import { setKeybindings } from "@zhachory1/mewrite-tui";
-import { beforeAll, describe, expect, it, vi } from "vitest";
-import { type AgentsArgs, type DaemonSpawner, ensureDaemon, spawnAgent } from "../../../src/cli/agents.js";
-import type { CaveClient, Health, MessageRecord, SessionRecord } from "../../../src/core/daemon/index.js";
+import { beforeAll, describe, expect, it } from "vitest";
+import { spawnAgent } from "../../../src/cli/agents.js";
+import { getAgentDir } from "../../../src/config.js";
 import { KeybindingsManager } from "../../../src/core/keybindings.js";
 
-const LOOPBACK: AgentsArgs = { host: "127.0.0.1", port: 7421 };
-
-const okHealth: Health = {
-	ok: true,
-	version: "test",
-	uptimeSec: 1,
-	capabilities: { runnerKind: "agent", approvalSupported: true },
-};
-
-/** A client whose health() follows a scripted sequence of ok/throw. */
-function scriptedClient(healthResults: Array<"ok" | "down">): CaveClient {
-	let i = 0;
-	return {
-		health: vi.fn(async () => {
-			const r = healthResults[Math.min(i, healthResults.length - 1)];
-			i++;
-			if (r === "down") {
-				const err = new Error("fetch failed");
-				(err as { cause?: unknown }).cause = Object.assign(new Error("ECONNREFUSED"), { code: "ECONNREFUSED" });
-				throw err;
-			}
-			return okHealth;
-		}),
-	} as unknown as CaveClient;
-}
-
-function neverSpawner(): DaemonSpawner {
-	return vi.fn(() => ({ getStderr: () => "", cleanup: () => {} })) as unknown as DaemonSpawner;
-}
-
-describe("#158 ensureDaemon", () => {
-	it("returns the client without spawning when the daemon is already healthy", async () => {
-		const client = scriptedClient(["ok"]);
-		const spawner = neverSpawner();
-		const res = await ensureDaemon(LOOPBACK, client, spawner, 500);
-		expect("client" in res).toBe(true);
-		expect(spawner).not.toHaveBeenCalled();
-	});
-
-	it("auto-starts and returns the client once health comes up", async () => {
-		// down (initial probe), down (first poll), ok (second poll)
-		const client = scriptedClient(["down", "down", "ok"]);
-		const cleanup = vi.fn();
-		const spawner = vi.fn(() => ({ getStderr: () => "", cleanup })) as unknown as DaemonSpawner;
-		const res = await ensureDaemon(LOOPBACK, client, spawner, 2000);
-		expect("client" in res).toBe(true);
-		expect(spawner).toHaveBeenCalledOnce();
-		expect(cleanup).toHaveBeenCalledOnce();
-	});
-
-	it("fails honestly with serve stderr when health never comes up", async () => {
-		const client = scriptedClient(["down"]); // always down
-		const spawner = vi.fn(() => ({
-			getStderr: () => "Error: failed to bind 127.0.0.1:7421: EADDRINUSE",
-			cleanup: () => {},
-		})) as unknown as DaemonSpawner;
-		const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-		const res = await ensureDaemon(LOOPBACK, client, spawner, 300);
-		const printed = errSpy.mock.calls.flat().join(" ");
-		errSpy.mockRestore();
-		expect(res).toEqual({ code: 2 });
-		expect(printed).toContain("EADDRINUSE");
-	});
-
-	it("treats a peer that binds during our poll as success (race)", async () => {
-		// down (probe), down (poll until timeout), then ok on the post-timeout recheck
-		const client = scriptedClient(["down", "down", "ok"]);
-		const cleanup = vi.fn();
-		const spawner = vi.fn(() => ({ getStderr: () => "", cleanup })) as unknown as DaemonSpawner;
-		// Tiny timeout so we hit the post-timeout recheck path.
-		const res = await ensureDaemon(LOOPBACK, client, spawner, 0);
-		expect("client" in res).toBe(true);
-		expect(cleanup).toHaveBeenCalled();
-	});
-
-	it("does not auto-start on a non-loopback host", async () => {
-		const client = scriptedClient(["down"]);
-		const spawner = neverSpawner();
-		const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-		const res = await ensureDaemon({ host: "10.0.0.5", port: 7421 }, client, spawner, 300);
-		errSpy.mockRestore();
-		expect(res).toEqual({ code: 2 });
-		expect(spawner).not.toHaveBeenCalled();
-	});
-});
-
-describe("#158 spawnAgent", () => {
+describe("#185 spawnAgent (detached process)", () => {
 	beforeAll(() => setKeybindings(KeybindingsManager.create()));
 
-	it("creates a session in the given cwd and sends the task", async () => {
-		const created: SessionRecord = {
-			id: "new-1",
-			cwd: "/tmp/proj",
-			state: "running",
-			createdAt: "",
-			updatedAt: "",
-		};
-		const createSession = vi.fn(async () => created);
-		const send = vi.fn(async () => ({ id: "m1" }) as MessageRecord);
-		const client = { createSession, send } as unknown as Pick<CaveClient, "createSession" | "send">;
-
-		const res = await spawnAgent(client, "/tmp/proj", "  do the thing  ");
-		expect(res).toEqual(created);
-		expect(createSession).toHaveBeenCalledWith({ cwd: "/tmp/proj" });
-		expect(send).toHaveBeenCalledWith("new-1", { text: "do the thing" });
+	it("no-ops on an empty task (returns false, launches nothing)", () => {
+		expect(spawnAgent("/tmp", "   ")).toBe(false);
 	});
 
-	it("no-ops on an empty task (does not create or send)", async () => {
-		const createSession = vi.fn();
-		const send = vi.fn();
-		const client = { createSession, send } as unknown as Pick<CaveClient, "createSession" | "send">;
-		const res = await spawnAgent(client, "/tmp/proj", "   ");
-		expect(res).toBeNull();
-		expect(createSession).not.toHaveBeenCalled();
-		expect(send).not.toHaveBeenCalled();
+	it("launches a detached agent for a real task and writes a log file", () => {
+		const logDir = join(getAgentDir(), "agent-logs");
+		const before = new Set(safeReaddir(logDir));
+		// Spawn in /tmp so the child (if it starts) does no work in the repo. The child
+		// is detached + unref'd; it may exit immediately (no key) but must not throw here.
+		const launched = spawnAgent("/tmp", "noop task for test");
+		expect(launched).toBe(true);
+		const after = safeReaddir(logDir);
+		// A new per-run log file was created for the spawned agent's output.
+		expect(after.some((f) => !before.has(f) && f.endsWith(".log"))).toBe(true);
 	});
 });
+
+function safeReaddir(dir: string): string[] {
+	try {
+		return readdirSync(dir);
+	} catch {
+		return [];
+	}
+}
