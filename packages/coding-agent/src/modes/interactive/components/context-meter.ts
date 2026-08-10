@@ -24,6 +24,28 @@ function severity(pct: number): "dim" | "success" | "warning" | "error" {
 }
 
 /**
+ * Render a styled context bar of the form `███░░░ 20% 204k` for a given number of
+ * bar cells. Pure: takes raw usage values (no AgentSession), so both the local
+ * interactive meter and the remote agents focus pane can share one renderer.
+ * `percent === null` (unknown, e.g. post-compaction) renders an empty bar with `?`.
+ */
+export function renderContextBar(usage: { tokens: number | null; percent: number | null }, cells: number): string {
+	const pctValue = usage.percent ?? 0;
+	const tokens = usage.tokens ?? 0;
+	const colorKey = severity(pctValue);
+	const barCells = Math.max(1, cells);
+	const filledCells = Math.min(barCells, Math.max(0, Math.round((pctValue / 100) * barCells)));
+	const bar = BAR_FILLED.repeat(filledCells);
+	const empty = BAR_EMPTY.repeat(Math.max(0, barCells - filledCells));
+	const pctText = usage.percent !== null ? `${pctValue.toFixed(0)}%` : "?";
+	const suffix = ` ${pctText} ${formatTokens(tokens)}`;
+	const styledBar = theme.fg(colorKey, bar);
+	const styledEmpty = theme.fg("dim", empty);
+	const styledSuffix = theme.fg(colorKey === "dim" ? "dim" : colorKey, suffix);
+	return `${styledBar}${styledEmpty}${styledSuffix}`;
+}
+
+/**
  * Single-line context meter rendered just under the editor.
  *
  * Reads context usage fresh from the session on each render — there is no
@@ -48,27 +70,12 @@ export class ContextMeterComponent implements Component {
 		const contextWindow = usage?.contextWindow ?? this.session.state.model?.contextWindow ?? 0;
 		if (contextWindow <= 0) return [];
 
-		const pctValue = usage?.percent ?? 0;
-		const tokens = usage?.tokens ?? 0;
-		const colorKey = severity(pctValue);
-
-		const pctText = usage?.percent !== null && usage?.percent !== undefined ? `${pctValue.toFixed(0)}%` : "?";
-		const suffixRaw = ` ${pctText} ${formatTokens(tokens)}`;
-		const suffixWidth = visibleWidth(suffixRaw);
-
+		const pctText = usage?.percent !== null && usage?.percent !== undefined ? `${usage.percent.toFixed(0)}%` : "?";
+		const suffixWidth = visibleWidth(` ${pctText} ${formatTokens(usage?.tokens ?? 0)}`);
 		const available = width - SIDE_PADDING * 2 - suffixWidth;
 		const barCells = Math.min(MAX_BAR_CELLS, Math.max(MIN_BAR_CELLS, available));
-		const filledCells = Math.min(barCells, Math.max(0, Math.round((pctValue / 100) * barCells)));
-
-		const bar = BAR_FILLED.repeat(filledCells);
-		const empty = BAR_EMPTY.repeat(Math.max(0, barCells - filledCells));
-
-		const styledBar = theme.fg(colorKey, bar);
-		const styledEmpty = theme.fg("dim", empty);
-		const styledSuffix = theme.fg(colorKey === "dim" ? "dim" : colorKey, suffixRaw);
 		const padding = " ".repeat(SIDE_PADDING);
-
-		const line = `${padding}${styledBar}${styledEmpty}${styledSuffix}`;
+		const line = `${padding}${renderContextBar({ tokens: usage?.tokens ?? null, percent: usage?.percent ?? null }, barCells)}`;
 		return [truncateToWidth(line, width, "")];
 	}
 }

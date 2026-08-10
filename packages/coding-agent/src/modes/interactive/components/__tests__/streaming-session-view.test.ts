@@ -67,23 +67,26 @@ describe("StreamingSessionView status line — context meter (#173)", () => {
 		view.dispose();
 	});
 
-	it("renders percent/tokens + thinking level after a usage event", async () => {
+	it("renders a usage bar (percent + used tokens) + thinking level after a usage event", async () => {
 		const { view, session } = makeView("anthropic/claude");
 		await tick();
 		session.fire("usage", {
 			sessionId: "s1",
-			tokens: 100_000,
+			tokens: 40_000,
 			contextWindow: 200_000,
-			percent: 62,
+			percent: 20,
 			thinkingLevel: "high",
 		});
 		const status = statusLine(view);
-		expect(status).toContain("62%/200k");
+		// Bar: ~20% of 15 cells filled, then percent + used-token count.
+		expect(status).toContain("█");
+		expect(status).toContain("░");
+		expect(status).toContain("20% 40k");
 		expect(status).toContain("anthropic/claude · high");
 		view.dispose();
 	});
 
-	it("renders '?' percent when tokens are unknown (post-compaction)", async () => {
+	it("renders '?' percent (empty bar) when tokens are unknown (post-compaction)", async () => {
 		const { view, session } = makeView("m");
 		await tick();
 		session.fire("usage", {
@@ -94,7 +97,7 @@ describe("StreamingSessionView status line — context meter (#173)", () => {
 			thinkingLevel: "off",
 		});
 		const status = statusLine(view);
-		expect(status).toContain("?/200k");
+		expect(status).toContain("? 0");
 		// thinking "off" is not appended.
 		expect(status).not.toContain("· off");
 		view.dispose();

@@ -22,12 +22,15 @@ import {
 import { dlog } from "../../../core/daemon/debug-log.js";
 import type { AttachedSession, CaveClient } from "../../../core/daemon/index.js";
 import { getMarkdownTheme, theme } from "../theme/theme.js";
-import { formatTokens } from "./context-meter.js";
+import { renderContextBar } from "./context-meter.js";
 import { keyHint } from "./keybinding-hints.js";
 import { UserMessageComponent } from "./user-message.js";
 
 /** Header + status + input chrome rows that don't scroll with the transcript. */
 const CHROME_ROWS = 5;
+
+/** Bar cells for the context-usage meter in the focus-pane status line. */
+const STATUS_BAR_CELLS = 15;
 
 type Block =
 	| { kind: "user"; comp: UserMessageComponent; raw: string }
@@ -291,18 +294,17 @@ export class StreamingSessionView implements Component, Focusable {
 	}
 
 	/**
-	 * Right side of the status line: context meter + thinking level + model, mirroring
-	 * the interactive footer's `{percent}%/{tokens}` + `model · thinking` layout. Uses
-	 * the latest daemon `usage` notification; falls back to just the model id until the
-	 * first usage event (or if the session never streams one).
+	 * Right side of the status line: a context-usage bar + thinking level + model,
+	 * mirroring the interactive context meter (`███░░░ 20% 204k`). Uses the latest
+	 * daemon `usage` notification; falls back to just the model id until the first
+	 * usage event (or if the session never streams one).
 	 */
 	private statusRight(): string {
 		const model = this.deps.model ?? "";
 		const u = this.usage;
 		if (!u || u.contextWindow <= 0) return model;
-		const percent = u.percent !== null ? `${u.percent.toFixed(0)}%` : "?";
-		const context = `${percent}/${formatTokens(u.contextWindow)}`;
 		const modelWithThinking = u.thinkingLevel && u.thinkingLevel !== "off" ? `${model} · ${u.thinkingLevel}` : model;
-		return modelWithThinking ? `${context}  ${modelWithThinking}` : context;
+		const bar = renderContextBar({ tokens: u.tokens, percent: u.percent }, STATUS_BAR_CELLS);
+		return modelWithThinking ? `${bar}  ${modelWithThinking}` : bar;
 	}
 }
