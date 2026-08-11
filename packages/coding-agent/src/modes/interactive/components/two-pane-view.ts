@@ -34,6 +34,10 @@ export interface TwoPaneCallbacks {
 	 * the read-only transcript pane. Hosted rows still open the live focus pane.
 	 */
 	onResume?: (row: SessionRecord) => void;
+	/** Steer (redirect) a running monitored agent: prompt for text and deliver it. */
+	onSteer?: (row: SessionRecord) => void;
+	/** Interrupt (stop) a running monitored agent. */
+	onInterrupt?: (row: SessionRecord) => void;
 	/** Load a session's transcript for the read-only focus pane (interactive rows). */
 	loadTranscript: (row: SessionRecord) => Promise<TranscriptLine[]>;
 	/** Open a live WS attach for a hosted session (drives the live focus pane). */
@@ -123,8 +127,19 @@ export class TwoPaneView implements Component, Focusable {
 		const monitorHint = row.kind === "interactive" && row.state === "running" ? "  — live monitor (read-only)" : "";
 		const title = `${tag}${name}  ${row.cwd}${monitorHint}`;
 		if (row.kind === "interactive") {
-			// Terminal sessions can't be driven remotely; show them read-only.
-			const view = new TranscriptView(title, this.requestRender, () => this.setActive("sidebar"), this.cb.rows);
+			// Terminal sessions can't be driven remotely; show them read-only. A running
+			// agent additionally gets steer/interrupt controls (the runaway-catcher).
+			const controls =
+				row.state === "running" && this.cb.onSteer && this.cb.onInterrupt
+					? { onSteer: () => this.cb.onSteer?.(row), onInterrupt: () => this.cb.onInterrupt?.(row) }
+					: undefined;
+			const view = new TranscriptView(
+				title,
+				this.requestRender,
+				() => this.setActive("sidebar"),
+				this.cb.rows,
+				controls,
+			);
 			this.focus = view;
 			void this.refreshFocus();
 		} else {

@@ -21,6 +21,8 @@ export interface SessionRecord {
 	worker?: string;
 	/** Set at merge time by `mewrite agents`; never persisted. */
 	kind?: "hosted" | "interactive";
+	/** OS pid for a live interactive session (from the liveness registry); never persisted. */
+	pid?: number;
 }
 
 export interface MessageRecord {
