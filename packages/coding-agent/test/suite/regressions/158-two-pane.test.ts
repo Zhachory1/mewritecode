@@ -124,19 +124,35 @@ describe("#158 TwoPaneView", () => {
 		expect(out).toContain("▸ Focus  (ctrl+w)");
 	});
 
-	it("enter on an interactive [i] row resumes (does not open the focus pane)", async () => {
+	it("enter on an idle interactive [i] row resumes (does not open the focus pane)", async () => {
 		const resumed: string[] = [];
 		const view = mk({
 			loadTranscript: async () => [{ role: "assistant", text: "x" }],
 			onResume: (row) => resumed.push(row.id),
 		});
 		await seed(view, [rec("live1", "idle", "interactive")]);
-		view.handleInput("\r"); // enter on the interactive row
+		view.handleInput("\r"); // enter on the idle interactive row
 		expect(resumed).toEqual(["live1"]);
 		// It did NOT switch to the focus pane.
 		const out = view.render(100).map(stripAnsi).join("\n");
 		expect(out).toContain("▸ Your agents");
 		expect(out).not.toContain("▸ Focus  (ctrl+w)");
+	});
+
+	it("enter on a RUNNING interactive [i] row opens the read-only live monitor (not resume)", async () => {
+		const resumed: string[] = [];
+		const view = mk({
+			loadTranscript: async () => [{ role: "assistant", text: "working..." }],
+			onResume: (row) => resumed.push(row.id),
+		});
+		await seed(view, [rec("busy1", "running", "interactive")]);
+		view.handleInput("\r"); // enter on the running interactive row
+		// A running agent is monitored, not resumed.
+		expect(resumed).toEqual([]);
+		const out = view.render(100).map(stripAnsi).join("\n");
+		expect(out).toContain("▸ Focus  (ctrl+w)");
+		expect(out).toContain("live monitor (read-only)");
+		expect(out).toContain("working...");
 	});
 
 	it("jump-to-attention focuses the errored session in the focus pane", async () => {
