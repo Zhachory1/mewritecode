@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-08-11
+
 ### Fixed
 
 - Daemon no longer throws `TypeError: The database connection is not open` on shutdown. An un-awaited runner turn (e.g. the echo runner's async reply stream) could emit a `state`/`message` event after `close()` had closed the SQLite store, hitting `store.updateSession` on a dead connection. `close()` now latches a `closed` flag that makes the per-session emitter drop late events instead of touching the store or dead sockets ([#176](https://github.com/Zhachory1/mewritecode/issues/176)).
