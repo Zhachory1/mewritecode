@@ -18,8 +18,8 @@ import { KeybindingsManager } from "../../../src/core/keybindings.js";
 describe("#185 spawnAgent (detached process)", () => {
 	beforeAll(() => setKeybindings(KeybindingsManager.create()));
 
-	it("no-ops on an empty task (returns false, launches nothing)", () => {
-		expect(spawnAgent("/tmp", "   ")).toBe(false);
+	it("no-ops on an empty task (returns null, launches nothing)", () => {
+		expect(spawnAgent("/tmp", "   ")).toBeNull();
 	});
 
 	it("launches a detached agent for a real task and writes a log file", () => {
@@ -27,8 +27,9 @@ describe("#185 spawnAgent (detached process)", () => {
 		const before = new Set(safeReaddir(logDir));
 		// Spawn in /tmp so the child (if it starts) does no work in the repo. The child
 		// is detached + unref'd; it may exit immediately (no key) but must not throw here.
+		// spawnAgent returns the child pid (number) on launch, null on no-op.
 		const launched = spawnAgent("/tmp", "noop task for test");
-		expect(launched).toBe(true);
+		expect(typeof launched).toBe("number");
 		const after = safeReaddir(logDir);
 		// A new per-run log file was created for the spawned agent's output.
 		expect(after.some((f) => !before.has(f) && f.endsWith(".log"))).toBe(true);
