@@ -16,6 +16,8 @@ import { type Component, type Focusable, getKeybindings } from "@zhachory1/mewri
 import type { AttachedSession, CaveClient, SessionRecord } from "../../../core/daemon/index.js";
 import { theme } from "../theme/theme.js";
 import { AgentListComponent } from "./agent-list.js";
+import type { LivePtyAgent } from "./pty-agent.js";
+import { PtyPane } from "./pty-pane.js";
 import { StreamingSessionView } from "./streaming-session-view.js";
 import { type TranscriptLine, TranscriptView } from "./transcript-view.js";
 
@@ -38,6 +40,12 @@ export interface TwoPaneCallbacks {
 	onSteer?: (row: SessionRecord) => void;
 	/** Interrupt (stop) a running monitored agent. */
 	onInterrupt?: (row: SessionRecord) => void;
+	/**
+	 * Return the live pty agent this viewer owns for a row (matched by pid), or
+	 * undefined for rows we don't own (foreign/daemon). When present, the row opens
+	 * an interactive `PtyPane` instead of the read-only transcript.
+	 */
+	getLivePtyAgent?: (row: SessionRecord) => LivePtyAgent | undefined;
 	/** Load a session's transcript for the read-only focus pane (interactive rows). */
 	loadTranscript: (row: SessionRecord) => Promise<TranscriptLine[]>;
 	/** Open a live WS attach for a hosted session (drives the live focus pane). */
@@ -54,8 +62,8 @@ export class TwoPaneView implements Component, Focusable {
 	focused = true;
 	private active: "sidebar" | "focus" = "sidebar";
 	private readonly sidebar: AgentListComponent;
-	/** Live (hosted) or read-only (interactive) focus pane. */
-	private focus: StreamingSessionView | TranscriptView | null = null;
+	/** Live pty (owned), live hosted (WS), or read-only (interactive) focus pane. */
+	private focus: StreamingSessionView | TranscriptView | PtyPane | null = null;
 	private focusRow: SessionRecord | null = null;
 	/** Guards against a stale async transcript load overwriting a newer selection. */
 	private loadToken = 0;
@@ -102,16 +110,24 @@ export class TwoPaneView implements Component, Focusable {
 		this.sidebar.setPollError(message);
 	}
 
-	/** Close any live focus-pane WebSocket. Call when leaving the view. */
+	/** Close any live focus-pane WebSocket / detach pty render. Call when leaving the view. */
 	dispose(): void {
-		if (this.focus instanceof StreamingSessionView) this.focus.dispose();
+		if (this.focus instanceof StreamingSessionView || this.focus instanceof PtyPane) this.focus.dispose();
 	}
 
 	invalidate(): void {}
 
+	/**
+	 * True when an interactive pty pane is focused. The agents view hides its logo
+	 * header in this state so the embedded interactive UI gets the full height.
+	 */
+	isPtyPaneActive(): boolean {
+		return this.active === "focus" && this.focus instanceof PtyPane;
+	}
+
 	private onSidebarSelection(row: SessionRecord | null): void {
-		// Tear down any live session before switching (closes its WS).
-		if (this.focus instanceof StreamingSessionView) this.focus.dispose();
+		// Tear down any live session before switching (closes its WS / detaches pty render).
+		if (this.focus instanceof StreamingSessionView || this.focus instanceof PtyPane) this.focus.dispose();
 		this.focusRow = row;
 		this.loadToken++;
 		if (!row) {
@@ -126,6 +142,20 @@ export class TwoPaneView implements Component, Focusable {
 		// call it out so the pane isn't mistaken for an interactive session.
 		const monitorHint = row.kind === "interactive" && row.state === "running" ? "  — live monitor (read-only)" : "";
 		const title = `${tag}${name}  ${row.cwd}${monitorHint}`;
+		// If this viewer owns a live pty for the row, drive it interactively in place.
+		const liveAgent = this.cb.getLivePtyAgent?.(row);
+		if (liveAgent) {
+			const ptyTitle = `${tag}${name}  ${row.cwd}`;
+			this.focus = new PtyPane(
+				ptyTitle,
+				liveAgent,
+				this.requestRender,
+				() => this.setActive("sidebar"),
+				this.cb.rows,
+			);
+			this.requestRender();
+			return;
+		}
 		if (row.kind === "interactive") {
 			// Terminal sessions can't be driven remotely; show them read-only. A running
 			// agent additionally gets steer/interrupt controls (the runaway-catcher).

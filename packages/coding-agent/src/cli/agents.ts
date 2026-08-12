@@ -22,6 +22,7 @@ import { SettingsManager } from "../core/settings-manager.js";
 import { PENCIL_LOGO, renderPencilLogo } from "../modes/interactive/components/banner.js";
 import { promptClarify } from "../modes/interactive/components/clarify-prompt.js";
 import { showConfirmPrompt } from "../modes/interactive/components/confirm-prompt.js";
+import { type LivePtyAgent, PtyAgentManager, ptyAvailable } from "../modes/interactive/components/pty-agent.js";
 import type { TranscriptLine } from "../modes/interactive/components/transcript-view.js";
 import { TwoPaneView } from "../modes/interactive/components/two-pane-view.js";
 import { initTheme, theme } from "../modes/interactive/theme/theme.js";
@@ -92,8 +93,16 @@ export function liveToRecord(rec: LiveRecord): SessionRecord {
 /**
  * Merge daemon-hosted sessions with live interactive sessions into one list.
  * A down daemon yields no hosted rows (rather than throwing) so live rows still show.
+ *
+ * `ownedPids`, when given, scopes live interactive rows to agents this viewer
+ * spawned (Option A): foreign `mewrite` sessions in other terminals are excluded
+ * so the list only shows agents the viewer owns (plus daemon-hosted rows). Omit
+ * it to get the unscoped merge (used by the #152 merge tests).
  */
-export async function loadRows(client: Pick<CaveClient, "listSessions">): Promise<SessionRecord[]> {
+export async function loadRows(
+	client: Pick<CaveClient, "listSessions">,
+	ownedPids?: Set<number>,
+): Promise<SessionRecord[]> {
 	const [hosted, live] = await Promise.all([
 		client
 			.listSessions()
@@ -103,10 +112,11 @@ export async function loadRows(client: Pick<CaveClient, "listSessions">): Promis
 			.catch(() => [] as SessionRecord[]),
 		listLiveInteractive(),
 	]);
+	const scopedLive = ownedPids ? live.filter((r) => ownedPids.has(r.pid)) : live;
 	const byId = new Map<string, SessionRecord>();
 	for (const r of hosted) byId.set(r.id, r);
 	// Interactive wins on id collision.
-	for (const r of live) byId.set(r.id, liveToRecord(r));
+	for (const r of scopedLive) byId.set(r.id, liveToRecord(r));
 	return [...byId.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
@@ -195,18 +205,38 @@ async function resumeInteractive(row: SessionRecord): Promise<void> {
 	process.stdout.write("\x1b[2J\x1b[H\x1b[3J");
 }
 
+/** Resolve how to invoke this same binary (script under node/bun, else PATH). */
+function mewriteInvocation(): { file: string; baseArgs: string[] } {
+	const script = process.argv[1];
+	const useScript = script && existsSync(script);
+	return useScript ? { file: process.execPath, baseArgs: [script] } : { file: APP_NAME, baseArgs: [] };
+}
+
 /**
- * Spawn a new agent as an independent, detached `mewrite` process working on the
- * task in `cwd` (agents view v2, #185). The child runs headless (print mode) but
- * publishes to the live-registry (via the MEWRITE_AGENT_SPAWN marker) so it shows
- * up in the list, and persists a resumable JSONL so it can be resumed interactively
- * later. Detached + unref'd so it keeps running after the agents view closes.
- * stdout/stderr are redirected to a per-run log under the agent dir for tailing.
- * Returns true if the child was launched.
+ * Spawn a new agent as a live interactive `mewrite` under a pty (Option A). The
+ * child is a full interactive session seeded with `task`; its pty master lives in
+ * this viewer process, so the agent dies with the viewer. The child self-publishes
+ * to the live-registry (own pid), so the list row matches this pty agent by pid.
+ * Returns the LivePtyAgent, or null if node-pty is unavailable (caller falls back).
  */
-export function spawnAgent(cwd: string, task: string): boolean {
+export function spawnLiveAgent(manager: PtyAgentManager, cwd: string, task: string): LivePtyAgent | null {
 	const trimmed = task.trim();
-	if (!trimmed) return false;
+	if (!trimmed || !ptyAvailable()) return null;
+	const { file, baseArgs } = mewriteInvocation();
+	const cols = process.stdout.columns || 80;
+	const rows = Math.max(1, (process.stdout.rows || 24) - 1);
+	return manager.spawn({ file, args: [...baseArgs, trimmed], cwd, env: process.env }, cols, rows);
+}
+
+/**
+ * Fallback: spawn a detached, headless `mewrite -p` agent (pre-pty behavior) when
+ * node-pty is unavailable. Publishes to the live-registry (MEWRITE_AGENT_SPAWN) so
+ * it shows in the list and stays a read-only monitored row. Returns the child pid
+ * (so the viewer can scope the list to it), or null if not launched.
+ */
+export function spawnAgent(cwd: string, task: string): number | null {
+	const trimmed = task.trim();
+	if (!trimmed) return null;
 	// Note: getAgentDir()/agents is the agent-DEFINITIONS dir; use a distinct dir
 	// for spawned-agent output logs so we don't collide with `*.md` agent defs.
 	const logDir = join(getAgentDir(), "agent-logs");
@@ -226,7 +256,7 @@ export function spawnAgent(cwd: string, task: string): boolean {
 		env: { ...process.env, MEWRITE_AGENT_SPAWN: "1" },
 	});
 	child.unref();
-	return true;
+	return child.pid ?? null;
 }
 
 export async function runAgents(args: string[]): Promise<number> {
@@ -255,46 +285,64 @@ export async function runAgents(args: string[]): Promise<number> {
 }
 
 async function runViewLoop(client: CaveClient, canSpawn: boolean): Promise<number> {
-	// Loop so each handoff rebuilds a fresh TUI (a stopped TUI is not reused).
-	for (;;) {
-		const action = await runListView(client, canSpawn);
-		if (action.type === "quit") return 0;
-		if (action.type === "resume") {
-			await resumeInteractive(action.row);
-			continue;
-		}
-		if (action.type === "new") {
-			process.stdout.write("\x1b[2J\x1b[H\x1b[3J");
-			const task = await runNewAgentPrompt(process.cwd());
-			process.stdout.write("\x1b[2J\x1b[H\x1b[3J");
-			if (task) {
-				try {
-					spawnAgent(process.cwd(), task);
-				} catch (err) {
-					console.error(chalk.red(`Failed to spawn agent: ${err instanceof Error ? err.message : String(err)}`));
+	// One pty-agent manager owns all live agents for this viewer session; agents die
+	// with the viewer (Option A). killAll() on quit tears them down.
+	const manager = new PtyAgentManager();
+	try {
+		// Loop so each handoff rebuilds a fresh TUI (a stopped TUI is not reused).
+		for (;;) {
+			const action = await runListView(client, canSpawn, manager);
+			if (action.type === "quit") return 0;
+			if (action.type === "resume") {
+				await resumeInteractive(action.row);
+				continue;
+			}
+			if (action.type === "new") {
+				process.stdout.write("\x1b[2J\x1b[H\x1b[3J");
+				const task = await runNewAgentPrompt(process.cwd());
+				process.stdout.write("\x1b[2J\x1b[H\x1b[3J");
+				if (task) {
+					try {
+						// Prefer a live interactive pty agent; fall back to detached headless
+						// when node-pty is unavailable (e.g. under Bun). Either way the viewer
+						// owns the child so the scoped list shows it.
+						if (!spawnLiveAgent(manager, process.cwd(), task)) {
+							const pid = spawnAgent(process.cwd(), task);
+							if (pid !== null) manager.ownHeadlessPid(pid);
+						}
+					} catch (err) {
+						console.error(
+							chalk.red(`Failed to spawn agent: ${err instanceof Error ? err.message : String(err)}`),
+						);
+					}
 				}
 			}
 		}
+	} finally {
+		manager.killAll();
 	}
 }
 
 type ListAction = { type: "quit" } | { type: "new" } | { type: "resume"; row: SessionRecord };
 
-/**
- * Agents view launch header: the shared pencil logo (brand text to its right),
- * plus a trailing spacer above the list.
- */
-const agentsHeader: Component = {
-	invalidate() {},
-	render(width: number): string[] {
-		return [...renderPencilLogo(width), ""];
-	},
-};
-
-/** Rows the header occupies: logo + spacer. */
+/** Rows the logo header occupies when shown: logo + spacer. */
 const AGENTS_HEADER_ROWS = PENCIL_LOGO.length + 1;
 
-function runListView(client: CaveClient, canSpawn: boolean): Promise<ListAction> {
+/**
+ * Agents view launch header: the shared pencil logo (brand text to its right),
+ * plus a trailing spacer above the list. Hidden while an interactive pty pane is
+ * open (`hidden()` true) so the embedded interactive UI gets the full height.
+ */
+function makeAgentsHeader(hidden: () => boolean): Component {
+	return {
+		invalidate() {},
+		render(width: number): string[] {
+			return hidden() ? [] : [...renderPencilLogo(width), ""];
+		},
+	};
+}
+
+function runListView(client: CaveClient, canSpawn: boolean, manager: PtyAgentManager): Promise<ListAction> {
 	return new Promise<ListAction>((resolve) => {
 		// Full-screen wipe so the launch is clean (matches the spawn-prompt wipe below).
 		process.stdout.write("\x1b[2J\x1b[H\x1b[3J");
@@ -313,7 +361,7 @@ function runListView(client: CaveClient, canSpawn: boolean): Promise<ListAction>
 
 		const poll = async (): Promise<void> => {
 			try {
-				view.setRows(await loadRows(client));
+				view.setRows(await loadRows(client, manager.ownedPids()));
 			} catch (err) {
 				view.setPollError(err instanceof Error ? err.message : String(err));
 			}
@@ -370,16 +418,18 @@ function runListView(client: CaveClient, canSpawn: boolean): Promise<ListAction>
 			onSteer: (row) => void steerAgent(row),
 			onInterrupt: (row) => interruptAgent(row),
 			onDelete: (row) => void confirmDelete(row),
+			getLivePtyAgent: (row) => (typeof row.pid === "number" ? manager.getByPid(row.pid) : undefined),
 			loadTranscript: (row) => loadTranscript(row, client),
 			attach: (id) => client.attach(id),
 			client,
 			// Reserve space for the wordmark header above the list so the combined
 			// height doesn't overflow the terminal.
-			rows: () => Math.max(1, (process.stdout.rows || 24) - AGENTS_HEADER_ROWS),
+			// Reclaim the logo's rows when it's hidden (interactive pane open).
+			rows: () => Math.max(1, (process.stdout.rows || 24) - (view.isPtyPaneActive() ? 0 : AGENTS_HEADER_ROWS)),
 			sidebarSide: SettingsManager.create().getAgentsSidebarSide(),
 		});
 
-		ui.addChild(agentsHeader);
+		ui.addChild(makeAgentsHeader(() => view.isPtyPaneActive()));
 		ui.addChild(view);
 		ui.setFocus(view);
 		ui.start();

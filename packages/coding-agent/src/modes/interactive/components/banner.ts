@@ -25,40 +25,49 @@ export interface BannerOptions {
 	logo?: BannerLogo;
 }
 
-/** Pencil logo (code shaft). Terminal-safe box-drawing; no image component. */
+/** Pencil logo (code shaft). Terminal-safe box-drawing/blocks; no image component. */
 export const PENCIL_LOGO: readonly string[] = [
-	" (░▒░)",
-	" │▒▒▒│",
-	"╭┴───┴╮",
-	"│ < > │",
-	"│ { } │",
-	"│ ( ) │",
-	"│ / / │",
-	"│ [ ] │",
-	"│ ░ ░ │",
-	"╰┬───┬╯",
-	" \\░░░/",
-	"  \\█/",
-	"   ▼",
+	" ▗▄▄▖",
+	" ▐░░▌",
+	"╭┴──┴╮",
+	"│ <> │",
+	"│ {} │",
+	"│ () │",
+	"│ // │",
+	"│ [] │",
+	"│ ░░ │",
+	"╰┬──┬╯",
+	" ╲░░╱",
+	"  ╲╱",
 ];
 
-const BRAND_TITLE = "Me Write Code";
-const BRAND_TAGLINES = ["me write less,", "me do more"];
+/**
+ * Big block wordmark for "Me Write Code", stacked Me / Write / Code (3 rows each).
+ * Universal half/full-block + box-drawing glyphs only, so it renders on Apple
+ * Terminal, tmux, etc. without a special font. Blank left-pad rows omitted; the
+ * caller vertically centers the block against the pencil.
+ */
+const BRAND_TITLE_BLOCK: readonly string[] = [
+	"█▖▄▖█ █▀▀",
+	"█▝▀▘█ █▀▀",
+	"█   █ █▄▄",
+	"█   █ █▀▄ █ ▀█▀ █▀▀",
+	"█ ▄ █ █▀▄ █  █  █▀▀",
+	"▀▀ ▀▀ ▀ ▀ █  █  █▄▄",
+	"▄▀▀ ▄▀▄ █▀▄ █▀▀",
+	"█   █ █ █ █▀▀",
+	"▀▄▄ ▀▄▀ █▄▀ █▄▄",
+];
 
 /**
- * Render the pencil logo with the brand text (title, blank line, taglines)
- * vertically centered to its right. Shared by the interactive startup banner and
- * the `mewrite agents` launch header so the brand logo is identical.
+ * Render the pencil logo with the big block wordmark vertically centered to its
+ * right. Shared by the interactive startup banner and the `mewrite agents` launch
+ * header so the brand logo is identical.
  */
 export function renderPencilLogo(width: number): string[] {
 	const logoW = Math.max(...PENCIL_LOGO.map((r) => visibleWidth(r)));
 	const gap = "   ";
-	const textRows = [
-		theme.bold(theme.fg("accent", BRAND_TITLE)),
-		"",
-		theme.fg("dim", BRAND_TAGLINES[0]),
-		theme.fg("dim", BRAND_TAGLINES[1]),
-	];
+	const textRows = BRAND_TITLE_BLOCK.map((r) => theme.bold(theme.fg("accent", r)));
 	const textStart = Math.max(0, Math.floor((PENCIL_LOGO.length - textRows.length) / 2));
 	return PENCIL_LOGO.map((row, i) => {
 		const pad = " ".repeat(Math.max(0, logoW - visibleWidth(row)));
