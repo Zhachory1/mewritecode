@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Branding: the interactive startup banner and the `mewrite agents` view now render the distribution wordmark from `mewriteConfig.branding.primaryWordmark` / `secondaryWordmark` instead of the hardcoded "Me Write Code" block. The `BANNER_PRIMARY_WORDMARK` / `BANNER_SECONDARY_WORDMARK` config exports were parsed but never consumed by the renderer; `renderPencilLogo` now reads them (secondary shown only on tall terminals via `showSecondaryWordmark`), so a wrapper distribution's wordmark applies to both surfaces. The built-in block is now the default `primaryWordmark`, so upstream is unchanged ([#194](https://github.com/Zhachory1/mewritecode/issues/194)).
+
 ## [1.5.0] - 2026-08-12
 
 ### Added
