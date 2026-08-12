@@ -10,7 +10,16 @@ import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, openSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { type Component, Input, ProcessTerminal, setKeybindings, TUI, truncateToWidth } from "@zhachory1/mewrite-tui";
+import {
+	type Component,
+	type Focusable,
+	getKeybindings,
+	Input,
+	ProcessTerminal,
+	setKeybindings,
+	TUI,
+	truncateToWidth,
+} from "@zhachory1/mewrite-tui";
 import chalk from "chalk";
 import { APP_NAME, getAgentDir } from "../config.js";
 import { sendAgentSteer } from "../core/agent-inbox.js";
@@ -295,27 +304,6 @@ async function runViewLoop(client: CaveClient, canSpawn: boolean): Promise<numbe
 			if (action.type === "quit") return 0;
 			if (action.type === "resume") {
 				await resumeInteractive(action.row);
-				continue;
-			}
-			if (action.type === "new") {
-				process.stdout.write("\x1b[2J\x1b[H\x1b[3J");
-				const task = await runNewAgentPrompt(process.cwd());
-				process.stdout.write("\x1b[2J\x1b[H\x1b[3J");
-				if (task) {
-					try {
-						// Prefer a live interactive pty agent; fall back to detached headless
-						// when node-pty is unavailable (e.g. under Bun). Either way the viewer
-						// owns the child so the scoped list shows it.
-						if (!spawnLiveAgent(manager, process.cwd(), task)) {
-							const pid = spawnAgent(process.cwd(), task);
-							if (pid !== null) manager.ownHeadlessPid(pid);
-						}
-					} catch (err) {
-						console.error(
-							chalk.red(`Failed to spawn agent: ${err instanceof Error ? err.message : String(err)}`),
-						);
-					}
-				}
 			}
 		}
 	} finally {
@@ -323,7 +311,26 @@ async function runViewLoop(client: CaveClient, canSpawn: boolean): Promise<numbe
 	}
 }
 
-type ListAction = { type: "quit" } | { type: "new" } | { type: "resume"; row: SessionRecord };
+type ListAction = { type: "quit" } | { type: "resume"; row: SessionRecord };
+
+/**
+ * Spawn a new agent for `task` in `cwd`, preferring a live interactive pty agent
+ * and falling back to a detached headless process when node-pty is unavailable
+ * (e.g. under Bun). Either way the viewer owns the child so the scoped list shows
+ * it. Returns an error message on failure, or null on success/no-op.
+ */
+function spawnNewAgent(manager: PtyAgentManager, cwd: string, task: string): string | null {
+	if (!task.trim()) return null;
+	try {
+		if (!spawnLiveAgent(manager, cwd, task)) {
+			const pid = spawnAgent(cwd, task);
+			if (pid !== null) manager.ownHeadlessPid(pid);
+		}
+		return null;
+	} catch (err) {
+		return err instanceof Error ? err.message : String(err);
+	}
+}
 
 /** Rows the logo header occupies when shown: logo + spacer. */
 const AGENTS_HEADER_ROWS = PENCIL_LOGO.length + 1;
@@ -340,6 +347,66 @@ function makeAgentsHeader(hidden: () => boolean): Component {
 			return hidden() ? [] : [...renderPencilLogo(width), ""];
 		},
 	};
+}
+
+/**
+ * Always-visible bottom-pinned "new agent" input bar, so spawning is an obvious,
+ * ever-present affordance. `n` from the list focuses it; enter spawns and keeps
+ * it in place; esc returns focus to the list. Owns an Input.
+ */
+class NewAgentBar implements Component, Focusable {
+	focused = false;
+	private readonly input = new Input();
+
+	constructor(
+		private readonly cwd: string,
+		onSubmit: (task: string) => void,
+		private readonly onLeave: () => void,
+		/** When true the bar is suppressed (e.g. an interactive pty pane is open). */
+		private readonly hidden: () => boolean = () => false,
+	) {
+		this.input.onSubmit = (value) => {
+			const task = value.trim();
+			this.input.setValue("");
+			if (task) onSubmit(task);
+			else onLeave();
+		};
+		this.input.onEscape = () => {
+			this.input.setValue("");
+			onLeave();
+		};
+	}
+
+	/** Rows this bar occupies (top border + label + input + bottom border), or 0 suppressed. */
+	get rows(): number {
+		return this.hidden() ? 0 : 4;
+	}
+
+	handleInput(data: string): void {
+		const kb = getKeybindings();
+		// Up-arrow (single-line input never uses it) returns focus to the list.
+		if (kb.matches(data, "tui.select.up")) {
+			this.onLeave();
+			return;
+		}
+		this.input.handleInput(data);
+	}
+
+	invalidate(): void {
+		this.input.invalidate?.();
+	}
+
+	render(width: number): string[] {
+		if (this.hidden()) return [];
+		// Full-width horizontal rules above and below, matching the interactive prompt
+		// editor. The border brightens (accent) while focused, dims otherwise.
+		const borderColor = this.focused ? "accent" : "border";
+		const bar = theme.fg(borderColor, "─".repeat(Math.max(1, width)));
+		const hint = this.focused ? "↑ or esc to list · enter to spawn" : "↓ or n to add a new agent";
+		const label = theme.fg("dim", truncateToWidth(`new agent in ${this.cwd} · ${hint}`, width));
+		this.input.focused = this.focused;
+		return [label, bar, ...this.input.render(width), bar];
+	}
 }
 
 function runListView(client: CaveClient, canSpawn: boolean, manager: PtyAgentManager): Promise<ListAction> {
@@ -359,9 +426,15 @@ function runListView(client: CaveClient, canSpawn: boolean, manager: PtyAgentMan
 			resolve(action);
 		};
 
+		let firstPoll = true;
 		const poll = async (): Promise<void> => {
 			try {
-				view.setRows(await loadRows(client, manager.ownedPids()));
+				const rows = await loadRows(client, manager.ownedPids());
+				view.setRows(rows);
+				// On first load with no agents, start in the input bar so it's immediately
+				// obvious you can spawn one. Don't steal focus on later polls.
+				if (firstPoll && rows.length === 0 && canSpawn) focusNewAgentBar();
+				firstPoll = false;
 			} catch (err) {
 				view.setPollError(err instanceof Error ? err.message : String(err));
 			}
@@ -411,9 +484,33 @@ function runListView(client: CaveClient, canSpawn: boolean, manager: PtyAgentMan
 			}
 		};
 
+		const focusList = (): void => {
+			ui.setFocus(view);
+			ui.requestRender();
+		};
+		const focusNewAgentBar = (): boolean => {
+			if (view.isPtyPaneActive()) return false;
+			ui.setFocus(newAgentBar);
+			ui.requestRender();
+			return true;
+		};
+		const newAgentBar = new NewAgentBar(
+			process.cwd(),
+			(task) => {
+				const err = spawnNewAgent(manager, process.cwd(), task);
+				if (err) view.setPollError(`Failed to spawn agent: ${err}`);
+				else void poll();
+				// Keep focus on the bar so you can fire off several agents in a row.
+				ui.requestRender();
+			},
+			focusList,
+			() => view.isPtyPaneActive(),
+		);
+
 		const view = new TwoPaneView(() => ui.requestRender(), {
 			onQuit: () => finish({ type: "quit" }),
-			onNew: canSpawn ? () => finish({ type: "new" }) : undefined,
+			onNew: canSpawn ? () => void focusNewAgentBar() : undefined,
+			onNavigateDownOffList: canSpawn ? focusNewAgentBar : undefined,
 			onResume: (row) => finish({ type: "resume", row }),
 			onSteer: (row) => void steerAgent(row),
 			onInterrupt: (row) => interruptAgent(row),
@@ -425,51 +522,24 @@ function runListView(client: CaveClient, canSpawn: boolean, manager: PtyAgentMan
 			// Reserve space for the wordmark header above the list so the combined
 			// height doesn't overflow the terminal.
 			// Reclaim the logo's rows when it's hidden (interactive pane open).
-			rows: () => Math.max(1, (process.stdout.rows || 24) - (view.isPtyPaneActive() ? 0 : AGENTS_HEADER_ROWS)),
+			// Subtract the header (unless a pty pane is open) and the always-present
+			// new-agent bar so nothing overlaps.
+			rows: () =>
+				Math.max(
+					1,
+					(process.stdout.rows || 24) - (view.isPtyPaneActive() ? 0 : AGENTS_HEADER_ROWS) - newAgentBar.rows,
+				),
 			sidebarSide: SettingsManager.create().getAgentsSidebarSide(),
 		});
 
 		ui.addChild(makeAgentsHeader(() => view.isPtyPaneActive()));
 		ui.addChild(view);
+		ui.addChild(newAgentBar);
+		ui.setBottomPinnedChildren(1);
 		ui.setFocus(view);
 		ui.start();
 		void poll();
 		timer = setInterval(() => void poll(), POLL_MS);
-	});
-}
-
-/**
- * Prompt for a starting task for a new agent. Returns the task text, or null on
- * cancel (esc) or empty submit. Header shows the spawn cwd so the user knows where
- * the agent will run.
- */
-function runNewAgentPrompt(cwd: string): Promise<string | null> {
-	return new Promise<string | null>((resolve) => {
-		const ui = new TUI(new ProcessTerminal());
-		let done = false;
-		const finish = (value: string | null): void => {
-			if (done) return;
-			done = true;
-			ui.stop();
-			resolve(value);
-		};
-
-		const input = new Input();
-		input.onSubmit = (value) => finish(value.trim() ? value : null);
-		input.onEscape = () => finish(null);
-
-		const header: Component = {
-			invalidate() {},
-			render: (width: number) => [
-				theme.bold(truncateToWidth(`New agent in ${cwd}`, width)),
-				theme.fg("dim", "Type a task and press enter · esc to cancel"),
-			],
-		};
-
-		ui.addChild(header);
-		ui.addChild(input);
-		ui.setFocus(input);
-		ui.start();
 	});
 }
 

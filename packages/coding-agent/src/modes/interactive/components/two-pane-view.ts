@@ -46,6 +46,11 @@ export interface TwoPaneCallbacks {
 	 * an interactive `PtyPane` instead of the read-only transcript.
 	 */
 	getLivePtyAgent?: (row: SessionRecord) => LivePtyAgent | undefined;
+	/**
+	 * Fired when down is pressed on the last list row (in the sidebar). Return true
+	 * to move focus out of the list (to the new-agent bar) instead of wrapping.
+	 */
+	onNavigateDownOffList?: () => boolean;
 	/** Load a session's transcript for the read-only focus pane (interactive rows). */
 	loadTranscript: (row: SessionRecord) => Promise<TranscriptLine[]>;
 	/** Open a live WS attach for a hosted session (drives the live focus pane). */
@@ -87,6 +92,8 @@ export class TwoPaneView implements Component, Focusable {
 			cb.onNew,
 			(row) => cb.onDelete(row),
 			(row) => this.onSidebarSelection(row),
+			// Only leave the list via down-arrow when the sidebar is the active pane.
+			() => (this.active === "sidebar" ? (cb.onNavigateDownOffList?.() ?? false) : false),
 		);
 	}
 
