@@ -116,6 +116,12 @@ export class AgentListComponent implements Component, Focusable {
 		private readonly onNew: () => void = () => {},
 		private readonly onDelete: (row: SessionRecord) => void = () => {},
 		private readonly onSelectionChange: (row: SessionRecord | null) => void = () => {},
+		/**
+		 * Fired when down is pressed on the last row: instead of wrapping to the top,
+		 * move focus out of the list (to the new-agent bar). Returns true if focus
+		 * left the list (so the wrap is suppressed).
+		 */
+		private readonly onNavigateDownOffEnd: () => boolean = () => false,
 	) {}
 
 	/** The currently highlighted row, or null when the visible list is empty. */
@@ -196,6 +202,11 @@ export class AgentListComponent implements Component, Focusable {
 		if (kb.matches(data, "tui.select.up")) {
 			this.move(-1);
 		} else if (kb.matches(data, "tui.select.down")) {
+			// On the last row (or when the list is empty), hand focus to the new-agent
+			// bar instead of wrapping.
+			const visible = this.visibleRows();
+			const atEnd = visible.length === 0 || this.selectedIndex() === visible.length - 1;
+			if (atEnd && this.onNavigateDownOffEnd()) return;
 			this.move(1);
 		} else if (kb.matches(data, "tui.select.pageUp")) {
 			this.move(-10);
