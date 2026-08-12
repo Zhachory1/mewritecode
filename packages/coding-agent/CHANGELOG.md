@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.5.2] - 2026-08-12
+
 ### Changed
 
 - Branding: a distribution that sets `mewriteConfig.branding.primaryWordmark` now renders that art **standalone**, replacing the built-in pencil logo entirely instead of rendering beside it. Previously a custom wordmark was always drawn next to the hardcoded pencil and clamped to the pencil's 12x40 footprint, so there was no supported way to show a standalone ASCII/Unicode mark (only `logoPath` images could replace the pencil). A standalone wordmark is now bounded only by the terminal width; the built-in default still renders beside the pencil within its fixed box. Upstream (no `primaryWordmark`) is unchanged.
