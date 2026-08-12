@@ -80,12 +80,16 @@ export class TwoPaneView implements Component, Focusable {
 		this.sidebar = new AgentListComponent(
 			requestRender,
 			// Enter on a row:
-			//  - interactive + running -> open the read-only live monitor (tail its JSONL);
-			//    another process owns the live turn, so we can't drive it in place.
-			//  - interactive + not running -> resume it as a real session (replace-and-return).
-			//  - hosted -> focus the live WS pane.
+			//  - viewer owns a live pty for it -> focus the interactive pane in place
+			//    (even once the agent has exited: the pane shows the final screen with an
+			//    esc/ctrl+w exit). Must take priority over onResume so an owned but
+			//    completed agent doesn't get re-exec'd into a full-screen session with no
+			//    way back.
+			//  - interactive + not running (not owned) -> resume as a real session.
+			//  - otherwise (running monitor / hosted) -> focus the pane.
 			(row) => {
-				if (row.kind === "interactive" && row.state !== "running" && cb.onResume) cb.onResume(row);
+				if (this.cb.getLivePtyAgent?.(row)) this.setActive("focus");
+				else if (row.kind === "interactive" && row.state !== "running" && cb.onResume) cb.onResume(row);
 				else this.setActive("focus");
 			},
 			cb.onQuit,
