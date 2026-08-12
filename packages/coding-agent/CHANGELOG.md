@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Added
+
+- `mewrite agents`: spawned agents are now driven interactively via live PTY panes. Selecting a running agent opens a full interactive `mewrite` session (rendered from a pseudo-terminal) whose keystrokes go straight to the child, so you can jump in and steer mid-run instead of only monitoring read-only or using the `s` steer modal. The pty master lives in the viewer, so agents run in the background while the view is open and are torn down on exit. Falls back to the prior detached-headless spawn when node-pty is unavailable ([#192](https://github.com/Zhachory1/mewritecode/pull/192)).
+- `mewrite agents`: an always-visible "new agent" input bar pinned to the bottom of the view, styled like the interactive prompt editor (full-width rules, border brightens when focused). Type a task and press enter to spawn while staying in the view. `n` or down-arrow off the end of the list focuses the bar; up-arrow or esc returns to the list; with an empty list focus starts in the bar ([#193](https://github.com/Zhachory1/mewritecode/pull/193)).
+
+### Changed
+
+- The `mewrite agents` list is now scoped to agents this viewer owns, so foreign interactive `mewrite` sessions from other terminals no longer appear (and can't be entered/hijacked) ([#192](https://github.com/Zhachory1/mewritecode/pull/192)).
+- The brand wordmark is now a larger stacked "Me Write Code" block-letter title next to a refined pencil, using only universal glyphs so it renders on Apple Terminal, tmux, etc. ([#192](https://github.com/Zhachory1/mewritecode/pull/192), [#193](https://github.com/Zhachory1/mewritecode/pull/193)).
+
+### Fixed
+
+- Packaging: node-pty's prebuilt `spawn-helper` ships non-executable via the npm tarball, causing `posix_spawnp failed` at runtime; a postinstall restores its executable bit ([#192](https://github.com/Zhachory1/mewritecode/pull/192)).
+
 ## [1.4.0] - 2026-08-11
 
 ### Fixed
