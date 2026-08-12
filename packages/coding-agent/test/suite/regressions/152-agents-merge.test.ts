@@ -35,9 +35,9 @@ function hostedRow(id: string, state: SessionRecord["state"], updatedAt: string)
 	return { id, state, cwd: `/tmp/${id}`, createdAt: updatedAt, updatedAt };
 }
 
-function seedLive(id: string, updatedAt: string): void {
+function seedLive(id: string, updatedAt: string, pid: number = process.pid): void {
 	mkdirSync(getLiveDir(), { recursive: true });
-	const rec: LiveRecord = { id, pid: process.pid, cwd: `/tmp/${id}`, state: "running", updatedAt };
+	const rec: LiveRecord = { id, pid, cwd: `/tmp/${id}`, state: "running", updatedAt };
 	writeFileSync(join(getLiveDir(), `${id}.json`), JSON.stringify(rec));
 }
 
@@ -81,5 +81,26 @@ describe("#152 agents merge", () => {
 		const rows = await loadRows(client);
 		expect(rows.map((r) => r.id)).toEqual(["live-only"]);
 		expect(rows[0].kind).toBe("interactive");
+	});
+
+	it("ownedPids scopes out foreign interactive sessions (Option A)", async () => {
+		// Both pids must be alive or listLiveInteractive reaps them before scoping;
+		// use this process (owned) and its parent (foreign but alive).
+		const mine = process.pid;
+		const foreign = process.ppid;
+		const client = stubClient([hostedRow("h-keep", "idle", "2024-01-01T00:00:00.000Z")]);
+		seedLive("mine", "2024-12-02T00:00:00.000Z", mine);
+		seedLive("foreign", "2024-12-03T00:00:00.000Z", foreign);
+		const rows = await loadRows(client, new Set([mine]));
+		// Owned live row + hosted row survive; the foreign interactive row is dropped.
+		expect(rows.map((r) => r.id).sort()).toEqual(["h-keep", "mine"]);
+		expect(rows.some((r) => r.id === "foreign")).toBe(false);
+	});
+
+	it("empty ownedPids hides all live interactive rows but keeps hosted", async () => {
+		const client = stubClient([hostedRow("h-keep", "idle", "2024-01-01T00:00:00.000Z")]);
+		seedLive("foreign", "2024-12-03T00:00:00.000Z", process.pid);
+		const rows = await loadRows(client, new Set());
+		expect(rows.map((r) => r.id)).toEqual(["h-keep"]);
 	});
 });
