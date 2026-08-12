@@ -16,6 +16,12 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, unwatchFile, watch
 import { dirname, join } from "node:path";
 import { getAgentDir } from "../config.js";
 
+// fs.watchFile polls by mtime; a shorter interval makes a redirect land faster
+// (up to this long from the write) and keeps rapid successive writes from being
+// coalesced into one poll. 100ms is responsive for interactive steering without
+// meaningfully busy-polling.
+const INBOX_POLL_INTERVAL_MS = 100;
+
 /** Minimal steering surface the watcher needs from an AgentSession. */
 interface SteerableSession {
 	readonly isStreaming: boolean;
@@ -83,6 +89,6 @@ export function startInboxSteer(session: SteerableSession, sessionId: string): (
 	};
 
 	const listener = (): void => drain();
-	watchFile(path, { interval: 500 }, listener);
+	watchFile(path, { interval: INBOX_POLL_INTERVAL_MS }, listener);
 	return () => unwatchFile(path, listener);
 }
