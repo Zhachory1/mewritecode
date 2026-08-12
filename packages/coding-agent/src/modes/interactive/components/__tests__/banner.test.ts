@@ -10,7 +10,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { BANNER_PRIMARY_WORDMARK, BANNER_SECONDARY_WORDMARK } from "../../../../config.js";
 import { initTheme } from "../../theme/theme.js";
-import { renderPencilLogo } from "../banner.js";
+import { assertWordmarkFits, renderPencilLogo, WORDMARK_MAX_ROWS, WORDMARK_MAX_WIDTH } from "../banner.js";
 
 const ANSI = /\x1b\[[0-9;]*m|\x1b\]8;;\x07/g;
 const stripAnsi = (s: string): string => s.replace(ANSI, "");
@@ -29,6 +29,29 @@ function renderedWordmarkRows(showSecondary: boolean): string[] {
 			.filter((tail) => tail.length > 0)
 	);
 }
+
+describe("assertWordmarkFits", () => {
+	it("accepts art within the box", () => {
+		expect(() => assertWordmarkFits(["ok", "also ok"], "primaryWordmark")).not.toThrow();
+	});
+
+	it("accepts the built-in default wordmarks", () => {
+		expect(() => assertWordmarkFits(BANNER_PRIMARY_WORDMARK, "primaryWordmark")).not.toThrow();
+		expect(() => assertWordmarkFits(BANNER_SECONDARY_WORDMARK, "secondaryWordmark")).not.toThrow();
+	});
+
+	it("rejects too many rows with a clear, named error", () => {
+		const tooTall = Array.from({ length: WORDMARK_MAX_ROWS + 1 }, (_, i) => `r${i}`);
+		expect(() => assertWordmarkFits(tooTall, "primaryWordmark")).toThrow(/primaryWordmark has \d+ rows/);
+	});
+
+	it("rejects a too-wide row with a clear, named error", () => {
+		const tooWide = ["x".repeat(WORDMARK_MAX_WIDTH + 1)];
+		expect(() => assertWordmarkFits(tooWide, "secondaryWordmark")).toThrow(
+			/secondaryWordmark row 1 is \d+ cells wide/,
+		);
+	});
+});
 
 describe("renderPencilLogo branding", () => {
 	it("renders every primary wordmark row from the config export", () => {
