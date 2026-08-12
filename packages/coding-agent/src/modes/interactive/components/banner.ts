@@ -6,6 +6,7 @@ import {
 	BANNER_PRIMARY_WORDMARK,
 	BANNER_SECONDARY_WORDMARK,
 	BANNER_TAGLINE,
+	BANNER_WORDMARK_IS_CUSTOM,
 } from "../../../config.js";
 import { detectSupportedImageMimeTypeFromFile } from "../../../utils/mime.js";
 import { theme } from "../theme/theme.js";
@@ -48,13 +49,13 @@ export const PENCIL_LOGO: readonly string[] = [
 ];
 
 /**
- * Enforced bounds for a distribution's wordmark art (`branding.primaryWordmark` /
- * `secondaryWordmark`). The wordmark renders in a fixed box beside the pencil, so
- * downstream art must fit it; anything larger is a hard error (see
- * `assertWordmarkFits`) rather than silently clipped.
+ * Bounds for the *built-in default* wordmark that renders in a fixed box beside
+ * the pencil. A distribution that sets `branding.primaryWordmark` renders its art
+ * standalone (no pencil) and is not subject to this box — only the terminal width
+ * bounds it. These constants exist to guard the built-in default (and any test
+ * that opts into the box) so it stays within the pencil's footprint.
  *
- * - Rows: the primary alone, and primary+secondary combined, must each be within
- *   the pencil's height so the block stays vertically centered without overflow.
+ * - Rows: primary alone, and primary+secondary combined, within the pencil height.
  * - Width: leaves room beside the 6-wide pencil (+3 gap) on an 80-column terminal.
  */
 export const WORDMARK_MAX_ROWS = PENCIL_LOGO.length; // 12
@@ -86,38 +87,58 @@ export function assertWordmarkFits(rows: readonly string[], which: "primaryWordm
 
 let wordmarkValidated = false;
 
+function validateDefaultWordmarkOnce(): void {
+	if (wordmarkValidated) return;
+	assertWordmarkFits(BANNER_PRIMARY_WORDMARK, "primaryWordmark");
+	assertWordmarkFits(BANNER_SECONDARY_WORDMARK, "secondaryWordmark");
+	const combined = BANNER_PRIMARY_WORDMARK.length + BANNER_SECONDARY_WORDMARK.length;
+	if (combined > WORDMARK_MAX_ROWS) {
+		throw new Error(
+			`branding.primaryWordmark + secondaryWordmark total ${combined} rows; the maximum is ${WORDMARK_MAX_ROWS}. ` +
+				`They stack together on tall terminals.`,
+		);
+	}
+	wordmarkValidated = true;
+}
+
+/** The wordmark rows to show, primary plus secondary when tall terminals allow. */
+function wordmarkRows(showSecondaryWordmark: boolean): readonly string[] {
+	return showSecondaryWordmark ? [...BANNER_PRIMARY_WORDMARK, ...BANNER_SECONDARY_WORDMARK] : BANNER_PRIMARY_WORDMARK;
+}
+
 /**
- * Render the pencil logo with the brand wordmark vertically centered to its
- * right. Shared by the interactive startup banner and the `mewrite agents` launch
- * header so the brand logo is identical.
+ * Render a distribution's custom wordmark art standalone — no pencil. Used when
+ * `branding.primaryWordmark` is set: the wordmark replaces the built-in mark
+ * entirely rather than sitting beside it, so a distribution presents its own
+ * identity. Only bounded by the terminal width (each row is truncated); the
+ * fixed pencil box does not apply since there is no pencil.
+ */
+function renderStandaloneWordmark(width: number, showSecondaryWordmark: boolean): string[] {
+	return wordmarkRows(showSecondaryWordmark).map((r) => truncateToWidth(theme.bold(theme.fg("accent", r)), width));
+}
+
+/**
+ * Render the brand logo for the interactive startup banner and the `mewrite
+ * agents` launch header (shared so both are identical).
  *
- * The wordmark comes from `branding.primaryWordmark` (default: the built-in
- * "Me Write Code" block). When `showSecondaryWordmark` is set (tall terminals) and
- * a `branding.secondaryWordmark` exists, it is stacked below the primary. This is
- * how distributions rebrand both the interactive banner and the agents view.
+ * - Upstream / no `branding.primaryWordmark`: the built-in pencil with the
+ *   "Me Write Code" block wordmark centered to its right. The default wordmark is
+ *   validated once against the fixed box (see `assertWordmarkFits`).
+ * - A distribution that sets `branding.primaryWordmark`: that art renders
+ *   standalone (no pencil), bounded only by the terminal width. `secondaryWordmark`
+ *   stacks below on tall terminals in both modes.
  *
- * Wordmark art must fit the enforced box (see `assertWordmarkFits`); combined
- * primary+secondary is also bounded so the stacked block never overflows.
+ * (A `branding.logoPath` image, handled by the caller, takes precedence over
+ * either wordmark path.)
  */
 export function renderPencilLogo(width: number, showSecondaryWordmark = false): string[] {
-	if (!wordmarkValidated) {
-		assertWordmarkFits(BANNER_PRIMARY_WORDMARK, "primaryWordmark");
-		assertWordmarkFits(BANNER_SECONDARY_WORDMARK, "secondaryWordmark");
-		const combined = BANNER_PRIMARY_WORDMARK.length + BANNER_SECONDARY_WORDMARK.length;
-		if (combined > WORDMARK_MAX_ROWS) {
-			throw new Error(
-				`branding.primaryWordmark + secondaryWordmark total ${combined} rows; the maximum is ${WORDMARK_MAX_ROWS}. ` +
-					`They stack together on tall terminals.`,
-			);
-		}
-		wordmarkValidated = true;
+	if (BANNER_WORDMARK_IS_CUSTOM) {
+		return renderStandaloneWordmark(width, showSecondaryWordmark);
 	}
+	validateDefaultWordmarkOnce();
 	const logoW = Math.max(...PENCIL_LOGO.map((r) => visibleWidth(r)));
 	const gap = "   ";
-	const wordmark = showSecondaryWordmark
-		? [...BANNER_PRIMARY_WORDMARK, ...BANNER_SECONDARY_WORDMARK]
-		: BANNER_PRIMARY_WORDMARK;
-	const textRows = wordmark.map((r) => theme.bold(theme.fg("accent", r)));
+	const textRows = wordmarkRows(showSecondaryWordmark).map((r) => theme.bold(theme.fg("accent", r)));
 	const textStart = Math.max(0, Math.floor((PENCIL_LOGO.length - textRows.length) / 2));
 	return PENCIL_LOGO.map((row, i) => {
 		const pad = " ".repeat(Math.max(0, logoW - visibleWidth(row)));
