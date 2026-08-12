@@ -3,7 +3,7 @@ layout: home
 
 hero:
   name: "Me Write Code"
-  text: "Same model. Same task. Token efficiency under revalidation — see #8."
+  text: "Me write code. Me save tokens."
   tagline: "Terminal coding agent with token-saving defaults, 20+ providers, 5 OAuth flows, plan mode, subagents, MCP, hooks, and MIT license."
   image:
     src: /logo.svg
