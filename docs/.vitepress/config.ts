@@ -10,6 +10,9 @@ const docsSiteUrl = process.env.DOCS_SITE_URL ?? "https://zhachory1.github.io/me
 const githubUrl = process.env.DOCS_GITHUB_URL ?? "https://github.com/Zhachory1/mewritecode";
 const discordUrl = process.env.DOCS_DISCORD_URL ?? "https://discord.com/invite/nKXTsAcmbT";
 const docsUrl = `${docsSiteUrl.replace(/\/$/, "")}${docsBase}`;
+// Asset paths must include the base so they resolve under both a subpath deploy
+// (GitHub Pages project site at "/docs/") and a root/custom-domain deploy ("/").
+const faviconHref = `${docsBase.replace(/\/$/, "")}/favicon.svg`;
 
 export default defineConfig({
     title: siteTitle,
@@ -20,7 +23,7 @@ export default defineConfig({
     sitemap: { hostname: docsSiteUrl },
 
     head: [
-        ["link", { rel: "icon", href: "/docs/favicon.svg", type: "image/svg+xml" }],
+        ["link", { rel: "icon", href: faviconHref, type: "image/svg+xml" }],
         ["meta", { name: "theme-color", content: "#0d1117" }],
         ["meta", { property: "og:type", content: "website" }],
         ["meta", { property: "og:title", content: `${siteTitle} — terminal coding agent` }],
