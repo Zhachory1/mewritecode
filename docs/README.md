@@ -47,6 +47,17 @@ The site builds to `docs/.vitepress/dist/`. Branding and deploy URLs are configu
 
 A GitHub Actions workflow rebuilds the site on push to `main` and uploads to GitHub Pages or the configured static host. See `.github/workflows/docs.yml` (out of scope for this initial scaffold; track via WS11 release pipeline).
 
+### Render.com
+
+`render.yaml` at the repo root deploys this site as a Render static site at the
+service's root domain (`DOCS_BASE=/`):
+
+- **Blueprint:** in the Render dashboard, New → Blueprint, point it at this repo. Render reads `render.yaml` and provisions the `mewrite-docs` static site.
+- **Manual:** New → Static Site, with **Build Command** `cd docs && npm ci && DOCS_BASE=/ npm run build` and **Publish Directory** `docs/.vitepress/dist`.
+
+After the first deploy, set `DOCS_SITE_URL` to the Render URL so the sitemap and
+OpenGraph tags use the right host.
+
 ## llms.txt
 
 `/llms.txt` is the LLM-friendly entry point. The canonical copy is at the repo root (`/llms.txt`). `docs/public/llms.txt` is a mirror so the deployed site exposes it at `/docs/llms.txt`.

@@ -1,0 +1,16 @@
+# Render.com blueprint — deploys the VitePress docs site as a static site.
+# https://render.com/docs/blueprint-spec
+#
+# The docs live in ./docs and build to ./docs/.vitepress/dist. DOCS_BASE=/
+# overrides the default "/docs/" base (used for GitHub Pages) so assets resolve
+# at the render root domain. VitePress emits one .html per route, which Render's
+# static hosting serves with clean URLs; a 404.html ships in the build output.
+services:
+  - type: web
+    name: mewrite-docs
+    runtime: static
+    buildCommand: cd docs && npm ci && DOCS_BASE=/ npm run build
+    staticPublishPath: docs/.vitepress/dist
+    envVars:
+      - key: DOCS_BASE
+        value: /
