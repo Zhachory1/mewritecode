@@ -46,6 +46,24 @@ describe("distribution config", () => {
 		return JSON.parse(out) as Record<string, unknown>;
 	}
 
+	// Render the banner logo (theme initialized) and return the visible-text lines
+	// with ANSI stripped, so tests can assert pencil vs. standalone wordmark.
+	function runBannerProbe(env: NodeJS.ProcessEnv): string[] {
+		const code = [
+			'import { initTheme } from "./src/modes/interactive/theme/theme.ts";',
+			'import { renderPencilLogo } from "./src/modes/interactive/components/banner.ts";',
+			'initTheme("dark");',
+			'const lines = renderPencilLogo(80).map((l) => l.replace(/\\x1b\\[[0-9;]*m/g, ""));',
+			"console.log(JSON.stringify(lines));",
+		].join("\n");
+		const out = execFileSync("npx", ["tsx", "-e", code], {
+			cwd: process.cwd(),
+			env: { ...process.env, ...env },
+			encoding: "utf8",
+		});
+		return JSON.parse(out) as string[];
+	}
+
 	function runPromptProbe(env: NodeJS.ProcessEnv): string {
 		const code = [
 			'import { buildSystemPrompt } from "./src/core/system-prompt.ts";',
@@ -326,5 +344,41 @@ Agent body`,
 		expect(prompt).toContain("Roktcode docs (read only when the user asks about Roktcode itself, the roktcode CLI");
 		expect(prompt).not.toContain("operating inside Cave");
 		expect(prompt).not.toContain("Cave documentation");
+	});
+
+	it("renders a distribution primaryWordmark standalone, without the pencil", () => {
+		const packageDir = mkdtempSync(join(tmpdir(), "examplecode-package-"));
+		created.push(packageDir);
+		const wordmark = ["█▀█ █▀▀ █▀█", "█▀█ █▄▄ █▀█", "▀ ▀ ▀▀▀ ▀ ▀"];
+		writeFileSync(
+			join(packageDir, "package.json"),
+			JSON.stringify({
+				name: "@example/examplecode",
+				version: "1.2.3",
+				mewriteConfig: { name: "examplecode", branding: { primaryWordmark: wordmark } },
+			}),
+		);
+
+		const lines = runBannerProbe({ CODING_AGENT_PACKAGE_DIR: packageDir });
+		// Exactly the wordmark rows, no pencil.
+		expect(lines.map((l) => l.trimEnd())).toEqual(wordmark);
+		expect(lines.join("\n")).not.toContain("╭┴");
+	});
+
+	it("keeps the pencil + block wordmark when no primaryWordmark is set", () => {
+		const packageDir = mkdtempSync(join(tmpdir(), "examplecode-package-"));
+		created.push(packageDir);
+		writeFileSync(
+			join(packageDir, "package.json"),
+			JSON.stringify({
+				name: "@example/examplecode",
+				version: "1.2.3",
+				mewriteConfig: { name: "examplecode" },
+			}),
+		);
+
+		const lines = runBannerProbe({ CODING_AGENT_PACKAGE_DIR: packageDir });
+		// The pencil body is present in the default (no-branding) render.
+		expect(lines.some((l) => l.includes("╭┴──┴╮"))).toBe(true);
 	});
 });

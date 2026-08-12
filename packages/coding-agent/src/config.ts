@@ -365,6 +365,10 @@ export const BANNER_PRIMARY_WORDMARK: readonly string[] =
 	brandingConfig.primaryWordmark ?? DEFAULT_BANNER_PRIMARY_WORDMARK;
 export const BANNER_SECONDARY_WORDMARK: readonly string[] =
 	brandingConfig.secondaryWordmark ?? DEFAULT_BANNER_SECONDARY_WORDMARK;
+// True when a distribution explicitly set its own wordmark art. In that case the
+// wordmark replaces the built-in pencil entirely (renders standalone) rather than
+// annotating it; the default (upstream) keeps the pencil + block wordmark.
+export const BANNER_WORDMARK_IS_CUSTOM: boolean = brandingConfig.primaryWordmark !== undefined;
 export const BANNER_TAGLINE: string = brandingConfig.tagline || "Any Model, Less Tokens, Code Good";
 export const SYSTEM_PROMPT_BRANDING = {
 	productDisplayName: brandingConfig.systemPromptName || DISPLAY_NAME,

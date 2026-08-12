@@ -54,22 +54,20 @@ Change `name`, `configDir`, and `bin` field for your fork. Affects CLI banner, c
 }
 ```
 
-- **`primaryWordmark` / `secondaryWordmark`** — ASCII/Unicode art rendered beside
-  the pencil logo. `secondaryWordmark` stacks below the primary on tall terminals
-  (>= 32 rows). Both default to the built-in "Me Write Code" block.
+- **`primaryWordmark` / `secondaryWordmark`** — ASCII/Unicode art. **Setting
+  `primaryWordmark` replaces the built-in pencil entirely** — your art renders
+  standalone, so a distribution presents its own mark rather than annotating the
+  upstream pencil. `secondaryWordmark` stacks below the primary on tall terminals
+  (>= 32 rows). With neither set, the built-in pencil + "Me Write Code" block is
+  shown.
 - **`logoPath`** — an image logo (PNG/etc., resolved relative to the package
-  dir). When set, graphics-capable terminals render the image instead of the
-  pencil+wordmark; other terminals fall back to a text placeholder.
+  dir). Takes precedence over the wordmarks: graphics-capable terminals render
+  the image; other terminals fall back to a text placeholder.
 
-**Wordmark size limits (enforced).** The wordmark renders in a fixed box beside
-the pencil, so art that is too large is a hard startup error (with the offending
-dimension named), never silently clipped:
-
-- Max **12 rows** for the primary alone, and for primary + secondary combined.
-- Max **40 cells wide** per row.
-
-Split a large wordmark across `primaryWordmark` / `secondaryWordmark`, or shorten
-it, to fit.
+A standalone `primaryWordmark` is bounded only by the terminal width (each row is
+truncated to fit). The built-in default block wordmark, which renders **beside**
+the pencil, is held to a fixed box (max 12 rows, 40 cells wide) so it stays
+within the pencil's footprint.
 
 ## Path Resolution
 
