@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-08-12
+
 ### Added
 
 - `mewrite agents`: spawned agents are now driven interactively via live PTY panes. Selecting a running agent opens a full interactive `mewrite` session (rendered from a pseudo-terminal) whose keystrokes go straight to the child, so you can jump in and steer mid-run instead of only monitoring read-only or using the `s` steer modal. The pty master lives in the viewer, so agents run in the background while the view is open and are torn down on exit. Falls back to the prior detached-headless spawn when node-pty is unavailable ([#192](https://github.com/Zhachory1/mewritecode/pull/192)).
