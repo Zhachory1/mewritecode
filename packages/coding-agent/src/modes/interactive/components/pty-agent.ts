@@ -13,14 +13,23 @@
  */
 
 import { createRequire } from "node:module";
-// @xterm/headless is CommonJS and exposes `Terminal` on the module object; Node's
-// ESM loader can't statically bind the named export, so default-import + destructure.
-import xtermHeadless, { type Terminal as XtermTerminal } from "@xterm/headless";
+import type { Terminal as XtermTerminal } from "@xterm/headless";
+// @xterm/headless is CommonJS. Its CJS<->ESM interop differs by loader: Node's
+// ESM exposes `Terminal` on the default export, while tsx exposes it as a named
+// export and leaves `default` undefined. Import the whole namespace and pick
+// whichever shape is present so this works under Node (built dist), tsx, and
+// vitest alike.
+import * as xtermHeadless from "@xterm/headless";
 import type { IPty } from "node-pty";
-
-const { Terminal } = xtermHeadless;
-
 import type { PtyBuffer } from "./pty-render.js";
+
+type TerminalCtor = new (opts: { cols: number; rows: number; allowProposedApi?: boolean }) => XtermTerminal;
+
+const ns = xtermHeadless as unknown as {
+	Terminal?: TerminalCtor;
+	default?: { Terminal?: TerminalCtor } & TerminalCtor;
+};
+const Terminal: TerminalCtor = (ns.Terminal ?? ns.default?.Terminal ?? ns.default) as TerminalCtor;
 
 export interface PtySpawn {
 	file: string;

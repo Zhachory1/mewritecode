@@ -29,6 +29,7 @@ describe("BannerComponent", () => {
 	test("re-renders the pencil-logo brand colors from the current theme", async () => {
 		const { BannerComponent } = await import("../src/modes/interactive/components/banner.js");
 		const { initTheme } = await import("../src/modes/interactive/theme/theme.js");
+		const { BANNER_PRIMARY_WORDMARK } = await import("../src/config.js");
 		const banner = new BannerComponent({ version: "0.0.0" });
 
 		initTheme("dark");
@@ -37,8 +38,12 @@ describe("BannerComponent", () => {
 		initTheme("light");
 		const light = banner.render(120).join("\n");
 
+		// Same content, different theme colors — the render must react to the theme.
 		expect(dark).not.toBe(light);
-		expect(dark).toContain("Me Write Code");
-		expect(light).toContain("Me Write Code");
+		// The block wordmark still renders under both themes.
+		const firstWordmarkRow = BANNER_PRIMARY_WORDMARK.find((r) => r.trim() !== "")?.trimEnd() ?? "";
+		expect(firstWordmarkRow).not.toBe("");
+		expect(dark).toContain(firstWordmarkRow);
+		expect(light).toContain(firstWordmarkRow);
 	});
 });

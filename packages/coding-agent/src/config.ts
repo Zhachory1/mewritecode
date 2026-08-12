@@ -17,27 +17,26 @@ const DEFAULT_PACKAGE_DIR_ENV = `${DEFAULT_APP_NAME.toUpperCase()}_PACKAGE_DIR`;
 const DEFAULT_DISCORD_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
 const GENERIC_PACKAGE_DIR_ENV = "CODING_AGENT_PACKAGE_DIR";
 
+// Default primary wordmark: the compact "Me Write Code" block, universal
+// half/full-block + box-drawing glyphs only (renders on Apple Terminal, tmux,
+// etc.). Stacked Me / Write / Code, vertically centered against the pencil by the
+// renderer. Distributions override via `branding.primaryWordmark`.
 const DEFAULT_BANNER_PRIMARY_WORDMARK: readonly string[] = [
-	"██   ██ ███████     ██     ██ ██████  ██ ████████ ███████",
-	"███ ███ ██          ██     ██ ██   ██ ██    ██    ██",
-	"███████ █████       ██  █  ██ ██████  ██    ██    █████",
-	"██ █ ██ ██           ██ █ ██  ██   ██ ██    ██    ██",
-	"██   ██ ███████       █████   ██   ██ ██    ██    ███████",
+	"█▖▄▖█ █▀▀",
+	"█▝▀▘█ █▀▀",
+	"█   █ █▄▄",
+	"█   █ █▀▄ █ ▀█▀ █▀▀",
+	"█ ▄ █ █▀▄ █  █  █▀▀",
+	"▀▀ ▀▀ ▀ ▀ █  █  █▄▄",
+	"▄▀▀ ▄▀▄ █▀▄ █▀▀",
+	"█   █ █ █ █ █▀▀",
+	"▀▄▄ ▀▄▀ █▄▀ █▄▄",
 ];
 
-const DEFAULT_BANNER_SECONDARY_WORDMARK: readonly string[] = [
-	"",
-	"           ▄████▄   ▒█████  ▓█████▄ ▓█████",
-	"          ▒██▀ ▀█  ▒██▒  ██▒▒██▀ ██▌▓█   ▀",
-	"          ▒▓█    ▄ ▒██░  ██▒░██   █▌▒███",
-	"          ▒▓▓▄ ▄██▒▒██   ██░░██_  █▌▒▓█  ▄",
-	"          ▒ ▓███▀ ░░ ████▓▒░░██████ ░▒████▒",
-	"          ░ ░▒ ▒  ░░ ▒░▒░▒░ ░ ▒▒▓  ▒░░ ▒░ ░",
-	"            ░  ▒     ░ ▒ ▒░ ░ ▒▒ ░  ░░ ░  ░",
-	"          ░        ░ ░ ░ ▒  ░ ▒  ░     ░",
-	"          ░ ░          ░ ░    ░        ░  ░",
-	"          ░                 ░",
-];
+// The built-in wordmark keeps everything in the primary block, so there is no
+// default secondary. Distributions that want a taller two-part wordmark (shown
+// only on tall terminals) set `branding.secondaryWordmark`.
+const DEFAULT_BANNER_SECONDARY_WORDMARK: readonly string[] = [];
 
 export interface DistributionSystemPromptBranding {
 	productDisplayName?: string;

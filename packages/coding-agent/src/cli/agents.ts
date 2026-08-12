@@ -14,6 +14,7 @@ import {
 	type Component,
 	type Focusable,
 	getKeybindings,
+	Image,
 	Input,
 	ProcessTerminal,
 	setKeybindings,
@@ -28,7 +29,7 @@ import { KeybindingsManager } from "../core/keybindings.js";
 import { type LiveRecord, listLiveInteractive } from "../core/live-registry.js";
 import { getDefaultSessionDir, SessionManager } from "../core/session-manager.js";
 import { SettingsManager } from "../core/settings-manager.js";
-import { PENCIL_LOGO, renderPencilLogo } from "../modes/interactive/components/banner.js";
+import { type BannerLogo, loadBannerLogo, renderPencilLogo } from "../modes/interactive/components/banner.js";
 import { promptClarify } from "../modes/interactive/components/clarify-prompt.js";
 import { showConfirmPrompt } from "../modes/interactive/components/confirm-prompt.js";
 import { type LivePtyAgent, PtyAgentManager, ptyAvailable } from "../modes/interactive/components/pty-agent.js";
@@ -297,10 +298,12 @@ async function runViewLoop(client: CaveClient, canSpawn: boolean): Promise<numbe
 	// One pty-agent manager owns all live agents for this viewer session; agents die
 	// with the viewer (Option A). killAll() on quit tears them down.
 	const manager = new PtyAgentManager();
+	// Load the branding image logo once (if any); reused across each rebuilt TUI.
+	const logo = await loadBannerLogo();
 	try {
 		// Loop so each handoff rebuilds a fresh TUI (a stopped TUI is not reused).
 		for (;;) {
-			const action = await runListView(client, canSpawn, manager);
+			const action = await runListView(client, canSpawn, manager, logo);
 			if (action.type === "quit") return 0;
 			if (action.type === "resume") {
 				await resumeInteractive(action.row);
@@ -332,21 +335,45 @@ function spawnNewAgent(manager: PtyAgentManager, cwd: string, task: string): str
 	}
 }
 
-/** Rows the logo header occupies when shown: logo + spacer. */
-const AGENTS_HEADER_ROWS = PENCIL_LOGO.length + 1;
-
 /**
- * Agents view launch header: the shared pencil logo (brand text to its right),
- * plus a trailing spacer above the list. Hidden while an interactive pty pane is
- * open (`hidden()` true) so the embedded interactive UI gets the full height.
+ * Agents view launch header. Renders the distribution's image logo when
+ * `branding.logoPath` is set (matching the interactive banner), otherwise the
+ * shared pencil logo + brand wordmark. Hidden while an interactive pty pane is
+ * open so the embedded UI gets the full height. `rows` reports the actual header
+ * height so the list-height math stays correct for either logo.
  */
-function makeAgentsHeader(hidden: () => boolean): Component {
-	return {
-		invalidate() {},
-		render(width: number): string[] {
-			return hidden() ? [] : [...renderPencilLogo(width), ""];
-		},
-	};
+class AgentsHeader implements Component {
+	private readonly image?: Image;
+
+	constructor(
+		private readonly hidden: () => boolean,
+		logo?: BannerLogo,
+	) {
+		if (logo) {
+			this.image = new Image(
+				logo.base64Data,
+				logo.mimeType,
+				{ fallbackColor: (text) => theme.fg("dim", text) },
+				{ maxWidthCells: logo.maxWidthCells, filename: logo.filename },
+			);
+		}
+	}
+
+	/** Header height in rows (0 while hidden), used to size the list below it. */
+	rows(width: number): number {
+		if (this.hidden()) return 0;
+		return this.render(width).length;
+	}
+
+	invalidate(): void {
+		this.image?.invalidate?.();
+	}
+
+	render(width: number): string[] {
+		if (this.hidden()) return [];
+		if (this.image) return [...this.image.render(width), ""];
+		return [...renderPencilLogo(width), ""];
+	}
 }
 
 /**
@@ -409,7 +436,12 @@ class NewAgentBar implements Component, Focusable {
 	}
 }
 
-function runListView(client: CaveClient, canSpawn: boolean, manager: PtyAgentManager): Promise<ListAction> {
+function runListView(
+	client: CaveClient,
+	canSpawn: boolean,
+	manager: PtyAgentManager,
+	logo?: BannerLogo,
+): Promise<ListAction> {
 	return new Promise<ListAction>((resolve) => {
 		// Full-screen wipe so the launch is clean (matches the spawn-prompt wipe below).
 		process.stdout.write("\x1b[2J\x1b[H\x1b[3J");
@@ -494,6 +526,7 @@ function runListView(client: CaveClient, canSpawn: boolean, manager: PtyAgentMan
 			ui.requestRender();
 			return true;
 		};
+		const agentsHeader = new AgentsHeader(() => view.isPtyPaneActive(), logo);
 		const newAgentBar = new NewAgentBar(
 			process.cwd(),
 			(task) => {
@@ -527,12 +560,12 @@ function runListView(client: CaveClient, canSpawn: boolean, manager: PtyAgentMan
 			rows: () =>
 				Math.max(
 					1,
-					(process.stdout.rows || 24) - (view.isPtyPaneActive() ? 0 : AGENTS_HEADER_ROWS) - newAgentBar.rows,
+					(process.stdout.rows || 24) - agentsHeader.rows(process.stdout.columns || 80) - newAgentBar.rows,
 				),
 			sidebarSide: SettingsManager.create().getAgentsSidebarSide(),
 		});
 
-		ui.addChild(makeAgentsHeader(() => view.isPtyPaneActive()));
+		ui.addChild(agentsHeader);
 		ui.addChild(view);
 		ui.addChild(newAgentBar);
 		ui.setBottomPinnedChildren(1);
