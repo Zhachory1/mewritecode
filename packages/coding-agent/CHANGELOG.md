@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-08-12
+
 ### Fixed
 
 - `mewrite agents`: entering a spawned agent that had finished its turn (idle, but still alive and listed) no longer re-execs it into a separate full-screen `mewrite --session` with no way back. Enter now checks pty ownership first, so an owned agent — running or idle — opens the interactive pane in place with a working `esc`/`ctrl+w` exit; the resume re-exec path only applies to sessions this viewer does not own ([#195](https://github.com/Zhachory1/mewritecode/pull/195)).
