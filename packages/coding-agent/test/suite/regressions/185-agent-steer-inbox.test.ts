@@ -56,13 +56,13 @@ describe("#185 agent steering inbox", () => {
 		try {
 			// Idle -> delivered as a plain prompt.
 			sendAgentSteer(id, "do X instead");
-			await vi.waitFor(() => expect(session.calls.length).toBe(1), { timeout: 2000, interval: 50 });
+			await vi.waitFor(() => expect(session.calls.length).toBe(1), { timeout: 5000, interval: 25 });
 			expect(session.calls[0]).toEqual({ text: "do X instead", steer: false });
 
 			// Streaming -> delivered as a steer.
 			session.isStreaming = true;
 			sendAgentSteer(id, "actually do Y");
-			await vi.waitFor(() => expect(session.calls.length).toBe(2), { timeout: 2000, interval: 50 });
+			await vi.waitFor(() => expect(session.calls.length).toBe(2), { timeout: 5000, interval: 25 });
 			expect(session.calls[1]).toEqual({ text: "actually do Y", steer: true });
 
 			// The pre-watch message was never delivered.

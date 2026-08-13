@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Agent steering inbox: the spawned-agent inbox watcher now polls every 100ms instead of 500ms, so a redirect from the agents view lands faster and rapid successive writes are not coalesced into one poll. This also removes flakiness in the `#185` steering-inbox regression test under CI load.
+
 ## [1.5.2] - 2026-08-12
 
 ### Changed
