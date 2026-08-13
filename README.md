@@ -7,6 +7,11 @@
 <p align="center"><strong>me write less, me do more</strong></p>
 
 <p align="center">
+  <a href="https://mewriteco.de"><strong>mewriteco.de</strong></a>
+</p>
+
+<p align="center">
+  <a href="https://mewriteco.de"><img src="https://img.shields.io/badge/docs-mewriteco.de-0d1117.svg" alt="Documentation"></a>
   <a href="https://github.com/Zhachory1/mewritecode/actions/workflows/ci.yml"><img src="https://github.com/Zhachory1/mewritecode/actions/workflows/ci.yml/badge.svg" alt="CI / tests"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT license"></a>
 </p>
@@ -325,6 +330,8 @@ Build all packages:
 ```bash
 npm run build
 ```
+
+Full documentation site: **<https://mewriteco.de>**.
 
 Useful package docs:
 
