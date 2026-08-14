@@ -65,20 +65,22 @@ describe("distribution config", () => {
 	}
 
 	// Init the theme through the standalone-CLI path (initDistributionTheme) and
-	// return the accent color's rendered SGR, so tests can assert a distribution
-	// theme is actually applied rather than the built-in fallback.
-	function runThemeAccentProbe(env: NodeJS.ProcessEnv): string {
+	// return the resolved theme name, so tests can assert a distribution theme is
+	// actually applied rather than the built-in fallback. Asserting on the resolved
+	// name (not the rendered ANSI color) keeps this independent of the terminal's
+	// color depth — CI may downsample truecolor to a 256-color index.
+	function runThemeNameProbe(env: NodeJS.ProcessEnv): string {
 		const code = [
 			'import { initDistributionTheme, theme } from "./src/modes/interactive/theme/theme.ts";',
 			'import { SettingsManager } from "./src/core/settings-manager.ts";',
 			"initDistributionTheme(SettingsManager.create().getTheme());",
-			'console.log(theme.fg("accent", "X"));',
+			"console.log(theme.name);",
 		].join("\n");
 		return execFileSync("npx", ["tsx", "-e", code], {
 			cwd: process.cwd(),
 			env: { ...process.env, ...env },
 			encoding: "utf8",
-		});
+		}).trim();
 	}
 
 	function runPromptProbe(env: NodeJS.ProcessEnv): string {
@@ -424,10 +426,9 @@ Agent body`,
 			}),
 		);
 
-		const accent = runThemeAccentProbe({ CODING_AGENT_PACKAGE_DIR: packageDir });
-		// The distribution accent (#FF4FB3) is applied, not the built-in orange
-		// (255;107;53).
-		expect(accent).toContain("38;2;255;79;179");
-		expect(accent).not.toContain("38;2;255;107;53");
+		const themeName = runThemeNameProbe({ CODING_AGENT_PACKAGE_DIR: packageDir });
+		// The distribution theme is resolved and applied. Without registration (the
+		// #205 bug) the named theme can't load and initTheme falls back to "dark".
+		expect(themeName).toBe("acme-dark");
 	});
 });
