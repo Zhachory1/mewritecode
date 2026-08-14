@@ -5,7 +5,7 @@ import { TypeCompiler } from "@sinclair/typebox/compiler";
 import type { EditorTheme, MarkdownTheme, SelectListTheme } from "@zhachory1/mewrite-tui";
 import chalk from "chalk";
 import { highlight, supportsLanguage } from "cli-highlight";
-import { DEFAULT_THEME_NAME, getCustomThemesDir, getThemesDir } from "../../../config.js";
+import { DEFAULT_THEME_NAME, getCustomThemesDir, getDistributionThemePaths, getThemesDir } from "../../../config.js";
 import type { SourceInfo } from "../../../core/source-info.js";
 
 // ============================================================================
@@ -759,6 +759,35 @@ export function initTheme(themeName?: string, enableWatcher: boolean = false): v
 		setGlobalTheme(loadTheme("dark"));
 		// Don't start watcher for fallback theme
 	}
+}
+
+/**
+ * Register a distribution's configured themes, then init the theme by name.
+ *
+ * Standalone CLI subcommands (`agents`, `history`, the config selector) run
+ * without a ResourceLoader, so — unlike interactive mode — they never register
+ * `mewriteConfig.theme.paths`. Calling `initTheme(name)` directly then can't
+ * resolve a distribution's named default theme and silently falls back to the
+ * built-in palette (#205). This registers the distribution theme paths first so
+ * every standalone entry point themes consistently.
+ *
+ * Best-effort: a theme file that is missing or malformed is skipped rather than
+ * crashing the CLI; `initTheme` still applies its own dark-theme fallback if the
+ * requested name can't be loaded.
+ */
+export function initDistributionTheme(themeName?: string, enableWatcher: boolean = false): void {
+	const themes: Theme[] = [];
+	for (const themePath of getDistributionThemePaths()) {
+		try {
+			themes.push(loadThemeFromPath(themePath));
+		} catch {
+			// Skip a missing/malformed distribution theme; don't fail the CLI.
+		}
+	}
+	if (themes.length > 0) {
+		setRegisteredThemes(themes);
+	}
+	initTheme(themeName, enableWatcher);
 }
 
 export function setTheme(name: string, enableWatcher: boolean = false): { success: boolean; error?: string } {

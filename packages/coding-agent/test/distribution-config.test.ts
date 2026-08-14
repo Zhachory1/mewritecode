@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -62,6 +62,25 @@ describe("distribution config", () => {
 			encoding: "utf8",
 		});
 		return JSON.parse(out) as string[];
+	}
+
+	// Init the theme through the standalone-CLI path (initDistributionTheme) and
+	// return the resolved theme name, so tests can assert a distribution theme is
+	// actually applied rather than the built-in fallback. Asserting on the resolved
+	// name (not the rendered ANSI color) keeps this independent of the terminal's
+	// color depth — CI may downsample truecolor to a 256-color index.
+	function runThemeNameProbe(env: NodeJS.ProcessEnv): string {
+		const code = [
+			'import { initDistributionTheme, theme } from "./src/modes/interactive/theme/theme.ts";',
+			'import { SettingsManager } from "./src/core/settings-manager.ts";',
+			"initDistributionTheme(SettingsManager.create().getTheme());",
+			"console.log(theme.name);",
+		].join("\n");
+		return execFileSync("npx", ["tsx", "-e", code], {
+			cwd: process.cwd(),
+			env: { ...process.env, ...env },
+			encoding: "utf8",
+		}).trim();
 	}
 
 	function runPromptProbe(env: NodeJS.ProcessEnv): string {
@@ -380,5 +399,36 @@ Agent body`,
 		const lines = runBannerProbe({ CODING_AGENT_PACKAGE_DIR: packageDir });
 		// The pencil body is present in the default (no-branding) render.
 		expect(lines.some((l) => l.includes("╭┴──┴╮"))).toBe(true);
+	});
+
+	it("applies the distribution default theme on the standalone CLI path (#205)", () => {
+		const packageDir = mkdtempSync(join(tmpdir(), "examplecode-package-"));
+		created.push(packageDir);
+		mkdirSync(join(packageDir, "themes"), { recursive: true });
+		// Base a valid theme on the built-in dark so it passes schema validation,
+		// then rename it and give it a distinctive accent.
+		const dark = JSON.parse(readFileSync(join("src", "modes", "interactive", "theme", "dark.json"), "utf8")) as {
+			name: string;
+			colors: Record<string, string>;
+		};
+		dark.name = "acme-dark";
+		dark.colors.accent = "#FF4FB3"; // 255;79;179
+		writeFileSync(join(packageDir, "themes", "acme-dark.json"), JSON.stringify(dark));
+		writeFileSync(
+			join(packageDir, "package.json"),
+			JSON.stringify({
+				name: "@example/examplecode",
+				version: "1.2.3",
+				mewriteConfig: {
+					name: "examplecode",
+					theme: { default: "acme-dark", paths: ["./themes/acme-dark.json"] },
+				},
+			}),
+		);
+
+		const themeName = runThemeNameProbe({ CODING_AGENT_PACKAGE_DIR: packageDir });
+		// The distribution theme is resolved and applied. Without registration (the
+		// #205 bug) the named theme can't load and initTheme falls back to "dark".
+		expect(themeName).toBe("acme-dark");
 	});
 });

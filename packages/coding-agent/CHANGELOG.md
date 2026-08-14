@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Standalone CLI views (`mewrite agents`, `history`, and the config selector) now honor a distribution's configured theme (`mewriteConfig.theme.default` + `theme.paths`). They initialized the theme without registering the distribution's themes first — unlike interactive mode — so a named distribution theme couldn't be resolved and fell back to the built-in palette, showing off-brand colors. A shared `initDistributionTheme()` helper registers the distribution theme paths before `initTheme`, so every standalone entry point themes consistently ([#205](https://github.com/Zhachory1/mewritecode/issues/205)).
+
 - Agent steering inbox: the spawned-agent inbox watcher now polls every 100ms instead of 500ms, so a redirect from the agents view lands faster and rapid successive writes are not coalesced into one poll. This also removes flakiness in the `#185` steering-inbox regression test under CI load.
 
 ## [1.5.2] - 2026-08-12
