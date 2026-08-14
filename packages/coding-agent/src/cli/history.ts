@@ -13,7 +13,7 @@ import { KeybindingsManager } from "../core/keybindings.js";
 import { SessionManager } from "../core/session-manager.js";
 import { SettingsManager } from "../core/settings-manager.js";
 import { SessionSelectorComponent } from "../modes/interactive/components/session-selector.js";
-import { initTheme } from "../modes/interactive/theme/theme.js";
+import { initDistributionTheme } from "../modes/interactive/theme/theme.js";
 
 export interface HistoryArgs {
 	help?: boolean;
@@ -72,7 +72,7 @@ export async function runHistory(args: string[]): Promise<number> {
 	dlog("history", "opening session browser");
 
 	setKeybindings(KeybindingsManager.create());
-	initTheme(SettingsManager.create().getTheme());
+	initDistributionTheme(SettingsManager.create().getTheme());
 
 	return new Promise<number>((resolve) => {
 		const ui = new TUI(new ProcessTerminal());
