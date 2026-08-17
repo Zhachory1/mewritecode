@@ -60,7 +60,7 @@ import {
 	resolveTier,
 	supportsXhigh,
 } from "@zhachory1/mewrite-ai";
-import { CONFIG_DIR_NAME, getDocsPath, MCP_DISCOVERY_OPTIONS } from "../config.js";
+import { CONFIG_DIR_NAME, getAgentDir, getDocsPath, MCP_DISCOVERY_OPTIONS } from "../config.js";
 import { theme } from "../modes/interactive/theme/theme.js";
 import { stripFrontmatter } from "../utils/frontmatter.js";
 import { sleep } from "../utils/sleep.js";
@@ -303,11 +303,12 @@ interface ToolDefinitionEntry {
 // Constants
 // ============================================================================
 
-// Prompt-path timing: opt-in via CAVE_PROMPT_TIMING=1. Writes one line per
-// step to ~/.cave/agent/prompt-timing.log so we can see where the after-Enter
-// "fully lag" window goes. No-op when the env var is unset.
+// Prompt-path timing: opt-in via CAVE_PROMPT_TIMING=1. Writes one line per step
+// to <agentDir>/prompt-timing.log (default ~/.mewrite/agent/prompt-timing.log)
+// so we can see where the after-Enter "fully lag" window goes. No-op when the
+// env var is unset; opt-in debug log, so no legacy fallback.
 const PROMPT_TIMING_ENABLED = process.env.CAVE_PROMPT_TIMING === "1";
-const PROMPT_TIMING_LOG = join(homedir(), ".cave", "agent", "prompt-timing.log");
+const PROMPT_TIMING_LOG = join(getAgentDir(), "prompt-timing.log");
 let promptTimingT0 = 0;
 let promptTimingLast = 0;
 export function promptTimingMark(label: string): void {

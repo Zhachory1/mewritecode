@@ -49,7 +49,7 @@ export const sendMessageToolDefinition: ToolDefinition<typeof SendMessageSchema,
 		const entry = getBackground(params.to);
 		const delivered = postMessage(params.to, params.message);
 		// Always write to disk — survives process restart and is readable by the
-		// child via the same path ($HOME/.cave/tasks/<agentId>/inbox.jsonl).
+		// child via the same path (~/.mewrite/agent/tasks/<agentId>/inbox.jsonl).
 		const dir = entry?.outputFile ? dirname(entry.outputFile) : "";
 		const inboxPath = dir ? join(dir, "inbox.jsonl") : "";
 		if (inboxPath) {

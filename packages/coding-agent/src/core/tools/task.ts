@@ -518,7 +518,7 @@ interface SpawnBackgroundOptions extends Omit<SpawnOptions, "signal"> {
 
 /**
  * Spawn a cave child detached and return immediately. JSONL events are
- * tee'd to a per-agentId output file under `~/.cave/tasks/{agentId}/`.
+ * tee'd to a per-agentId output file under `~/.mewrite/agent/tasks/{agentId}/`.
  *
  * Mirrors claude-code Task.ts:108-125 — the parent reads the output file
  * (via Read or `tail`) to learn what the child has done so far.

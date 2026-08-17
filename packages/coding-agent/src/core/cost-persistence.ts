@@ -1,8 +1,9 @@
 /**
  * WS19: Cost Transparency Panel — persistence layer.
  *
- * Reads/writes `~/.cave/cost-totals.json` for legacy daily/weekly aggregates
- * and `~/.cave/cost-ledger.jsonl` for live per-assistant-message records.
+ * Reads/writes `~/.mewrite/agent/cost-totals.json` for daily/weekly aggregates
+ * and `~/.mewrite/agent/cost-ledger.jsonl` for live per-assistant-message
+ * records (legacy `~/.cave/*` read-fallback; see resolveCostPath).
  * Totals use rename-on-write; ledger writes use append-only newline framing.
  *
  * Schema:
@@ -22,7 +23,50 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { getAgentDir } from "../config.js";
 import { todayDateString, weekKeyForDate } from "./cost-formatter.js";
+
+/**
+ * Resolve a cost file path (#177). New data lives under the configured agent dir
+ * (`~/.mewrite/agent/...`). For READS, if the new file does not exist but a
+ * legacy `~/.cave/<file>` does, return the legacy path so existing ledgers/totals
+ * are not silently orphaned. WRITES always target the new dir (see the write path
+ * helpers), so the first persist after upgrade relocates data to `~/.mewrite`.
+ */
+function resolveCostReadPath(filename: string, overrideDir?: string): string {
+	if (overrideDir) return path.join(overrideDir, filename);
+	const current = path.join(getAgentDir(), filename);
+	if (fs.existsSync(current)) return current;
+	const legacy = path.join(os.homedir(), ".cave", filename);
+	if (fs.existsSync(legacy)) return legacy;
+	return current;
+}
+
+/** Canonical write path under the configured agent dir (never legacy). */
+function costWritePath(filename: string, overrideDir?: string): string {
+	return path.join(overrideDir ?? getAgentDir(), filename);
+}
+
+/**
+ * One-time relocation: if the canonical new-dir file is absent but a legacy
+ * `~/.cave/<file>` exists, copy it into the new dir so history is preserved (no
+ * silent orphaning) before we append/rewrite there. Best-effort. No-op when an
+ * override dir is used (tests) or nothing needs moving.
+ */
+function migrateLegacyCostFile(filename: string, overrideDir?: string): void {
+	if (overrideDir) return;
+	const current = path.join(getAgentDir(), filename);
+	if (fs.existsSync(current)) return;
+	const legacy = path.join(os.homedir(), ".cave", filename);
+	if (!fs.existsSync(legacy)) return;
+	try {
+		fs.mkdirSync(path.dirname(current), { recursive: true });
+		fs.copyFileSync(legacy, current);
+	} catch {
+		// Best-effort: if the copy fails, writes still proceed to the new path and
+		// only pre-existing legacy history is at risk, not new data.
+	}
+}
 
 export interface PeriodTotal {
 	input: number;
@@ -91,21 +135,21 @@ const DAILY_RETENTION_DAYS = 90;
 const WEEKLY_RETENTION_WEEKS = 52;
 
 /**
- * Return the path to ~/.cave/cost-totals.json.
- * Accepts an optional override dir for testing.
+ * Path to the cost totals file (default `~/.mewrite/agent/cost-totals.json`,
+ * legacy `~/.cave/cost-totals.json` read-fallback). Accepts an override dir for
+ * testing.
  */
-export function getCostTotalsPath(caveDir?: string): string {
-	const dir = caveDir ?? path.join(os.homedir(), ".cave");
-	return path.join(dir, COST_TOTALS_FILENAME);
+export function getCostTotalsPath(overrideDir?: string): string {
+	return resolveCostReadPath(COST_TOTALS_FILENAME, overrideDir);
 }
 
 /**
- * Return the path to ~/.cave/cost-ledger.jsonl.
- * Accepts an optional override dir for testing.
+ * Path to the cost ledger file (default `~/.mewrite/agent/cost-ledger.jsonl`,
+ * legacy `~/.cave/cost-ledger.jsonl` read-fallback). Accepts an override dir for
+ * testing.
  */
-export function getCostLedgerPath(caveDir?: string): string {
-	const dir = caveDir ?? path.join(os.homedir(), ".cave");
-	return path.join(dir, COST_LEDGER_FILENAME);
+export function getCostLedgerPath(overrideDir?: string): string {
+	return resolveCostReadPath(COST_LEDGER_FILENAME, overrideDir);
 }
 
 /**
@@ -165,17 +209,19 @@ export function persistSessionCost(delta: SessionCostDelta, filePath?: string): 
 		return; // Nothing meaningful to persist
 	}
 
-	const p = filePath ?? getCostTotalsPath();
+	// Read from wherever the data currently lives (new dir or legacy fallback),
+	// but write to the canonical new-dir path so upgrades relocate the file.
+	const readPath = filePath ?? getCostTotalsPath();
+	const p = filePath ?? costWritePath(COST_TOTALS_FILENAME);
 	const dir = path.dirname(p);
 
-	// Ensure ~/.cave/ exists
 	try {
 		fs.mkdirSync(dir, { recursive: true });
 	} catch {
 		// Already exists or can't create — best effort
 	}
 
-	const totals = readCostTotals(p);
+	const totals = readCostTotals(readPath);
 	const today = todayDateString();
 	const week = weekKeyForDate(today);
 
@@ -210,7 +256,8 @@ export function persistAssistantMessageCost(delta: AssistantMessageCostDelta, fi
 		return;
 	}
 
-	const p = filePath ?? getCostLedgerPath();
+	if (!filePath) migrateLegacyCostFile(COST_LEDGER_FILENAME);
+	const p = filePath ?? costWritePath(COST_LEDGER_FILENAME);
 	const dir = path.dirname(p);
 	try {
 		fs.mkdirSync(dir, { recursive: true });
@@ -248,7 +295,8 @@ export function persistSessionSavings(delta: SessionSavingsDelta, filePath?: str
 		return; // Nothing meaningful / no key to dedupe on.
 	}
 
-	const p = filePath ?? getCostTotalsPath();
+	const readPath = filePath ?? getCostTotalsPath();
+	const p = filePath ?? costWritePath(COST_TOTALS_FILENAME);
 	const dir = path.dirname(p);
 
 	try {
@@ -257,7 +305,7 @@ export function persistSessionSavings(delta: SessionSavingsDelta, filePath?: str
 		// Already exists or can't create — best effort
 	}
 
-	const totals = readCostTotals(p);
+	const totals = readCostTotals(readPath);
 	const savings = ensureSavings(totals);
 
 	// Idempotency: compare-and-set against the applied-session-id ring.

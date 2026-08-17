@@ -1,4 +1,5 @@
-import { appendFileSync, mkdirSync } from "node:fs";
+import { appendFileSync, copyFileSync, existsSync, mkdirSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import {
 	Container,
@@ -9,6 +10,7 @@ import {
 	type TUI,
 	visibleWidth,
 } from "@zhachory1/mewrite-tui";
+import { getAgentDir } from "../../../config.js";
 import { theme } from "../theme/theme.js";
 
 export interface SecretPromptOptions {
@@ -106,6 +108,19 @@ function auditEvent(auditPath: string | undefined, label: string): void {
 	const path = auditPath ?? defaultAuditPath();
 	try {
 		mkdirSync(dirname(path), { recursive: true });
+		// Preserve an existing legacy audit log (#177): if we're writing to the
+		// default new-dir path and it doesn't exist yet but a legacy ~/.cave one
+		// does, relocate it first so the audit trail is continuous. Best-effort.
+		if (!auditPath && !existsSync(path)) {
+			const legacy = join(homedir(), ".cave", "audit.log");
+			if (existsSync(legacy)) {
+				try {
+					copyFileSync(legacy, path);
+				} catch {
+					// If relocation fails, still append new entries below.
+				}
+			}
+		}
 		const line = `${new Date().toISOString()} secret-prompt label=${JSON.stringify(label)} value=<redacted>\n`;
 		appendFileSync(path, line);
 	} catch {
@@ -114,8 +129,7 @@ function auditEvent(auditPath: string | undefined, label: string): void {
 }
 
 function defaultAuditPath(): string {
-	const home = process.env.HOME ?? process.env.USERPROFILE ?? "";
-	return join(home, ".cave", "audit.log");
+	return join(getAgentDir(), "audit.log");
 }
 
 function doubleBorderTop(): string {

@@ -2,7 +2,7 @@
  * WS19: Unit tests for cost-persistence.ts
  */
 
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -51,6 +51,39 @@ describe("getCostLedgerPath", () => {
 		const p = getCostLedgerPath("/tmp/test-cave");
 		expect(p).toContain("cost-ledger.jsonl");
 		expect(p).toContain("test-cave");
+	});
+});
+
+describe("default path routing (#177)", () => {
+	const ENV_AGENT_DIR = "MEWRITE_CODING_AGENT_DIR";
+	let prev: string | undefined;
+	let agentDir: string;
+
+	beforeEach(() => {
+		prev = process.env[ENV_AGENT_DIR];
+		agentDir = mkdtempSync(join(tmpdir(), "cost-agentdir-"));
+		process.env[ENV_AGENT_DIR] = agentDir;
+	});
+	afterEach(() => {
+		if (prev === undefined) delete process.env[ENV_AGENT_DIR];
+		else process.env[ENV_AGENT_DIR] = prev;
+		rmSync(agentDir, { recursive: true, force: true });
+	});
+
+	it("writes cost data under the configured agent dir, not ~/.cave", () => {
+		// A write always targets the canonical new-dir path (never legacy), so
+		// after persisting, the file exists under the agent dir. (Reads may still
+		// fall back to a legacy ~/.cave file if the new one is absent, which is
+		// intentional and machine-dependent, so we assert the write path here.)
+		persistSessionCost({
+			inputTokens: 10,
+			outputTokens: 5,
+			cacheCreateTokens: 0,
+			cacheReadTokens: 0,
+			dollars: 0.01,
+		});
+		expect(existsSync(join(agentDir, "cost-totals.json"))).toBe(true);
+		expect(readdirSync(agentDir)).toContain("cost-totals.json");
 	});
 });
 

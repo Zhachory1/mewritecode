@@ -108,9 +108,10 @@ describe("formatTraceLine", () => {
 });
 
 describe("resolveTracePath", () => {
-	it("uses a default ~/.cave path for '1'", () => {
+	it("uses the agent-dir trace path for '1'", () => {
 		const path = resolveTracePath("1", "sess-abc", 42);
-		expect(path).toMatch(/\.cave\/trace\/sess-abc-42\.jsonl$/);
+		// Routes through getAgentDir() (default ~/.mewrite/agent) instead of ~/.cave (#177).
+		expect(path).toMatch(/[/\\]agent[/\\]trace[/\\]sess-abc-42\.jsonl$/);
 	});
 
 	it("uses an explicit file path verbatim", () => {
