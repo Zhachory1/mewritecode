@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- `mewrite agents`: esc inside a live agent pane is now forwarded to the embedded agent (where it cancels the current turn) instead of leaving the pane — previously the pane exit always won, so a thinking agent could never be stopped with esc. Leaving a live pane is `ctrl+w`; once the agent has exited, esc/q still leave. The pane header hint now reads "ctrl+w to leave · esc stops the agent".
+
 ## [1.5.3] - 2026-08-14
 
 ### Fixed
