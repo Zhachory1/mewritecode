@@ -97,6 +97,7 @@ export function liveToRecord(rec: LiveRecord): SessionRecord {
 		cwd: rec.cwd,
 		kind: "interactive",
 		pid: rec.pid,
+		title: rec.title,
 	};
 }
 

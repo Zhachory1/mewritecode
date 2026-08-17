@@ -14,6 +14,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { AgentSession } from "../../../src/core/agent-session.js";
 import {
 	attachLiveRegistry,
+	deriveSessionTitle,
 	getLiveDir,
 	type LiveRecord,
 	listLiveInteractive,
@@ -112,6 +113,22 @@ describe("#152 live-registry writer", () => {
 		}
 	});
 
+	it("writes a derived title from the first user message (#174)", async () => {
+		const { session } = fakeSession("write-title");
+		(session as unknown as { state: { messages: unknown[] } }).state = {
+			messages: [{ role: "user", content: "fix the flaky steering inbox test in CI please" }],
+		};
+		const dispose = attachLiveRegistry(session, "/tmp/proj");
+		try {
+			await waitFor(() => existsSync(join(getLiveDir(), "write-title.json")));
+			await waitFor(async () => (await readRecord("write-title")).title !== undefined);
+			// First 6 words of the first user message.
+			expect((await readRecord("write-title")).title).toBe("fix the flaky steering inbox test");
+		} finally {
+			dispose();
+		}
+	});
+
 	it("dispose unlinks the file", async () => {
 		const { session } = fakeSession("write-2");
 		const dispose = attachLiveRegistry(session, "/tmp/proj");
@@ -171,5 +188,62 @@ describe("#152 listLiveInteractive reader", () => {
 	it("returns empty when the live dir does not exist", async () => {
 		rmSync(getLiveDir(), { recursive: true, force: true });
 		expect(await listLiveInteractive()).toEqual([]);
+	});
+});
+
+describe("#174 deriveSessionTitle", () => {
+	function sessionWith(opts: { name?: string; messages?: unknown[] }): Parameters<typeof deriveSessionTitle>[0] {
+		return {
+			sessionName: opts.name,
+			state: { messages: opts.messages ?? [] },
+		} as unknown as Parameters<typeof deriveSessionTitle>[0];
+	}
+
+	it("prefers an explicit session name over a derived title", () => {
+		const s = sessionWith({ name: "my agent", messages: [{ role: "user", content: "do something else" }] });
+		expect(deriveSessionTitle(s)).toBe("my agent");
+	});
+
+	it("derives from the first user message, first line, max 6 words", () => {
+		const s = sessionWith({
+			messages: [
+				{ role: "assistant", content: "hello" },
+				{ role: "user", content: "one two three four five six seven eight\nsecond line" },
+			],
+		});
+		expect(deriveSessionTitle(s)).toBe("one two three four five six");
+	});
+
+	it("joins text blocks from structured content", () => {
+		const s = sessionWith({
+			messages: [
+				{
+					role: "user",
+					content: [
+						{ type: "text", text: "refactor the" },
+						{ type: "image", data: "..." },
+						{ type: "text", text: "parser module" },
+					],
+				},
+			],
+		});
+		expect(deriveSessionTitle(s)).toBe("refactor the parser module");
+	});
+
+	it("clamps very long single words to the max length with an ellipsis", () => {
+		const long = "x".repeat(100);
+		const s = sessionWith({ messages: [{ role: "user", content: long }] });
+		const title = deriveSessionTitle(s);
+		expect(title?.length).toBeLessThanOrEqual(60);
+		expect(title?.endsWith("…")).toBe(true);
+	});
+
+	it("returns undefined with no user messages (falls back to cwd/id in the view)", () => {
+		expect(deriveSessionTitle(sessionWith({}))).toBeUndefined();
+		expect(deriveSessionTitle(sessionWith({ messages: [{ role: "assistant", content: "hi" }] }))).toBeUndefined();
+	});
+
+	it("never throws on a malformed session (best-effort)", () => {
+		expect(deriveSessionTitle({} as Parameters<typeof deriveSessionTitle>[0])).toBeUndefined();
 	});
 });
