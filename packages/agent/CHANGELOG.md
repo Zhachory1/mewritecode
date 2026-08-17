@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Unknown tool calls now return a self-correcting error that names the bad tool and lists the available tools, instead of a bare "Tool <name> not found". A model that hallucinates a tool (e.g. `fetch`) previously kept retrying the same nonexistent name; it can now correct to a real tool ([#191](https://github.com/Zhachory1/mewritecode/issues/191)).
+
 ## [1.5.3] - 2026-08-14
 
 ## [1.5.2] - 2026-08-12
