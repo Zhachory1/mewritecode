@@ -47,6 +47,7 @@ export default defineConfig({
             { text: "Migration", link: "/migration/from-claude-code" },
             { text: "Comparison", link: "/comparison" },
             { text: "Cookbook", link: "/cookbook" },
+            { text: "Blog", link: "/blog/why-me-write-code" },
             {
                 text: "Links",
                 items: [
