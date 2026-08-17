@@ -1,4 +1,5 @@
 import { Type } from "@sinclair/typebox";
+import type { TextContent } from "@zhachory1/mewrite-ai";
 import {
 	type AssistantMessage,
 	type AssistantMessageEvent,
@@ -357,7 +358,9 @@ describe("agentLoop with AgentMessage", () => {
 		expect(toolEnd).toBeDefined();
 		if (toolEnd?.type === "tool_execution_end") {
 			expect(toolEnd.isError).toBe(true);
-			const text = toolEnd.result.content.map((c) => (c.type === "text" ? c.text : "")).join("");
+			const text = toolEnd.result.content
+				.map((c: TextContent | { type: string }) => (c.type === "text" ? (c as TextContent).text : ""))
+				.join("");
 			// Names the bad tool and lists what's actually available so the model self-corrects.
 			expect(text).toContain('"fetch"');
 			expect(text).toContain("not available");
