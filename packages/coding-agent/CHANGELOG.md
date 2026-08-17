@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.5.4] - 2026-08-17
+
 ### Fixed
 
 - Runtime state no longer writes to `~/.cave` by default; paths route through `getAgentDir()` (default `~/.mewrite/agent`). Relocated the cost totals/ledger, opt-in trace + prompt-timing logs, and the secret-prompt audit log. Cost files and the audit log migrate existing `~/.cave` data on first write (and reads fall back to it), so nothing is silently orphaned. Stale docstrings that named `~/.cave/...` default paths (plans, task output/inbox, background-task registry) now match the real locations. Legacy `.cave` project/user *loaders* (agents, commands, plugins) are intentionally unchanged back-compat ([#177](https://github.com/Zhachory1/mewritecode/issues/177)).
