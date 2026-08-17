@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Runtime state no longer writes to `~/.cave` by default; paths route through `getAgentDir()` (default `~/.mewrite/agent`). Relocated the cost totals/ledger, opt-in trace + prompt-timing logs, and the secret-prompt audit log. Cost files and the audit log migrate existing `~/.cave` data on first write (and reads fall back to it), so nothing is silently orphaned. Stale docstrings that named `~/.cave/...` default paths (plans, task output/inbox, background-task registry) now match the real locations. Legacy `.cave` project/user *loaders* (agents, commands, plugins) are intentionally unchanged back-compat ([#177](https://github.com/Zhachory1/mewritecode/issues/177)).
+
 ### Added
 
 - `/cwd <path>` (alias `/cd`) changes the running session's working directory instead of forcing a quit-and-restart. The path may be absolute, relative to the current cwd, or start with `~`; a non-existent or non-directory target errors and leaves the cwd unchanged. Subsequent tool calls, git status, repomap, and memory recall operate against the new directory (tools + MCP are rebuilt against it, the same mechanism `/reload` uses). `/cwd` with no argument prints the current cwd. Interactive sessions only for now; remote daemon-hosted cwd change is a follow-up ([#182](https://github.com/Zhachory1/mewritecode/issues/182)).

@@ -19,9 +19,9 @@
  */
 
 import { appendFileSync, mkdirSync } from "node:fs";
-import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import type { AgentEvent, AgentMessage } from "@zhachory1/mewrite-agent";
+import { getAgentDir } from "../config.js";
 import type { AgentSessionEvent } from "./agent-session.js";
 
 /**
@@ -189,7 +189,8 @@ export type TraceSubscribe = (listener: (event: AgentSessionEvent) => void) => (
 export function resolveTracePath(value: string, sessionId: string, now: number = Date.now()): string {
 	const trimmed = value.trim();
 	if (trimmed === "" || trimmed === "1" || trimmed.toLowerCase() === "true") {
-		return join(homedir(), ".cave", "trace", `${sessionId}-${now}.jsonl`);
+		// Opt-in debug trace; fresh file per session, so no legacy fallback needed.
+		return join(getAgentDir(), "trace", `${sessionId}-${now}.jsonl`);
 	}
 	return trimmed;
 }

@@ -1,6 +1,7 @@
 /**
  * Plan persistence — saves the model's plan-mode output to
- * `~/.cave/plans/{slug}.md` so it survives session restart, fork, and resume.
+ * `~/.mewrite/agent/plans/{slug}.md` (via getAgentDir) so it survives session
+ * restart, fork, and resume.
  *
  * Mirrors claude-code utils/plans.ts (slug per session, settings override,
  * fork/resume recovery). Cave-specific differences:

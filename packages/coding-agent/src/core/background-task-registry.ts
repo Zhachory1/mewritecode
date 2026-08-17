@@ -3,7 +3,8 @@
  *
  * The Task tool spawns the cave child detached and returns immediately with a
  * stable agentId. The child's stdout JSONL is tee'd to
- * `~/.cave/tasks/{agentId}/output.jsonl`. The parent (or the
+ * `~/.mewrite/agent/tasks/{agentId}/output.jsonl` (via getAgentDir). The parent
+ * (or the
  * `send_message`/`task_status` tools) reads from this registry to learn:
  *   - whether the run is still running,
  *   - the absolute path of the output file,
