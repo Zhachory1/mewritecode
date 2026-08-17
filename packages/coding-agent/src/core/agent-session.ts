@@ -13,7 +13,7 @@
  * Modes use this class and add their own I/O layer on top.
  */
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, type Stats, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import type {
@@ -3707,6 +3707,55 @@ export class AgentSession {
 			activeToolNames: requestedActive,
 			includeAllExtensionTools: options.includeAllExtensionTools,
 		});
+	}
+
+	/** Current working directory of this session. */
+	get cwd(): string {
+		return this._cwd;
+	}
+
+	/**
+	 * Change the session's working directory at runtime (#182). Re-points
+	 * everything derived from cwd so subsequent tool calls, repomap, memory
+	 * recall, git status, and checkpoints operate against the new directory:
+	 * updates `_cwd` and the session manager, rebuilds the repomap + memory
+	 * injectors and the lazy checkpoint manager, and re-runs `_buildRuntime` to
+	 * rebuild the tool registry and re-discover MCP against the new cwd (the same
+	 * mechanism `reload()` uses). Rejects if the target isn't an existing dir.
+	 */
+	async setCwd(dir: string): Promise<string> {
+		const expanded = dir === "~" || dir.startsWith("~/") ? join(homedir(), dir.slice(1)) : dir;
+		const resolved = resolve(this._cwd, expanded);
+		let stats: Stats;
+		try {
+			stats = statSync(resolved);
+		} catch {
+			throw new Error(`No such directory: ${resolved}`);
+		}
+		if (!stats.isDirectory()) {
+			throw new Error(`Not a directory: ${resolved}`);
+		}
+		if (resolved === this._cwd) return resolved;
+
+		this._cwd = resolved;
+		this.sessionManager.setCwd(resolved);
+		this._repomapInjector = new RepomapInjector({ cwd: this._cwd });
+		this._memoryInjector = new MemoryInjector({
+			cwd: this._cwd,
+			timeoutMs: this._memoryRecallTimeoutMs,
+			tokenCap: this._memoryRecallTokenCap,
+			recentFileNames: () => this._repomapInjector.recentFileBasenames(5),
+			memorySettings: this.settingsManager.getMemorySettings(),
+		});
+		// Lazy checkpoint manager is bound to the old cwd; drop it so the next
+		// access rebinds to the new one.
+		this._checkpointMgr = undefined;
+		// Rebuild tools + MCP against the new cwd (same path as reload()).
+		await this._buildRuntime({
+			activeToolNames: this.getActiveToolNames(),
+			includeAllExtensionTools: true,
+		});
+		return resolved;
 	}
 
 	async reload(): Promise<void> {

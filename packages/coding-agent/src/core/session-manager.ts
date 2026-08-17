@@ -781,6 +781,15 @@ export class SessionManager {
 		return this.cwd;
 	}
 
+	/**
+	 * Update the session's working directory at runtime (#182). Only the cwd used
+	 * for git status / relative-path reporting changes; the session file location
+	 * (sessionDir, chosen at creation) is intentionally left where it is.
+	 */
+	setCwd(cwd: string): void {
+		this.cwd = cwd;
+	}
+
 	getSessionDir(): string {
 		return this.sessionDir;
 	}

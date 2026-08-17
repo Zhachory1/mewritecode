@@ -70,6 +70,7 @@ export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 	{ name: "share", description: "Share session as a secret GitHub gist", wired: true },
 	{ name: "copy", description: "Copy last agent message to clipboard", wired: true },
 	{ name: "name", description: "Set session display name", wired: true },
+	{ name: "cwd", description: "Change the session working directory (alias: /cd)", wired: true },
 	{ name: "session", description: "Show session info and stats", wired: true },
 	{ name: "changelog", description: "Show changelog entries", wired: true },
 	{ name: "hotkeys", description: "Show all keyboard shortcuts", wired: true },

@@ -19,6 +19,7 @@ const SAMPLE_INPUTS: Record<string, string> = {
 	share: "/share",
 	copy: "/copy",
 	name: "/name demo",
+	cwd: "/cwd .",
 	session: "/session",
 	changelog: "/changelog",
 	hotkeys: "/hotkeys",
