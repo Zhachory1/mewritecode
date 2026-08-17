@@ -4,6 +4,10 @@
 
 ### Added
 
+- `/cwd <path>` (alias `/cd`) changes the running session's working directory instead of forcing a quit-and-restart. The path may be absolute, relative to the current cwd, or start with `~`; a non-existent or non-directory target errors and leaves the cwd unchanged. Subsequent tool calls, git status, repomap, and memory recall operate against the new directory (tools + MCP are rebuilt against it, the same mechanism `/reload` uses). `/cwd` with no argument prints the current cwd. Interactive sessions only for now; remote daemon-hosted cwd change is a follow-up ([#182](https://github.com/Zhachory1/mewritecode/issues/182)).
+
+### Added
+
 - `mewrite agents`: rows now show a meaningful auto-generated title — an explicit `/name` wins, otherwise the first line of the first user message (clamped to 6 words / 60 chars) — instead of the cwd basename or session-id prefix, so several agents in the same repo are distinguishable. Published via the live-registry, best-effort and off the hot path ([#174](https://github.com/Zhachory1/mewritecode/issues/174)).
 
 ### Fixed

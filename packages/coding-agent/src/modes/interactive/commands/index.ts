@@ -13,6 +13,7 @@ import { ContextLearnCommand } from "./context-learn-command.js";
 import { ContextSetupCommand } from "./context-setup-command.js";
 import { CopyCommand } from "./copy-command.js";
 import { CostCommand } from "./cost-command.js";
+import { CwdCommand } from "./cwd-command.js";
 import { DebugCommand } from "./debug-command.js";
 import { ExportCommand } from "./export-command.js";
 import { ForkCommand } from "./fork-command.js";
@@ -64,6 +65,7 @@ export function createDefaultInteractiveSlashCommands(): InteractiveSlashCommand
 		new ShareCommand(),
 		new CopyCommand(),
 		new NameCommand(),
+		new CwdCommand(),
 		new SessionCommand(),
 		new ChangelogCommand(),
 		new HotkeysCommand(),
