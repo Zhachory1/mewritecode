@@ -16,16 +16,16 @@ const HEADER_ROWS = 1;
 
 /**
  * Kitty-protocol Escape: `CSI 27 [;<mods>] [:<event>] u`. Matches all modifier and
- * event-type (press/repeat/release) variants so no esc encoding slips through to
- * the agent (where esc = abort). Deliberately does NOT match other CSI-u keys.
+ * event-type (press/repeat/release) variants. Deliberately does NOT match other
+ * CSI-u keys.
  */
 const KITTY_ESCAPE = /^\x1b\[27(?:;\d+)?(?::\d+)?u$/;
 
 /**
  * True for a lone Escape keypress: raw ESC, or any kitty-protocol esc form. NOT
- * true for ESC-prefixed sequences (arrows/alt/CSI), which must reach the agent.
- * A bare ESC is exactly one byte; anything longer that starts with ESC[ but isn't
- * a kitty esc (e.g. an arrow `\x1b[A`) is forwarded.
+ * true for ESC-prefixed sequences (arrows/alt/CSI). Used only once the agent has
+ * exited (esc/q leave the pane); while the agent runs, esc is forwarded so it can
+ * cancel the agent's turn.
  */
 function isBareEscape(data: string): boolean {
 	return data === "\x1b" || KITTY_ESCAPE.test(data);
@@ -51,16 +51,15 @@ export class PtyPane implements Component, Focusable {
 	}
 
 	handleInput(data: string): void {
-		// esc (and ctrl+w, handled one level up in TwoPaneView) always leaves the pane
-		// so there is a reliable exit hatch. Trade-off: the embedded agent never sees a
-		// bare esc. Acceptable for the "jump in, type a message, enter" flow; exit
-		// reliability wins. ctrl+c is NOT intercepted here — it's forwarded so you can
-		// interrupt a running agent. Everything else (text, enter, arrows, ...) too.
-		if (isBareEscape(data)) {
-			this.onBack();
+		// While the agent runs, esc is FORWARDED: inside interactive mewrite esc is
+		// "cancel the current turn", and intercepting it here made stopping a thinking
+		// agent impossible (the pane exit always won). Leaving a live pane is ctrl+w,
+		// which TwoPaneView intercepts before input reaches this pane. Once the agent
+		// has exited there is nothing to cancel, so esc (or q) leaves the pane.
+		if (this.agent.exited) {
+			if (isBareEscape(data) || data === "q") this.onBack();
 			return;
 		}
-		if (this.agent.exited) return;
 		this.agent.write(data);
 	}
 
@@ -69,7 +68,7 @@ export class PtyPane implements Component, Focusable {
 	render(width: number): string[] {
 		const rows = this.gridRows();
 		this.agent.resize(width, rows);
-		const hint = theme.fg("dim", "  (esc to leave)");
+		const hint = theme.fg("dim", "  (ctrl+w to leave · esc stops the agent)");
 		const header = truncateToWidth(theme.bold(this.title) + hint, width);
 		const grid = renderBuffer(this.agent.buffer, rows, this.agent.cols);
 		if (this.agent.exited) {
