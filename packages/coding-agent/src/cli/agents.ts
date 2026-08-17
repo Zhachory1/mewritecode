@@ -35,7 +35,7 @@ import { showConfirmPrompt } from "../modes/interactive/components/confirm-promp
 import { type LivePtyAgent, PtyAgentManager, ptyAvailable } from "../modes/interactive/components/pty-agent.js";
 import type { TranscriptLine } from "../modes/interactive/components/transcript-view.js";
 import { TwoPaneView } from "../modes/interactive/components/two-pane-view.js";
-import { initTheme, theme } from "../modes/interactive/theme/theme.js";
+import { initDistributionTheme, theme } from "../modes/interactive/theme/theme.js";
 
 const POLL_MS = 1000;
 
@@ -290,7 +290,7 @@ export async function runAgents(args: string[]): Promise<number> {
 	const client = new CaveClient({ host: parsed.host, port: parsed.port, token: parsed.token });
 
 	setKeybindings(KeybindingsManager.create());
-	initTheme(SettingsManager.create().getTheme());
+	initDistributionTheme(SettingsManager.create().getTheme());
 	return runViewLoop(client, true);
 }
 

@@ -6,7 +6,7 @@ import { ProcessTerminal, TUI } from "@zhachory1/mewrite-tui";
 import type { ResolvedPaths } from "../core/package-manager.js";
 import type { SettingsManager } from "../core/settings-manager.js";
 import { ConfigSelectorComponent } from "../modes/interactive/components/config-selector.js";
-import { initTheme, stopThemeWatcher } from "../modes/interactive/theme/theme.js";
+import { initDistributionTheme, stopThemeWatcher } from "../modes/interactive/theme/theme.js";
 
 export interface ConfigSelectorOptions {
 	resolvedPaths: ResolvedPaths;
@@ -18,7 +18,7 @@ export interface ConfigSelectorOptions {
 /** Show TUI config selector and return when closed */
 export async function selectConfig(options: ConfigSelectorOptions): Promise<void> {
 	// Initialize theme before showing TUI
-	initTheme(options.settingsManager.getTheme(), true);
+	initDistributionTheme(options.settingsManager.getTheme(), true);
 
 	return new Promise((resolve) => {
 		const ui = new TUI(new ProcessTerminal());
