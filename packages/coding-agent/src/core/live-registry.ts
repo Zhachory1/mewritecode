@@ -27,6 +27,51 @@ export interface LiveRecord {
 	cwd: string;
 	state: "running" | "idle";
 	updatedAt: string;
+	/** Display title: explicit session name, else derived from the first user message. */
+	title?: string;
+}
+
+/** Max visible length of a derived title before truncation. */
+const DERIVED_TITLE_MAX_CHARS = 60;
+const DERIVED_TITLE_MAX_WORDS = 6;
+
+/**
+ * Derive a concise display title for a session (#174): an explicit name (set via
+ * `/name`) wins; otherwise the first user message, first line only, clamped to a
+ * few words. Returns undefined when there is nothing to derive from (the agents
+ * view then falls back to cwd/id as before).
+ */
+export function deriveSessionTitle(session: AgentSession): string | undefined {
+	try {
+		return deriveSessionTitleUnsafe(session);
+	} catch {
+		// Best-effort like the rest of the registry: a title must never throw into
+		// the agent loop or the heartbeat.
+		return undefined;
+	}
+}
+
+function deriveSessionTitleUnsafe(session: AgentSession): string | undefined {
+	const explicit = session.sessionName?.trim();
+	if (explicit) return explicit;
+	for (const message of session.state.messages) {
+		if ((message as { role?: string }).role !== "user") continue;
+		const content = (message as { content?: unknown }).content;
+		const text =
+			typeof content === "string"
+				? content
+				: Array.isArray(content)
+					? content
+							.filter((b): b is { type: "text"; text: string } => (b as { type?: string })?.type === "text")
+							.map((b) => b.text)
+							.join(" ")
+					: "";
+		const firstLine = text.trim().split("\n")[0]?.trim();
+		if (!firstLine) continue;
+		const words = firstLine.split(/\s+/).slice(0, DERIVED_TITLE_MAX_WORDS).join(" ");
+		return words.length > DERIVED_TITLE_MAX_CHARS ? `${words.slice(0, DERIVED_TITLE_MAX_CHARS - 1)}…` : words;
+	}
+	return undefined;
 }
 
 export function getLiveDir(): string {
@@ -144,6 +189,9 @@ export function attachLiveRegistry(session: AgentSession, cwd: string): () => vo
 		cwd,
 		state: session.isStreaming ? "running" : "idle",
 		updatedAt: new Date().toISOString(),
+		// Best-effort: recomputed on each write (state transitions + heartbeat), so
+		// the title appears once the first user message exists and tracks /name.
+		title: deriveSessionTitle(session),
 	});
 
 	void sweepDeadFiles().then(() => {

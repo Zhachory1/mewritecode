@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- `mewrite agents`: rows now show a meaningful auto-generated title — an explicit `/name` wins, otherwise the first line of the first user message (clamped to 6 words / 60 chars) — instead of the cwd basename or session-id prefix, so several agents in the same repo are distinguishable. Published via the live-registry, best-effort and off the hot path ([#174](https://github.com/Zhachory1/mewritecode/issues/174)).
+
 ### Fixed
 
 - `mewrite agents`: esc inside a live agent pane is now forwarded to the embedded agent (where it cancels the current turn) instead of leaving the pane — previously the pane exit always won, so a thinking agent could never be stopped with esc. Leaving a live pane is `ctrl+w`; once the agent has exited, esc/q still leave. The pane header hint now reads "ctrl+w to leave · esc stops the agent".
