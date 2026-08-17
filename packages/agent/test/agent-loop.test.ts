@@ -1,4 +1,5 @@
 import { Type } from "@sinclair/typebox";
+import type { TextContent } from "@zhachory1/mewrite-ai";
 import {
 	type AssistantMessage,
 	type AssistantMessageEvent,
@@ -307,6 +308,63 @@ describe("agentLoop with AgentMessage", () => {
 		expect(toolEnd).toBeDefined();
 		if (toolEnd?.type === "tool_execution_end") {
 			expect(toolEnd.isError).toBe(false);
+		}
+	});
+
+	it("returns a self-correcting error listing available tools for an unknown tool call (#191)", async () => {
+		const toolSchema = Type.Object({ value: Type.String() });
+		const tool: AgentTool<typeof toolSchema, { value: string }> = {
+			name: "echo",
+			label: "Echo",
+			description: "Echo tool",
+			parameters: toolSchema,
+			async execute(_toolCallId, params) {
+				return { content: [{ type: "text", text: params.value }], details: { value: params.value } };
+			},
+		};
+
+		const context: AgentContext = { systemPrompt: "", messages: [], tools: [tool] };
+		const config: AgentLoopConfig = { model: createModel(), convertToLlm: identityConverter };
+
+		let callIndex = 0;
+		const streamFn = () => {
+			const stream = new MockAssistantStream();
+			queueMicrotask(() => {
+				if (callIndex === 0) {
+					// Model hallucinates a tool that isn't registered.
+					const message = createAssistantMessage(
+						[{ type: "toolCall", id: "tool-1", name: "fetch", arguments: { url: "https://example.com" } }],
+						"toolUse",
+					);
+					stream.push({ type: "done", reason: "toolUse", message });
+				} else {
+					stream.push({
+						type: "done",
+						reason: "stop",
+						message: createAssistantMessage([{ type: "text", text: "ok" }]),
+					});
+				}
+				callIndex++;
+			});
+			return stream;
+		};
+
+		const events: AgentEvent[] = [];
+		for await (const event of agentLoop([createUserMessage("fetch a url")], context, config, undefined, streamFn)) {
+			events.push(event);
+		}
+
+		const toolEnd = events.find((e) => e.type === "tool_execution_end");
+		expect(toolEnd).toBeDefined();
+		if (toolEnd?.type === "tool_execution_end") {
+			expect(toolEnd.isError).toBe(true);
+			const text = toolEnd.result.content
+				.map((c: TextContent | { type: string }) => (c.type === "text" ? (c as TextContent).text : ""))
+				.join("");
+			// Names the bad tool and lists what's actually available so the model self-corrects.
+			expect(text).toContain('"fetch"');
+			expect(text).toContain("not available");
+			expect(text).toContain("echo");
 		}
 	});
 
