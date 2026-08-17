@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "channel": "stable",
-  "publishedAt": "2026-07-31T17:36:14.075Z",
+  "publishedAt": "2026-08-17T06:17:48.656Z",
   "providers": [
     {
       "id": "anthropic",
@@ -288,11 +288,11 @@
         },
         {
           "id": "deepseek/deepseek-v4-pro",
-          "displayName": "DeepSeek: DeepSeek V4 Pro",
+          "displayName": "DeepSeek: DeepSeek V4 Pro 0423",
           "contextWindow": 1048576,
           "maxOutputTokens": 384000,
-          "inputCostPerMtok": 0.435,
-          "outputCostPerMtok": 0.87,
+          "inputCostPerMtok": 1.32,
+          "outputCostPerMtok": 3.9600000000000004,
           "capabilities": [
             "tools",
             "cache",
