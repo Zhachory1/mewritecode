@@ -675,9 +675,14 @@ async function prepareToolCall(
 ): Promise<PreparedToolCall | ImmediateToolCallOutcome> {
 	const tool = currentContext.tools?.find((t) => t.name === toolCall.name);
 	if (!tool) {
+		// Name the available tools so the model self-corrects instead of retrying a
+		// tool that doesn't exist (e.g. a hallucinated `fetch`). Without the list the
+		// agent loops on the same unknown name (#191).
+		const available = (currentContext.tools ?? []).map((t) => t.name).sort();
+		const hint = available.length > 0 ? ` Available tools: ${available.join(", ")}.` : " No tools are available.";
 		return {
 			kind: "immediate",
-			result: createErrorToolResult(`Tool ${toolCall.name} not found`),
+			result: createErrorToolResult(`Tool "${toolCall.name}" is not available and was not called.${hint}`),
 			isError: true,
 		};
 	}
