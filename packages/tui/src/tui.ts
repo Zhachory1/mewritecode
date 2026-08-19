@@ -493,10 +493,16 @@ export class TUI extends Container {
 
 	start(): void {
 		this.stopped = false;
+		this.terminal.enterAltScreen();
 		this.terminal.start(
 			(data) => this.handleInput(data),
 			() => this.requestRender(),
 		);
+		// Mouse tracking is intentionally NOT enabled. Nothing in the app consumes
+		// mouse events yet, and turning tracking on swallows wheel events that the
+		// terminal would otherwise translate to alt-screen scrollback navigation
+		// (and breaks click-drag text selection). Re-enable per-overlay/component
+		// once a consumer is wired up.
 		this.terminal.hideCursor();
 		this.queryCellSize();
 		this.requestRender();
@@ -530,19 +536,9 @@ export class TUI extends Container {
 			clearTimeout(this.renderTimer);
 			this.renderTimer = undefined;
 		}
-		// Position the cursor on a fresh line below the rendered content so the
-		// terminal's next prompt doesn't overwrite the last frame, and the full
-		// transcript stays in scrollback (matches upstream pi-mono behavior).
-		if (this.previousLines.length > 0) {
-			const targetRow = this.previousLines.length;
-			const lineDiff = targetRow - this.hardwareCursorRow;
-			if (lineDiff > 0) {
-				this.terminal.write(`\x1b[${lineDiff}B`);
-			} else if (lineDiff < 0) {
-				this.terminal.write(`\x1b[${-lineDiff}A`);
-			}
-			this.terminal.write("\r\n");
-		}
+		// In alt-screen mode the primary buffer is already preserved, so we
+		// don't need to position the cursor below rendered content. The
+		// leaveAltScreen call in terminal.stop() will restore the primary buffer.
 		this.terminal.showCursor();
 		this.terminal.stop();
 	}
