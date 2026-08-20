@@ -7,9 +7,17 @@
  * Drives the real PtyPane.handleInput with a fake agent.
  */
 
+import xtermHeadless from "@xterm/headless";
+import { visibleWidth } from "@zhachory1/mewrite-tui";
 import { describe, expect, it, vi } from "vitest";
+import { initTheme } from "../../theme/theme.js";
 import type { LivePtyAgent } from "../pty-agent.js";
 import { PtyPane } from "../pty-pane.js";
+import type { PtyBuffer } from "../pty-render.js";
+
+const { Terminal } = xtermHeadless;
+
+initTheme("dark");
 
 function makePane(exited = false) {
 	const writes: string[] = [];
@@ -87,5 +95,48 @@ describe("PtyPane esc handling", () => {
 		pane.handleInput("a");
 		expect(onBack).not.toHaveBeenCalled();
 		expect(writes).toEqual([]);
+	});
+});
+
+/** PtyPane over a real headless terminal buffer holding `text` at `cols`. */
+function paneOverBuffer(text: string, cols: number, rows: number): Promise<PtyPane> {
+	const term = new Terminal({ cols, rows, allowProposedApi: true });
+	return new Promise((resolve) => {
+		term.write(text, () => {
+			const agent = {
+				exited: false,
+				setRenderCallback: () => {},
+				write: () => {},
+				resize: () => {},
+				get buffer() {
+					return term.buffer.active as unknown as PtyBuffer;
+				},
+				cols,
+			} as unknown as LivePtyAgent;
+			resolve(
+				new PtyPane(
+					"t",
+					agent,
+					() => {},
+					vi.fn(),
+					() => rows + 1,
+				),
+			);
+		});
+	});
+}
+
+describe("PtyPane render width", () => {
+	// The embedded @xterm/headless emulator (Unicode v6) measures `✅` as width 1,
+	// but the TUI's visibleWidth() (RGI emoji) measures it as 2. A grid line that
+	// fills the child's columns must still be clamped to the pane width, or the
+	// outer renderer throws "exceeds terminal width".
+	it("clamps emoji-bearing grid lines to the pane width", async () => {
+		const width = 20;
+		// Emoji + enough content to fill the row past `width` under visibleWidth.
+		const pane = await paneOverBuffer(`✅${"x".repeat(width)}`, width, 3);
+		for (const line of pane.render(width)) {
+			expect(visibleWidth(line)).toBeLessThanOrEqual(width);
+		}
 	});
 });
