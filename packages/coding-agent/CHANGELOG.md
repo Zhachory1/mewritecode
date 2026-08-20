@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Agents view no longer crashes the TUI with "Rendered line exceeds terminal width" when a live pty focus pane shows an emoji. The embedded `@xterm/headless` emulator (Unicode v6) and the TUI's `visibleWidth()` (RGI emoji) disagree on some glyph widths (e.g. `✅` is 1 vs 2), so a grid line that fills the child's columns could measure wider than the pane. `PtyPane` now clamps each grid line to the pane width.
+
 ## [1.5.4] - 2026-08-17
 
 ### Fixed

@@ -70,7 +70,11 @@ export class PtyPane implements Component, Focusable {
 		this.agent.resize(width, rows);
 		const hint = theme.fg("dim", "  (ctrl+w to leave · esc stops the agent)");
 		const header = truncateToWidth(theme.bold(this.title) + hint, width);
-		const grid = renderBuffer(this.agent.buffer, rows, this.agent.cols);
+		// The embedded emulator (@xterm/headless, Unicode v6) and the TUI's
+		// visibleWidth() (RGI emoji) disagree on some glyph widths (e.g. ✅ is 1 vs 2),
+		// so a grid line that fills the child's columns can measure wider than `width`
+		// to the outer renderer. Clamp each line so doRender's width invariant holds.
+		const grid = renderBuffer(this.agent.buffer, rows, this.agent.cols).map((l) => truncateToWidth(l, width));
 		if (this.agent.exited) {
 			const note = theme.fg("dim", `— agent exited (code ${this.agent.exitCode ?? 0}) · esc/q back —`);
 			return [header, ...grid.slice(0, Math.max(0, rows - 1)), note];
