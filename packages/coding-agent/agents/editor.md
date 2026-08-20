@@ -2,7 +2,7 @@
 name: editor
 description: Apply a specific, already-decided edit to named files in the working tree. Not for exploration or open-ended tasks.
 tools: read, grep, find, ls, edit, write
-model: claude-sonnet-4-5
+model: claude-haiku-4-5
 effort: medium
 maxTurns: 20
 # Edits land IN the working tree (no isolation), matching cave's autopilot model.
