@@ -58,12 +58,12 @@ const PROVIDER_MODEL_PAIRS: ProviderModelPair[] = [
 	// OpenAI
 	{
 		provider: "openai",
-		model: "gpt-4o-mini",
-		label: "openai-completions-gpt-4o-mini",
+		model: "gpt-5-mini",
+		label: "openai-completions-gpt-5-mini",
 		apiOverride: "openai-completions",
 	},
 	{ provider: "openai", model: "gpt-5-mini", label: "openai-responses-gpt-5-mini" },
-	{ provider: "azure-openai-responses", model: "gpt-4o-mini", label: "azure-openai-responses-gpt-4o-mini" },
+	{ provider: "azure-openai-responses", model: "gpt-5-mini", label: "azure-openai-responses-gpt-5-mini" },
 	// OpenAI Codex
 	{ provider: "openai-codex", model: "gpt-5.2-codex", label: "openai-codex-gpt-5.2-codex" },
 	// Google Antigravity
