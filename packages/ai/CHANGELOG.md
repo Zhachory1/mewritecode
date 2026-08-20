@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.5.6] - 2026-08-20
+
 ### Removed
 
 - Pruned stale model generations from the built-in registry via a version-floor filter in `generate-models.ts`: drops Claude < 4, GPT < 5 (including the o1/o3/o4 reasoning line), and Gemini < 2.5. Version-less aliases (`*-latest`) and non-numbered families (`gpt-oss`, `gpt-audio`, `gpt-realtime`) are kept.

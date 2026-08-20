@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.5.6] - 2026-08-20
+
 ### Changed
 
 - Bundled subagent model tiers re-balanced and the sonnet agents bumped from the stale `claude-sonnet-4-5` to `claude-sonnet-5`. `editor` moves to `claude-haiku-4-5` (it only applies already-decided edits); `ship-implementation-lead`, `ship-test-writer`, and `ship-occams-principles` move up to `claude-sonnet-5` (patch correctness and scope/simplicity judgment are reasoning-heavy). `ship-doc-writer` and `ship-spec-checker` keep haiku, now spelled `claude-haiku-4-5` instead of the bare `haiku` alias. Final split: haiku for `explore`, `scout`, `tester`, `editor`, `ship-doc-writer`, `ship-spec-checker`; sonnet-5 for `critic`, `planner`, `reviewer`, `implementer`, `worker`, `ship-implementation-lead`, `ship-test-writer`, `ship-occams-principles`. Agents whose definition pins no model still fall back to the `subagentModel` setting, then the parent model.
