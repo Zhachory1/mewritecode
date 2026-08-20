@@ -1,7 +1,7 @@
 ---
 name: ship-occams-principles
 description: 'Final simplicity and engineering-principles reviewer for implementation patches. Cuts scope creep, speculative abstractions, dependency bloat, noisy docs/tests, and review friction. Use before final /ship validation or PR polish.'
-model: haiku
+model: claude-sonnet-5
 tools: read, find, grep, bash, edit
 ---
 

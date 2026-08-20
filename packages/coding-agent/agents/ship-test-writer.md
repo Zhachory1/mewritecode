@@ -1,7 +1,7 @@
 ---
 name: ship-test-writer
 description: 'Focused test writer for accepted implementation tasks. Adds missing edge/regression tests from spec-check results, keeps tests behavior-focused and minimal, runs focused validation. Use after first patch when acceptance coverage is incomplete.'
-model: haiku
+model: claude-sonnet-5
 tools: read, find, grep, bash, edit, write
 ---
 

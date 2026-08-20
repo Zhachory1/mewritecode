@@ -2,7 +2,7 @@
 name: critic
 description: Adversarial review of a plan or implementation. Pokes holes; assumes the author was over-confident.
 tools: read, grep, find, ls
-model: claude-sonnet-4-5
+model: claude-sonnet-5
 effort: high
 omitClaudeMd: true
 ---

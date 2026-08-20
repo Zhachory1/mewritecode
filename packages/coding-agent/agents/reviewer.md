@@ -2,7 +2,7 @@
 name: reviewer
 description: Critique a diff or a slice of code. Returns prioritized findings with file:line citations and suggested fixes.
 tools: read, grep, find, ls
-model: claude-sonnet-4-5
+model: claude-sonnet-5
 effort: medium
 omitClaudeMd: true
 ---
