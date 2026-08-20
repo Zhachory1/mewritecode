@@ -52,7 +52,7 @@ function buildToolResult(toolCallId: string, timestamp: number): ToolResultMessa
 
 describe("openai-completions convertMessages", () => {
 	it("batches tool-result images after consecutive tool results", () => {
-		const baseModel = getModel("openai", "gpt-4o-mini");
+		const baseModel = getModel("openai", "gpt-5-mini");
 		const model: Model<"openai-completions"> = {
 			...baseModel,
 			api: "openai-completions",

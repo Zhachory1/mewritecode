@@ -31,7 +31,6 @@ Off-core (in `contrib/`, unsupported): contrib/mom/README.md, contrib/pods/READM
 - When writing tests, run them, identify issues in either the test or implementation, and iterate until fixed.
 - For `packages/coding-agent/test/suite/`, use `test/suite/harness.ts` plus the faux provider. Do not use real provider APIs, real API keys, or paid tokens.
 - Put issue-specific regressions under `packages/coding-agent/test/suite/regressions/` and name them `<issue-number>-<short-slug>.test.ts`.
-- NEVER commit unless user asks
 
 ## GitHub Issues
 When reading issues:

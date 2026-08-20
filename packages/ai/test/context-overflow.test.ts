@@ -133,7 +133,7 @@ describe("Context overflow error handling", () => {
 		it.skipIf(!githubCopilotToken)(
 			"gpt-4o - should detect overflow via isContextOverflow",
 			async () => {
-				const model = getModel("github-copilot", "gpt-4.1");
+				const model = getModel("github-copilot", "gpt-5-mini");
 				const result = await testContextOverflow(model, githubCopilotToken!);
 				logResult(result);
 
@@ -167,7 +167,7 @@ describe("Context overflow error handling", () => {
 
 	describe.skipIf(!process.env.OPENAI_API_KEY)("OpenAI Completions", () => {
 		it("gpt-4o-mini - should detect overflow via isContextOverflow", async () => {
-			const model = { ...getModel("openai", "gpt-4o-mini") };
+			const model = { ...getModel("openai", "gpt-5-mini") };
 			model.api = "openai-completions" as any;
 			const result = await testContextOverflow(model, process.env.OPENAI_API_KEY!);
 			logResult(result);
@@ -180,7 +180,7 @@ describe("Context overflow error handling", () => {
 
 	describe.skipIf(!process.env.OPENAI_API_KEY)("OpenAI Responses", () => {
 		it("gpt-4o - should detect overflow via isContextOverflow", async () => {
-			const model = getModel("openai", "gpt-4o");
+			const model = getModel("openai", "gpt-5");
 			const result = await testContextOverflow(model, process.env.OPENAI_API_KEY!);
 			logResult(result);
 
@@ -192,7 +192,7 @@ describe("Context overflow error handling", () => {
 
 	describe.skipIf(!hasAzureOpenAICredentials())("Azure OpenAI Responses", () => {
 		it("gpt-4o-mini - should detect overflow via isContextOverflow", async () => {
-			const model = getModel("azure-openai-responses", "gpt-4o-mini");
+			const model = getModel("azure-openai-responses", "gpt-5-mini");
 			const result = await testContextOverflow(model, process.env.AZURE_OPENAI_API_KEY!);
 			logResult(result);
 
@@ -209,7 +209,7 @@ describe("Context overflow error handling", () => {
 
 	describe.skipIf(!process.env.GEMINI_API_KEY)("Google", () => {
 		it("gemini-2.0-flash - should detect overflow via isContextOverflow", async () => {
-			const model = getModel("google", "gemini-2.0-flash");
+			const model = getModel("google", "gemini-2.5-flash");
 			const result = await testContextOverflow(model, process.env.GEMINI_API_KEY!);
 			logResult(result);
 

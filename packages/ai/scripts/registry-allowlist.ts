@@ -39,7 +39,7 @@ export const REGISTRY_ALLOWLIST: Record<string, AllowlistProvider> = {
 		auth: "api-key",
 		baseUrl: "https://api.openai.com/v1",
 		source: "openai",
-		models: ["gpt-5.6", "gpt-5.1", "gpt-4.1", "gpt-4o", "o3", "o4-mini"],
+		models: ["gpt-5.6", "gpt-5.1", "gpt-5", "gpt-5-pro", "gpt-5-mini", "gpt-5-nano"],
 	},
 	google: {
 		name: "Google",
@@ -57,7 +57,7 @@ export const REGISTRY_ALLOWLIST: Record<string, AllowlistProvider> = {
 		source: "openrouter",
 		models: [
 			"anthropic/claude-opus-4.8",
-			"openai/gpt-4o",
+			"openai/gpt-5",
 			"google/gemini-2.5-pro",
 			"deepseek/deepseek-v4-pro",
 		],
