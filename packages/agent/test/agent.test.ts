@@ -64,7 +64,7 @@ describe("Agent", () => {
 	});
 
 	it("should create an agent instance with custom initial state", () => {
-		const customModel = getModel("openai", "gpt-4o-mini");
+		const customModel = getModel("openai", "gpt-5-mini");
 		const agent = new Agent({
 			initialState: {
 				systemPrompt: "You are a helpful assistant.",

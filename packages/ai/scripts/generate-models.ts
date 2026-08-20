@@ -1514,6 +1514,26 @@ async function generateModels() {
 		}));
 	allModels.push(...azureOpenAiModels);
 
+	// Version-floor filter: drop stale generations across all providers.
+	// Claude < 4, GPT < 5 (incl. o1/o3/o4 reasoning line), Gemini < 2.5.
+	// Version-less aliases (e.g. *-latest) and non-numbered families
+	// (gpt-oss, gpt-audio, gpt-realtime) are kept.
+	const isBelowVersionFloor = (id: string): boolean => {
+		const claude = id.match(/claude[-.]?(?:opus|sonnet|haiku|fable)?[-.]?(\d+)/);
+		if (claude) return parseInt(claude[1], 10) < 4;
+		if (/(?:^|[/.])o\d+(?:-|$)/.test(id)) return true;
+		const gpt = id.match(/gpt[-.]?(\d+)/);
+		if (gpt) return parseInt(gpt[1], 10) < 5;
+		const gemini = id.match(/gemini[-.]?(\d+(?:\.\d+)?)/);
+		if (gemini) return parseFloat(gemini[1]) < 2.5;
+		return false;
+	};
+	const beforeFloor = allModels.length;
+	for (let i = allModels.length - 1; i >= 0; i--) {
+		if (isBelowVersionFloor(allModels[i].id)) allModels.splice(i, 1);
+	}
+	console.log(`Version-floor filter removed ${beforeFloor - allModels.length} stale models`);
+
 	// Group by provider and deduplicate by model ID
 	const providers: Record<string, Record<string, Model<any>>> = {};
 	for (const model of allModels) {

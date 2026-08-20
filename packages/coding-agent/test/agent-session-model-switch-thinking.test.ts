@@ -9,7 +9,7 @@ import { SettingsManager } from "../src/core/settings-manager.js";
 import { createTestResourceLoader } from "./utilities.js";
 
 const reasoningModel: Model<Api> = getModel("anthropic", "claude-sonnet-4-5")!;
-const nonReasoningModel: Model<Api> = getModel("openai", "gpt-4o-mini")!;
+const nonReasoningModel: Model<Api> = getModel("openai", "gpt-5-chat-latest")!;
 
 function createSession({
 	thinkingLevel = "high",

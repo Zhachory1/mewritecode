@@ -82,7 +82,7 @@ describe("ModelRegistry", () => {
 					auth: "api-key",
 					models: [
 						{
-							id: "gpt-4o-mini",
+							id: "gpt-5-mini",
 							displayName: "GPT-4o Mini",
 							contextWindow: 128000,
 							maxOutputTokens: 16384,
@@ -122,7 +122,7 @@ describe("ModelRegistry", () => {
 			writeRegistryCache(registryWithOpenAiPricing("test-pricing", 123, 456));
 
 			const registry = ModelRegistry.create(authStorage, modelsJsonPath);
-			const model = registry.find("openai", "gpt-4o-mini");
+			const model = registry.find("openai", "gpt-5-mini");
 
 			expect(model?.cost.input).toBe(123);
 			expect(model?.cost.output).toBe(456);
@@ -133,7 +133,7 @@ describe("ModelRegistry", () => {
 			writeRawModelsJson({
 				openai: {
 					modelOverrides: {
-						"gpt-4o-mini": {
+						"gpt-5-mini": {
 							cost: { input: 99 },
 						},
 					},
@@ -141,7 +141,7 @@ describe("ModelRegistry", () => {
 			});
 
 			const registry = ModelRegistry.create(authStorage, modelsJsonPath);
-			const model = registry.find("openai", "gpt-4o-mini");
+			const model = registry.find("openai", "gpt-5-mini");
 
 			expect(model?.cost.input).toBe(99);
 			expect(model?.cost.output).toBe(456);
@@ -150,7 +150,7 @@ describe("ModelRegistry", () => {
 		test("refreshPricingFromSource fetches registry and reloads costs", async () => {
 			writeRegistryCache(registryWithOpenAiPricing("old-pricing", 1, 2));
 			const registry = ModelRegistry.create(authStorage, modelsJsonPath);
-			expect(registry.find("openai", "gpt-4o-mini")?.cost.input).toBe(1);
+			expect(registry.find("openai", "gpt-5-mini")?.cost.input).toBe(1);
 
 			const nextRegistry = registryWithOpenAiPricing("new-pricing", 3, 4);
 			const fetchImpl = async () =>
@@ -162,8 +162,8 @@ describe("ModelRegistry", () => {
 			const result = await registry.refreshPricingFromSource("stable", fetchImpl as typeof fetch);
 
 			expect(result).toMatchObject({ ok: true, version: "new-pricing", providerCount: 1, modelCount: 1 });
-			expect(registry.find("openai", "gpt-4o-mini")?.cost.input).toBe(3);
-			expect(registry.find("openai", "gpt-4o-mini")?.cost.output).toBe(4);
+			expect(registry.find("openai", "gpt-5-mini")?.cost.input).toBe(3);
+			expect(registry.find("openai", "gpt-5-mini")?.cost.output).toBe(4);
 		});
 	});
 
