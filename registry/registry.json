@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "channel": "stable",
-  "publishedAt": "2026-08-17T06:17:48.656Z",
+  "publishedAt": "2026-08-24T06:20:57.587Z",
   "providers": [
     {
       "id": "anthropic",
@@ -118,38 +118,12 @@
           ]
         },
         {
-          "id": "gpt-4.1",
-          "displayName": "GPT-4.1",
-          "contextWindow": 1047576,
-          "maxOutputTokens": 32768,
-          "inputCostPerMtok": 2,
-          "outputCostPerMtok": 8,
-          "capabilities": [
-            "tools",
-            "vision",
-            "cache"
-          ]
-        },
-        {
-          "id": "gpt-4o",
-          "displayName": "GPT-4o",
-          "contextWindow": 128000,
-          "maxOutputTokens": 16384,
-          "inputCostPerMtok": 2.5,
+          "id": "gpt-5",
+          "displayName": "GPT-5",
+          "contextWindow": 400000,
+          "maxOutputTokens": 128000,
+          "inputCostPerMtok": 1.25,
           "outputCostPerMtok": 10,
-          "capabilities": [
-            "tools",
-            "vision",
-            "cache"
-          ]
-        },
-        {
-          "id": "o3",
-          "displayName": "o3",
-          "contextWindow": 200000,
-          "maxOutputTokens": 100000,
-          "inputCostPerMtok": 2,
-          "outputCostPerMtok": 8,
           "capabilities": [
             "tools",
             "vision",
@@ -158,12 +132,39 @@
           ]
         },
         {
-          "id": "o4-mini",
-          "displayName": "o4-mini",
-          "contextWindow": 200000,
-          "maxOutputTokens": 100000,
-          "inputCostPerMtok": 1.1,
-          "outputCostPerMtok": 4.4,
+          "id": "gpt-5-pro",
+          "displayName": "GPT-5 Pro",
+          "contextWindow": 400000,
+          "maxOutputTokens": 272000,
+          "inputCostPerMtok": 15,
+          "outputCostPerMtok": 120,
+          "capabilities": [
+            "tools",
+            "vision",
+            "reasoning"
+          ]
+        },
+        {
+          "id": "gpt-5-mini",
+          "displayName": "GPT-5 Mini",
+          "contextWindow": 400000,
+          "maxOutputTokens": 128000,
+          "inputCostPerMtok": 0.25,
+          "outputCostPerMtok": 2,
+          "capabilities": [
+            "tools",
+            "vision",
+            "cache",
+            "reasoning"
+          ]
+        },
+        {
+          "id": "gpt-5-nano",
+          "displayName": "GPT-5 Nano",
+          "contextWindow": 400000,
+          "maxOutputTokens": 128000,
+          "inputCostPerMtok": 0.05,
+          "outputCostPerMtok": 0.4,
           "capabilities": [
             "tools",
             "vision",
@@ -260,16 +261,17 @@
           ]
         },
         {
-          "id": "openai/gpt-4o",
-          "displayName": "OpenAI: GPT-4o",
-          "contextWindow": 128000,
-          "maxOutputTokens": 16384,
-          "inputCostPerMtok": 2.5,
+          "id": "openai/gpt-5",
+          "displayName": "OpenAI: GPT-5",
+          "contextWindow": 400000,
+          "maxOutputTokens": 128000,
+          "inputCostPerMtok": 1.25,
           "outputCostPerMtok": 10,
           "capabilities": [
             "tools",
             "vision",
-            "cache"
+            "cache",
+            "reasoning"
           ]
         },
         {
@@ -291,8 +293,8 @@
           "displayName": "DeepSeek: DeepSeek V4 Pro 0423",
           "contextWindow": 1048576,
           "maxOutputTokens": 384000,
-          "inputCostPerMtok": 1.32,
-          "outputCostPerMtok": 3.9600000000000004,
+          "inputCostPerMtok": 0.526176,
+          "outputCostPerMtok": 1.052352,
           "capabilities": [
             "tools",
             "cache",
