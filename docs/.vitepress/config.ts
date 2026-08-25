@@ -112,8 +112,9 @@ export default defineConfig({
         ],
 
         footer: {
-            message: "MIT Licensed.",
-            copyright: "Copyright © 2026 Julius Brussee",
+            message:
+                'MIT Licensed. Special thanks to <a href="https://github.com/badlogic/pi-mono">pi</a> by Mario Zechner and the <a href="https://github.com/juliusbrussee/caveman-code">cave</a> fork by Julius Brussee, on whose work this builds.',
+            copyright: "Copyright © 2026 Zhachory Volker",
         },
 
         editLink: {
