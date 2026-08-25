@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Agents view derives an agent's display name from the **last** user message (clamped to the first 100 characters of the first line) instead of the first 6 words of the first message, so the label tracks what the agent is currently working on. Explicit `/name` still wins ([#220](https://github.com/Zhachory1/mewritecode/issues/220)).
+
+### Fixed
+
+- Agents view no longer reshuffles rows on every poll. Within-bucket ordering and the merged list now sort by stable session `id` instead of `updatedAt`, which churned every second for active agents and slid rows out from under the cursor ([#221](https://github.com/Zhachory1/mewritecode/issues/221)).
+
 ## [1.5.6] - 2026-08-20
 
 ### Changed

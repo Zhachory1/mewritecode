@@ -32,14 +32,14 @@ export interface LiveRecord {
 }
 
 /** Max visible length of a derived title before truncation. */
-const DERIVED_TITLE_MAX_CHARS = 60;
-const DERIVED_TITLE_MAX_WORDS = 6;
+const DERIVED_TITLE_MAX_CHARS = 100;
 
 /**
- * Derive a concise display title for a session (#174): an explicit name (set via
- * `/name`) wins; otherwise the first user message, first line only, clamped to a
- * few words. Returns undefined when there is nothing to derive from (the agents
- * view then falls back to cwd/id as before).
+ * Derive a concise display title for a session (#174, #220): an explicit name
+ * (set via `/name`) wins; otherwise the last user message, first line only,
+ * clamped to 100 chars, so the label tracks what the agent is currently working
+ * on. Returns undefined when there is nothing to derive from (the agents view
+ * then falls back to cwd/id as before).
  */
 export function deriveSessionTitle(session: AgentSession): string | undefined {
 	try {
@@ -54,7 +54,8 @@ export function deriveSessionTitle(session: AgentSession): string | undefined {
 function deriveSessionTitleUnsafe(session: AgentSession): string | undefined {
 	const explicit = session.sessionName?.trim();
 	if (explicit) return explicit;
-	for (const message of session.state.messages) {
+	for (let i = session.state.messages.length - 1; i >= 0; i--) {
+		const message = session.state.messages[i];
 		if ((message as { role?: string }).role !== "user") continue;
 		const content = (message as { content?: unknown }).content;
 		const text =
@@ -68,8 +69,9 @@ function deriveSessionTitleUnsafe(session: AgentSession): string | undefined {
 					: "";
 		const firstLine = text.trim().split("\n")[0]?.trim();
 		if (!firstLine) continue;
-		const words = firstLine.split(/\s+/).slice(0, DERIVED_TITLE_MAX_WORDS).join(" ");
-		return words.length > DERIVED_TITLE_MAX_CHARS ? `${words.slice(0, DERIVED_TITLE_MAX_CHARS - 1)}…` : words;
+		return firstLine.length > DERIVED_TITLE_MAX_CHARS
+			? `${firstLine.slice(0, DERIVED_TITLE_MAX_CHARS - 1)}…`
+			: firstLine;
 	}
 	return undefined;
 }
