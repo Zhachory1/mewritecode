@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.5.7] - 2026-08-25
+
 ### Fixed
 
 - `parseStreamingJson` now recovers tool-call arguments that contain raw (unescaped) control characters inside string literals — e.g. a literal newline/tab in a multi-line `edit`/`write` payload. Previously such input was silently dropped to `{}` (standard parse throws, and `partial-json` truncates the object without throwing), so the tool ran with empty args, failed, and the model regenerated the identical malformed call in a loop. The parser now escapes the offending control chars and retries before falling back, so the real arguments survive. Escaping is a no-op for otherwise-valid JSON, so genuine mid-stream truncation is handled as before.

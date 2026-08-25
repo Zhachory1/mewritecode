@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.5.7] - 2026-08-25
+
 ### Changed
 
 - Agents view derives an agent's display name from the **last** user message (clamped to the first 100 characters of the first line) instead of the first 6 words of the first message, so the label tracks what the agent is currently working on. Explicit `/name` still wins ([#220](https://github.com/Zhachory1/mewritecode/issues/220)).
