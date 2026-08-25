@@ -128,7 +128,9 @@ export async function loadRows(
 	for (const r of hosted) byId.set(r.id, r);
 	// Interactive wins on id collision.
 	for (const r of scopedLive) byId.set(r.id, liveToRecord(r));
-	return [...byId.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+	// #221: stable ordering. `updatedAt` churns on every poll for active agents,
+	// reshuffling rows under the cursor; `id` is stable across polls.
+	return [...byId.values()].sort((a, b) => a.id.localeCompare(b.id));
 }
 
 function messageText(content: unknown): string {

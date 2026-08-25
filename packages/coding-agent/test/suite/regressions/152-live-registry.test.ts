@@ -113,7 +113,7 @@ describe("#152 live-registry writer", () => {
 		}
 	});
 
-	it("writes a derived title from the first user message (#174)", async () => {
+	it("writes a derived title from the last user message (#174, #220)", async () => {
 		const { session } = fakeSession("write-title");
 		(session as unknown as { state: { messages: unknown[] } }).state = {
 			messages: [{ role: "user", content: "fix the flaky steering inbox test in CI please" }],
@@ -122,8 +122,8 @@ describe("#152 live-registry writer", () => {
 		try {
 			await waitFor(() => existsSync(join(getLiveDir(), "write-title.json")));
 			await waitFor(async () => (await readRecord("write-title")).title !== undefined);
-			// First 6 words of the first user message.
-			expect((await readRecord("write-title")).title).toBe("fix the flaky steering inbox test");
+			// First line, clamped to 100 chars (here the whole line fits).
+			expect((await readRecord("write-title")).title).toBe("fix the flaky steering inbox test in CI please");
 		} finally {
 			dispose();
 		}
@@ -204,14 +204,15 @@ describe("#174 deriveSessionTitle", () => {
 		expect(deriveSessionTitle(s)).toBe("my agent");
 	});
 
-	it("derives from the first user message, first line, max 6 words", () => {
+	it("#220 derives from the last user message, first line", () => {
 		const s = sessionWith({
 			messages: [
+				{ role: "user", content: "open the session" },
 				{ role: "assistant", content: "hello" },
 				{ role: "user", content: "one two three four five six seven eight\nsecond line" },
 			],
 		});
-		expect(deriveSessionTitle(s)).toBe("one two three four five six");
+		expect(deriveSessionTitle(s)).toBe("one two three four five six seven eight");
 	});
 
 	it("joins text blocks from structured content", () => {
@@ -230,12 +231,23 @@ describe("#174 deriveSessionTitle", () => {
 		expect(deriveSessionTitle(s)).toBe("refactor the parser module");
 	});
 
-	it("clamps very long single words to the max length with an ellipsis", () => {
-		const long = "x".repeat(100);
+	it("#220 clamps to the first 100 chars with an ellipsis", () => {
+		const long = "x".repeat(200);
 		const s = sessionWith({ messages: [{ role: "user", content: long }] });
 		const title = deriveSessionTitle(s);
-		expect(title?.length).toBeLessThanOrEqual(60);
+		expect(title?.length).toBe(100);
 		expect(title?.endsWith("…")).toBe(true);
+	});
+
+	it("#220 tracks a later steer/redirect user message", () => {
+		const s = sessionWith({
+			messages: [
+				{ role: "user", content: "start on the auth bug" },
+				{ role: "assistant", content: "on it" },
+				{ role: "user", content: "actually switch to the parser" },
+			],
+		});
+		expect(deriveSessionTitle(s)).toBe("actually switch to the parser");
 	});
 
 	it("returns undefined with no user messages (falls back to cwd/id in the view)", () => {

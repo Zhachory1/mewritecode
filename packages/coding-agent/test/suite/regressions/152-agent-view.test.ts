@@ -83,6 +83,30 @@ describe("#152 agent view list", () => {
 		expect(out.indexOf("broke")).toBeLessThan(out.indexOf("finished"));
 	});
 
+	it("#221 keeps within-bucket order stable across updatedAt churn", () => {
+		const list = new AgentListComponent(
+			() => {},
+			() => {},
+			() => {},
+		);
+		const mk = (id: string, updatedAt: string): SessionRecord => ({
+			id,
+			state: "running",
+			title: id,
+			cwd: `/tmp/${id}`,
+			kind: "hosted",
+			createdAt: "2024-01-01T00:00:00.000Z",
+			updatedAt,
+		});
+		list.setRows([mk("a-row", "2024-01-01T00:00:00.000Z"), mk("b-row", "2024-01-02T00:00:00.000Z")]);
+		const before = list.render(80).map(stripAnsi).join("\n");
+		expect(before.indexOf("a-row")).toBeLessThan(before.indexOf("b-row"));
+		// b-row becomes most-recently-updated; order must not flip.
+		list.setRows([mk("a-row", "2024-01-01T00:00:00.000Z"), mk("b-row", "2024-12-31T00:00:00.000Z")]);
+		const after = list.render(80).map(stripAnsi).join("\n");
+		expect(after.indexOf("a-row")).toBeLessThan(after.indexOf("b-row"));
+	});
+
 	it("moves selection down and confirm selects the highlighted row", () => {
 		const attached: string[] = [];
 		const list = new AgentListComponent(

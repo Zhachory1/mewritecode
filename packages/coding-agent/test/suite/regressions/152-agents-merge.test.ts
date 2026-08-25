@@ -2,7 +2,7 @@
  * #152 phase 2 — `mewrite agents` merge of hosted + live interactive sessions.
  *
  * Covers loadRows: kind tagging, stopped-exclusion, id dedupe (interactive
- * wins), updatedAt-desc sort, and daemon-down still surfacing live rows.
+ * wins), stable id sort (#221), and daemon-down still surfacing live rows.
  */
 
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
@@ -51,7 +51,7 @@ function stubClient(rows: SessionRecord[] | (() => never)): Pick<CaveClient, "li
 }
 
 describe("#152 agents merge", () => {
-	it("tags kinds, excludes stopped hosted rows, and sorts newest first", async () => {
+	it("tags kinds, excludes stopped hosted rows, and sorts by stable id (#221)", async () => {
 		const client = stubClient([
 			hostedRow("h-old", "idle", "2024-01-01T00:00:00.000Z"),
 			hostedRow("h-stopped", "stopped", "2024-06-01T00:00:00.000Z"),
@@ -59,10 +59,26 @@ describe("#152 agents merge", () => {
 		seedLive("live-new", "2024-12-01T00:00:00.000Z");
 
 		const rows = await loadRows(client);
-		expect(rows.map((r) => r.id)).toEqual(["live-new", "h-old"]);
+		expect(rows.map((r) => r.id)).toEqual(["h-old", "live-new"]);
 		expect(rows.find((r) => r.id === "live-new")?.kind).toBe("interactive");
 		expect(rows.find((r) => r.id === "h-old")?.kind).toBe("hosted");
 		expect(rows.some((r) => r.id === "h-stopped")).toBe(false);
+	});
+
+	it("#221 keeps order stable when only updatedAt churns", async () => {
+		const first = stubClient([
+			hostedRow("a-1", "idle", "2024-01-01T00:00:00.000Z"),
+			hostedRow("b-2", "idle", "2024-01-02T00:00:00.000Z"),
+		]);
+		const before = (await loadRows(first)).map((r) => r.id);
+		// Same rows, but b-2 is now the most recently updated: order must not flip.
+		const second = stubClient([
+			hostedRow("a-1", "idle", "2024-01-01T00:00:00.000Z"),
+			hostedRow("b-2", "idle", "2024-12-31T00:00:00.000Z"),
+		]);
+		const after = (await loadRows(second)).map((r) => r.id);
+		expect(after).toEqual(before);
+		expect(after).toEqual(["a-1", "b-2"]);
 	});
 
 	it("interactive wins on id collision with a hosted row", async () => {
