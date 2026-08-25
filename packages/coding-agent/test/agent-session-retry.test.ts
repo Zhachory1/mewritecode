@@ -397,6 +397,120 @@ describe("AgentSession retry", () => {
 		expect(session.isRetrying).toBe(false);
 	});
 
+	it("classifies a malformed-SSE JSON parse error as retryable and re-issues the turn (#224)", async () => {
+		// A bad/split SSE frame makes the provider SDK throw a native JSON
+		// SyntaxError; the turn surfaces stopReason=error with that message.
+		const created = createSession({ failCount: 0 });
+		created.session.dispose();
+
+		let callCount = 0;
+		const model = getModel("anthropic", "claude-sonnet-4-5")!;
+		const agent = new Agent({
+			getApiKey: () => "test-key",
+			initialState: { model, systemPrompt: "Test", tools: [] },
+			streamFn: () => {
+				callCount++;
+				const stream = new MockAssistantStream();
+				queueMicrotask(() => {
+					if (callCount === 1) {
+						const msg = createAssistantMessage("", {
+							stopReason: "error",
+							errorMessage:
+								"Bad control character in string literal in JSON at position 109 (line 1 column 110)",
+						});
+						stream.push({ type: "start", partial: msg });
+						stream.push({ type: "error", reason: "error", error: msg });
+						return;
+					}
+					const msg = createAssistantMessage("Recovered after malformed-SSE retry");
+					stream.push({ type: "start", partial: msg });
+					stream.push({ type: "done", reason: "stop", message: msg });
+				});
+				return stream;
+			},
+		});
+		const sessionManager = SessionManager.inMemory();
+		const settingsManager = SettingsManager.create(tempDir, tempDir);
+		const authStorage = AuthStorage.create(join(tempDir, "auth.json"));
+		const modelRegistry = ModelRegistry.create(authStorage, tempDir);
+		authStorage.setRuntimeApiKey("anthropic", "test-key");
+		settingsManager.applyOverrides({ retry: { enabled: true, maxRetries: 2, baseDelayMs: 1 } });
+		session = new AgentSession({
+			agent,
+			sessionManager,
+			settingsManager,
+			cwd: tempDir,
+			modelRegistry,
+			resourceLoader: createTestResourceLoader(),
+		});
+
+		const events: string[] = [];
+		session.subscribe((event) => {
+			if (event.type === "auto_retry_start") events.push(`start:${event.attempt}`);
+			if (event.type === "auto_retry_end") events.push(`end:success=${event.success}`);
+		});
+
+		await session.prompt("Test");
+
+		expect(callCount).toBe(2);
+		expect(events).toEqual(["start:1", "end:success=true"]);
+	});
+
+	it("bounds malformed-SSE JSON auto-retry to maxRetries then surfaces terminal (#224)", async () => {
+		const created = createSession({ failCount: 0 });
+		created.session.dispose();
+
+		let callCount = 0;
+		const model = getModel("anthropic", "claude-sonnet-4-5")!;
+		const agent = new Agent({
+			getApiKey: () => "test-key",
+			initialState: { model, systemPrompt: "Test", tools: [] },
+			streamFn: () => {
+				callCount++;
+				const stream = new MockAssistantStream();
+				queueMicrotask(() => {
+					// Always malformed — never recovers.
+					const msg = createAssistantMessage("", {
+						stopReason: "error",
+						errorMessage: "Expected ',' or '}' after property value in JSON at position 378 (line 1 column 379)",
+					});
+					stream.push({ type: "start", partial: msg });
+					stream.push({ type: "error", reason: "error", error: msg });
+				});
+				return stream;
+			},
+		});
+		const sessionManager = SessionManager.inMemory();
+		const settingsManager = SettingsManager.create(tempDir, tempDir);
+		const authStorage = AuthStorage.create(join(tempDir, "auth.json"));
+		const modelRegistry = ModelRegistry.create(authStorage, tempDir);
+		authStorage.setRuntimeApiKey("anthropic", "test-key");
+		settingsManager.applyOverrides({ retry: { enabled: true, maxRetries: 2, baseDelayMs: 1 } });
+		session = new AgentSession({
+			agent,
+			sessionManager,
+			settingsManager,
+			cwd: tempDir,
+			modelRegistry,
+			resourceLoader: createTestResourceLoader(),
+		});
+
+		const events: string[] = [];
+		session.subscribe((event) => {
+			if (event.type === "auto_retry_start") events.push(`start:${event.attempt}`);
+			if (event.type === "auto_retry_end") events.push(`end:success=${event.success}`);
+		});
+
+		await session.prompt("Test");
+
+		// Initial attempt + maxRetries(2) re-issues = 3 LLM calls total.
+		expect(callCount).toBe(3);
+		expect(events).toContain("start:1");
+		expect(events).toContain("start:2");
+		expect(events).toContain("end:success=false");
+		expect(session.isRetrying).toBe(false);
+	});
+
 	it("does NOT auto-retry a genuinely terminal error (auth / 400)", async () => {
 		const created = createSession({ failCount: 0 });
 		created.session.dispose();
@@ -443,6 +557,59 @@ describe("AgentSession retry", () => {
 		await session.prompt("Test");
 
 		// No retry: exactly one LLM call, no auto_retry_start.
+		expect(callCount).toBe(1);
+		expect(events).toEqual([]);
+		expect(session.isRetrying).toBe(false);
+	});
+
+	it("does NOT auto-retry a JSON-adjacent terminal error lacking the V8 position suffix (#224 anchor guard)", async () => {
+		// A provider 400 whose body merely mentions JSON must NOT trip the #224
+		// retryable clause: only V8 `JSON.parse` errors carry `in JSON at position N`.
+		// This locks the anchor's precision against future regex edits.
+		const created = createSession({ failCount: 0 });
+		created.session.dispose();
+
+		let callCount = 0;
+		const model = getModel("anthropic", "claude-sonnet-4-5")!;
+		const agent = new Agent({
+			getApiKey: () => "test-key",
+			initialState: { model, systemPrompt: "Test", tools: [] },
+			streamFn: () => {
+				callCount++;
+				const stream = new MockAssistantStream();
+				queueMicrotask(() => {
+					const msg = createAssistantMessage("", {
+						stopReason: "error",
+						errorMessage: "400 invalid_request_error: input JSON is invalid",
+					});
+					stream.push({ type: "start", partial: msg });
+					stream.push({ type: "error", reason: "error", error: msg });
+				});
+				return stream;
+			},
+		});
+		const sessionManager = SessionManager.inMemory();
+		const settingsManager = SettingsManager.create(tempDir, tempDir);
+		const authStorage = AuthStorage.create(join(tempDir, "auth.json"));
+		const modelRegistry = ModelRegistry.create(authStorage, tempDir);
+		authStorage.setRuntimeApiKey("anthropic", "test-key");
+		settingsManager.applyOverrides({ retry: { enabled: true, maxRetries: 2, baseDelayMs: 1 } });
+		session = new AgentSession({
+			agent,
+			sessionManager,
+			settingsManager,
+			cwd: tempDir,
+			modelRegistry,
+			resourceLoader: createTestResourceLoader(),
+		});
+
+		const events: string[] = [];
+		session.subscribe((event) => {
+			if (event.type === "auto_retry_start") events.push(`start:${event.attempt}`);
+		});
+
+		await session.prompt("Test");
+
 		expect(callCount).toBe(1);
 		expect(events).toEqual([]);
 		expect(session.isRetrying).toBe(false);
