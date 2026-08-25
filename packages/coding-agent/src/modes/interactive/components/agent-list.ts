@@ -105,7 +105,9 @@ export class AgentListComponent implements Component, Focusable {
 			const ba = BUCKET_ORDER.indexOf(bucketOf(a.state));
 			const bb = BUCKET_ORDER.indexOf(bucketOf(b.state));
 			if (ba !== bb) return ba - bb;
-			return b.updatedAt.localeCompare(a.updatedAt);
+			// #221: stable within-bucket order. `updatedAt` churns every poll for
+			// active agents, so rows reshuffled under the cursor; `id` is stable.
+			return a.id.localeCompare(b.id);
 		});
 	}
 
