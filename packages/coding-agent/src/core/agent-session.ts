@@ -3800,7 +3800,14 @@ export class AgentSession {
 
 		const err = message.errorMessage;
 		// Match: overloaded_error, provider returned error, rate limit, 429, 500, 502, 503, 504, service unavailable, network/connection errors, fetch failed, request ended without sending chunks, terminated, retry delay exceeded, and stream watchdog trips (idle/stalled stream + total-duration timeout — both abort the turn for a bounded auto re-issue).
-		return /overloaded|provider.?returned.?error|rate.?limit|too many requests|429|500|502|503|504|service.?unavailable|server.?error|internal.?error|network.?error|connection.?error|connection.?refused|other side closed|fetch failed|upstream.?connect|reset before headers|socket hang up|ended without|timed? out|timeout|terminated|retry delay|stream idle|stalled/i.test(
+		// Also match malformed streaming JSON (#224): a bad/split SSE frame makes the
+		// provider SDK throw a native JSON SyntaxError ("... in JSON at position N"),
+		// e.g. "Bad control character in string literal in JSON at position 109", which
+		// otherwise ends the turn as a terminal error and loops on continue. The
+		// `in JSON at position` suffix is unique to V8 JSON.parse errors, so it can't
+		// match a provider API message; context-overflow is already excluded above.
+		// Bounded by maxRetries so a deterministically-malformed turn still surfaces.
+		return /overloaded|provider.?returned.?error|rate.?limit|too many requests|429|500|502|503|504|service.?unavailable|server.?error|internal.?error|network.?error|connection.?error|connection.?refused|other side closed|fetch failed|upstream.?connect|reset before headers|socket hang up|ended without|timed? out|timeout|terminated|retry delay|stream idle|stalled|in JSON at position/i.test(
 			err,
 		);
 	}

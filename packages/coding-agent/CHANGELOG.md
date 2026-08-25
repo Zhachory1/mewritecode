@@ -8,6 +8,7 @@
 
 ### Fixed
 
+- A streaming turn that dies on malformed SSE JSON (a bad or split provider frame makes the SDK throw a native JSON `SyntaxError`, e.g. `Bad control character in string literal in JSON at position N`) is now classified as retryable, so it auto-retries with backoff instead of ending the turn as a terminal error and looping on `continue`. Bounded by `maxRetries`, so a deterministically-malformed turn still surfaces. The `in JSON at position` match is unique to V8 `JSON.parse` errors and cannot match a provider API message; context-overflow is still excluded ([#224](https://github.com/Zhachory1/mewritecode/issues/224)).
 - Agents view no longer reshuffles rows on every poll. Within-bucket ordering and the merged list now sort by stable session `id` instead of `updatedAt`, which churned every second for active agents and slid rows out from under the cursor ([#221](https://github.com/Zhachory1/mewritecode/issues/221)).
 
 ## [1.5.6] - 2026-08-20
