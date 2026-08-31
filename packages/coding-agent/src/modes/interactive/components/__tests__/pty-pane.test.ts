@@ -8,8 +8,9 @@
  */
 
 import xtermHeadless from "@xterm/headless";
-import { visibleWidth } from "@zhachory1/mewrite-tui";
+import { setKeybindings, visibleWidth } from "@zhachory1/mewrite-tui";
 import { describe, expect, it, vi } from "vitest";
+import { KeybindingsManager } from "../../../../core/keybindings.js";
 import { initTheme } from "../../theme/theme.js";
 import type { LivePtyAgent } from "../pty-agent.js";
 import { PtyPane } from "../pty-pane.js";
@@ -17,6 +18,14 @@ import type { PtyBuffer } from "../pty-render.js";
 
 const { Terminal } = xtermHeadless;
 
+// Default-binding byte sequences for the pane scrollback keys.
+const SHIFT_PAGE_UP = "\x1b[5$";
+const SHIFT_PAGE_DOWN = "\x1b[6$";
+const SHIFT_END = "\x1b[8$";
+
+// app.agents.scroll* live on the app keybindings, not the bare TUI defaults, so
+// the pane's getKeybindings() must resolve the full app config.
+setKeybindings(KeybindingsManager.create());
 initTheme("dark");
 
 function makePane(exited = false) {
@@ -26,6 +35,7 @@ function makePane(exited = false) {
 		setRenderCallback: () => {},
 		write: (d: string) => writes.push(d),
 		resize: () => {},
+		markRow: () => null,
 		get buffer() {
 			return { baseY: 0, getLine: () => undefined };
 		},
@@ -108,6 +118,10 @@ function paneOverBuffer(text: string, cols: number, rows: number): Promise<PtyPa
 				setRenderCallback: () => {},
 				write: () => {},
 				resize: () => {},
+				markRow: (absRow: number) => {
+					const b = term.buffer.active;
+					return term.registerMarker(absRow - (b.baseY + b.cursorY)) ?? null;
+				},
 				get buffer() {
 					return term.buffer.active as unknown as PtyBuffer;
 				},
@@ -125,6 +139,149 @@ function paneOverBuffer(text: string, cols: number, rows: number): Promise<PtyPa
 		});
 	});
 }
+
+const ANSI_SGR = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
+const stripAnsi = (s: string): string => s.replace(ANSI_SGR, "");
+
+/**
+ * Live pty pane over a real headless terminal. `write(data)` pushes more child
+ * output through the emulator (advancing baseY); `grid()` returns the rendered
+ * body lines (header stripped). rows = viewport grid height.
+ */
+function livePane(cols: number, rows: number) {
+	const term = new Terminal({ cols, rows, allowProposedApi: true });
+	const renders: number[] = [];
+	const agent = {
+		exited: false,
+		exitCode: null,
+		setRenderCallback: () => {},
+		write: () => {},
+		resize: (c: number, r: number) => term.resize(c, r),
+		markRow: (absRow: number) => {
+			const b = term.buffer.active;
+			return term.registerMarker(absRow - (b.baseY + b.cursorY)) ?? null;
+		},
+		get buffer() {
+			return term.buffer.active as unknown as PtyBuffer;
+		},
+		get cols() {
+			return term.cols;
+		},
+	} as unknown as LivePtyAgent;
+	let gridRows = rows;
+	const pane = new PtyPane(
+		"t",
+		agent,
+		() => renders.push(1),
+		vi.fn(),
+		() => gridRows + 1, // + HEADER_ROWS
+	);
+	const write = (data: string): Promise<void> => new Promise((r) => term.write(data, () => r()));
+	const body = (width = cols): string[] => pane.render(width).slice(1).map(stripAnsi);
+	const baseY = (): number => term.buffer.active.baseY;
+	const setGridRows = (r: number): void => {
+		gridRows = r;
+	};
+	return { pane, write, body, baseY, setGridRows, term };
+}
+
+/** N numbered lines "L0".. so rendered content is identifiable per row. */
+function numberedLines(n: number): string {
+	return Array.from({ length: n }, (_, i) => `L${i}`).join("\r\n");
+}
+
+describe("PtyPane scrollback (#227)", () => {
+	it("follows the live tail by default and forwards scroll keys' non-effect until scrolled", async () => {
+		const p = livePane(20, 5);
+		await p.write(numberedLines(20)); // 0..19, viewport shows the tail
+		const tail = p.body();
+		expect(tail.some((l) => l.includes("L19"))).toBe(true);
+		expect(tail.some((l) => l.includes("L0"))).toBe(false);
+	});
+
+	it("scrolls up into history and clamps at the top", async () => {
+		const p = livePane(20, 5);
+		await p.write(numberedLines(30));
+		p.pane.handleInput(SHIFT_PAGE_UP);
+		const up = p.body();
+		expect(up.some((l) => l.includes("L19"))).toBe(false); // moved off the tail
+		// Page to the very top; further up is clamped (top stays at row 0 = "L0").
+		for (let i = 0; i < 20; i++) p.pane.handleInput(SHIFT_PAGE_UP);
+		const top = p.body();
+		expect(top[0]).toContain("L0");
+		const topAgain = (() => {
+			p.pane.handleInput(SHIFT_PAGE_UP);
+			return p.body();
+		})();
+		expect(topAgain).toEqual(top);
+	});
+
+	it("holds the viewport as new output arrives while paused", async () => {
+		const p = livePane(20, 5);
+		await p.write(numberedLines(30));
+		p.pane.handleInput(SHIFT_PAGE_UP);
+		const held = p.body();
+		await p.write(`\r\n${numberedLines(10)}`); // baseY advances
+		expect(p.body()).toEqual(held); // marker anchor keeps content pinned
+	});
+
+	it("jumps back to the live tail with shift+end", async () => {
+		const p = livePane(20, 5);
+		await p.write(numberedLines(30));
+		p.pane.handleInput(SHIFT_PAGE_UP);
+		expect(p.body().some((l) => l.includes("L29"))).toBe(false);
+		p.pane.handleInput(SHIFT_END);
+		expect(p.body().some((l) => l.includes("L29"))).toBe(true);
+	});
+
+	it("scroll-down past the tail resumes following (clears the anchor)", async () => {
+		const p = livePane(20, 5);
+		await p.write(numberedLines(30));
+		p.pane.handleInput(SHIFT_PAGE_UP);
+		p.pane.handleInput(SHIFT_PAGE_DOWN);
+		p.pane.handleInput(SHIFT_PAGE_DOWN); // overshoot the tail
+		const atTail = p.body();
+		await p.write("\r\nL_new");
+		expect(p.body().some((l) => l.includes("L_new"))).toBe(true); // following again
+		expect(atTail.some((l) => l.includes("L29"))).toBe(true);
+	});
+
+	it("snaps to the tail on resize while paused", async () => {
+		const p = livePane(20, 5);
+		await p.write(numberedLines(30));
+		p.pane.handleInput(SHIFT_PAGE_UP);
+		expect(p.body().some((l) => l.includes("L29"))).toBe(false);
+		p.setGridRows(8); // pane height change => reflow => snap to tail
+		expect(p.body().some((l) => l.includes("L29"))).toBe(true);
+	});
+
+	it("snaps to the tail when the pinned line is evicted past the scrollback cap", async () => {
+		const p = livePane(20, 5);
+		await p.write(numberedLines(30));
+		p.pane.handleInput(SHIFT_PAGE_UP);
+		expect(p.body().some((l) => l.includes("L29"))).toBe(false); // paused in history
+		// Flood past xterm's default 1000-line scrollback so the pinned row is trimmed.
+		await p.write(`\r\n${numberedLines(1200)}`);
+		const after = p.body();
+		expect(after.some((l) => l.includes("L2"))).toBe(false); // old history gone
+		expect(after.some((l) => l.includes("L1199"))).toBe(true); // following the live tail
+	});
+
+	it("forwards bare pageUp/pageDown to a running child (not stolen by scrollback)", () => {
+		const { pane, writes } = makePane();
+		pane.handleInput("\x1b[5~"); // bare pageUp
+		pane.handleInput("\x1b[6~"); // bare pageDown
+		expect(writes).toEqual(["\x1b[5~", "\x1b[6~"]);
+	});
+
+	it("consumes scroll keys instead of forwarding them to the child", () => {
+		const { pane, writes } = makePane();
+		pane.handleInput(SHIFT_PAGE_UP);
+		pane.handleInput(SHIFT_PAGE_DOWN);
+		pane.handleInput(SHIFT_END);
+		expect(writes).toEqual([]);
+	});
+});
 
 describe("PtyPane render width", () => {
 	// The embedded @xterm/headless emulator (Unicode v6) measures `✅` as width 1,

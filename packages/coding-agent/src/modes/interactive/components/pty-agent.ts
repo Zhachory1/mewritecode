@@ -13,7 +13,7 @@
  */
 
 import { createRequire } from "node:module";
-import type { Terminal as XtermTerminal } from "@xterm/headless";
+import type { IMarker, Terminal as XtermTerminal } from "@xterm/headless";
 // @xterm/headless is CommonJS. Its CJS<->ESM interop differs by loader: Node's
 // ESM exposes `Terminal` on the default export, while tsx exposes it as a named
 // export and leaves `default` undefined. Import the whole namespace and pick
@@ -117,6 +117,20 @@ export class LivePtyAgent {
 
 	get buffer(): PtyBuffer {
 		return this.term.buffer.active as unknown as PtyBuffer;
+	}
+
+	/**
+	 * Register a marker tracking `absRow` (an absolute buffer row) as scrollback is
+	 * trimmed. The marker's `.line` follows the pinned row and becomes -1 once that
+	 * row is evicted past the scrollback cap. Caller owns disposal. Used by the
+	 * pane to hold a scrolled-back viewport steady while output keeps arriving.
+	 * Returns null when a marker can't be registered (offset out of range, or the
+	 * child is on its alt buffer) — the pane treats that as "follow the tail".
+	 */
+	markRow(absRow: number): IMarker | null {
+		const b = this.term.buffer.active;
+		const cursorAbs = b.baseY + b.cursorY;
+		return this.term.registerMarker(absRow - cursorAbs) ?? null;
 	}
 
 	/** OS pid of the child process (matches the session's live-registry pid), or null. */

@@ -50,6 +50,9 @@ export interface AppKeybindings {
 	"app.agents.attention": true;
 	"app.agents.steer": true;
 	"app.agents.interrupt": true;
+	"app.agents.scrollUp": true;
+	"app.agents.scrollDown": true;
+	"app.agents.scrollToTail": true;
 }
 
 export type AppKeybinding = keyof AppKeybindings;
@@ -182,6 +185,18 @@ export const KEYBINDINGS = {
 	"app.agents.interrupt": {
 		defaultKeys: "x",
 		description: "Interrupt (stop) the monitored running agent",
+	},
+	"app.agents.scrollUp": {
+		defaultKeys: "shift+pageUp",
+		description: "Scroll the live agent pane up into scrollback",
+	},
+	"app.agents.scrollDown": {
+		defaultKeys: "shift+pageDown",
+		description: "Scroll the live agent pane down toward the live tail",
+	},
+	"app.agents.scrollToTail": {
+		defaultKeys: "shift+end",
+		description: "Jump the live agent pane back to the live tail",
 	},
 } as const satisfies KeybindingDefinitions;
 

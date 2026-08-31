@@ -166,14 +166,23 @@ export function renderLine(line: PtyLine | undefined, cols: number): string {
 }
 
 /**
+ * Render a `rows`-tall window of a buffer starting at row `top`, to ANSI-styled
+ * lines. `top` is an absolute buffer row: `baseY` renders the live viewport,
+ * a smaller value renders scrollback history above it.
+ */
+export function renderBufferAt(buffer: PtyBuffer, top: number, rows: number, cols: number): string[] {
+	const lines: string[] = [];
+	for (let y = 0; y < rows; y++) {
+		lines.push(renderLine(buffer.getLine(top + y), cols));
+	}
+	return lines;
+}
+
+/**
  * Render the live viewport ([baseY, baseY+rows)) of a buffer to ANSI-styled
  * lines. Reading from `baseY` (not 0) tracks the terminal as it scrolls; rows
  * above `baseY` are scrollback history the emulator has already pushed up.
  */
 export function renderBuffer(buffer: PtyBuffer, rows: number, cols: number): string[] {
-	const lines: string[] = [];
-	for (let y = 0; y < rows; y++) {
-		lines.push(renderLine(buffer.getLine(buffer.baseY + y), cols));
-	}
-	return lines;
+	return renderBufferAt(buffer, buffer.baseY, rows, cols);
 }
