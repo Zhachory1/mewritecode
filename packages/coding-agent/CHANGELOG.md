@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- APT repository index now lists every architecture. `build-linux-repos.sh` ran `dpkg-scanpackages` without `-m`, so it deduped the amd64 and arm64 `.deb` (identical name+version) down to a single stanza, leaving the published `Packages` index arm64-only. `apt install mewrite-code` on amd64 then fetched the arm64 package and dpkg rejected it with "package architecture (arm64) does not match system (amd64)". Added `-m`/`--multiversion` so both arches are indexed, plus a smoke-install check that fails when the stanza count does not match the `.deb` count.
+
 ## [1.5.7] - 2026-08-25
 
 ### Changed

@@ -56,7 +56,10 @@ cp "${RPMS[@]}" "$OUTPUT_DIR/yum/"
 
 (
     cd "$OUTPUT_DIR/apt"
-    dpkg-scanpackages . /dev/null > Packages
+    # -m/--multiversion: emit a stanza per .deb. Without it, dpkg-scanpackages
+    # dedups by name+version and drops all but one arch (same name+version,
+    # different Architecture), leaving amd64 clients an arm64-only index.
+    dpkg-scanpackages -m . /dev/null > Packages
     gzip -9c Packages > Packages.gz
 )
 

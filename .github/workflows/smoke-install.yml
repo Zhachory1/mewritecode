@@ -75,6 +75,17 @@ jobs:
           ./scripts/build-linux-repos.sh packages/coding-agent/binaries packages/coding-agent/binaries/package-repos
           test -s packages/coding-agent/binaries/package-repos/apt/Packages.gz
           test -s packages/coding-agent/binaries/package-repos/yum/repodata/repomd.xml
+          # Every .deb must be indexed. Guards against dpkg-scanpackages dedup
+          # dropping an arch (name+version collision), which stranded amd64
+          # clients on an arm64-only index (issue: apt arch mismatch).
+          apt_dir=packages/coding-agent/binaries/package-repos/apt
+          deb_count=$(ls "$apt_dir"/mewrite-code_*.deb | wc -l)
+          stanza_count=$(grep -c '^Package: ' "$apt_dir/Packages")
+          if [ "$deb_count" -ne "$stanza_count" ]; then
+            echo "APT index mismatch: $deb_count .deb files but $stanza_count stanzas" >&2
+            cat "$apt_dir/Packages" >&2
+            exit 1
+          fi
 
       - name: Serve archives locally
         shell: bash
