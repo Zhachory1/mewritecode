@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.5.8] - 2026-08-31
+
 ### Added
 
 - `mewrite agents` live PTY panes now have keyboard scrollback. `shift+pageUp`/`shift+pageDown` scroll into the agent's output history and `shift+end` jumps back to the live tail; while scrolled up, the pane holds its viewport as the agent keeps producing output (the header shows how many lines remain to the tail) and resizing snaps back to the tail. The bindings are configurable (`app.agents.scrollUp`/`scrollDown`/`scrollToTail`) and are distinct from the bare `pageUp`/`pageDown` still forwarded to the nested agent, so a full-screen child keeps its own paging ([#227](https://github.com/Zhachory1/mewritecode/issues/227)).
