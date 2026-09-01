@@ -75,6 +75,56 @@ function getCellItalic(terminal: VirtualTerminal, row: number, col: number): num
 	return cell.isItalic();
 }
 
+describe("TUI main scroll", () => {
+	it("pages main content while keeping bottom-pinned controls visible", async () => {
+		const terminal = new VirtualTerminal(20, 5);
+		const tui = new TUI(terminal);
+		const chat = new TestComponent();
+		const input = new TestComponent();
+		chat.lines = Array.from({ length: 10 }, (_, i) => `Chat ${i + 1}`);
+		input.lines = ["Input"];
+		tui.addChild(chat);
+		tui.addChild(input);
+		tui.setBottomPinnedChildren(1);
+		tui.setMainScroll(true);
+		tui.start();
+		await settle(terminal);
+
+		assert.strictEqual(terminal.isMouseTrackingEnabled(), true);
+		assert.deepStrictEqual(terminal.getViewport(), ["Chat 7", "Chat 8", "Chat 9", "Chat 10", "Input"]);
+		const initialRedraws = tui.fullRedraws;
+		const stopInput = tui.addInputListener(() => ({ consume: true }));
+		terminal.sendInput("\x1b[<64;1;1M");
+		await settle(terminal);
+		assert.deepStrictEqual(terminal.getViewport(), ["Chat 7", "Chat 8", "Chat 9", "Chat 10", "Input"]);
+		stopInput();
+
+		terminal.sendInput("\x1b[<66;1;1M");
+		await settle(terminal);
+		assert.deepStrictEqual(terminal.getViewport(), ["Chat 7", "Chat 8", "Chat 9", "Chat 10", "Input"]);
+
+		terminal.sendInput("\x1b[<64;1;1M");
+		await settle(terminal);
+		assert.deepStrictEqual(terminal.getViewport(), ["Chat 4", "Chat 5", "Chat 6", "Chat 7", "Input"]);
+		assert.strictEqual(tui.fullRedraws, initialRedraws);
+
+		chat.lines.push("Chat 11", "Chat 12");
+		tui.requestRender();
+		await settle(terminal);
+		assert.deepStrictEqual(terminal.getViewport(), ["Chat 4", "Chat 5", "Chat 6", "Chat 7", "Input"]);
+
+		terminal.sendInput("\x1b[<65;1;1M");
+		await settle(terminal);
+		assert.deepStrictEqual(terminal.getViewport(), ["Chat 7", "Chat 8", "Chat 9", "Chat 10", "Input"]);
+
+		tui.scrollMainToTail();
+		await settle(terminal);
+		assert.deepStrictEqual(terminal.getViewport(), ["Chat 9", "Chat 10", "Chat 11", "Chat 12", "Input"]);
+		tui.stop();
+		assert.strictEqual(terminal.isMouseTrackingEnabled(), false);
+	});
+});
+
 describe("TUI resize handling", () => {
 	it("triggers full re-render when terminal height changes", async () => {
 		await withEnv({ TERMUX_VERSION: undefined }, async () => {

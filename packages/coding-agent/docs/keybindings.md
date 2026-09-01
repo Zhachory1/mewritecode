@@ -89,6 +89,16 @@ Modifier combinations: `ctrl+shift+x`, `alt+ctrl+x`, `ctrl+shift+alt+x`, `ctrl+1
 | `app.editor.external` | `ctrl+g` | Open in external editor (`$VISUAL` or `$EDITOR`) |
 | `app.clipboard.pasteImage` | `ctrl+v` (`alt+v` on Windows) | Paste image from clipboard |
 
+### Chat Scrollback
+
+| Keybinding id | Default | Description |
+|--------|---------|-------------|
+| `app.chat.scrollUp` | `shift+pageUp` | Page chat up |
+| `app.chat.scrollDown` | `shift+pageDown` | Page chat down |
+| `app.chat.scrollToTail` | `shift+end` | Return to newest chat output |
+
+Mouse-wheel and trackpad scrolling also move the main chat. Mouse reporting is active while interactive chat is open, so terminal text selection is unavailable until exit. In tmux, enable mouse forwarding with `set -g mouse on` (persist it in `~/.tmux.conf` to retain it after server restart).
+
 ### Sessions
 
 | Keybinding id | Default | Description |
