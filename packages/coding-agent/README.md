@@ -127,7 +127,7 @@ Me Write Code combines the core terminal coding workflow with token-saving defau
 Claude Pro/Max · ChatGPT Plus/Pro · GitHub Copilot · Google Gemini · Google Antigravity
 
 ### API keys
-Anthropic · OpenAI · Azure OpenAI · Google Gemini · Google Vertex · Amazon Bedrock · Mistral · Groq · Cerebras · xAI · OpenRouter · Vercel AI Gateway · Hugging Face · Kimi · MiniMax · ZAI · OpenCode
+Anthropic · OpenAI · Azure OpenAI · Google Gemini · Google Vertex · Amazon Bedrock · DigitalOcean Inference · Mistral · Groq · Cerebras · xAI · OpenRouter · Vercel AI Gateway · Hugging Face · Kimi · MiniMax · ZAI · OpenCode
 
 ### Custom providers
 Add any OpenAI-, Anthropic-, or Google-compatible endpoint via `~/.mewrite/agent/models.json`, or build a custom provider with [Extensions](docs/extensions.md) and [Custom Provider docs](docs/custom-provider.md).
@@ -625,6 +625,7 @@ Built-in tools: `read`, `bash`, `edit`, `write`, `grep`, `find`, `ls`
 |----------|-------------|
 | `ANTHROPIC_API_KEY` | Anthropic API key |
 | `OPENAI_API_KEY` | OpenAI API key |
+| `MODEL_ACCESS_KEY` | DigitalOcean Inference model access key |
 | `MEWRITE_CODING_AGENT_DIR` | Override config directory (default: `~/.mewrite/agent`) |
 | `MEWRITE_PACKAGE_DIR` | Override package directory |
 | `MEWRITE_SKIP_VERSION_CHECK` | Skip version check at startup |

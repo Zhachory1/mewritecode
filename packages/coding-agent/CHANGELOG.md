@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added DigitalOcean Inference provider preset, model discovery, and onboarding support through `MODEL_ACCESS_KEY`.
+
 ## [1.5.8] - 2026-08-31
 
 ### Added

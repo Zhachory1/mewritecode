@@ -60,6 +60,7 @@ mewrite
 | Mistral | `MISTRAL_API_KEY` | `mistral` |
 | Groq | `GROQ_API_KEY` | `groq` |
 | Cerebras | `CEREBRAS_API_KEY` | `cerebras` |
+| DigitalOcean Inference | `MODEL_ACCESS_KEY` | `digitalocean` |
 | xAI | `XAI_API_KEY` | `xai` |
 | OpenRouter | `OPENROUTER_API_KEY` | `openrouter` |
 | Vercel AI Gateway | `AI_GATEWAY_API_KEY` | `vercel-ai-gateway` |
@@ -166,6 +167,17 @@ export AWS_BEDROCK_SKIP_AUTH=1
 # Set if your proxy only supports HTTP/1.1
 export AWS_BEDROCK_FORCE_HTTP1=1
 ```
+
+### DigitalOcean Inference
+
+Create a model access key, then export it before launching Me Write Code:
+
+```bash
+export MODEL_ACCESS_KEY=sk-do-...
+mewrite --provider digitalocean --model openai-gpt-4.1
+```
+
+Me Write Code includes an `openai-gpt-4.1` preset and retrieves models available to your key from `https://inference.do-ai.run/v1/models`. Use `mewrite --list-models digitalocean` to view discovered model IDs.
 
 ### Google Vertex AI
 

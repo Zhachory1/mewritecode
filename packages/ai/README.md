@@ -56,6 +56,7 @@ Unified LLM API with automatic model discovery, provider configuration, token an
 - **Mistral**
 - **Groq**
 - **Cerebras**
+- **DigitalOcean Inference** (OpenAI-compatible serverless models)
 - **xAI**
 - **OpenRouter**
 - **Vercel AI Gateway**
@@ -729,7 +730,7 @@ A **provider** offers models through a specific API. For example:
 - **Google** models use the `google-generative-ai` API
 - **OpenAI** models use the `openai-responses` API
 - **Mistral** models use the `mistral-conversations` API
-- **xAI, Cerebras, Groq, etc.** models use the `openai-completions` API (OpenAI-compatible)
+- **DigitalOcean, xAI, Cerebras, Groq, etc.** models use the `openai-completions` API (OpenAI-compatible)
 
 ### Querying Providers and Models
 
@@ -1022,6 +1023,7 @@ In Node.js environments, you can set environment variables to avoid passing API 
 | Mistral | `MISTRAL_API_KEY` |
 | Groq | `GROQ_API_KEY` |
 | Cerebras | `CEREBRAS_API_KEY` |
+| DigitalOcean Inference | `MODEL_ACCESS_KEY` |
 | xAI | `XAI_API_KEY` |
 | OpenRouter | `OPENROUTER_API_KEY` |
 | Vercel AI Gateway | `AI_GATEWAY_API_KEY` |
@@ -1030,6 +1032,17 @@ In Node.js environments, you can set environment variables to avoid passing API 
 | OpenCode Zen / OpenCode Go | `OPENCODE_API_KEY` |
 | Kimi For Coding | `KIMI_API_KEY` |
 | GitHub Copilot | `COPILOT_GITHUB_TOKEN` or `GH_TOKEN` or `GITHUB_TOKEN` |
+
+DigitalOcean starts with the `openai-gpt-4.1` preset. Discover model IDs available to a key before selecting one:
+
+```typescript
+import { discoverDigitalOceanModels } from "@zhachory1/mewrite-ai";
+
+const key = process.env.MODEL_ACCESS_KEY;
+if (key) {
+  await discoverDigitalOceanModels("https://inference.do-ai.run/v1", key);
+}
+```
 
 When set, the library automatically uses these keys:
 
