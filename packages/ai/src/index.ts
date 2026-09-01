@@ -30,7 +30,7 @@ export {
 	getAnthropicCapabilities,
 	supportsAdaptiveThinking,
 } from "./providers/anthropic-capabilities.js";
-export { discoverAnthropicCapabilities } from "./providers/anthropic-discovery.js";
+export { discoverAnthropicCapabilities, discoverDigitalOceanModels } from "./providers/anthropic-discovery.js";
 export type { AzureOpenAIResponsesOptions } from "./providers/azure-openai-responses.js";
 export * from "./providers/faux.js";
 export type { GoogleOptions } from "./providers/google.js";

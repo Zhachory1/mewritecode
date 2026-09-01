@@ -1,7 +1,7 @@
 /**
- * Model-capability discovery for Anthropic-family models.
+ * Model discovery for Anthropic-family models and DigitalOcean.
  *
- * Two backends, dispatched by provider:
+ * Three backends, dispatched by provider:
  *
  *  - github-copilot: GET {baseUrl}/models — OpenAI-style listing with rich
  *    `capabilities.supports` (adaptive_thinking, reasoning_effort, limits.
@@ -19,14 +19,17 @@
  *    on the same id; we detect it by making a second probe with that
  *    header and observing whether `max_input_tokens` rises.
  *
- *  - others (amazon-bedrock, google-vertex, etc.): no equivalent
- *    discovery endpoint; the static fallback table in
- *    anthropic-capabilities.ts is used.
+ *  - digitalocean: GET {baseUrl}/models — OpenAI-style listing scoped to a
+ *    model access key. It adds listed model ids with conservative metadata.
  *
- * Discovery runs at most once per (provider, baseUrl, apiKey-hash) per
- * process. Concurrent calls join the same in-flight promise. Failures are
- * silent — we leave the static fallback in place and try again next
- * process. The discovery layer never throws back to the caller.
+ *  - others (amazon-bedrock, google-vertex, etc.): no equivalent discovery
+ *    endpoint; the static fallback table in anthropic-capabilities.ts is used.
+ *
+ * Anthropic-family discovery runs at most once per (provider, baseUrl,
+ * apiKey-hash) per process. DigitalOcean runs on every call so switching
+ * access keys replaces the account-scoped catalog. Failures are silent — we
+ * leave the static fallback in place. The discovery layer never throws back
+ * to the caller.
  *
  * The discovered registry entries (new model ids, corrected contextWindow)
  * are also pushed into the in-memory model registry via
@@ -46,15 +49,16 @@ import {
 
 const discoveryPromises = new Map<string, Promise<void>>();
 
-function discoveryKey(provider: string, baseUrl: string): string {
-	return `${provider}::${baseUrl}`;
+async function discoveryKey(provider: string, baseUrl: string, apiKey: string): Promise<string> {
+	const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(apiKey));
+	const fingerprint = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+	return `${provider}::${baseUrl}::${fingerprint}`;
 }
 
 /**
- * Trigger discovery for a provider+baseUrl. Returns a Promise that resolves
- * once the capability cache has been populated (or the attempt has failed).
- * Subsequent calls with the same (provider, baseUrl) join the in-flight
- * promise.
+ * Trigger discovery for a provider+baseUrl+credential. Returns a Promise that
+ * resolves once the capability cache has been populated (or the attempt has
+ * failed). Subsequent calls with the same scope join the in-flight promise.
  *
  * Never throws. On any error the static fallback remains in place.
  */
@@ -64,7 +68,26 @@ export function discoverAnthropicCapabilities(
 	apiKey: string,
 	extraHeaders?: Record<string, string>,
 ): Promise<void> {
-	const key = discoveryKey(provider, baseUrl);
+	return discoverProviderModels(provider, baseUrl, apiKey, extraHeaders);
+}
+
+export function discoverDigitalOceanModels(
+	baseUrl: string,
+	apiKey: string,
+	extraHeaders?: Record<string, string>,
+): Promise<void> {
+	return runDiscovery("digitalocean", baseUrl, apiKey, extraHeaders).catch(() => {
+		// Swallow — discovery is best-effort; static fallback remains in place.
+	});
+}
+
+async function discoverProviderModels(
+	provider: string,
+	baseUrl: string,
+	apiKey: string,
+	extraHeaders?: Record<string, string>,
+): Promise<void> {
+	const key = await discoveryKey(provider, baseUrl, apiKey);
 	const existing = discoveryPromises.get(key);
 	if (existing) return existing;
 
@@ -96,6 +119,10 @@ async function runDiscovery(
 	}
 	if (provider === "anthropic") {
 		await discoverAnthropicNative(baseUrl, apiKey, extraHeaders);
+		return;
+	}
+	if (provider === "digitalocean") {
+		await discoverDigitalOcean(baseUrl, apiKey, extraHeaders);
 		return;
 	}
 	// No discovery endpoint for other providers (Bedrock, Vertex, etc.).
@@ -293,6 +320,47 @@ async function fetchAnthropicModels(
 }
 
 // ----------------------------------------------------------------------------
+// DigitalOcean: GET {baseUrl}/models
+// ----------------------------------------------------------------------------
+
+interface DigitalOceanModelEntry {
+	id?: unknown;
+	name?: unknown;
+}
+
+async function discoverDigitalOcean(
+	baseUrl: string,
+	apiKey: string,
+	extraHeaders?: Record<string, string>,
+): Promise<void> {
+	const url = `${baseUrl.replace(/\/$/, "")}/models`;
+	const res = await fetch(url, {
+		method: "GET",
+		headers: { Authorization: `Bearer ${apiKey}`, ...extraHeaders },
+	});
+	if (!res.ok) return;
+
+	const body = (await res.json()) as { data?: DigitalOceanModelEntry[] };
+	const models: Model<"openai-completions">[] = [];
+	for (const entry of body.data ?? []) {
+		if (typeof entry.id !== "string" || entry.id.length === 0) continue;
+		models.push({
+			id: entry.id,
+			name: typeof entry.name === "string" ? entry.name : entry.id,
+			api: "openai-completions",
+			provider: "digitalocean",
+			baseUrl,
+			reasoning: false,
+			input: ["text"],
+			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+			contextWindow: 128000,
+			maxTokens: 16384,
+		});
+	}
+	replaceDiscoveredModels("digitalocean", models);
+}
+
+// ----------------------------------------------------------------------------
 // Registry merge
 // ----------------------------------------------------------------------------
 
@@ -311,12 +379,22 @@ function mergeDiscoveredModels(provider: string, fresh: Model<Api>[]): void {
 // circular import. Until it is wired, discovery still populates the
 // capability cache but cannot publish new model ids into the registry.
 const registryHookHolder: { fn: (provider: string, model: Model<Api>) => void } = { fn: () => {} };
+const registryReplaceHookHolder: { fn: (provider: string, models: Model<Api>[]) => void } = { fn: () => {} };
 
 function registerModel(provider: string, model: Model<Api>): void {
 	registryHookHolder.fn(provider, model);
 }
 
+function replaceDiscoveredModels(provider: string, models: Model<Api>[]): void {
+	registryReplaceHookHolder.fn(provider, models);
+}
+
 /** Not for external use: called by models.ts at module load to wire the registry hook. */
 export function _setRegistryHook(hook: (provider: string, model: Model<Api>) => void): void {
 	registryHookHolder.fn = hook;
+}
+
+/** Not for external use: called by models.ts at module load to wire the registry replacement hook. */
+export function _setRegistryReplaceHook(hook: (provider: string, models: Model<Api>[]) => void): void {
+	registryReplaceHookHolder.fn = hook;
 }
