@@ -1,12 +1,27 @@
 Package: mewrite-code
-Version: 1.5.7
+Version: 1.5.8
+Architecture: amd64
+Maintainer: Zhachory Volker
+Filename: ./mewrite-code_1.5.8_amd64.deb
+Size: 34511648
+MD5sum: db45ff4efc1a5fb279a7aec552b75548
+SHA1: 5ee1c6d35ffafaeb35a537077e2c8af7c4a9573c
+SHA256: 2b7377869033f7ee364617fb1da8a3b821534ad997621715c1bf446d7df8cd47
+Section: devel
+Priority: optional
+Homepage: https://github.com/Zhachory1/mewritecode
+Description: Me Write Code terminal coding agent
+ Me Write Code is a terminal coding agent.
+
+Package: mewrite-code
+Version: 1.5.8
 Architecture: arm64
 Maintainer: Zhachory Volker
-Filename: ./mewrite-code_1.5.7_arm64.deb
-Size: 33233100
-MD5sum: 3c552a4f2de2bfedfd4936e641cb7ee8
-SHA1: 673e157ba29ce301e994b9e5536e4bd22a0f94f4
-SHA256: 4209e17a83ba195e6f800f2e229a5b29a341ebe15bd095501dde02db50165571
+Filename: ./mewrite-code_1.5.8_arm64.deb
+Size: 33238126
+MD5sum: c7a32b338f36fa0dc3d5454aa62f28d9
+SHA1: e3affc76049a55fbaf246774528b0ccf8bb7966b
+SHA256: b8fc4a2968ce0aa9779090d329315a48790b1e842459b063ecf8a4c4c027a5d3
 Section: devel
 Priority: optional
 Homepage: https://github.com/Zhachory1/mewritecode
