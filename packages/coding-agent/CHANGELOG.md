@@ -5,6 +5,7 @@
 ### Added
 
 - Added DigitalOcean Inference provider preset, model discovery, and onboarding support through `MODEL_ACCESS_KEY`.
+- Main interactive chat now has in-app scrollback: mouse-wheel/trackpad scrolling or `shift+pageUp`/`shift+pageDown` page through prior output and `shift+end` returns to the live tail. The prompt, context meter, action bar, and footer remain visible; new output does not move a paused view. Bindings are configurable as `app.chat.scrollUp`/`scrollDown`/`scrollToTail`.
 
 ## [1.5.8] - 2026-08-31
 

@@ -65,6 +65,7 @@ export class ScrollBuffer {
 	 * mirrors append().
 	 */
 	replaceTail(count: number, lines: string[]): void {
+		const previousTotal = this.getWrapped().length;
 		if (count > 0) {
 			const removeCount = Math.min(count, this.logical.length);
 			this.logical.splice(this.logical.length - removeCount, removeCount);
@@ -75,6 +76,25 @@ export class ScrollBuffer {
 
 		if (this._mode === "tail") {
 			this.snapToTail();
+		} else {
+			this._unseen += Math.max(0, this.getWrapped().length - previousTotal);
+			this.clampTopOffset();
+			if (this.isAtTail) this.setMode("tail");
+		}
+	}
+
+	replaceAll(lines: string[]): void {
+		const previousTotal = this.getWrapped().length;
+		this.logical = [...lines];
+		this.trimToMax();
+		this.invalidateCache();
+
+		if (this._mode === "tail") {
+			this.snapToTail();
+		} else {
+			this._unseen += Math.max(0, this.getWrapped().length - previousTotal);
+			this.clampTopOffset();
+			if (this.isAtTail) this.setMode("tail");
 		}
 	}
 
@@ -90,7 +110,10 @@ export class ScrollBuffer {
 		if (rows === this.viewportHeight) return;
 		this.viewportHeight = Math.max(1, rows);
 		if (this._mode === "tail") this.snapToTail();
-		else this.clampTopOffset();
+		else {
+			this.clampTopOffset();
+			if (this.isAtTail) this.setMode("tail");
+		}
 	}
 
 	setViewportWidth(cols: number): void {
@@ -98,7 +121,10 @@ export class ScrollBuffer {
 		this.viewportWidth = Math.max(1, cols);
 		this.invalidateCache();
 		if (this._mode === "tail") this.snapToTail();
-		else this.clampTopOffset();
+		else {
+			this.clampTopOffset();
+			if (this.isAtTail) this.setMode("tail");
+		}
 	}
 
 	get totalLines(): number {
@@ -118,7 +144,10 @@ export class ScrollBuffer {
 		const next = this.topOffset + delta;
 		const maxTop = Math.max(0, this.getWrapped().length - this.viewportHeight);
 		const clamped = Math.max(0, Math.min(maxTop, next));
-		if (clamped === this.topOffset) return;
+		if (clamped === this.topOffset) {
+			if (clamped >= maxTop) this.setMode("tail");
+			return;
+		}
 		this.topOffset = clamped;
 		if (this.topOffset >= maxTop) {
 			this.setMode("tail");

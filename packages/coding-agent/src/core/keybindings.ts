@@ -42,6 +42,9 @@ export interface AppKeybindings {
 	"app.help": true;
 	"app.message.editQueue": true;
 	"app.tools.shelfExpand": true;
+	"app.chat.scrollUp": true;
+	"app.chat.scrollDown": true;
+	"app.chat.scrollToTail": true;
 	"app.agents.back": true;
 	"app.agents.new": true;
 	"app.agents.toggleAll": true;
@@ -153,6 +156,18 @@ export const KEYBINDINGS = {
 	"app.tools.shelfExpand": {
 		defaultKeys: "alt+t",
 		description: "Toggle tool shelf expand",
+	},
+	"app.chat.scrollUp": {
+		defaultKeys: "shift+pageUp",
+		description: "Scroll chat up",
+	},
+	"app.chat.scrollDown": {
+		defaultKeys: "shift+pageDown",
+		description: "Scroll chat down",
+	},
+	"app.chat.scrollToTail": {
+		defaultKeys: "shift+end",
+		description: "Jump chat to newest message",
 	},
 	"app.agents.back": {
 		defaultKeys: ["escape", "q"],

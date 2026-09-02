@@ -14,6 +14,7 @@ export class VirtualTerminal implements Terminal {
 	private resizeHandler?: () => void;
 	private _columns: number;
 	private _rows: number;
+	private mouseTrackingEnabled = false;
 
 	constructor(columns = 80, rows = 24) {
 		this._columns = columns;
@@ -103,8 +104,12 @@ export class VirtualTerminal implements Terminal {
 	// Optional Terminal interface members — no-op for virtual terminal.
 	enterAltScreen(): void {}
 	leaveAltScreen(): void {}
-	enableMouseTracking(): void {}
-	disableMouseTracking(): void {}
+	enableMouseTracking(): void {
+		this.mouseTrackingEnabled = true;
+	}
+	disableMouseTracking(): void {
+		this.mouseTrackingEnabled = false;
+	}
 	isTTY(): boolean {
 		return false;
 	}
@@ -211,6 +216,10 @@ export class VirtualTerminal implements Terminal {
 	/**
 	 * Get cursor position
 	 */
+	isMouseTrackingEnabled(): boolean {
+		return this.mouseTrackingEnabled;
+	}
+
 	getCursorPosition(): { x: number; y: number } {
 		const buffer = this.xterm.buffer.active;
 		return {
