@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.5.9] - 2026-09-02
+
 ### Added
 
 - Added opt-in in-app scrolling for content above bottom-pinned TUI children, with mouse-wheel/trackpad input and keyboard paging. The viewport follows new content at the tail and holds position while scrolled up.
