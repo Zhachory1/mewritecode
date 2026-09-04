@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added DigitalOcean Inference model discovery and `MODEL_ACCESS_KEY` authentication for its OpenAI-compatible serverless endpoint.
+
 ## [1.5.8] - 2026-08-31
 
 ## [1.5.7] - 2026-08-25

@@ -133,4 +133,18 @@ describe("ScrollBuffer", () => {
 		const view = buf.render();
 		assert.deepStrictEqual(view.slice(0, 5), ["a", "b", "C2", "D2", "E2"]);
 	});
+
+	it("replaceAll holds the paused viewport when lines append", () => {
+		const buf = new ScrollBuffer({ wrap: false });
+		buf.setViewportHeight(3);
+		buf.replaceAll(range(10));
+		buf.pageUp();
+		assert.strictEqual(buf.render()[0], "line 6");
+		buf.replaceAll(range(12));
+		assert.strictEqual(buf.mode, "paused");
+		assert.strictEqual(buf.render()[0], "line 6");
+		buf.replaceAll(range(6));
+		assert.strictEqual(buf.mode, "tail");
+		assert.strictEqual(buf.render()[0], "line 4");
+	});
 });

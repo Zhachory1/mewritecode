@@ -36,13 +36,20 @@ process.stdin.on("data", (chunk) => {
 process.stdin.on("end", () => process.exit(0));
 `;
 
+const UNTERMINATED_OUTPUT_SERVER_SOURCE = `
+process.stdin.once("data", () => process.stdout.write("x".repeat(2_000_001)));
+`;
+
 let tmpDir: string;
 let scriptPath: string;
+let unterminatedOutputScriptPath: string;
 
 beforeAll(() => {
 	tmpDir = mkdtempSync(join(tmpdir(), "cave-mcp-stdio-"));
 	scriptPath = join(tmpDir, "fake-server.cjs");
+	unterminatedOutputScriptPath = join(tmpDir, "unterminated-output-server.cjs");
 	writeFileSync(scriptPath, SERVER_SOURCE);
+	writeFileSync(unterminatedOutputScriptPath, UNTERMINATED_OUTPUT_SERVER_SOURCE);
 });
 
 afterAll(() => {
@@ -81,6 +88,22 @@ describe("StdioTransport", () => {
 	it("requires a command", async () => {
 		const transport = new StdioTransport({ name: "fake" });
 		await expect(transport.connect()).rejects.toThrow(/command is required/);
+	});
+
+	it("rejects unterminated stdout before it can exhaust memory", async () => {
+		const transport = new StdioTransport(
+			{ name: "noisy", command: process.execPath, args: [unterminatedOutputScriptPath] },
+			{ requestTimeoutMs: 5_000, connectTimeoutMs: 5_000 },
+		);
+		await expect(transport.connect()).rejects.toThrow(/output exceeded 2000000 bytes without a newline/);
+		await transport.close();
+	});
+
+	it("allows a large chunk when it is newline-delimited", () => {
+		const transport = new StdioTransport({ name: "framed" });
+		(transport as unknown as { connected: boolean }).connected = true;
+		(transport as unknown as { onStdout(chunk: string): void }).onStdout("\n".repeat(2_000_001));
+		expect(transport.isConnected()).toBe(true);
 	});
 
 	// Issue #17 MED 4 — child process listeners were never removed in close(),

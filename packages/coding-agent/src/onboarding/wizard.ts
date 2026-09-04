@@ -35,6 +35,12 @@ const WIZARD_PROVIDERS: Array<{
 	{ id: "google", label: "Google (Gemini)", envHint: "GEMINI_API_KEY", defaultModel: "gemini-2.5-pro" },
 	{ id: "groq", label: "Groq (fast inference)", envHint: "GROQ_API_KEY", defaultModel: "llama-3.3-70b-versatile" },
 	{
+		id: "digitalocean",
+		label: "DigitalOcean Inference",
+		envHint: "MODEL_ACCESS_KEY",
+		defaultModel: "openai-gpt-4.1",
+	},
+	{
 		id: "openrouter",
 		label: "OpenRouter (gateway)",
 		envHint: "OPENROUTER_API_KEY",

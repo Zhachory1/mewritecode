@@ -362,6 +362,7 @@ ${chalk.bold("Environment Variables:")}
   GEMINI_API_KEY                   - Google Gemini API key
   GROQ_API_KEY                     - Groq API key
   CEREBRAS_API_KEY                 - Cerebras API key
+  MODEL_ACCESS_KEY                 - DigitalOcean Inference model access key
   XAI_API_KEY                      - xAI Grok API key
   OPENROUTER_API_KEY               - OpenRouter API key
   AI_GATEWAY_API_KEY               - Vercel AI Gateway API key

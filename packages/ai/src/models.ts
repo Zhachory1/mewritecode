@@ -1,9 +1,27 @@
 import { MODELS } from "./models.generated.js";
 import { getAnthropicCapabilities } from "./providers/anthropic-capabilities.js";
-import { _setRegistryHook } from "./providers/anthropic-discovery.js";
+import { _setRegistryHook, _setRegistryReplaceHook } from "./providers/anthropic-discovery.js";
 import type { Api, KnownProvider, Model, Usage } from "./types.js";
 
+const DIGITALOCEAN_MODELS = {
+	"openai-gpt-4.1": {
+		id: "openai-gpt-4.1",
+		name: "GPT-4.1 (DigitalOcean)",
+		api: "openai-completions",
+		provider: "digitalocean",
+		baseUrl: "https://inference.do-ai.run/v1",
+		reasoning: false,
+		input: ["text"],
+		cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+		contextWindow: 128000,
+		maxTokens: 16384,
+	} satisfies Model<"openai-completions">,
+} as const;
+
+const BUILT_IN_MODELS = { ...MODELS, digitalocean: DIGITALOCEAN_MODELS } as const;
+
 const modelRegistry: Map<string, Map<string, Model<Api>>> = new Map();
+const discoveredModelIds = new Map<string, Set<string>>();
 
 /**
  * Apply per-model capability overrides at registry-load time.
@@ -29,8 +47,8 @@ function applyCapabilityOverrides(model: Model<Api>): Model<Api> {
 	return model;
 }
 
-// Initialize registry from MODELS on module load
-for (const [provider, models] of Object.entries(MODELS)) {
+// Initialize registry from generated and static models on module load
+for (const [provider, models] of Object.entries(BUILT_IN_MODELS)) {
 	const providerModels = new Map<string, Model<Api>>();
 	for (const [id, model] of Object.entries(models)) {
 		providerModels.set(id, applyCapabilityOverrides(model as Model<Api>));
@@ -68,18 +86,49 @@ function _registerModelForDiscovery(provider: string, model: Model<Api>): void {
 			}
 		: model;
 	providerModels.set(model.id, merged);
-	if (isNew) {
-		for (const listener of modelChangeListeners) {
-			try {
-				listener({ type: "added", provider, model: merged });
-			} catch {
-				// Listener errors must not break discovery.
-			}
+	if (isNew) notifyModelChange({ type: "added", provider, model: merged });
+}
+
+function _replaceDiscoveredModels(provider: string, models: Model<Api>[]): void {
+	let providerModels = modelRegistry.get(provider);
+	if (!providerModels) {
+		providerModels = new Map();
+		modelRegistry.set(provider, providerModels);
+	}
+
+	const staticModels = BUILT_IN_MODELS[provider as keyof typeof BUILT_IN_MODELS] as
+		| Record<string, Model<Api>>
+		| undefined;
+	for (const modelId of discoveredModelIds.get(provider) ?? []) {
+		const staticModel = staticModels?.[modelId];
+		if (staticModel) {
+			providerModels.set(modelId, staticModel);
+		} else if (providerModels.delete(modelId)) {
+			notifyModelChange({ type: "removed", provider, modelId });
+		}
+	}
+
+	discoveredModelIds.set(provider, new Set(models.map((model) => model.id)));
+	for (const model of models) {
+		const isNew = !providerModels.has(model.id);
+		providerModels.set(model.id, model);
+		if (isNew) notifyModelChange({ type: "added", provider, model });
+	}
+}
+
+function notifyModelChange(event: ModelRegistryChangeEvent): void {
+	for (const listener of modelChangeListeners) {
+		try {
+			listener(event);
+		} catch {
+			// Listener errors must not break discovery.
 		}
 	}
 }
 
-export type ModelRegistryChangeEvent = { type: "added"; provider: string; model: Model<Api> };
+export type ModelRegistryChangeEvent =
+	| { type: "added"; provider: string; model: Model<Api> }
+	| { type: "removed"; provider: string; modelId: string };
 const modelChangeListeners: Array<(e: ModelRegistryChangeEvent) => void> = [];
 
 /**
@@ -97,13 +146,18 @@ export function onModelRegistryChange(listener: (e: ModelRegistryChangeEvent) =>
 // Wire the registry-mutation hook into the discovery module so it does not
 // need a back-reference to models.ts (which would cycle).
 _setRegistryHook(_registerModelForDiscovery);
+_setRegistryReplaceHook(_replaceDiscoveredModels);
 
 type ModelApi<
 	TProvider extends KnownProvider,
-	TModelId extends keyof (typeof MODELS)[TProvider],
-> = (typeof MODELS)[TProvider][TModelId] extends { api: infer TApi } ? (TApi extends Api ? TApi : never) : never;
+	TModelId extends keyof (typeof BUILT_IN_MODELS)[TProvider],
+> = (typeof BUILT_IN_MODELS)[TProvider][TModelId] extends { api: infer TApi }
+	? TApi extends Api
+		? TApi
+		: never
+	: never;
 
-export function getModel<TProvider extends KnownProvider, TModelId extends keyof (typeof MODELS)[TProvider]>(
+export function getModel<TProvider extends KnownProvider, TModelId extends keyof (typeof BUILT_IN_MODELS)[TProvider]>(
 	provider: TProvider,
 	modelId: TModelId,
 ): Model<ModelApi<TProvider, TModelId>> {
@@ -117,9 +171,11 @@ export function getProviders(): KnownProvider[] {
 
 export function getModels<TProvider extends KnownProvider>(
 	provider: TProvider,
-): Model<ModelApi<TProvider, keyof (typeof MODELS)[TProvider]>>[] {
+): Model<ModelApi<TProvider, keyof (typeof BUILT_IN_MODELS)[TProvider]>>[] {
 	const models = modelRegistry.get(provider);
-	return models ? (Array.from(models.values()) as Model<ModelApi<TProvider, keyof (typeof MODELS)[TProvider]>>[]) : [];
+	return models
+		? (Array.from(models.values()) as Model<ModelApi<TProvider, keyof (typeof BUILT_IN_MODELS)[TProvider]>>[])
+		: [];
 }
 
 export function calculateCost<TApi extends Api>(model: Model<TApi>, usage: Usage): Usage["cost"] {

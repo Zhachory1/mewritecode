@@ -63,6 +63,26 @@ describe("WS11 onboarding wizard", () => {
 			expect(result.map((r) => r.id).sort()).toEqual(["anthropic", "openai"]);
 		});
 
+		it("detects DigitalOcean model access keys", () => {
+			const result = detectAvailableEnvProviders({
+				stdin: process.stdin,
+				stdout: process.stdout,
+				stderr: process.stderr,
+				envProbe: (p) => (p === "digitalocean" ? "sk-do-test" : undefined),
+			});
+			expect(result).toEqual([{ id: "digitalocean", envHint: "MODEL_ACCESS_KEY" }]);
+		});
+
+		it("uses DigitalOcean as default when its model access key is selected", async () => {
+			const settings = makeSettings();
+			const io = makeIO(["", "1", "1", ""], { digitalocean: "sk-do-test" });
+			const result = await runOnboarding(settings, io);
+			expect(result.defaultProvider).toBe("digitalocean");
+			expect(result.defaultModel).toBe("openai-gpt-4.1");
+			expect(settings.getDefaultProvider()).toBe("digitalocean");
+			expect(settings.getDefaultModel()).toBe("openai-gpt-4.1");
+		});
+
 		it("returns empty when no env keys set", () => {
 			const result = detectAvailableEnvProviders({
 				stdin: process.stdin,

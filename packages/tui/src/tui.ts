@@ -7,6 +7,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { performance } from "node:perf_hooks";
 import { isKeyRelease, matchesKey } from "./keys.js";
+import { ScrollBuffer } from "./scroll-buffer.js";
 import type { Terminal } from "./terminal.js";
 import { getCapabilities, isImageLine, setCellDimensions } from "./terminal-image.js";
 import {
@@ -260,6 +261,8 @@ export class TUI extends Container {
 	private stopped = false;
 	private globalBgFn: ((text: string) => string) | null = null;
 	private bottomPinnedChildren = 0;
+	private mainScrollBuffer: ScrollBuffer | null = null;
+	private started = false;
 
 	// Side panel for column-based layout alongside main content
 	private sidePanelEntry: {
@@ -329,6 +332,36 @@ export class TUI extends Container {
 	 */
 	setBottomPinnedChildren(count: number): void {
 		this.bottomPinnedChildren = count;
+	}
+
+	/** Enable in-app paging for content above bottom-pinned children. */
+	setMainScroll(enabled: boolean): void {
+		this.mainScrollBuffer = enabled ? new ScrollBuffer({ wrap: false }) : null;
+		if (this.started) {
+			if (enabled) this.terminal.enableMouseTracking();
+			else this.terminal.disableMouseTracking();
+			this.requestRender();
+		}
+	}
+
+	scrollMainBy(rows: number): void {
+		this.mainScrollBuffer?.scrollBy(rows);
+		this.requestRender();
+	}
+
+	scrollMainPageUp(): void {
+		this.mainScrollBuffer?.pageUp();
+		this.requestRender();
+	}
+
+	scrollMainPageDown(): void {
+		this.mainScrollBuffer?.pageDown();
+		this.requestRender();
+	}
+
+	scrollMainToTail(): void {
+		this.mainScrollBuffer?.jumpToTail();
+		this.requestRender();
 	}
 
 	setFocus(component: Component | null): void {
@@ -493,16 +526,13 @@ export class TUI extends Container {
 
 	start(): void {
 		this.stopped = false;
+		this.started = true;
 		this.terminal.enterAltScreen();
 		this.terminal.start(
 			(data) => this.handleInput(data),
 			() => this.requestRender(),
 		);
-		// Mouse tracking is intentionally NOT enabled. Nothing in the app consumes
-		// mouse events yet, and turning tracking on swallows wheel events that the
-		// terminal would otherwise translate to alt-screen scrollback navigation
-		// (and breaks click-drag text selection). Re-enable per-overlay/component
-		// once a consumer is wired up.
+		if (this.mainScrollBuffer) this.terminal.enableMouseTracking();
 		this.terminal.hideCursor();
 		this.queryCellSize();
 		this.requestRender();
@@ -532,6 +562,7 @@ export class TUI extends Container {
 	stop(): void {
 		if (this.stopped) return;
 		this.stopped = true;
+		this.started = false;
 		if (this.renderTimer) {
 			clearTimeout(this.renderTimer);
 			this.renderTimer = undefined;
@@ -539,6 +570,7 @@ export class TUI extends Container {
 		// In alt-screen mode the primary buffer is already preserved, so we
 		// don't need to position the cursor below rendered content. The
 		// leaveAltScreen call in terminal.stop() will restore the primary buffer.
+		this.terminal.disableMouseTracking();
 		this.terminal.showCursor();
 		this.terminal.stop();
 	}
@@ -610,6 +642,8 @@ export class TUI extends Container {
 			data = current;
 		}
 
+		if (this.handleMainScrollWheel(data)) return;
+
 		// Consume terminal cell size responses without blocking unrelated input.
 		if (this.consumeCellSizeResponse(data)) {
 			return;
@@ -645,6 +679,17 @@ export class TUI extends Container {
 			this.focusedComponent.handleInput(data);
 			this.requestRender();
 		}
+	}
+
+	private handleMainScrollWheel(data: string): boolean {
+		if (!this.mainScrollBuffer || this.getTopmostVisibleOverlay()) return false;
+		const match = data.match(/^\x1b\[<(\d+);\d+;\d+M$/);
+		if (!match) return false;
+		const button = Number(match[1]) & ~(4 | 8 | 16);
+		if (button === 64) this.scrollMainBy(-3);
+		else if (button === 65) this.scrollMainBy(3);
+		else return false;
+		return true;
 	}
 
 	private consumeCellSizeResponse(data: string): boolean {
@@ -903,6 +948,16 @@ export class TUI extends Container {
 		const bottomLines: string[] = [];
 		for (let i = splitAt; i < this.children.length; i++) {
 			bottomLines.push(...this.children[i].render(width));
+		}
+
+		if (this.mainScrollBuffer) {
+			if (this.mainScrollBuffer.mode === "paused" && this.mainScrollBuffer.viewWidth !== width) {
+				this.mainScrollBuffer.jumpToTail();
+			}
+			this.mainScrollBuffer.setViewportWidth(width);
+			this.mainScrollBuffer.setViewportHeight(Math.max(1, height - bottomLines.length));
+			this.mainScrollBuffer.replaceAll(mainLines);
+			return [...this.mainScrollBuffer.render(), ...bottomLines];
 		}
 
 		const totalContent = mainLines.length + bottomLines.length;

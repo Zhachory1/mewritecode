@@ -8,6 +8,7 @@ import {
 	type AssistantMessageEventStream,
 	type Context,
 	discoverAnthropicCapabilities,
+	discoverDigitalOceanModels,
 	getModels,
 	getProviders,
 	type KnownProvider,
@@ -597,8 +598,8 @@ export class ModelRegistry {
 	}
 
 	/**
-	 * Kick off per-provider capability discovery for every Anthropic-API
-	 * model the user has auth for. Fire-and-forget; new model ids appear
+	 * Kick off per-provider discovery for authenticated Anthropic API models
+	 * and DigitalOcean's OpenAI-compatible model catalog. New model ids appear
 	 * via the onModelRegistryChange listener wired in the constructor.
 	 * Idempotent and memoized inside mewrite-ai per (provider, baseUrl).
 	 */
@@ -606,13 +607,17 @@ export class ModelRegistry {
 		const seen = new Set<string>();
 		const tasks: Promise<void>[] = [];
 		for (const model of this.models) {
-			if (model.api !== "anthropic-messages") continue;
+			if (model.api !== "anthropic-messages" && model.provider !== "digitalocean") continue;
 			const key = `${model.provider}::${model.baseUrl}`;
 			if (seen.has(key)) continue;
 			seen.add(key);
 			const auth = await this.getApiKeyAndHeaders(model);
 			if (!auth.ok || !auth.apiKey) continue;
-			tasks.push(discoverAnthropicCapabilities(model.provider, model.baseUrl, auth.apiKey, auth.headers));
+			tasks.push(
+				model.provider === "digitalocean"
+					? discoverDigitalOceanModels(model.baseUrl, auth.apiKey, auth.headers)
+					: discoverAnthropicCapabilities(model.provider, model.baseUrl, auth.apiKey, auth.headers),
+			);
 		}
 		await Promise.all(tasks);
 	}
