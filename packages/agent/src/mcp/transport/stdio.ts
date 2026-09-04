@@ -38,6 +38,8 @@ export interface StdioTransportOptions {
 	connectTimeoutMs?: number;
 }
 
+const MAX_STDIO_BUFFER_BYTES = 2_000_000;
+
 export class StdioTransport implements McpTransport {
 	readonly kind = "stdio" as const;
 	private child?: ChildProcessWithoutNullStreams;
@@ -206,6 +208,14 @@ export class StdioTransport implements McpTransport {
 			this.buffer = this.buffer.slice(idx + 1);
 			if (line.length > 0) this.handleLine(line);
 			idx = this.buffer.indexOf("\n");
+		}
+		if (Buffer.byteLength(this.buffer) > MAX_STDIO_BUFFER_BYTES) {
+			this.fatal(
+				new Error(
+					`mcp(stdio:${this.config.name}): output exceeded ${MAX_STDIO_BUFFER_BYTES} bytes without a newline`,
+				),
+			);
+			this.child?.kill();
 		}
 	}
 
