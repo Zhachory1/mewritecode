@@ -15,6 +15,14 @@ import type { LoadAgentDefsResult } from "../agent-defs/loader.js";
 import { allToolDefinitions, allTools } from "../tools/index.js";
 import { createTaskToolDefinition } from "../tools/task.js";
 
+function terminalOutput(text: string): string[] {
+	const message = { role: "assistant", content: [{ type: "text", text }], stopReason: "stop" };
+	return [
+		{ type: "message_end", message },
+		{ type: "agent_end", messages: [message] },
+	].map((event) => `${JSON.stringify(event)}\n`);
+}
+
 describe("WS6 subagent wiring", () => {
 	it("task and agent tools are present in the registry maps", () => {
 		expect(allTools.task).toBeDefined();
@@ -44,9 +52,7 @@ describe("WS6 subagent wiring", () => {
 		const mockSpawn = ((_cmd: string, args: string[]) => {
 			capturedArgs = args;
 			const child = new EventEmitter() as any;
-			child.stdout = Readable.from([
-				`${JSON.stringify({ type: "message_end", message: { role: "assistant", content: [{ type: "text", text: "ok" }] } })}\n`,
-			]);
+			child.stdout = Readable.from(terminalOutput("ok"));
 			child.stderr = Readable.from([]);
 			child.killed = false;
 			child.kill = () => {
@@ -130,9 +136,7 @@ describe("WS6 subagent wiring", () => {
 		const mockSpawn = ((_cmd: string, args: string[]) => {
 			capturedArgs = args;
 			const child = new EventEmitter() as any;
-			child.stdout = Readable.from([
-				`${JSON.stringify({ type: "message_end", message: { role: "assistant", content: [{ type: "text", text: "ok" }] } })}\n`,
-			]);
+			child.stdout = Readable.from(terminalOutput("ok"));
 			child.stderr = Readable.from([]);
 			child.killed = false;
 			child.kill = () => {
