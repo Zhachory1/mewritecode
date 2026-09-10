@@ -233,6 +233,7 @@ interface SpawnResult {
 	stdout: string;
 	stderr: string;
 	finalText: string;
+	error?: string;
 	fullOutputPath?: string;
 	stdoutPath?: string;
 	stderrPath?: string;
@@ -392,6 +393,8 @@ async function spawnSubagent(opts: SpawnOptions): Promise<SpawnResult> {
 	let stdout = "";
 	let stderr = "";
 	let finalText = "";
+	let agentEnded = false;
+	let completionError: string | undefined;
 
 	const childDepth = currentSubagentDepth() + 1;
 	const childEnv = buildChildEnv(opts, childDepth);
@@ -420,20 +423,42 @@ async function spawnSubagent(opts: SpawnOptions): Promise<SpawnResult> {
 				const event = JSON.parse(line);
 				if (event.type === "tool_execution_start" && typeof event.toolName === "string") {
 					emitProgress("tool", event.toolName);
-				} else if (event.type === "message_end" && event.message?.role === "assistant") {
-					const content = event.message.content;
-					if (Array.isArray(content)) {
-						const textParts = content
-							.filter((part) => part?.type === "text" && typeof part.text === "string")
-							.map((part) => part.text as string);
-						if (textParts.length > 0) {
-							finalText = textParts.join("\n");
-						}
-					}
-					if (typeof finalText === "string" && finalText.length > 0) {
-						emitProgress("message", finalText.slice(0, 80));
-					}
+					return;
 				}
+				if (event.type === "message_end" && event.message?.role === "assistant") {
+					const preview = event.message.content
+						?.filter(
+							(part: { type?: string; text?: string }) => part.type === "text" && typeof part.text === "string",
+						)
+						.map((part: { text?: string }) => part.text)
+						.join("\n");
+					if (preview) emitProgress("message", preview.slice(0, RESULT_PREVIEW_CHARS));
+					return;
+				}
+				if (event.type !== "agent_end" || !Array.isArray(event.messages)) return;
+
+				agentEnded = true;
+				completionError = undefined;
+				finalText = "";
+				const finalAssistant = [...event.messages].reverse().find((message) => message?.role === "assistant");
+				if (!finalAssistant) {
+					completionError = "Subagent ended without a final assistant response";
+					return;
+				}
+				if (finalAssistant.stopReason !== "stop") {
+					completionError =
+						finalAssistant.errorMessage ?? `Subagent stopped with ${finalAssistant.stopReason ?? "unknown"}`;
+					return;
+				}
+				const content = finalAssistant.content;
+				if (!Array.isArray(content) || content.some((part) => part?.type === "toolCall")) {
+					completionError = "Subagent ended before producing a final response";
+					return;
+				}
+				finalText = content
+					.filter((part) => part?.type === "text" && typeof part.text === "string")
+					.map((part) => part.text as string)
+					.join("\n");
 			} catch {
 				/* ignore non-JSON line */
 			}
@@ -449,13 +474,17 @@ async function spawnSubagent(opts: SpawnOptions): Promise<SpawnResult> {
 		child.stderr?.on("data", (chunk: Buffer) => {
 			stderr += chunk.toString("utf-8");
 		});
-		child.on("close", (code: number | null) => {
+		child.on("close", (code: number | null, signal: NodeJS.Signals | null) => {
 			if (buf.trim()) flushLine(buf);
-			emitProgress(code === 0 || code === null ? "completed" : "failed", `exit ${code ?? 0}`);
-			resolve(code ?? 0);
+			if (signal) completionError = `Subagent terminated by ${signal}`;
+			else if (!agentEnded) completionError = "Subagent exited without terminal agent_end";
+			const resolvedCode = completionError ? 1 : (code ?? 1);
+			emitProgress(resolvedCode === 0 ? "completed" : "failed", completionError ?? `exit ${resolvedCode}`);
+			resolve(resolvedCode);
 		});
 		child.on("error", () => {
-			emitProgress("failed", "spawn error");
+			completionError = "Subagent spawn error";
+			emitProgress("failed", completionError);
 			resolve(1);
 		});
 		if (opts.signal) {
@@ -499,7 +528,15 @@ async function spawnSubagent(opts: SpawnOptions): Promise<SpawnResult> {
 		stdout,
 		stderr,
 	);
-	return { exitCode, stdout, stderr, finalText, outputBytes: Buffer.byteLength(finalText, "utf-8"), ...artifacts };
+	return {
+		exitCode,
+		stdout,
+		stderr,
+		finalText,
+		error: completionError,
+		outputBytes: Buffer.byteLength(finalText, "utf-8"),
+		...artifacts,
+	};
 }
 
 // ─── Background (async) subagent dispatch ────────────────────────────────
@@ -827,7 +864,9 @@ async function runOne(
 		exitCode: validationError ? 2 : spawnRes.exitCode,
 		error:
 			validationError ??
-			(spawnRes.exitCode !== 0 ? spawnRes.stderr.trim() || `exit ${spawnRes.exitCode}` : undefined),
+			(spawnRes.exitCode !== 0
+				? (spawnRes.error ?? (spawnRes.stderr.trim() || `exit ${spawnRes.exitCode}`))
+				: undefined),
 		data: parsedData,
 		worktreeDir: wt.worktree?.worktreeDir,
 		branchName: wt.worktree?.branchName,
