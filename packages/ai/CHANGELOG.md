@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.5.10] - 2026-09-09
+
+### Changed
+
+- Refreshed generated model catalog and published registry pricing/options from upstream providers, including current test model IDs and Groq Qwen3 reasoning-effort mapping.
+
 ## [1.5.9] - 2026-09-02
 
 ### Added
