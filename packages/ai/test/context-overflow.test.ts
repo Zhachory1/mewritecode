@@ -146,9 +146,9 @@ describe("Context overflow error handling", () => {
 
 		// Anthropic model via Copilot
 		it.skipIf(!githubCopilotToken)(
-			"claude-sonnet-4 - should detect overflow via isContextOverflow",
+			"claude-sonnet-4.6 - should detect overflow via isContextOverflow",
 			async () => {
-				const model = getModel("github-copilot", "claude-sonnet-4.5");
+				const model = getModel("github-copilot", "claude-sonnet-4.6");
 				const result = await testContextOverflow(model, githubCopilotToken!);
 				logResult(result);
 
@@ -285,9 +285,9 @@ describe("Context overflow error handling", () => {
 
 	describe("OpenAI Codex (OAuth)", () => {
 		it.skipIf(!openaiCodexToken)(
-			"gpt-5.2-codex - should detect overflow via isContextOverflow",
+			"gpt-5.3-codex - should detect overflow via isContextOverflow",
 			async () => {
-				const model = getModel("openai-codex", "gpt-5.2-codex");
+				const model = getModel("openai-codex", "gpt-5.3-codex");
 				const result = await testContextOverflow(model, openaiCodexToken!);
 				logResult(result);
 
@@ -389,8 +389,8 @@ describe("Context overflow error handling", () => {
 	// =============================================================================
 
 	describe.skipIf(!process.env.ZAI_API_KEY)("z.ai", () => {
-		it("glm-4.5-flash - should detect overflow via isContextOverflow when z.ai reports it", async () => {
-			const model = getModel("zai", "glm-4.5-air");
+		it("glm-4.7-flash - should detect overflow via isContextOverflow when z.ai reports it", async () => {
+			const model = getModel("zai", "glm-4.7");
 			const result = await testContextOverflow(model, process.env.ZAI_API_KEY!);
 			logResult(result);
 

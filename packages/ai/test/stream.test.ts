@@ -723,7 +723,7 @@ describe("Generate E2E Tests", () => {
 	);
 
 	describe.skipIf(!process.env.ZAI_API_KEY)("zAI Provider (glm-5 via OpenAI Completions)", () => {
-		const llm = getModel("zai", "glm-5.1");
+		const llm = getModel("zai", "glm-5.2");
 
 		it("should complete basic text generation", { retry: 3 }, async () => {
 			await basicTextGeneration(llm);
@@ -945,8 +945,8 @@ describe("Generate E2E Tests", () => {
 		});
 	});
 
-	describe("GitHub Copilot Provider (claude-sonnet-4 via Anthropic Messages)", () => {
-		const llm = getModel("github-copilot", "claude-sonnet-4.5");
+	describe("GitHub Copilot Provider (claude-sonnet-4.6 via Anthropic Messages)", () => {
+		const llm = getModel("github-copilot", "claude-sonnet-4.6");
 
 		it.skipIf(!githubCopilotToken)("should complete basic text generation", { retry: 3 }, async () => {
 			await basicTextGeneration(llm, { apiKey: githubCopilotToken });
@@ -1091,8 +1091,8 @@ describe("Generate E2E Tests", () => {
 		});
 	});
 
-	describe("OpenAI Codex Provider (gpt-5.2-codex)", () => {
-		const llm = getModel("openai-codex", "gpt-5.2-codex");
+	describe("OpenAI Codex Provider (gpt-5.3-codex)", () => {
+		const llm = getModel("openai-codex", "gpt-5.3-codex");
 
 		it.skipIf(!openaiCodexToken)("should complete basic text generation", { retry: 3 }, async () => {
 			await basicTextGeneration(llm, { apiKey: openaiCodexToken });

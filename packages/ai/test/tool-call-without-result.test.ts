@@ -177,7 +177,7 @@ describe("Tool Call Without Result Tests", () => {
 	});
 
 	describe.skipIf(!process.env.ZAI_API_KEY)("zAI Provider", () => {
-		const model = getModel("zai", "glm-4.5-air");
+		const model = getModel("zai", "glm-4.7");
 
 		it("should filter out tool calls without corresponding tool results", { retry: 3, timeout: 30000 }, async () => {
 			await testToolCallWithoutResult(model);
@@ -251,10 +251,10 @@ describe("Tool Call Without Result Tests", () => {
 		);
 
 		it.skipIf(!githubCopilotToken)(
-			"claude-sonnet-4 - should filter out tool calls without corresponding tool results",
+			"claude-sonnet-4.6 - should filter out tool calls without corresponding tool results",
 			{ retry: 3, timeout: 30000 },
 			async () => {
-				const model = getModel("github-copilot", "claude-sonnet-4.5");
+				const model = getModel("github-copilot", "claude-sonnet-4.6");
 				await testToolCallWithoutResult(model, { apiKey: githubCopilotToken });
 			},
 		);
@@ -302,10 +302,10 @@ describe("Tool Call Without Result Tests", () => {
 
 	describe("OpenAI Codex Provider", () => {
 		it.skipIf(!openaiCodexToken)(
-			"gpt-5.2-codex - should filter out tool calls without corresponding tool results",
+			"gpt-5.3-codex - should filter out tool calls without corresponding tool results",
 			{ retry: 3, timeout: 30000 },
 			async () => {
-				const model = getModel("openai-codex", "gpt-5.2-codex");
+				const model = getModel("openai-codex", "gpt-5.3-codex");
 				await testToolCallWithoutResult(model, { apiKey: openaiCodexToken });
 			},
 		);
