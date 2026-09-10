@@ -53,14 +53,16 @@ function makeMockSpawn(responses: Record<string, FakeAgentResponse>) {
 		const delay = resp.delayMs ?? 5;
 		setTimeout(() => {
 			if (resp.finalText) {
-				const event = `${JSON.stringify({
-					type: "message_end",
-					message: {
-						role: "assistant",
-						content: [{ type: "text", text: resp.finalText }],
-					},
-				})}\n`;
-				stdout.emit("data", Buffer.from(event));
+				const message = {
+					role: "assistant",
+					content: [{ type: "text", text: resp.finalText }],
+					stopReason: "stop",
+				};
+				const events = [
+					{ type: "message_end", message },
+					{ type: "agent_end", messages: [message] },
+				];
+				stdout.emit("data", Buffer.from(`${events.map((event) => JSON.stringify(event)).join("\n")}\n`));
 			}
 			if (resp.stderr) {
 				stderr.emit("data", Buffer.from(resp.stderr));
@@ -96,15 +98,12 @@ function makeCapturingSpawn(captured: CapturedSpawn[]) {
 		(child as any).killed = false;
 		(child as any).unref = () => {};
 		setTimeout(() => {
-			stdout.emit(
-				"data",
-				Buffer.from(
-					`${JSON.stringify({
-						type: "message_end",
-						message: { role: "assistant", content: [{ type: "text", text: "done" }] },
-					})}\n`,
-				),
-			);
+			const message = { role: "assistant", content: [{ type: "text", text: "done" }], stopReason: "stop" };
+			const events = [
+				{ type: "message_end", message },
+				{ type: "agent_end", messages: [message] },
+			];
+			stdout.emit("data", Buffer.from(`${events.map((event) => JSON.stringify(event)).join("\n")}\n`));
 			child.emit("close", 0);
 		}, 5);
 		return child;
@@ -424,15 +423,12 @@ describe("Task tool — chain-mode with {previous} substitution", () => {
 
 			setTimeout(() => {
 				const text = `<from-${calls.length - 1}>${taskText}</from-${calls.length - 1}>`;
-				stdout.emit(
-					"data",
-					Buffer.from(
-						`${JSON.stringify({
-							type: "message_end",
-							message: { role: "assistant", content: [{ type: "text", text }] },
-						})}\n`,
-					),
-				);
+				const message = { role: "assistant", content: [{ type: "text", text }], stopReason: "stop" };
+				const events = [
+					{ type: "message_end", message },
+					{ type: "agent_end", messages: [message] },
+				];
+				stdout.emit("data", Buffer.from(`${events.map((event) => JSON.stringify(event)).join("\n")}\n`));
 				child.emit("close", 0);
 			}, 5);
 			return child;

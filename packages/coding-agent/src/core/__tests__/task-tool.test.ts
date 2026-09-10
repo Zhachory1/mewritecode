@@ -13,9 +13,24 @@ import type { LoadAgentDefsResult } from "../agent-defs/loader.js";
 import { _resetRegistry, getBackground } from "../background-task-registry.js";
 import { createTaskToolDefinition } from "../tools/task.js";
 
-function fakeChild(jsonLines: string[], exitCode = 0, stderrLines: string[] = []): any {
+function fakeChild(
+	jsonLines: string[],
+	exitCode: number | null = 0,
+	stderrLines: string[] = [],
+	terminationSignal: NodeJS.Signals | null = null,
+): any {
+	const outputLines = [...jsonLines];
+	if (!terminationSignal && !outputLines.some((line) => JSON.parse(line).type === "agent_end")) {
+		const finalAssistant = outputLines
+			.map((line) => JSON.parse(line))
+			.reverse()
+			.find((event) => event.type === "message_end" && event.message?.role === "assistant")?.message;
+		if (finalAssistant) {
+			outputLines.push(JSON.stringify({ type: "agent_end", messages: [{ ...finalAssistant, stopReason: "stop" }] }));
+		}
+	}
 	const child = new EventEmitter() as any;
-	child.stdout = Readable.from(jsonLines.map((l) => `${l}\n`));
+	child.stdout = Readable.from(outputLines.map((l) => `${l}\n`));
 	child.stderr = Readable.from(stderrLines.map((l) => `${l}\n`));
 	child.killed = false;
 	child.kill = () => {
@@ -23,7 +38,7 @@ function fakeChild(jsonLines: string[], exitCode = 0, stderrLines: string[] = []
 	};
 	// Emit close after stdout drains. EventEmitter doesn't await, so schedule
 	// via setImmediate so the consumer sees stdout first.
-	setImmediate(() => child.emit("close", exitCode));
+	setImmediate(() => child.emit("close", exitCode, terminationSignal));
 	return child;
 }
 
@@ -89,6 +104,178 @@ describe("WS6 Task tool", () => {
 		expect(result.details?.mode).toBe("single");
 		expect(result.details?.results).toHaveLength(1);
 		expect(result.details?.results[0]?.exitCode).toBe(0);
+	});
+
+	it("uses terminal agent output instead of tool-use narration", async () => {
+		const progressMessages: string[] = [];
+		const mockSpawn = (() =>
+			fakeChild([
+				JSON.stringify({
+					type: "message_end",
+					message: {
+						role: "assistant",
+						content: [
+							{ type: "text", text: "I will inspect one more file." },
+							{ type: "toolCall", id: "call-1", name: "read", arguments: { path: "x.ts" } },
+						],
+					},
+				}),
+				JSON.stringify({
+					type: "agent_end",
+					messages: [
+						{
+							role: "assistant",
+							content: [{ type: "text", text: "## Summary\nFinal review." }],
+							stopReason: "stop",
+						},
+					],
+				}),
+			])) as any;
+
+		const tool = createTaskToolDefinition(process.cwd(), {
+			caveBin: "cave",
+			mockSpawn,
+			loader: () => stubLoaded,
+			onProgress: (event) => {
+				if (event.phase === "message" && event.detail) progressMessages.push(event.detail);
+			},
+		});
+
+		const result = await tool.execute(
+			"call-terminal-output",
+			{ agent: "tester", task: "review" },
+			undefined,
+			undefined,
+			{} as any,
+		);
+		const text = result.content[0]?.type === "text" ? result.content[0].text : "";
+
+		expect(text).toContain("Final review.");
+		expect(text).not.toContain("I will inspect one more file.");
+		expect(progressMessages).toContain("I will inspect one more file.");
+		expect(result.details?.results[0]?.exitCode).toBe(0);
+	});
+
+	it("uses the final agent_end after an automatic retry", async () => {
+		const mockSpawn = (() =>
+			fakeChild([
+				JSON.stringify({
+					type: "agent_end",
+					messages: [
+						{
+							role: "assistant",
+							content: [],
+							stopReason: "error",
+							errorMessage: "Transient provider error",
+						},
+					],
+				}),
+				JSON.stringify({
+					type: "agent_end",
+					messages: [
+						{
+							role: "assistant",
+							content: [{ type: "text", text: "Recovered final response." }],
+							stopReason: "stop",
+						},
+					],
+				}),
+			])) as any;
+
+		const tool = createTaskToolDefinition(process.cwd(), {
+			caveBin: "cave",
+			mockSpawn,
+			loader: () => stubLoaded,
+		});
+
+		const result = await tool.execute(
+			"call-retry",
+			{ agent: "tester", task: "recover" },
+			undefined,
+			undefined,
+			{} as any,
+		);
+		const text = result.content[0]?.type === "text" ? result.content[0].text : "";
+
+		expect(text).toContain("Recovered final response.");
+		expect(text).not.toContain("Transient provider error");
+		expect(result.details?.results[0]?.exitCode).toBe(0);
+	});
+
+	it("fails subagents that end on a tool-use message", async () => {
+		const mockSpawn = (() =>
+			fakeChild([
+				JSON.stringify({
+					type: "agent_end",
+					messages: [
+						{
+							role: "assistant",
+							content: [
+								{ type: "text", text: "I will inspect one more file." },
+								{ type: "toolCall", id: "call-1", name: "read", arguments: { path: "x.ts" } },
+							],
+							stopReason: "stop",
+						},
+					],
+				}),
+			])) as any;
+
+		const tool = createTaskToolDefinition(process.cwd(), {
+			caveBin: "cave",
+			mockSpawn,
+			loader: () => stubLoaded,
+		});
+
+		const result = await tool.execute(
+			"call-incomplete",
+			{ agent: "tester", task: "review" },
+			undefined,
+			undefined,
+			{} as any,
+		);
+		const text = result.content[0]?.type === "text" ? result.content[0].text : "";
+
+		expect(text).toContain("Subagent ended before producing a final response");
+		expect(text).not.toContain("I will inspect one more file.");
+		expect(result.details?.results[0]?.exitCode).toBe(1);
+	});
+
+	it("fails signaled subagents instead of returning their interim narration", async () => {
+		const mockSpawn = (() =>
+			fakeChild(
+				[
+					JSON.stringify({
+						type: "message_end",
+						message: {
+							role: "assistant",
+							content: [{ type: "text", text: "I will inspect one more file." }],
+						},
+					}),
+				],
+				null,
+				[],
+				"SIGTERM",
+			)) as any;
+
+		const tool = createTaskToolDefinition(process.cwd(), {
+			caveBin: "cave",
+			mockSpawn,
+			loader: () => stubLoaded,
+		});
+
+		const result = await tool.execute(
+			"call-signaled",
+			{ agent: "tester", task: "review" },
+			undefined,
+			undefined,
+			{} as any,
+		);
+		const text = result.content[0]?.type === "text" ? result.content[0].text : "";
+
+		expect(text).toContain("Subagent failed");
+		expect(text).toContain("Subagent terminated by SIGTERM");
+		expect(text).not.toContain("I will inspect one more file.");
+		expect(result.details?.results[0]?.exitCode).toBe(1);
 	});
 
 	it("single mode preserves all final assistant text blocks", async () => {

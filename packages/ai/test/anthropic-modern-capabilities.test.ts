@@ -179,9 +179,9 @@ describe("Anthropic thinking request shape", () => {
 		expect(params.output_config).toEqual({ effort: "max" });
 	});
 
-	it("xhigh on Copilot opus-4.6 clamps to effort=high without discovery (Copilot relay rejects max)", async () => {
+	it("xhigh on Copilot opus-4.7 clamps to effort=high without discovery (Copilot relay rejects max)", async () => {
 		_clearDiscoveredCapabilitiesForTests();
-		const { params } = await runWith(getModel("github-copilot", "claude-opus-4.6"), "xhigh");
+		const { params } = await runWith(getModel("github-copilot", "claude-opus-4.7"), "xhigh");
 		expect(params.output_config).toEqual({ effort: "high" });
 	});
 

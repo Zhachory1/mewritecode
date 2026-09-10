@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.5.10] - 2026-09-09
+
+### Fixed
+
+- Fixed subagent tasks returning interim tool-use narration when a child terminated before its final response. Task dispatch now accepts terminal `agent_end` output and reports incomplete or signaled children as failures.
+
 ## [1.5.9] - 2026-09-02
 
 ### Added

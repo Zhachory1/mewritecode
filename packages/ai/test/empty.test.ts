@@ -329,7 +329,7 @@ describe("AI Providers Empty Message Tests", () => {
 	});
 
 	describe.skipIf(!process.env.ZAI_API_KEY)("zAI Provider Empty Messages", () => {
-		const llm = getModel("zai", "glm-4.5-air");
+		const llm = getModel("zai", "glm-4.7");
 
 		it("should handle empty content array", { retry: 3, timeout: 30000 }, async () => {
 			await testEmptyMessage(llm);
@@ -518,37 +518,37 @@ describe("AI Providers Empty Message Tests", () => {
 		);
 
 		it.skipIf(!githubCopilotToken)(
-			"claude-sonnet-4 - should handle empty content array",
+			"claude-sonnet-4.6 - should handle empty content array",
 			{ retry: 3, timeout: 30000 },
 			async () => {
-				const llm = getModel("github-copilot", "claude-sonnet-4.5");
+				const llm = getModel("github-copilot", "claude-sonnet-4.6");
 				await testEmptyMessage(llm, { apiKey: githubCopilotToken });
 			},
 		);
 
 		it.skipIf(!githubCopilotToken)(
-			"claude-sonnet-4 - should handle empty string content",
+			"claude-sonnet-4.6 - should handle empty string content",
 			{ retry: 3, timeout: 30000 },
 			async () => {
-				const llm = getModel("github-copilot", "claude-sonnet-4.5");
+				const llm = getModel("github-copilot", "claude-sonnet-4.6");
 				await testEmptyStringMessage(llm, { apiKey: githubCopilotToken });
 			},
 		);
 
 		it.skipIf(!githubCopilotToken)(
-			"claude-sonnet-4 - should handle whitespace-only content",
+			"claude-sonnet-4.6 - should handle whitespace-only content",
 			{ retry: 3, timeout: 30000 },
 			async () => {
-				const llm = getModel("github-copilot", "claude-sonnet-4.5");
+				const llm = getModel("github-copilot", "claude-sonnet-4.6");
 				await testWhitespaceOnlyMessage(llm, { apiKey: githubCopilotToken });
 			},
 		);
 
 		it.skipIf(!githubCopilotToken)(
-			"claude-sonnet-4 - should handle empty assistant message in conversation",
+			"claude-sonnet-4.6 - should handle empty assistant message in conversation",
 			{ retry: 3, timeout: 30000 },
 			async () => {
-				const llm = getModel("github-copilot", "claude-sonnet-4.5");
+				const llm = getModel("github-copilot", "claude-sonnet-4.6");
 				await testEmptyAssistantMessage(llm, { apiKey: githubCopilotToken });
 			},
 		);
@@ -704,37 +704,37 @@ describe("AI Providers Empty Message Tests", () => {
 
 	describe("OpenAI Codex Provider Empty Messages", () => {
 		it.skipIf(!openaiCodexToken)(
-			"gpt-5.2-codex - should handle empty content array",
+			"gpt-5.3-codex - should handle empty content array",
 			{ retry: 3, timeout: 30000 },
 			async () => {
-				const llm = getModel("openai-codex", "gpt-5.2-codex");
+				const llm = getModel("openai-codex", "gpt-5.3-codex");
 				await testEmptyMessage(llm, { apiKey: openaiCodexToken });
 			},
 		);
 
 		it.skipIf(!openaiCodexToken)(
-			"gpt-5.2-codex - should handle empty string content",
+			"gpt-5.3-codex - should handle empty string content",
 			{ retry: 3, timeout: 30000 },
 			async () => {
-				const llm = getModel("openai-codex", "gpt-5.2-codex");
+				const llm = getModel("openai-codex", "gpt-5.3-codex");
 				await testEmptyStringMessage(llm, { apiKey: openaiCodexToken });
 			},
 		);
 
 		it.skipIf(!openaiCodexToken)(
-			"gpt-5.2-codex - should handle whitespace-only content",
+			"gpt-5.3-codex - should handle whitespace-only content",
 			{ retry: 3, timeout: 30000 },
 			async () => {
-				const llm = getModel("openai-codex", "gpt-5.2-codex");
+				const llm = getModel("openai-codex", "gpt-5.3-codex");
 				await testWhitespaceOnlyMessage(llm, { apiKey: openaiCodexToken });
 			},
 		);
 
 		it.skipIf(!openaiCodexToken)(
-			"gpt-5.2-codex - should handle empty assistant message in conversation",
+			"gpt-5.3-codex - should handle empty assistant message in conversation",
 			{ retry: 3, timeout: 30000 },
 			async () => {
-				const llm = getModel("openai-codex", "gpt-5.2-codex");
+				const llm = getModel("openai-codex", "gpt-5.3-codex");
 				await testEmptyAssistantMessage(llm, { apiKey: openaiCodexToken });
 			},
 		);

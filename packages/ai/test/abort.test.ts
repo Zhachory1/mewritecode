@@ -158,7 +158,7 @@ describe("AI Providers Abort Tests", () => {
 	});
 
 	describe.skipIf(!process.env.ANTHROPIC_OAUTH_TOKEN)("Anthropic Provider Abort", () => {
-		const llm = getModel("anthropic", "claude-opus-4-1-20250805");
+		const llm = getModel("anthropic", "claude-opus-4-5-20251101");
 
 		it("should abort mid-stream", { retry: 3 }, async () => {
 			await testAbortSignal(llm, { thinkingEnabled: true, thinkingBudgetTokens: 2048 });
@@ -232,12 +232,12 @@ describe("AI Providers Abort Tests", () => {
 
 	describe("OpenAI Codex Provider Abort", () => {
 		it.skipIf(!openaiCodexToken)("should abort mid-stream", { retry: 3 }, async () => {
-			const llm = getModel("openai-codex", "gpt-5.2-codex");
+			const llm = getModel("openai-codex", "gpt-5.3-codex");
 			await testAbortSignal(llm, { apiKey: openaiCodexToken });
 		});
 
 		it.skipIf(!openaiCodexToken)("should handle immediate abort", { retry: 3 }, async () => {
-			const llm = getModel("openai-codex", "gpt-5.2-codex");
+			const llm = getModel("openai-codex", "gpt-5.3-codex");
 			await testImmediateAbort(llm, { apiKey: openaiCodexToken });
 		});
 	});

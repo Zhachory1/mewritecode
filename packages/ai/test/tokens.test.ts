@@ -168,7 +168,7 @@ describe("Token Statistics on Abort", () => {
 	});
 
 	describe.skipIf(!process.env.ZAI_API_KEY)("zAI Provider", () => {
-		const llm = getModel("zai", "glm-4.5-air");
+		const llm = getModel("zai", "glm-4.7");
 
 		it("should include token stats when aborted mid-stream", { retry: 3, timeout: 30000 }, async () => {
 			await testTokensOnAbort(llm);
@@ -234,10 +234,10 @@ describe("Token Statistics on Abort", () => {
 		);
 
 		it.skipIf(!githubCopilotToken)(
-			"claude-sonnet-4 - should include token stats when aborted mid-stream",
+			"claude-sonnet-4.6 - should include token stats when aborted mid-stream",
 			{ retry: 3, timeout: 30000 },
 			async () => {
-				const llm = getModel("github-copilot", "claude-sonnet-4.5");
+				const llm = getModel("github-copilot", "claude-sonnet-4.6");
 				await testTokensOnAbort(llm, { apiKey: githubCopilotToken });
 			},
 		);
@@ -285,10 +285,10 @@ describe("Token Statistics on Abort", () => {
 
 	describe("OpenAI Codex Provider", () => {
 		it.skipIf(!openaiCodexToken)(
-			"gpt-5.2-codex - should include token stats when aborted mid-stream",
+			"gpt-5.3-codex - should include token stats when aborted mid-stream",
 			{ retry: 3, timeout: 30000 },
 			async () => {
-				const llm = getModel("openai-codex", "gpt-5.2-codex");
+				const llm = getModel("openai-codex", "gpt-5.3-codex");
 				await testTokensOnAbort(llm, { apiKey: openaiCodexToken });
 			},
 		);
