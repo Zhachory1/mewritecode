@@ -110,6 +110,35 @@ function makeCapturingSpawn(captured: CapturedSpawn[]) {
 	}) as any;
 }
 
+interface SpawnStats {
+	active: number;
+	peak: number;
+	started: number;
+}
+
+function makeTrackedSpawn(stats: SpawnStats, delayMs = 30) {
+	return (() => {
+		stats.active++;
+		stats.started++;
+		stats.peak = Math.max(stats.peak, stats.active);
+		const child = new EventEmitter() as ChildProcess & EventEmitter;
+		const stdout = new EventEmitter();
+		const stderr = new EventEmitter();
+		(child as any).stdout = stdout;
+		(child as any).stderr = stderr;
+		(child as any).kill = () => true;
+		(child as any).killed = false;
+		(child as any).unref = () => {};
+		setTimeout(() => {
+			const message = { role: "assistant", content: [{ type: "text", text: "done" }], stopReason: "stop" };
+			stdout.emit("data", Buffer.from(`${JSON.stringify({ type: "agent_end", messages: [message] })}\n`));
+			stats.active--;
+			child.emit("close", 0);
+		}, delayMs);
+		return child;
+	}) as any;
+}
+
 /** Extract the value passed to `--tools` (the allow-list), or undefined if absent. */
 function toolsArg(args: string[]): string | undefined {
 	const i = args.indexOf("--tools");
@@ -261,6 +290,203 @@ describe("Task tool — parallel cap (plan §6: max 7)", () => {
 		const details = r.details as TaskToolDetails;
 		expect(details.results).toHaveLength(7);
 		expect(details.results.every((x) => x.exitCode === 0)).toBe(true);
+	});
+});
+
+describe("Task tool — aggregate concurrency", () => {
+	it("caps sibling task calls across tool instances", async () => {
+		const stats: SpawnStats = { active: 0, peak: 0, started: 0 };
+		const mock = makeTrackedSpawn(stats);
+		const tools = [makeTool(mock), makeTool(mock)];
+
+		await Promise.all(
+			Array.from({ length: 6 }, (_, index) =>
+				tools[index % tools.length].execute(
+					`id-concurrent-${index}`,
+					{ agent: "explore", task: `task ${index}` } as any,
+					undefined,
+					undefined,
+					undefined as any,
+				),
+			),
+		);
+
+		expect(stats.started).toBe(6);
+		expect(stats.peak).toBe(4);
+		expect(stats.active).toBe(0);
+	});
+
+	it("holds background slots until children exit", async () => {
+		writeFileSync(
+			join(cwd, ".mewrite", "agents", "background.md"),
+			[
+				"---",
+				"name: background",
+				"description: background task",
+				"background: true",
+				"---",
+				"",
+				"You are background.",
+			].join("\n"),
+		);
+		const stats: SpawnStats = { active: 0, peak: 0, started: 0 };
+		const mock = makeTrackedSpawn(stats);
+		const tools = [makeTool(mock), makeTool(mock)];
+
+		await Promise.all(
+			Array.from({ length: 6 }, (_, index) =>
+				tools[index % tools.length].execute(
+					`id-background-${index}`,
+					{ agent: "background", task: `task ${index}` } as any,
+					undefined,
+					undefined,
+					undefined as any,
+				),
+			),
+		);
+		while (stats.active > 0) await new Promise((resolve) => setTimeout(resolve, 5));
+
+		expect(stats.started).toBe(6);
+		expect(stats.peak).toBe(4);
+	});
+
+	it("removes aborted waiters without consuming capacity", async () => {
+		const stats: SpawnStats = { active: 0, peak: 0, started: 0 };
+		const mock = makeTrackedSpawn(stats, 500);
+		const tool = makeTool(mock);
+		const running = Array.from({ length: 4 }, (_, index) =>
+			tool.execute(
+				`id-running-${index}`,
+				{ agent: "explore", task: `task ${index}` } as any,
+				undefined,
+				undefined,
+				undefined as any,
+			),
+		);
+		while (stats.started < 4) await new Promise((resolve) => setTimeout(resolve, 1));
+		const controller = new AbortController();
+		const aborted = tool.execute(
+			"id-aborted",
+			{ agent: "explore", task: "aborted task" } as any,
+			controller.signal,
+			undefined,
+			undefined as any,
+		);
+		await new Promise((resolve) => setImmediate(resolve));
+		controller.abort();
+
+		const abortedResult = await aborted;
+		expect((abortedResult.content[0] as { text: string }).text).toContain("Operation aborted");
+		expect(stats.started).toBe(4);
+		await Promise.all(running);
+		await tool.execute(
+			"id-after-abort",
+			{ agent: "explore", task: "after abort" } as any,
+			undefined,
+			undefined,
+			undefined as any,
+		);
+		expect(stats.started).toBe(5);
+	});
+
+	it("keeps an errored child in capacity until close", async () => {
+		const children: Array<ChildProcess & EventEmitter> = [];
+		const closed = new Set<ChildProcess>();
+		let active = 0;
+		let peak = 0;
+		const mock = (() => {
+			active++;
+			peak = Math.max(peak, active);
+			const child = new EventEmitter() as ChildProcess & EventEmitter;
+			(child as any).stdout = new EventEmitter();
+			(child as any).stderr = new EventEmitter();
+			(child as any).kill = () => true;
+			(child as any).killed = false;
+			children.push(child);
+			return child;
+		}) as any;
+		const finish = (child: ChildProcess & EventEmitter, code: number, withResult: boolean) => {
+			if (closed.has(child)) return;
+			closed.add(child);
+			if (withResult) {
+				const message = { role: "assistant", content: [{ type: "text", text: "done" }], stopReason: "stop" };
+				(child.stdout as EventEmitter).emit(
+					"data",
+					Buffer.from(`${JSON.stringify({ type: "agent_end", messages: [message] })}\n`),
+				);
+			}
+			active--;
+			child.emit("close", code);
+		};
+		const tool = makeTool(mock);
+		const calls = Array.from({ length: 5 }, (_, index) =>
+			tool.execute(
+				`id-error-close-${index}`,
+				{ agent: "explore", task: `task ${index}` } as any,
+				undefined,
+				undefined,
+				undefined as any,
+			),
+		);
+		try {
+			while (children.length < 4) await new Promise((resolve) => setTimeout(resolve, 1));
+
+			children[0].emit("error", new Error("pipe failed"));
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(children).toHaveLength(4);
+
+			finish(children[0], 1, false);
+			while (children.length < 5) await new Promise((resolve) => setTimeout(resolve, 1));
+			for (const child of children.slice(1)) finish(child, 0, true);
+
+			await Promise.all(calls);
+			expect(peak).toBe(4);
+			expect(active).toBe(0);
+		} finally {
+			for (const child of children) finish(child, 1, false);
+			await Promise.allSettled(calls);
+		}
+	});
+
+	it("releases background slots when spawn throws", async () => {
+		writeFileSync(
+			join(cwd, ".mewrite", "agents", "background.md"),
+			[
+				"---",
+				"name: background",
+				"description: background task",
+				"background: true",
+				"---",
+				"",
+				"You are background.",
+			].join("\n"),
+		);
+		const throwing = makeTool((() => {
+			throw new Error("spawn failed");
+		}) as any);
+
+		const failures = await Promise.allSettled(
+			Array.from({ length: 4 }, (_, index) =>
+				throwing.execute(
+					`id-spawn-failure-${index}`,
+					{ agent: "background", task: `task ${index}` } as any,
+					undefined,
+					undefined,
+					undefined as any,
+				),
+			),
+		);
+		expect(failures.every((result) => result.status === "rejected")).toBe(true);
+
+		const stats: SpawnStats = { active: 0, peak: 0, started: 0 };
+		await makeTool(makeTrackedSpawn(stats, 1)).execute(
+			"id-after-spawn-failure",
+			{ agent: "explore", task: "still runs" } as any,
+			undefined,
+			undefined,
+			undefined as any,
+		);
+		expect(stats.started).toBe(1);
 	});
 });
 

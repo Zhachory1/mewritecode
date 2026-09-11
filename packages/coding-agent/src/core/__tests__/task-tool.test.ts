@@ -8,7 +8,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough, Readable } from "node:stream";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { LoadAgentDefsResult } from "../agent-defs/loader.js";
 import { _resetRegistry, getBackground } from "../background-task-registry.js";
 import { createTaskToolDefinition } from "../tools/task.js";
@@ -526,6 +526,37 @@ describe("Task tool — background subagent abort (issue #17)", () => {
 		// Aborting the parent must reach the spawned child.
 		controller.abort();
 		expect(killSignals).toContain("SIGTERM");
+		child.emit("close", null, "SIGTERM");
+		await new Promise((r) => setImmediate(r));
+	});
+
+	it("escalates to SIGKILL when a child ignores SIGTERM", async () => {
+		vi.useFakeTimers();
+		try {
+			const { child, killSignals } = fakeBackgroundChild();
+			const controller = new AbortController();
+			const tool = createTaskToolDefinition(process.cwd(), {
+				caveBin: "cave",
+				mockSpawn: (() => child) as any,
+				loader: () => backgroundLoaded,
+			});
+
+			await tool.execute(
+				"call-bg-escalate",
+				{ agent: "bg-tester", task: "stuck task" },
+				controller.signal,
+				undefined,
+				{} as any,
+			);
+			controller.abort();
+			expect(killSignals).toEqual(["SIGTERM"]);
+
+			await vi.advanceTimersByTimeAsync(5_000);
+			expect(killSignals).toEqual(["SIGTERM", "SIGKILL"]);
+			child.emit("close", null, "SIGKILL");
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("closes the output write stream so the file descriptor is released on abort", async () => {
@@ -554,11 +585,12 @@ describe("Task tool — background subagent abort (issue #17)", () => {
 		// Child honors SIGTERM and exits; the close handler cancels escalation and
 		// ends the stream, flipping status away from `running`.
 		child.killed = true;
-		child.emit("close", 143);
+		child.emit("close", null, "SIGTERM");
 		await new Promise((r) => setImmediate(r));
 
 		const entry = getBackground(agentId);
-		expect(entry?.status).not.toBe("running");
+		expect(entry?.status).toBe("failed");
+		expect(entry?.exitCode).toBe(1);
 		expect(entry?.child).toBeUndefined();
 	});
 
