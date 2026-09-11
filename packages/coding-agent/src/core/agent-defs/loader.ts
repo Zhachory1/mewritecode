@@ -236,7 +236,7 @@ export function parseAgentDefFile(
 		});
 	// disallowedTools cancelled out every allowed tool. The child passes no --tools
 	// flag for an empty list, so it would silently inherit the default toolset
-	// (read,bash,edit,write) — the opposite of an intended lock-down.
+	// (read,grep,find,ls,bash,edit,write) — the opposite of an intended lock-down.
 	if ((def.tools?.length ?? 0) > 0 && eff.length === 0)
 		diagnostics.push({
 			type: "warning",

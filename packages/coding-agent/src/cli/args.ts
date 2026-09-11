@@ -239,7 +239,7 @@ export function printHelp(extensionFlags?: ExtensionFlag[]): void {
 					})
 					.join("\n")}\n`
 			: "";
-	console.log(`${chalk.bold(APP_NAME)} - AI coding assistant with read, bash, edit, write tools
+	console.log(`${chalk.bold(APP_NAME)} - AI coding assistant with built-in coding tools
 
 ${chalk.bold("Usage:")}
   ${APP_NAME} [options] [@files...] [messages...]
@@ -280,7 +280,8 @@ ${chalk.bold("Options:")}
   --models <patterns>            Comma-separated model patterns for Ctrl+P cycling
                                  Supports globs (anthropic/*, *sonnet*) and fuzzy matching
   --no-tools                     Disable all built-in tools
-  --tools <tools>                Comma-separated list of tools to enable (default: read,bash,edit,write)
+  --tools <tools>                Comma-separated list of tools to enable
+                                 Default: read, grep, find, ls, bash, edit, write
                                  Available: read, bash, edit, write, grep, find, ls
   --thinking <level>             Set thinking level: off, minimal, low, medium, high, xhigh
   --extension, -e <path>         Load an extension file (can be used multiple times)
@@ -382,13 +383,13 @@ ${chalk.bold("Environment Variables:")}
   ${ENV_SHARE_VIEWER_URL.padEnd(32)} - Base URL for /share viewer (default: disabled; no built-in viewer URL)
   PI_AI_ANTIGRAVITY_VERSION        - Override Antigravity User-Agent version (e.g., 1.23.0)
 
-${chalk.bold("Available Tools (default: read, bash, edit, write):")}
+${chalk.bold("Available Tools (default: read, grep, find, ls, bash, edit, write):")}
   read   - Read file contents
-  bash   - Execute bash commands
+  grep   - Search file contents with ripgrep
+  find   - Find files by glob pattern with fd
+  ls     - List directory contents
+  bash   - Execute shell commands when no dedicated tool fits
   edit   - Edit files with find/replace
   write  - Write files (creates/overwrites)
-  grep   - Search file contents (read-only, off by default)
-  find   - Find files by glob pattern (read-only, off by default)
-  ls     - List directory contents (read-only, off by default)
 `);
 }

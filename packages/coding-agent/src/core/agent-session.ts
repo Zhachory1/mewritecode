@@ -133,6 +133,7 @@ import { createAllToolDefinitions } from "./tools/index.js";
 import { buildAlwaysOnMcpTools } from "./tools/mcp-bridge.js";
 import { createMemorySaveToolDefinition, createMemorySearchToolDefinition } from "./tools/memory.js";
 import { createToolDefinitionFromAgentTool, wrapToolDefinition } from "./tools/tool-definition-wrapper.js";
+import { DEFAULT_AGENT_TOOL_NAMES } from "./tools/tool-names.js";
 import { createTraceSink } from "./trace.js";
 
 // ============================================================================
@@ -224,7 +225,7 @@ export interface AgentSessionConfig {
 	customTools?: ToolDefinition[];
 	/** Model registry for API key resolution and model discovery */
 	modelRegistry: ModelRegistry;
-	/** Initial active built-in tool names. Default: [read, bash, edit, write] */
+	/** Initial active built-in tool names. Defaults to the dedicated coding tools plus task and agent. */
 	initialActiveToolNames?: string[];
 	/**
 	 * Override base tools (useful for custom runtimes).
@@ -3692,10 +3693,7 @@ export class AgentSession {
 		const defaultActiveToolNames = this._baseToolsOverride
 			? Object.keys(this._baseToolsOverride)
 			: [
-					"read",
-					"bash",
-					"edit",
-					"write",
+					...DEFAULT_AGENT_TOOL_NAMES,
 					"task",
 					"agent",
 					...(this._baseToolDefinitions.has("memory_search") ? ["memory_search"] : []),

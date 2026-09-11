@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -6,8 +6,8 @@ import { executeBash } from "../src/core/bash-executor.js";
 import { bashTool, createBashTool, createLocalBashOperations } from "../src/core/tools/bash.js";
 import { editTool } from "../src/core/tools/edit.js";
 import { findTool } from "../src/core/tools/find.js";
-import { grepTool } from "../src/core/tools/grep.js";
-import { lsTool } from "../src/core/tools/ls.js";
+import { createGrepTool, grepTool } from "../src/core/tools/grep.js";
+import { createLsTool, lsTool } from "../src/core/tools/ls.js";
 import { readTool } from "../src/core/tools/read.js";
 import { writeTool } from "../src/core/tools/write.js";
 import * as shellModule from "../src/utils/shell.js";
@@ -545,6 +545,26 @@ describe("Coding Agent Tools", () => {
 			expect(output).toContain("example.txt:2: match line");
 		});
 
+		it("should reuse ripgrep match text when context is not requested", async () => {
+			const testFile = join(testDir, "no-reread.txt");
+			writeFileSync(testFile, "match line\n");
+			let readCount = 0;
+			const grep = createGrepTool(testDir, {
+				operations: {
+					isDirectory: () => false,
+					readFile: () => {
+						readCount++;
+						return "match line\n";
+					},
+				},
+			});
+
+			const result = await grep.execute("test-call-no-reread", { pattern: "match", path: testFile });
+
+			expect(getTextOutput(result)).toContain("no-reread.txt:1: match line");
+			expect(readCount).toBe(0);
+		});
+
 		it("should respect global limit and include context lines", async () => {
 			const testFile = join(testDir, "context.txt");
 			const content = ["before", "match one", "after", "middle", "match two", "after two"].join("\n");
@@ -588,10 +608,15 @@ describe("Coding Agent Tools", () => {
 			expect(outputLines).toContain(".secret/hidden.txt");
 		});
 
-		it("should respect .gitignore", async () => {
-			writeFileSync(join(testDir, ".gitignore"), "ignored.txt\n");
-			writeFileSync(join(testDir, "ignored.txt"), "ignored");
-			writeFileSync(join(testDir, "kept.txt"), "kept");
+		it("should respect root and nested .gitignore files outside a git repository", async () => {
+			const nestedDir = join(testDir, "nested");
+			mkdirSync(nestedDir);
+			writeFileSync(join(testDir, ".gitignore"), "root-ignored.txt\n");
+			writeFileSync(join(testDir, "root-ignored.txt"), "ignored");
+			writeFileSync(join(testDir, "root-kept.txt"), "kept");
+			writeFileSync(join(nestedDir, ".gitignore"), "nested-ignored.txt\n");
+			writeFileSync(join(nestedDir, "nested-ignored.txt"), "ignored");
+			writeFileSync(join(nestedDir, "nested-kept.txt"), "kept");
 
 			const result = await findTool.execute("test-call-14", {
 				pattern: "**/*.txt",
@@ -599,8 +624,10 @@ describe("Coding Agent Tools", () => {
 			});
 
 			const output = getTextOutput(result);
-			expect(output).toContain("kept.txt");
-			expect(output).not.toContain("ignored.txt");
+			expect(output).toContain("root-kept.txt");
+			expect(output).toContain("nested/nested-kept.txt");
+			expect(output).not.toContain("root-ignored.txt");
+			expect(output).not.toContain("nested-ignored.txt");
 		});
 	});
 
@@ -614,6 +641,38 @@ describe("Coding Agent Tools", () => {
 
 			expect(output).toContain(".hidden-file");
 			expect(output).toContain(".hidden-dir/");
+		});
+
+		it("should preserve custom operations and stop stat calls at the limit", async () => {
+			const statCalls: string[] = [];
+			const ls = createLsTool(testDir, {
+				operations: {
+					exists: () => true,
+					stat: (path) => {
+						statCalls.push(path);
+						return { isDirectory: () => true };
+					},
+					readdir: () => ["b", "a", "c"],
+				},
+			});
+
+			const result = await ls.execute("test-call-custom-ls", { limit: 1 });
+
+			expect(getTextOutput(result)).toContain("a/");
+			expect(statCalls).toEqual([testDir, join(testDir, "a")]);
+		});
+
+		it.runIf(process.platform !== "win32")("should resolve directory symlinks and skip broken ones", async () => {
+			const target = join(testDir, "target");
+			mkdirSync(target);
+			symlinkSync(target, join(testDir, "link"), "dir");
+			symlinkSync(join(testDir, "missing"), join(testDir, "broken"), "dir");
+
+			const result = await lsTool.execute("test-call-symlink-ls", { path: testDir });
+			const output = getTextOutput(result);
+
+			expect(output).toContain("link/");
+			expect(output).not.toContain("broken");
 		});
 	});
 });

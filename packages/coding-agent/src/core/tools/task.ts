@@ -45,6 +45,7 @@ import {
 	updateBackground,
 } from "../background-task-registry.js";
 import type { ToolDefinition } from "../extensions/types.js";
+import { DEFAULT_AGENT_TOOL_NAMES } from "./tool-names.js";
 
 const MAX_CONCURRENCY = 4;
 const RESULT_PREVIEW_CHARS = 80;
@@ -293,12 +294,10 @@ function writeForegroundOutputArtifacts(
 
 /**
  * Default tool allow-list a child cave starts with when no `--tools` flag is
- * passed: the writeable coding set (read/bash/edit/write). Mirrors
- * `coding-agent`'s `codingTools` and the `--tools` help default. Kept as a
- * literal here to avoid importing the heavy tools barrel (and a cycle) into the
- * task tool; the drift-guard test for VALID_TOOL_NAMES catches divergence.
+ * passed: the writeable coding set. Imports names from the zero-runtime-dependency
+ * leaf module to stay aligned without pulling the heavy tools barrel into this file.
  */
-const DEFAULT_CHILD_TOOLS = ["read", "bash", "edit", "write"] as const;
+const DEFAULT_CHILD_TOOLS = DEFAULT_AGENT_TOOL_NAMES;
 
 /**
  * Compute the `--tools` allow-list to pass to a spawned child for `agent`.

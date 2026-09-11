@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Default CLI sessions and unscoped subagents now expose dedicated `grep`, `find`, and `ls` tools before Bash. `grep` uses ripgrep, `find` uses fd, and Bash remains available as fallback.
+
+### Fixed
+
+- Reduced file-exploration latency by reusing ripgrep match text when context is not requested, letting fd process ignore files directly without a pre-scan, and avoiding per-entry stats in local directory listings.
+
 ## [1.5.10] - 2026-09-09
 
 ### Fixed

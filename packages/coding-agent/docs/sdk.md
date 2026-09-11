@@ -486,14 +486,18 @@ const { session } = await createAgentSession({ resourceLoader: loader });
 
 ```typescript
 import {
-  codingTools,   // read, bash, edit, write (default)
+  codingTools,   // explicit read, bash, edit, write set
   readOnlyTools, // read, grep, find, ls
   readTool, bashTool, editTool, writeTool,
   grepTool, findTool, lsTool,
 } from "@zhachory1/mewrite-code";
 
-// Use built-in tool set
-const { session } = await createAgentSession({
+// Omitting tools enables read, grep, find, ls, bash, edit, write, task, and agent.
+// Memory and MCP tools are also enabled when configured.
+const { session } = await createAgentSession();
+
+// Use an explicit built-in tool set
+const { session: readOnlySession } = await createAgentSession({
   tools: readOnlyTools,
 });
 

@@ -246,8 +246,19 @@ export function createGrepToolDefinition(
 							stderr += chunk.toString();
 						});
 
-						const formatBlock = async (filePath: string, lineNumber: number): Promise<string[]> => {
+						const formatBlock = async (
+							filePath: string,
+							lineNumber: number,
+							matchedLine?: string,
+						): Promise<string[]> => {
 							const relativePath = formatPath(filePath);
+							if (contextValue === 0 && matchedLine !== undefined) {
+								const { text, wasTruncated } = truncateLine(
+									matchedLine.replace(/\r?\n$/, "").replace(/\r/g, ""),
+								);
+								if (wasTruncated) linesTruncated = true;
+								return [`${relativePath}:${lineNumber}: ${text}`];
+							}
 							const lines = await getFileLines(filePath);
 							if (!lines.length) return [`${relativePath}:${lineNumber}: (unable to read file)`];
 							const block: string[] = [];
@@ -257,7 +268,6 @@ export function createGrepToolDefinition(
 								const lineText = lines[current - 1] ?? "";
 								const sanitized = lineText.replace(/\r/g, "");
 								const isMatchLine = current === lineNumber;
-								// Truncate long lines so grep output stays compact.
 								const { text: truncatedText, wasTruncated } = truncateLine(sanitized);
 								if (wasTruncated) linesTruncated = true;
 								if (isMatchLine) block.push(`${relativePath}:${current}: ${truncatedText}`);
@@ -267,7 +277,7 @@ export function createGrepToolDefinition(
 						};
 
 						// Collect matches during streaming, then format them after rg exits.
-						const matches: Array<{ filePath: string; lineNumber: number }> = [];
+						const matches: Array<{ filePath: string; lineNumber: number; matchedLine?: string }> = [];
 						rl.on("line", (line) => {
 							if (!line.trim() || matchCount >= effectiveLimit) return;
 							let event: any;
@@ -280,7 +290,14 @@ export function createGrepToolDefinition(
 								matchCount++;
 								const filePath = event.data?.path?.text;
 								const lineNumber = event.data?.line_number;
-								if (filePath && typeof lineNumber === "number") matches.push({ filePath, lineNumber });
+								const matchedLine = event.data?.lines?.text;
+								if (filePath && typeof lineNumber === "number") {
+									matches.push({
+										filePath,
+										lineNumber,
+										matchedLine: typeof matchedLine === "string" ? matchedLine : undefined,
+									});
+								}
 								if (matchCount >= effectiveLimit) {
 									matchLimitReached = true;
 									stopChild(true);
@@ -312,7 +329,7 @@ export function createGrepToolDefinition(
 
 							// Format matches after streaming finishes so custom readFile() backends can be async.
 							for (const match of matches) {
-								const block = await formatBlock(match.filePath, match.lineNumber);
+								const block = await formatBlock(match.filePath, match.lineNumber, match.matchedLine);
 								outputLines.push(...block);
 							}
 
