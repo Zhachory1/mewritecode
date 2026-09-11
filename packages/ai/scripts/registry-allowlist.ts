@@ -32,7 +32,6 @@ export const REGISTRY_ALLOWLIST: Record<string, AllowlistProvider> = {
 		baseUrl: "https://api.anthropic.com",
 		source: "anthropic",
 		models: [
-			"claude-opus-5",
 			"claude-opus-4-8",
 			"claude-opus-4-6",
 			"claude-sonnet-5",
@@ -63,7 +62,6 @@ export const REGISTRY_ALLOWLIST: Record<string, AllowlistProvider> = {
 		baseUrl: "https://openrouter.ai/api/v1",
 		source: "openrouter",
 		models: [
-			"anthropic/claude-opus-5",
 			"anthropic/claude-opus-4.8",
 			"openai/gpt-5",
 			"google/gemini-2.5-pro",
@@ -100,6 +98,6 @@ export const REGISTRY_ALLOWLIST: Record<string, AllowlistProvider> = {
 		auth: "oauth",
 		baseUrl: "https://api.githubcopilot.com",
 		source: "github-copilot",
-		models: ["claude-sonnet-4.6", "claude-opus-5", "claude-opus-4.8", "gpt-5.4", "gemini-3.5-flash"],
+		models: ["claude-sonnet-4.6", "claude-opus-4.8", "gpt-5.4", "gemini-3.5-flash"],
 	},
 };

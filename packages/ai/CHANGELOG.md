@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Removed nonexistent Claude Opus 5 entries from generated provider catalogs and the curated pricing registry, and reject those speculative IDs during future model generation.
+
 ## [1.5.10] - 2026-09-09
 
 ### Changed

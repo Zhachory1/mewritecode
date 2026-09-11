@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildRegistry } from "../scripts/generate-registry.js";
 import { REGISTRY_ALLOWLIST } from "../scripts/registry-allowlist.js";
+import { MODELS } from "../src/models.generated.js";
 import { validateRegistry } from "../src/registry/schema.js";
 
 describe("buildRegistry", () => {
@@ -37,5 +38,10 @@ describe("buildRegistry", () => {
 				expect(model.capabilities).toContain("tools");
 			}
 		}
+	});
+
+	it("excludes nonexistent Claude Opus 5 models", () => {
+		const generatedIds = Object.values(MODELS).flatMap((models) => Object.keys(models));
+		expect(generatedIds.some((id) => id.includes("claude-opus-5"))).toBe(false);
 	});
 });

@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "channel": "stable",
-  "publishedAt": "2026-09-09T22:39:42.584Z",
+  "publishedAt": "2026-09-11T22:10:48.165Z",
   "providers": [
     {
       "id": "anthropic",
@@ -10,20 +10,6 @@
       "baseUrl": "https://api.anthropic.com",
       "auth": "api-key",
       "models": [
-        {
-          "id": "claude-opus-5",
-          "displayName": "Claude Opus 5",
-          "contextWindow": 1000000,
-          "maxOutputTokens": 128000,
-          "inputCostPerMtok": 5,
-          "outputCostPerMtok": 25,
-          "capabilities": [
-            "tools",
-            "vision",
-            "cache",
-            "reasoning"
-          ]
-        },
         {
           "id": "claude-opus-4-8",
           "displayName": "Claude Opus 4.8",
@@ -261,20 +247,6 @@
       "auth": "api-key",
       "models": [
         {
-          "id": "anthropic/claude-opus-5",
-          "displayName": "Claude Opus 5",
-          "contextWindow": 1000000,
-          "maxOutputTokens": 128000,
-          "inputCostPerMtok": 5,
-          "outputCostPerMtok": 25,
-          "capabilities": [
-            "tools",
-            "vision",
-            "cache",
-            "reasoning"
-          ]
-        },
-        {
           "id": "anthropic/claude-opus-4.8",
           "displayName": "Anthropic: Claude Opus 4.8",
           "contextWindow": 1000000,
@@ -483,20 +455,6 @@
           "maxOutputTokens": 32000,
           "inputCostPerMtok": 3,
           "outputCostPerMtok": 15,
-          "capabilities": [
-            "tools",
-            "vision",
-            "cache",
-            "reasoning"
-          ]
-        },
-        {
-          "id": "claude-opus-5",
-          "displayName": "Claude Opus 5",
-          "contextWindow": 1000000,
-          "maxOutputTokens": 64000,
-          "inputCostPerMtok": 5,
-          "outputCostPerMtok": 25,
           "capabilities": [
             "tools",
             "vision",
