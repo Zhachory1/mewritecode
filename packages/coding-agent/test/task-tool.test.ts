@@ -516,7 +516,10 @@ describe("Task tool — #41 subagent tool scoping", () => {
 		expect(tools).toBeDefined();
 		const set = new Set((tools as string).split(","));
 		expect(set.has("bash")).toBe(false);
-		// Remaining default coding tools survive (read/edit/write).
+		// Remaining default coding tools survive, including dedicated inspection tools.
+		expect(set.has("grep")).toBe(true);
+		expect(set.has("find")).toBe(true);
+		expect(set.has("ls")).toBe(true);
 		expect(set.has("edit")).toBe(true);
 		expect(set.has("write")).toBe(true);
 	});

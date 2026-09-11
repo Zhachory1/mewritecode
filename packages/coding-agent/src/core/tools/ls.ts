@@ -141,37 +141,54 @@ export function createLsToolDefinition(
 							return;
 						}
 
-						// Read directory entries.
-						let entries: string[];
+						const results: string[] = [];
+						let entryLimitReached = false;
 						try {
-							entries = await ops.readdir(dirPath);
+							if (options?.operations) {
+								const entries = await ops.readdir(dirPath);
+								entries.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+								for (const entry of entries) {
+									if (results.length >= effectiveLimit) {
+										entryLimitReached = true;
+										break;
+									}
+									try {
+										const entryStat = await ops.stat(nodePath.join(dirPath, entry));
+										results.push(entry + (entryStat.isDirectory() ? "/" : ""));
+									} catch {
+										// Skip entries we cannot stat.
+									}
+								}
+							} else {
+								const entries = readdirSync(dirPath, { withFileTypes: true });
+								entries.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+								for (const entry of entries) {
+									if (results.length >= effectiveLimit) {
+										entryLimitReached = true;
+										break;
+									}
+									const typeKnown =
+										entry.isFile() ||
+										entry.isDirectory() ||
+										entry.isBlockDevice() ||
+										entry.isCharacterDevice() ||
+										entry.isFIFO() ||
+										entry.isSocket();
+									if (typeKnown) {
+										results.push(entry.name + (entry.isDirectory() ? "/" : ""));
+										continue;
+									}
+									try {
+										const entryStat = statSync(nodePath.join(dirPath, entry.name));
+										results.push(entry.name + (entryStat.isDirectory() ? "/" : ""));
+									} catch {
+										// Skip broken symlinks and entries whose type cannot be resolved.
+									}
+								}
+							}
 						} catch (e: any) {
 							reject(new Error(`Cannot read directory: ${e.message}`));
 							return;
-						}
-
-						// Sort alphabetically, case-insensitive.
-						entries.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
-
-						// Format entries with directory indicators.
-						const results: string[] = [];
-						let entryLimitReached = false;
-						for (const entry of entries) {
-							if (results.length >= effectiveLimit) {
-								entryLimitReached = true;
-								break;
-							}
-
-							const fullPath = nodePath.join(dirPath, entry);
-							let suffix = "";
-							try {
-								const entryStat = await ops.stat(fullPath);
-								if (entryStat.isDirectory()) suffix = "/";
-							} catch {
-								// Skip entries we cannot stat.
-								continue;
-							}
-							results.push(entry + suffix);
 						}
 
 						signal?.removeEventListener("abort", onAbort);

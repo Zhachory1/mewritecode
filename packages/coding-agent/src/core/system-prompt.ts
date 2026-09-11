@@ -31,6 +31,7 @@ import {
 	SYSTEM_PROMPT_BRANDING,
 } from "../config.js";
 import { formatSkillsForPrompt, type Skill } from "./skills.js";
+import { DEFAULT_AGENT_TOOL_NAMES } from "./tools/tool-names.js";
 
 export interface SystemPromptBranding {
 	/** Product name used in prompt identity lines. Default: distribution display name. */
@@ -55,7 +56,7 @@ export interface BuildSystemPromptOptions {
 	customPrompt?: string;
 	/** Product/brand labels for default prompt identity and documentation lines. */
 	branding?: SystemPromptBranding;
-	/** Tools to include in prompt. Default: [read, bash, edit, write] */
+	/** Tools to include in prompt. Default: dedicated coding tools with Bash fallback. */
 	selectedTools?: string[];
 	/** Optional one-line tool snippets keyed by tool name. */
 	toolSnippets?: Record<string, string>;
@@ -472,7 +473,7 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions = {}): strin
 
 	// Build tools list based on selected tools.
 	// A tool appears in Available tools only when the caller provides a one-line snippet.
-	const tools = selectedTools || ["read", "bash", "edit", "write"];
+	const tools = selectedTools || [...DEFAULT_AGENT_TOOL_NAMES];
 	const visibleTools = tools.filter((name) => !!toolSnippets?.[name]);
 	const toolsList =
 		visibleTools.length > 0 ? visibleTools.map((name) => `- ${name}: ${toolSnippets![name]}`).join("\n") : "(none)";
@@ -496,9 +497,11 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions = {}): strin
 
 	// File exploration guidelines
 	if (hasBash && !hasGrep && !hasFind && !hasLs) {
-		addGuideline("Use bash for file operations like ls, rg, find");
+		addGuideline("For recursive shell searches, prefer rg and fd when available; fall back to grep and find");
 	} else if (hasBash && (hasGrep || hasFind || hasLs)) {
-		addGuideline("Prefer grep/find/ls tools over bash for file exploration (faster, respects .gitignore)");
+		addGuideline(
+			"Prefer grep/find/ls tools over Bash for file exploration; grep uses ripgrep and find uses fd, with Bash kept as fallback",
+		);
 	}
 
 	for (const guideline of promptGuidelines ?? []) {

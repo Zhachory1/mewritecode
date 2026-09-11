@@ -142,6 +142,9 @@ describe("buildSystemPrompt", () => {
 			const prompt = buildSystemPrompt({
 				toolSnippets: {
 					read: "Read file contents",
+					grep: "Search file contents",
+					find: "Find files",
+					ls: "List directory contents",
 					bash: "Execute bash commands",
 					edit: "Make surgical edits",
 					write: "Create or overwrite files",
@@ -151,9 +154,13 @@ describe("buildSystemPrompt", () => {
 			});
 
 			expect(prompt).toContain("- read:");
+			expect(prompt).toContain("- grep:");
+			expect(prompt).toContain("- find:");
+			expect(prompt).toContain("- ls:");
 			expect(prompt).toContain("- bash:");
 			expect(prompt).toContain("- edit:");
 			expect(prompt).toContain("- write:");
+			expect(prompt).toContain("grep uses ripgrep and find uses fd, with Bash kept as fallback");
 		});
 	});
 

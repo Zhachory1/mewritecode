@@ -3,7 +3,6 @@ import type { AgentTool } from "@zhachory1/mewrite-agent";
 import { Text } from "@zhachory1/mewrite-tui";
 import { spawnSync } from "child_process";
 import { existsSync } from "fs";
-import { globSync } from "glob";
 import path from "path";
 import { keyHint } from "../../modes/interactive/components/keybinding-hints.js";
 import { ensureTool } from "../../utils/tools-manager.js";
@@ -202,28 +201,17 @@ export function createFindToolDefinition(
 							"--glob",
 							"--color=never",
 							"--hidden",
+							"--no-require-git",
 							"--max-results",
 							String(effectiveLimit),
+							pattern,
 						];
-						// Include .gitignore files from the search tree.
-						const gitignoreFiles = new Set<string>();
-						const rootGitignore = path.join(searchPath, ".gitignore");
-						if (existsSync(rootGitignore)) gitignoreFiles.add(rootGitignore);
-						try {
-							const nestedGitignores = globSync("**/.gitignore", {
-								cwd: searchPath,
-								dot: true,
-								absolute: true,
-								ignore: ["**/node_modules/**", "**/.git/**"],
-							});
-							for (const file of nestedGitignores) gitignoreFiles.add(file);
-						} catch {
-							// ignore
-						}
-						for (const gitignorePath of gitignoreFiles) args.push("--ignore-file", gitignorePath);
-						args.push(pattern, searchPath);
 
-						const result = spawnSync(fdPath, args, { encoding: "utf-8", maxBuffer: 10 * 1024 * 1024 });
+						const result = spawnSync(fdPath, args, {
+							cwd: searchPath,
+							encoding: "utf-8",
+							maxBuffer: 10 * 1024 * 1024,
+						});
 						signal?.removeEventListener("abort", onAbort);
 						if (result.error) {
 							reject(new Error(`Failed to run fd: ${result.error.message}`));
@@ -253,9 +241,7 @@ export function createFindToolDefinition(
 							if (!line) continue;
 							const hadTrailingSlash = line.endsWith("/") || line.endsWith("\\");
 							let relativePath = line;
-							if (line.startsWith(searchPath)) {
-								relativePath = line.slice(searchPath.length + 1);
-							} else {
+							if (path.isAbsolute(line)) {
 								relativePath = path.relative(searchPath, line);
 							}
 							if (hadTrailingSlash && !relativePath.endsWith("/")) relativePath += "/";

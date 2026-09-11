@@ -13,6 +13,9 @@
  * without updating this list fails CI.
  */
 
+/** Default agent tool set. Dedicated inspection tools stay ahead of Bash, which remains the fallback. */
+export const DEFAULT_AGENT_TOOL_NAMES = ["read", "grep", "find", "ls", "bash", "edit", "write"] as const;
+
 /** Canonical built-in tool names — exactly the set the child CLI accepts (`name in allTools`, args.ts:118). */
 export const VALID_TOOL_NAMES = [
 	"read",

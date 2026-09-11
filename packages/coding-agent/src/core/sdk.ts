@@ -58,7 +58,7 @@ export interface CreateAgentSessionOptions {
 	/** Models available for cycling (Ctrl+P in interactive mode) */
 	scopedModels?: Array<{ model: Model<any>; thinkingLevel?: ThinkingLevel }>;
 
-	/** Built-in tools to use. Default: codingTools [read, bash, edit, write] */
+	/** Built-in tools to use. Default: [read, grep, find, ls, bash, edit, write, task, agent] */
 	tools?: Tool[];
 	/** Custom tools to register (in addition to built-in tools). */
 	customTools?: ToolDefinition[];
@@ -307,7 +307,7 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 
 	// When the caller passes explicit `tools`, honor exactly that set. Otherwise
 	// leave the initial active set undefined so the session computes its own full
-	// default — read/bash/edit/write/task/agent plus any memory_* and mcp_* tools
+	// default — read/grep/find/ls/bash/edit/write/task/agent plus any memory_* and mcp_* tools
 	// it registered from settings and mcp.json. Pinning a fixed list here would
 	// register those tools but never activate them.
 	const initialActiveToolNames: ToolName[] | undefined = options.tools
