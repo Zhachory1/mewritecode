@@ -12,7 +12,7 @@
  *   - MAX_CONCURRENCY = 4         (CPU safety)
  */
 
-import { spawn } from "node:child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 import { createWriteStream, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
@@ -49,6 +49,84 @@ import { DEFAULT_AGENT_TOOL_NAMES } from "./tool-names.js";
 
 const MAX_CONCURRENCY = 4;
 const RESULT_PREVIEW_CHARS = 80;
+
+type SubagentSlotWaiter = {
+	resolve: (release: () => void) => void;
+	reject: (error: Error) => void;
+	signal?: AbortSignal;
+	onAbort?: () => void;
+};
+
+let activeSubagents = 0;
+const subagentSlotWaiters: SubagentSlotWaiter[] = [];
+
+function createSubagentSlotRelease(): () => void {
+	let released = false;
+	return () => {
+		if (released) return;
+		released = true;
+		while (subagentSlotWaiters.length > 0) {
+			const waiter = subagentSlotWaiters.shift()!;
+			if (waiter.onAbort) waiter.signal?.removeEventListener("abort", waiter.onAbort);
+			if (waiter.signal?.aborted) {
+				waiter.reject(new Error("Operation aborted"));
+				continue;
+			}
+			waiter.resolve(createSubagentSlotRelease());
+			return;
+		}
+		activeSubagents--;
+	};
+}
+
+function acquireSubagentSlot(signal?: AbortSignal): Promise<() => void> {
+	if (signal?.aborted) return Promise.reject(new Error("Operation aborted"));
+	if (activeSubagents < MAX_CONCURRENCY) {
+		activeSubagents++;
+		return Promise.resolve(createSubagentSlotRelease());
+	}
+	return new Promise((resolve, reject) => {
+		const waiter: SubagentSlotWaiter = { resolve, reject, signal };
+		waiter.onAbort = () => {
+			const index = subagentSlotWaiters.indexOf(waiter);
+			if (index === -1) return;
+			subagentSlotWaiters.splice(index, 1);
+			reject(new Error("Operation aborted"));
+		};
+		subagentSlotWaiters.push(waiter);
+		signal?.addEventListener("abort", waiter.onAbort, { once: true });
+		if (signal?.aborted) waiter.onAbort();
+	});
+}
+
+function bindAbortToChild(child: ChildProcess, signal?: AbortSignal): void {
+	if (!signal) return;
+	let closed = false;
+	let escalation: NodeJS.Timeout | undefined;
+	const onAbort = () => {
+		try {
+			child.kill("SIGTERM");
+		} catch {
+			// Ignore kill errors; close owns final settlement.
+		}
+		escalation = setTimeout(() => {
+			if (closed) return;
+			try {
+				child.kill("SIGKILL");
+			} catch {
+				// Ignore kill errors; close owns final settlement.
+			}
+		}, SIGKILL_GRACE_MS);
+		escalation.unref?.();
+	};
+	child.once("close", () => {
+		closed = true;
+		if (escalation) clearTimeout(escalation);
+		signal.removeEventListener("abort", onAbort);
+	});
+	if (signal.aborted) onAbort();
+	else signal.addEventListener("abort", onAbort, { once: true });
+}
 
 /**
  * Grace period between SIGTERM and the forced SIGKILL escalation when killing a
@@ -292,6 +370,19 @@ function writeForegroundOutputArtifacts(
 	}
 }
 
+function cleanupSubagentPrompt(promptPath: string | null, tmpDir: string | null): void {
+	if (promptPath) {
+		try {
+			rmSync(promptPath);
+		} catch {}
+	}
+	if (tmpDir) {
+		try {
+			rmSync(tmpDir, { recursive: true, force: true });
+		} catch {}
+	}
+}
+
 /**
  * Default tool allow-list a child cave starts with when no `--tools` flag is
  * passed: the writeable coding set. Imports names from the zero-runtime-dependency
@@ -361,6 +452,16 @@ function buildChildEnv(opts: SpawnOptions | SpawnBackgroundOptions, childDepth: 
 }
 
 async function spawnSubagent(opts: SpawnOptions): Promise<SpawnResult> {
+	const release = await acquireSubagentSlot(opts.signal);
+	try {
+		if (opts.signal?.aborted) throw new Error("Operation aborted");
+		return await spawnSubagentUnchecked(opts);
+	} finally {
+		release();
+	}
+}
+
+async function spawnSubagentUnchecked(opts: SpawnOptions): Promise<SpawnResult> {
 	const args: string[] = ["--mode", "json", "-p", "--no-session"];
 	const effectiveModel = opts.resolveModel ? opts.resolveModel(opts.agent.model) : opts.agent.model;
 	if (effectiveModel) args.push("--model", effectiveModel);
@@ -394,131 +495,105 @@ async function spawnSubagent(opts: SpawnOptions): Promise<SpawnResult> {
 	let finalText = "";
 	let agentEnded = false;
 	let completionError: string | undefined;
+	let processError: string | undefined;
 
 	const childDepth = currentSubagentDepth() + 1;
 	const childEnv = buildChildEnv(opts, childDepth);
 
-	const exitCode = await new Promise<number>((resolve) => {
-		const child = spawner(invocation.command, invocation.args, {
-			cwd: opts.cwd,
-			shell: false,
-			stdio: ["ignore", "pipe", "pipe"],
-			env: childEnv,
-		});
-		let buf = "";
-		const subagentId = opts.subagentId ?? opts.agent.name;
-		const emitProgress = (phase: SubagentProgressEvent["phase"], detail?: string) => {
-			opts.onProgress?.({
-				subagentName: opts.agent.name,
-				subagentId,
-				phase,
-				detail,
+	let exitCode: number;
+	try {
+		exitCode = await new Promise<number>((resolve) => {
+			const child = spawner(invocation.command, invocation.args, {
+				cwd: opts.cwd,
+				shell: false,
+				stdio: ["ignore", "pipe", "pipe"],
+				env: childEnv,
 			});
-		};
-		emitProgress("started", opts.task.slice(0, 80));
-		const flushLine = (line: string) => {
-			if (!line.trim()) return;
-			try {
-				const event = JSON.parse(line);
-				if (event.type === "tool_execution_start" && typeof event.toolName === "string") {
-					emitProgress("tool", event.toolName);
-					return;
-				}
-				if (event.type === "message_end" && event.message?.role === "assistant") {
-					const preview = event.message.content
-						?.filter(
-							(part: { type?: string; text?: string }) => part.type === "text" && typeof part.text === "string",
-						)
-						.map((part: { text?: string }) => part.text)
-						.join("\n");
-					if (preview) emitProgress("message", preview.slice(0, RESULT_PREVIEW_CHARS));
-					return;
-				}
-				if (event.type !== "agent_end" || !Array.isArray(event.messages)) return;
-
-				agentEnded = true;
-				completionError = undefined;
-				finalText = "";
-				const finalAssistant = [...event.messages].reverse().find((message) => message?.role === "assistant");
-				if (!finalAssistant) {
-					completionError = "Subagent ended without a final assistant response";
-					return;
-				}
-				if (finalAssistant.stopReason !== "stop") {
-					completionError =
-						finalAssistant.errorMessage ?? `Subagent stopped with ${finalAssistant.stopReason ?? "unknown"}`;
-					return;
-				}
-				const content = finalAssistant.content;
-				if (!Array.isArray(content) || content.some((part) => part?.type === "toolCall")) {
-					completionError = "Subagent ended before producing a final response";
-					return;
-				}
-				finalText = content
-					.filter((part) => part?.type === "text" && typeof part.text === "string")
-					.map((part) => part.text as string)
-					.join("\n");
-			} catch {
-				/* ignore non-JSON line */
-			}
-		};
-		child.stdout?.on("data", (chunk: Buffer) => {
-			const s = chunk.toString("utf-8");
-			stdout += s;
-			buf += s;
-			const lines = buf.split("\n");
-			buf = lines.pop() ?? "";
-			for (const ln of lines) flushLine(ln);
-		});
-		child.stderr?.on("data", (chunk: Buffer) => {
-			stderr += chunk.toString("utf-8");
-		});
-		child.on("close", (code: number | null, signal: NodeJS.Signals | null) => {
-			if (buf.trim()) flushLine(buf);
-			if (signal) completionError = `Subagent terminated by ${signal}`;
-			else if (!agentEnded) completionError = "Subagent exited without terminal agent_end";
-			const resolvedCode = completionError ? 1 : (code ?? 1);
-			emitProgress(resolvedCode === 0 ? "completed" : "failed", completionError ?? `exit ${resolvedCode}`);
-			resolve(resolvedCode);
-		});
-		child.on("error", () => {
-			completionError = "Subagent spawn error";
-			emitProgress("failed", completionError);
-			resolve(1);
-		});
-		if (opts.signal) {
-			const kill = () => {
-				try {
-					child.kill("SIGTERM");
-				} catch {
-					/* ignore */
-				}
-				setTimeout(() => {
-					try {
-						if (!child.killed) child.kill("SIGKILL");
-					} catch {
-						/* ignore */
-					}
-				}, SIGKILL_GRACE_MS);
+			let buf = "";
+			const subagentId = opts.subagentId ?? opts.agent.name;
+			const emitProgress = (phase: SubagentProgressEvent["phase"], detail?: string) => {
+				opts.onProgress?.({
+					subagentName: opts.agent.name,
+					subagentId,
+					phase,
+					detail,
+				});
 			};
-			if (opts.signal.aborted) kill();
-			else opts.signal.addEventListener("abort", kill, { once: true });
-		}
-	});
+			emitProgress("started", opts.task.slice(0, 80));
+			const flushLine = (line: string) => {
+				if (!line.trim()) return;
+				try {
+					const event = JSON.parse(line);
+					if (event.type === "tool_execution_start" && typeof event.toolName === "string") {
+						emitProgress("tool", event.toolName);
+						return;
+					}
+					if (event.type === "message_end" && event.message?.role === "assistant") {
+						const preview = event.message.content
+							?.filter(
+								(part: { type?: string; text?: string }) =>
+									part.type === "text" && typeof part.text === "string",
+							)
+							.map((part: { text?: string }) => part.text)
+							.join("\n");
+						if (preview) emitProgress("message", preview.slice(0, RESULT_PREVIEW_CHARS));
+						return;
+					}
+					if (event.type !== "agent_end" || !Array.isArray(event.messages)) return;
 
-	if (promptPath) {
-		try {
-			rmSync(promptPath);
-		} catch {
-			/* ignore */
-		}
-	}
-	if (tmpDir) {
-		try {
-			rmSync(tmpDir, { recursive: true, force: true });
-		} catch {
-			/* ignore */
-		}
+					agentEnded = true;
+					completionError = undefined;
+					finalText = "";
+					const finalAssistant = [...event.messages].reverse().find((message) => message?.role === "assistant");
+					if (!finalAssistant) {
+						completionError = "Subagent ended without a final assistant response";
+						return;
+					}
+					if (finalAssistant.stopReason !== "stop") {
+						completionError =
+							finalAssistant.errorMessage ?? `Subagent stopped with ${finalAssistant.stopReason ?? "unknown"}`;
+						return;
+					}
+					const content = finalAssistant.content;
+					if (!Array.isArray(content) || content.some((part) => part?.type === "toolCall")) {
+						completionError = "Subagent ended before producing a final response";
+						return;
+					}
+					finalText = content
+						.filter((part) => part?.type === "text" && typeof part.text === "string")
+						.map((part) => part.text as string)
+						.join("\n");
+				} catch {
+					/* ignore non-JSON line */
+				}
+			};
+			child.stdout?.on("data", (chunk: Buffer) => {
+				const s = chunk.toString("utf-8");
+				stdout += s;
+				buf += s;
+				const lines = buf.split("\n");
+				buf = lines.pop() ?? "";
+				for (const ln of lines) flushLine(ln);
+			});
+			child.stderr?.on("data", (chunk: Buffer) => {
+				stderr += chunk.toString("utf-8");
+			});
+			child.on("close", (code: number | null, signal: NodeJS.Signals | null) => {
+				if (buf.trim()) flushLine(buf);
+				if (signal) completionError = `Subagent terminated by ${signal}`;
+				else if (!agentEnded && !completionError) completionError = "Subagent exited without terminal agent_end";
+				const error = processError ?? completionError;
+				const resolvedCode = error ? 1 : (code ?? 1);
+				emitProgress(resolvedCode === 0 ? "completed" : "failed", error ?? `exit ${resolvedCode}`);
+				resolve(resolvedCode);
+			});
+			child.on("error", (error: Error) => {
+				processError = `Subagent process error: ${error.message}`;
+			});
+			bindAbortToChild(child, opts.signal);
+		});
+	} finally {
+		cleanupSubagentPrompt(promptPath, tmpDir);
 	}
 
 	const artifacts = writeForegroundOutputArtifacts(
@@ -532,7 +607,7 @@ async function spawnSubagent(opts: SpawnOptions): Promise<SpawnResult> {
 		stdout,
 		stderr,
 		finalText,
-		error: completionError,
+		error: processError ?? completionError,
 		outputBytes: Buffer.byteLength(finalText, "utf-8"),
 		...artifacts,
 	};
@@ -559,7 +634,25 @@ interface SpawnBackgroundOptions extends Omit<SpawnOptions, "signal"> {
  * Mirrors claude-code Task.ts:108-125 — the parent reads the output file
  * (via Read or `tail`) to learn what the child has done so far.
  */
-function spawnSubagentBackground(opts: SpawnBackgroundOptions): {
+async function spawnSubagentBackground(opts: SpawnBackgroundOptions): Promise<{
+	agentId: string;
+	outputFile: string;
+	entry: BackgroundSubagent;
+}> {
+	const release = await acquireSubagentSlot(opts.signal);
+	try {
+		if (opts.signal?.aborted) throw new Error("Operation aborted");
+		return spawnSubagentBackgroundUnchecked(opts, release);
+	} catch (error) {
+		release();
+		throw error;
+	}
+}
+
+function spawnSubagentBackgroundUnchecked(
+	opts: SpawnBackgroundOptions,
+	release: () => void,
+): {
 	agentId: string;
 	outputFile: string;
 	entry: BackgroundSubagent;
@@ -599,13 +692,22 @@ function spawnSubagentBackground(opts: SpawnBackgroundOptions): {
 	const childEnv = buildChildEnv(opts, childDepth);
 
 	const spawner = opts.mockSpawn ?? spawn;
-	const child = spawner(invocation.command, invocation.args, {
-		cwd: opts.cwd,
-		shell: false,
-		stdio: ["ignore", "pipe", "pipe"],
-		env: childEnv,
-		detached: false,
-	});
+	let child: ChildProcess;
+	try {
+		child = spawner(invocation.command, invocation.args, {
+			cwd: opts.cwd,
+			shell: false,
+			stdio: ["ignore", "pipe", "pipe"],
+			env: childEnv,
+			detached: false,
+		});
+	} catch (error) {
+		out.destroy();
+		cleanupSubagentPrompt(promptPath, tmpDir);
+		throw error;
+	}
+	let processError: Error | undefined;
+	child.once("close", release);
 	child.unref?.();
 
 	const entry: BackgroundSubagent = {
@@ -632,8 +734,8 @@ function spawnSubagentBackground(opts: SpawnBackgroundOptions): {
 			if (line.length > 0) out.write(`stderr: ${line}\n`);
 		}
 	});
-	child.on("close", (code: number | null) => {
-		const exitCode = code ?? 0;
+	child.on("close", (code: number | null, signal: NodeJS.Signals | null) => {
+		const exitCode = processError || signal ? 1 : (code ?? 0);
 		out.end();
 		updateBackground(subagentId, {
 			status: exitCode === 0 ? "completed" : "failed",
@@ -641,72 +743,13 @@ function spawnSubagentBackground(opts: SpawnBackgroundOptions): {
 			finishedAt: Date.now(),
 			child: undefined,
 		});
-		if (promptPath) {
-			try {
-				rmSync(promptPath);
-			} catch {}
-		}
-		if (tmpDir) {
-			try {
-				rmSync(tmpDir, { recursive: true, force: true });
-			} catch {}
-		}
+		cleanupSubagentPrompt(promptPath, tmpDir);
 	});
-	child.on("error", () => {
-		out.end();
-		updateBackground(subagentId, {
-			status: "failed",
-			exitCode: 1,
-			finishedAt: Date.now(),
-			child: undefined,
-		});
+	child.on("error", (error: Error) => {
+		processError = error;
+		out.write(`stderr: ${error.message}\n`);
 	});
-
-	// Abort handling — mirrors the foreground path in `spawnSubagent` (SIGTERM,
-	// then SIGKILL after a grace period). A background subagent is detached and
-	// `unref()`'d so it can outlive the synchronous tool call; without honoring
-	// the parent's AbortSignal an aborted/disposed parent leaves an uncancellable
-	// orphan process plus the leaked `createWriteStream` FD. On abort we kill the
-	// child and close the stream so both the process and the descriptor are freed.
-	if (opts.signal) {
-		let escalation: NodeJS.Timeout | undefined;
-		// Closing the stream on abort releases the FD even if the child never
-		// emits `close` (e.g. it ignored SIGTERM and we had to SIGKILL, or it was
-		// already dead). `!writableEnded` guards against a double-end.
-		const closeStream = () => {
-			if (!out.writableEnded) out.end();
-		};
-		const kill = () => {
-			try {
-				child.kill("SIGTERM");
-			} catch {
-				/* ignore */
-			}
-			escalation = setTimeout(() => {
-				try {
-					if (!child.killed) child.kill("SIGKILL");
-				} catch {
-					/* ignore */
-				}
-				closeStream();
-			}, SIGKILL_GRACE_MS);
-			// Don't let the escalation timer keep the parent event loop alive.
-			escalation.unref?.();
-		};
-		// If the child exits on its own (SIGTERM honored, or normal completion),
-		// cancel the pending SIGKILL escalation, release the stream, AND remove
-		// the abort listener. The `{ once: true }` below only auto-removes the
-		// listener when abort FIRES; on the common normal-exit path it would
-		// otherwise linger on the signal forever, holding closures over
-		// `child`/`out`/`escalation` — the exact leak class #17 fixes.
-		child.once("close", () => {
-			if (escalation) clearTimeout(escalation);
-			closeStream();
-			opts.signal?.removeEventListener("abort", kill);
-		});
-		if (opts.signal.aborted) kill();
-		else opts.signal.addEventListener("abort", kill, { once: true });
-	}
+	bindAbortToChild(child, opts.signal);
 
 	return { agentId: subagentId, outputFile, entry };
 }
@@ -1032,7 +1075,7 @@ export function createTaskToolDefinition(
 				// `task_status` / `read` tools to poll progress.
 				const def = findAgentDef(loaded, params.agent!)?.def;
 				if (def?.background === true) {
-					const { agentId, outputFile, entry } = spawnSubagentBackground({
+					const { agentId, outputFile, entry } = await spawnSubagentBackground({
 						cwd: params.cwd ?? cwd,
 						agent: params.model ? { ...def, model: params.model } : def,
 						task: params.task!,

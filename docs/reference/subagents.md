@@ -115,7 +115,7 @@ Or the user can dispatch manually:
 /agent Explore packages/agent
 ```
 
-Up to 7 subagents can run in parallel. The parent's TUI shows a live overlay (F2) with each subagent's current tool, token spend, and elapsed time.
+Each parallel Task call accepts up to 7 subagents. A Me Write process runs at most 4 direct foreground or background subagent child processes at once across all `task` and `agent` calls; excess work waits for a slot. The parent's TUI shows a live overlay (F2) with each subagent's current tool, token spend, and elapsed time.
 
 ## Result schema
 

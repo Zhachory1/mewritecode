@@ -8,6 +8,7 @@
 
 ### Fixed
 
+- Capped aggregate foreground and background direct child subagent processes at four per Me Write process, preventing concurrent sibling `task`/`agent` calls from bypassing the per-process limit and reducing local resource-exhaustion risk.
 - Reduced file-exploration latency by reusing ripgrep match text when context is not requested, letting fd process ignore files directly without a pre-scan, and avoiding per-entry stats in local directory listings.
 
 ## [1.5.10] - 2026-09-09
