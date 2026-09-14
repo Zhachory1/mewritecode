@@ -10,6 +10,8 @@ import type { AssistantMessage, ImageContent } from "@zhachory1/mewrite-ai";
 import type { AgentSessionRuntime } from "../core/agent-session-runtime.js";
 import { flushRawStdout, writeRawStdout } from "../core/output-guard.js";
 
+const COMPACT_SUBAGENT_JSON_EVENTS = new Set(["message_update", "tool_execution_update"]);
+
 /**
  * Options for print mode.
  */
@@ -80,7 +82,10 @@ export async function runPrintMode(runtimeHost: AgentSessionRuntime, options: Pr
 
 		unsubscribe?.();
 		unsubscribe = session.subscribe((event) => {
-			if (mode === "json") {
+			if (
+				mode === "json" &&
+				(process.env.CAVE_SUBAGENT_COMPACT_JSON !== "1" || !COMPACT_SUBAGENT_JSON_EVENTS.has(event.type))
+			) {
 				writeRawStdout(`${JSON.stringify(event)}\n`);
 			}
 		});

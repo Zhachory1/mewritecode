@@ -17,7 +17,7 @@
  */
 
 import type { ChildProcess } from "node:child_process";
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { getAgentDir } from "../config.js";
 
@@ -41,6 +41,11 @@ export interface BackgroundSubagent {
 
 const _registry = new Map<string, BackgroundSubagent>();
 const _byName = new Map<string, string>(); // name → agentId
+const ACTIVE_MARKER_PREFIX = ".active-";
+const MAX_TASK_ARTIFACT_DIRS = 500;
+const MAX_TASK_ARTIFACT_BYTES = 2 * 1024 * 1024 * 1024;
+let activeMarkerCounter = 0;
+let initialPruneDone = false;
 
 export function getTasksDir(): string {
 	const dir = join(getAgentDir(), "tasks");
@@ -48,10 +53,102 @@ export function getTasksDir(): string {
 	return dir;
 }
 
-export function getTaskOutputPath(agentId: string): string {
+function taskDirIsActive(dir: string): boolean {
+	for (const name of readdirSync(dir)) {
+		if (!name.startsWith(ACTIVE_MARKER_PREFIX)) continue;
+		const marker = join(dir, name);
+		const pid = Number.parseInt(name.slice(ACTIVE_MARKER_PREFIX.length), 10);
+		try {
+			if (!Number.isFinite(pid) || pid <= 0) throw new Error("invalid pid");
+			process.kill(pid, 0);
+			return true;
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException).code === "EPERM") return true;
+			rmSync(marker, { force: true });
+		}
+	}
+	return false;
+}
+
+function pruneTaskArtifactsUnchecked(): void {
+	const tasksDir = getTasksDir();
+	const artifacts = readdirSync(tasksDir, { withFileTypes: true })
+		.filter((entry) => entry.isDirectory() && !entry.name.startsWith("."))
+		.flatMap((entry) => {
+			try {
+				const dir = join(tasksDir, entry.name);
+				const files = readdirSync(dir, { withFileTypes: true });
+				const size = files.reduce((total, file) => {
+					if (!file.isFile() || file.name.startsWith(ACTIVE_MARKER_PREFIX)) return total;
+					try {
+						return total + statSync(join(dir, file.name)).size;
+					} catch {
+						return total;
+					}
+				}, 0);
+				return [{ dir, size, mtimeMs: statSync(dir).mtimeMs, active: taskDirIsActive(dir) }];
+			} catch {
+				return [];
+			}
+		})
+		.sort((a, b) => a.mtimeMs - b.mtimeMs);
+	let totalBytes = artifacts.reduce((total, artifact) => total + artifact.size, 0);
+	let totalDirs = artifacts.length;
+	for (const artifact of artifacts) {
+		if (totalBytes <= MAX_TASK_ARTIFACT_BYTES && totalDirs <= MAX_TASK_ARTIFACT_DIRS) break;
+		if (artifact.active) continue;
+		try {
+			rmSync(artifact.dir, { recursive: true, force: true });
+			totalBytes -= artifact.size;
+			totalDirs--;
+		} catch {}
+	}
+}
+
+export function pruneTaskArtifacts(): void {
+	try {
+		pruneTaskArtifactsUnchecked();
+	} catch {}
+}
+
+export function markTaskActive(agentId: string, pid = process.pid): void {
+	const tasksDir = getTasksDir();
+	const dir = join(tasksDir, agentId);
+	const markerName = `${ACTIVE_MARKER_PREFIX}${pid}`;
+	if (!existsSync(dir)) {
+		const stagingDir = join(tasksDir, `.${agentId}-${process.pid}-${++activeMarkerCounter}`);
+		try {
+			mkdirSync(stagingDir);
+			writeFileSync(join(stagingDir, markerName), "", { mode: 0o600 });
+			renameSync(stagingDir, dir);
+			return;
+		} catch (error) {
+			rmSync(stagingDir, { recursive: true, force: true });
+			if (!existsSync(dir)) throw error;
+		}
+	}
+	writeFileSync(join(dir, markerName), "", { flag: "a", mode: 0o600 });
+}
+
+export function getTaskOutputPath(agentId: string, active = false): string {
 	const dir = join(getTasksDir(), agentId);
-	if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+	if (active) markTaskActive(agentId);
+	else if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+	if (!initialPruneDone) {
+		pruneTaskArtifacts();
+		initialPruneDone = true;
+	}
 	return join(dir, "output.jsonl");
+}
+
+export function markTaskFinished(agentId: string): void {
+	try {
+		const dir = join(getTasksDir(), agentId);
+		for (const name of readdirSync(dir)) {
+			if (name.startsWith(ACTIVE_MARKER_PREFIX)) rmSync(join(dir, name), { force: true });
+		}
+	} catch {}
+	pruneTaskArtifacts();
 }
 
 export function registerBackground(entry: BackgroundSubagent): void {
@@ -93,4 +190,6 @@ export function drainMailbox(agentId: string): string[] {
 export function _resetRegistry(): void {
 	_registry.clear();
 	_byName.clear();
+	activeMarkerCounter = 0;
+	initialPruneDone = false;
 }

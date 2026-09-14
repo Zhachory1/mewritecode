@@ -9,11 +9,11 @@
 
 import type { ChildProcess } from "node:child_process";
 import { EventEmitter } from "node:events";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MAX_PARALLEL_SUBAGENTS } from "@zhachory1/mewrite-agent";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadAgentDefs } from "../src/core/agent-defs/loader.js";
 import { filterToolsForPlanMode } from "../src/core/chat-modes/plan.js";
 import { codingTools } from "../src/core/tools/index.js";
@@ -158,6 +158,7 @@ beforeEach(() => {
 	cwd = join(tmpRoot, "project");
 	userDir = join(tmpRoot, "user-cave");
 	packageDir = join(tmpRoot, "bundled-pkg");
+	process.env[agentDirEnv] = join(tmpRoot, "agent-dir");
 	mkdirSync(join(cwd, ".mewrite", "agents"), { recursive: true });
 	mkdirSync(join(userDir, "agents"), { recursive: true });
 	mkdirSync(join(packageDir, "agents"), { recursive: true });
@@ -517,6 +518,176 @@ describe("Task tool — single-mode happy path (mocked LLM)", () => {
 		expect(details.results[0].outputBytes).toBe(Buffer.byteLength("## Files\n- foo.ts:1-10", "utf-8"));
 	});
 
+	it.each(["stdout", "stderr"] as const)("fails safely when child %s emits an error", async (streamName) => {
+		const mock = (() => {
+			const child = new EventEmitter() as ChildProcess & EventEmitter;
+			const stdout = new EventEmitter();
+			const stderr = new EventEmitter();
+			(child as { stdout?: EventEmitter }).stdout = stdout;
+			(child as { stderr?: EventEmitter }).stderr = stderr;
+			(child as { kill: (signal?: NodeJS.Signals) => boolean }).kill = (signal = "SIGTERM") => {
+				child.emit("close", null, signal);
+				return true;
+			};
+			setTimeout(() => (streamName === "stdout" ? stdout : stderr).emit("error", new Error("pipe failed")), 0);
+			return child;
+		}) as ReturnType<typeof makeMockSpawn>;
+
+		const result = await makeTool(mock).execute(
+			`id-${streamName}-error`,
+			{ agent: "explore", task: "stream error" } as any,
+			undefined,
+			undefined,
+			undefined as any,
+		);
+
+		const details = result.details as TaskToolDetails;
+		expect(details.results[0].exitCode).toBe(1);
+		expect(details.results[0].error).toContain("Subagent stream error: pipe failed");
+	});
+
+	it("bounds cumulative JSON capture while preserving the terminal response", async () => {
+		process.env[agentDirEnv] = join(tmpRoot, "agent-dir-bounded-output");
+		const mock = (() => {
+			const child = new EventEmitter() as ChildProcess & EventEmitter;
+			const stdout = new EventEmitter();
+			(child as { stdout?: EventEmitter }).stdout = stdout;
+			(child as { stderr?: EventEmitter }).stderr = new EventEmitter();
+			(child as { kill: () => boolean }).kill = () => true;
+			setTimeout(() => {
+				const update = `${JSON.stringify({
+					type: "message_update",
+					message: { role: "assistant", content: [{ type: "text", text: "x".repeat(100_000) }] },
+					assistantMessageEvent: { type: "text_delta", delta: "x" },
+				})}\n`;
+				stdout.emit("data", Buffer.from(update.repeat(90)));
+				const message = { role: "assistant", content: [{ type: "text", text: "done" }], stopReason: "stop" };
+				stdout.emit("data", Buffer.from(`${JSON.stringify({ type: "agent_end", messages: [message] })}\n`));
+				child.emit("close", 0);
+			}, 0);
+			return child;
+		}) as ReturnType<typeof makeMockSpawn>;
+		const tool = makeTool(mock);
+
+		const result = await tool.execute(
+			"id-bounded-output",
+			{ agent: "explore", task: "large stream" } as any,
+			undefined,
+			undefined,
+			undefined as any,
+		);
+
+		const details = result.details as TaskToolDetails;
+		expect(details.results[0].exitCode).toBe(0);
+		expect(details.results[0].output).toBe("done");
+		expect(statSync(details.results[0].stdoutPath!).size).toBeLessThanOrEqual(8 * 1024 * 1024);
+		const output = readFileSync(details.results[0].stdoutPath!, "utf8");
+		expect(output).toContain('"type":"agent_end"');
+		expect(() =>
+			output
+				.trim()
+				.split("\n")
+				.map((line) => JSON.parse(line)),
+		).not.toThrow();
+	});
+
+	it("rejects an oversized complete JSON event and escalates termination", async () => {
+		vi.useFakeTimers();
+		try {
+			const killSignals: NodeJS.Signals[] = [];
+			const mock = (() => {
+				const child = new EventEmitter() as ChildProcess & EventEmitter;
+				const stdout = new EventEmitter();
+				(child as { stdout?: EventEmitter }).stdout = stdout;
+				(child as { stderr?: EventEmitter }).stderr = new EventEmitter();
+				(child as { kill: (signal?: NodeJS.Signals) => boolean }).kill = (signal = "SIGTERM") => {
+					killSignals.push(signal);
+					if (signal === "SIGKILL") child.emit("close", null, signal);
+					return true;
+				};
+				setTimeout(() => {
+					stdout.emit(
+						"data",
+						Buffer.from(`${JSON.stringify({ type: "agent_end", payload: "x".repeat(8 * 1024 * 1024) })}\n`),
+					);
+				}, 0);
+				return child;
+			}) as ReturnType<typeof makeMockSpawn>;
+			const pending = makeTool(mock).execute(
+				"id-oversized-event",
+				{ agent: "explore", task: "oversized event" } as any,
+				undefined,
+				undefined,
+				undefined as any,
+			);
+
+			await vi.advanceTimersByTimeAsync(0);
+			expect(killSignals).toEqual(["SIGTERM"]);
+			await vi.advanceTimersByTimeAsync(5_000);
+			expect(killSignals).toEqual(["SIGTERM", "SIGKILL"]);
+			const result = await pending;
+			const details = result.details as TaskToolDetails;
+			expect(details.results[0].exitCode).toBe(1);
+			expect(details.results[0].error).toContain("JSON event larger than");
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("caps background output on complete JSONL records", async () => {
+		process.env[agentDirEnv] = join(tmpRoot, "agent-dir-background-cap");
+		writeFileSync(
+			join(cwd, ".mewrite", "agents", "background.md"),
+			[
+				"---",
+				"name: background",
+				"description: background task",
+				"background: true",
+				"---",
+				"",
+				"You are background.",
+			].join("\n"),
+		);
+		const mock = (() => {
+			const child = new EventEmitter() as ChildProcess & EventEmitter;
+			const stdout = new EventEmitter();
+			(child as { stdout?: EventEmitter }).stdout = stdout;
+			(child as { stderr?: EventEmitter }).stderr = new EventEmitter();
+			(child as { kill: () => boolean }).kill = () => true;
+			(child as { unref: () => void }).unref = () => {};
+			setTimeout(() => {
+				const line = `${JSON.stringify({ type: "message_end", payload: "x".repeat(100_000) })}\n`;
+				stdout.emit("data", Buffer.from(line.repeat(90)));
+				child.emit("close", 0);
+			}, 0);
+			return child;
+		}) as ReturnType<typeof makeMockSpawn>;
+
+		const launched = await makeTool(mock).execute(
+			"id-background-cap",
+			{ agent: "background", task: "large stream" } as any,
+			undefined,
+			undefined,
+			undefined as any,
+		);
+		const outputFile = (launched.details as TaskToolDetails).asyncLaunches![0].outputFile;
+		let output = "";
+		for (let attempt = 0; attempt < 100; attempt++) {
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			output = readFileSync(outputFile, "utf8");
+			if (output.includes('"type":"output_truncated"')) break;
+		}
+
+		expect(statSync(outputFile).size).toBeLessThanOrEqual(8 * 1024 * 1024);
+		expect(output).toContain('"type":"output_truncated"');
+		expect(() =>
+			output
+				.trim()
+				.split("\n")
+				.map((line) => JSON.parse(line)),
+		).not.toThrow();
+	});
+
 	it("puts fullOutputPath in parallel previews when output is truncated", async () => {
 		process.env[agentDirEnv] = join(tmpRoot, "agent-dir-parallel");
 		const longOutput = `BLOCKER ${"x".repeat(140)}`;
@@ -690,6 +861,19 @@ describe("Task tool — chain-mode with {previous} substitution", () => {
 // `tools:` allow-list was set).
 
 describe("Task tool — #41 subagent tool scoping", () => {
+	it("enables compact JSON transport for child processes", async () => {
+		const captured: CapturedSpawn[] = [];
+		const tool = makeTool(makeCapturingSpawn(captured));
+		await tool.execute(
+			"id-compact-json",
+			{ agent: "explore", task: "inspect files" } as any,
+			undefined,
+			undefined,
+			undefined as any,
+		);
+		expect(captured[0].env.CAVE_SUBAGENT_COMPACT_JSON).toBe("1");
+	});
+
 	it("write-capable agent (tools: read,edit,write) → child --tools includes edit + write", async () => {
 		const captured: CapturedSpawn[] = [];
 		const tool = makeTool(makeCapturingSpawn(captured));

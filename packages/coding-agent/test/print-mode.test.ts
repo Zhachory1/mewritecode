@@ -53,7 +53,8 @@ function createAssistantMessage(options?: {
 	};
 }
 
-function createRuntimeHost(assistantMessage: AssistantMessage): FakeRuntimeHost {
+function createRuntimeHost(assistantMessage: AssistantMessage, events: EmitEvent[] = []): FakeRuntimeHost {
+	let listener: ((event: EmitEvent) => void) | undefined;
 	const extensionRunner: FakeExtensionRunner = {
 		hasHandlers: (eventType: string) => eventType === "session_shutdown",
 		emit: vi.fn(async () => {}),
@@ -67,8 +68,13 @@ function createRuntimeHost(assistantMessage: AssistantMessage): FakeRuntimeHost 
 		state,
 		extensionRunner,
 		bindExtensions: vi.fn(async () => {}),
-		subscribe: vi.fn(() => () => {}),
-		prompt: vi.fn(async () => {}),
+		subscribe: vi.fn((next: (event: EmitEvent) => void) => {
+			listener = next;
+			return () => {};
+		}),
+		prompt: vi.fn(async () => {
+			for (const event of events) listener?.(event);
+		}),
 		reload: vi.fn(async () => {}),
 	};
 
@@ -84,6 +90,7 @@ function createRuntimeHost(assistantMessage: AssistantMessage): FakeRuntimeHost 
 }
 
 afterEach(() => {
+	delete process.env.CAVE_SUBAGENT_COMPACT_JSON;
 	vi.restoreAllMocks();
 });
 
@@ -118,6 +125,40 @@ describe("runPrintMode", () => {
 		expect(session.prompt).toHaveBeenCalledWith("hello");
 		expect(session.extensionRunner.emit).toHaveBeenCalledTimes(1);
 		expect(session.extensionRunner.emit).toHaveBeenCalledWith({ type: "session_shutdown" });
+	});
+
+	it("omits cumulative updates from internal subagent JSON streams", async () => {
+		process.env.CAVE_SUBAGENT_COMPACT_JSON = "1";
+		const runtimeHost = createRuntimeHost(createAssistantMessage({ text: "done" }), [
+			{ type: "message_update" },
+			{ type: "tool_execution_update" },
+			{ type: "message_end" },
+			{ type: "agent_end" },
+		]);
+		const writes: string[] = [];
+		vi.spyOn(process.stdout, "write").mockImplementation(((
+			chunk: string | Uint8Array,
+			encodingOrCallback?: BufferEncoding | ((error?: Error | null) => void),
+			callback?: (error?: Error | null) => void,
+		): boolean => {
+			if (String(chunk)) writes.push(String(chunk));
+			const done = typeof encodingOrCallback === "function" ? encodingOrCallback : callback;
+			done?.();
+			return true;
+		}) as typeof process.stdout.write);
+
+		const exitCode = await runPrintMode(runtimeHost as unknown as Parameters<typeof runPrintMode>[0], {
+			mode: "json",
+			messages: ["hello"],
+		});
+
+		expect(exitCode).toBe(0);
+		const eventTypes = writes
+			.join("")
+			.trim()
+			.split("\n")
+			.map((line) => (JSON.parse(line) as EmitEvent).type);
+		expect(eventTypes).toEqual(["message_end", "agent_end"]);
 	});
 
 	it("emits session_shutdown and returns non-zero on assistant error", async () => {
