@@ -191,12 +191,14 @@ function currentSubagentDepth(): number {
 	return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
-function persistFullResult(text: string): string {
+function persistFullResult(text: string): string | undefined {
 	const artifactId = `foreground-${randomUUID()}`;
-	const outputPath = getTaskOutputPath(artifactId, true);
 	try {
+		const outputPath = getTaskOutputPath(artifactId, true);
 		writeFileSync(outputPath, text, { encoding: "utf8", mode: 0o600 });
 		return outputPath;
+	} catch {
+		return undefined;
 	} finally {
 		markTaskFinished(artifactId);
 	}
@@ -208,9 +210,10 @@ function truncateParentResult(text: string, maxChars = MAX_PARENT_RESULT_CHARS):
 	const tailChars = maxChars - headChars;
 	const omitted = text.length - headChars - tailChars;
 	const outputPath = persistFullResult(text);
+	const artifact = outputPath ? `; full result saved at ${outputPath}` : "; full result could not be saved";
 	return [
 		text.slice(0, headChars),
-		`\n\n[... ${omitted} chars omitted from subagent result; full result saved at ${outputPath} ...]\n\n`,
+		`\n\n[... ${omitted} chars omitted from subagent result${artifact} ...]\n\n`,
 		text.slice(text.length - tailChars),
 	].join("");
 }
@@ -279,7 +282,10 @@ const TaskSchema = Type.Object({
 	mode: Type.Optional(Type.Union([Type.Literal("plan"), Type.Literal("auto")])),
 	tasks: Type.Optional(Type.Array(TaskItemSchema, { description: "Parallel mode: array of {agent,task}" })),
 	chain: Type.Optional(
-		Type.Array(ChainItemSchema, { description: "Chain mode: sequential {agent,task}, {previous} substituted" }),
+		Type.Array(ChainItemSchema, {
+			description: "Chain mode: sequential {agent,task}, {previous} substituted",
+			maxItems: MAX_PARALLEL_SUBAGENTS,
+		}),
 	),
 });
 
@@ -774,36 +780,52 @@ function spawnSubagentBackgroundUnchecked(
 	const out = createWriteStream(outputFile, { flags: "w", mode: 0o600 });
 	let processError: Error | undefined;
 	let terminateChild: (() => void) | undefined;
+	let markerHeartbeat: NodeJS.Timeout | undefined;
 	let outputFailed = false;
+	let inputRejected = false;
 	const decoder = new StringDecoder("utf8");
 	let buf = "";
 	let outputBytes = 0;
 	let outputTruncated = false;
+	const tailRecords: Buffer[] = [];
+	let tailBytes = 0;
 	const truncateOutput = () => {
 		if (outputTruncated || outputFailed) return;
 		out.write(SUBAGENT_OUTPUT_TRUNCATION_RECORD);
 		outputBytes += SUBAGENT_OUTPUT_TRUNCATION_RECORD.length;
 		outputTruncated = true;
-		terminateChild?.();
 	};
 	const writeLine = (line: string) => {
-		if (outputTruncated || outputFailed) return;
-		const lineBytes = Buffer.byteLength(line, "utf8") + 1;
-		if (outputBytes + lineBytes + SUBAGENT_OUTPUT_TRUNCATION_RECORD.length > MAX_SUBAGENT_CAPTURE_BYTES) {
-			truncateOutput();
+		if (outputFailed) return;
+		const record = Buffer.from(`${line}\n`);
+		if (record.length > MAX_SUBAGENT_RECORD_BYTES) {
+			inputRejected = true;
+			processError = new Error(`Subagent emitted a JSON event larger than ${MAX_SUBAGENT_RECORD_BYTES} bytes`);
+			terminateChild?.();
 			return;
 		}
-		out.write(`${line}\n`);
-		outputBytes += lineBytes;
+		if (outputTruncated) {
+			const captured = appendBoundedRecord(tailRecords, tailBytes, record);
+			tailBytes = captured.bytes;
+			return;
+		}
+		if (outputBytes + record.length + SUBAGENT_OUTPUT_TRUNCATION_RECORD.length > MAX_SUBAGENT_CAPTURE_BYTES) {
+			truncateOutput();
+			const captured = appendBoundedRecord(tailRecords, tailBytes, record);
+			tailBytes = captured.bytes;
+			return;
+		}
+		out.write(record);
+		outputBytes += record.length;
 	};
 	const consumeStdout = (text: string) => {
-		if (outputTruncated) return;
+		if (inputRejected) return;
 		buf += text;
 		let start = 0;
 		let newline = buf.indexOf("\n");
 		while (newline !== -1) {
 			writeLine(buf.slice(start, newline));
-			if (outputTruncated) {
+			if (inputRejected) {
 				buf = "";
 				return;
 			}
@@ -811,12 +833,11 @@ function spawnSubagentBackgroundUnchecked(
 			newline = buf.indexOf("\n", start);
 		}
 		buf = buf.slice(start);
-		if (
-			Buffer.byteLength(buf, "utf8") + outputBytes + SUBAGENT_OUTPUT_TRUNCATION_RECORD.length >
-			MAX_SUBAGENT_CAPTURE_BYTES
-		) {
+		if (Buffer.byteLength(buf, "utf8") > MAX_SUBAGENT_RECORD_BYTES) {
+			inputRejected = true;
 			buf = "";
-			truncateOutput();
+			processError = new Error(`Subagent emitted a JSON event larger than ${MAX_SUBAGENT_RECORD_BYTES} bytes`);
+			terminateChild?.();
 		}
 	};
 
@@ -844,18 +865,6 @@ function spawnSubagentBackgroundUnchecked(
 		throw error;
 	}
 	terminateChild = bindAbortToChild(child, opts.signal);
-	markTaskActive(subagentId, child.pid ?? process.pid);
-	out.once("close", () => markTaskFinished(subagentId));
-	out.on("error", (error: Error) => {
-		outputFailed = true;
-		processError = error;
-		updateBackground(subagentId, {
-			status: "failed",
-			exitCode: 1,
-			finishedAt: Date.now(),
-		});
-		terminateChild?.();
-	});
 	child.once("close", release);
 	child.unref?.();
 
@@ -872,6 +881,46 @@ function spawnSubagentBackgroundUnchecked(
 	};
 	registerBackground(entry);
 
+	let childClose: { code: number | null; signal: NodeJS.Signals | null } | undefined;
+	let outputClosed = false;
+	let finalized = false;
+	const finalize = () => {
+		if (finalized || !childClose || !outputClosed) return;
+		finalized = true;
+		if (markerHeartbeat) clearInterval(markerHeartbeat);
+		if (outputTruncated && !outputFailed) {
+			try {
+				writeFileSync(outputFile, Buffer.concat([SUBAGENT_OUTPUT_TRUNCATION_RECORD, ...tailRecords]), {
+					mode: 0o600,
+				});
+			} catch (error) {
+				processError = error as Error;
+			}
+		}
+		const exitCode = processError || childClose.signal ? 1 : (childClose.code ?? 0);
+		updateBackground(subagentId, {
+			status: exitCode === 0 ? "completed" : "failed",
+			exitCode,
+			finishedAt: Date.now(),
+			child: undefined,
+		});
+		markTaskFinished(subagentId);
+		cleanupSubagentPrompt(promptPath, tmpDir);
+	};
+	out.once("close", () => {
+		outputClosed = true;
+		finalize();
+	});
+	out.on("error", (error: Error) => {
+		outputFailed = true;
+		processError = error;
+		updateBackground(subagentId, {
+			status: "failed",
+			exitCode: 1,
+			finishedAt: Date.now(),
+		});
+		terminateChild?.();
+	});
 	child.stdout?.on("data", (chunk: Buffer) => {
 		consumeStdout(decoder.write(chunk));
 	});
@@ -894,20 +943,42 @@ function spawnSubagentBackgroundUnchecked(
 	child.on("close", (code: number | null, signal: NodeJS.Signals | null) => {
 		consumeStdout(decoder.end());
 		if (buf) writeLine(buf);
-		const exitCode = processError || signal || outputTruncated ? 1 : (code ?? 0);
+		childClose = { code, signal };
+		const exitCode = processError || signal ? 1 : (code ?? 0);
+		if (exitCode !== 0) {
+			updateBackground(subagentId, {
+				status: "failed",
+				exitCode,
+				finishedAt: Date.now(),
+				child: undefined,
+			});
+		}
 		if (!out.destroyed && !out.writableEnded) out.end();
-		updateBackground(subagentId, {
-			status: exitCode === 0 ? "completed" : "failed",
-			exitCode,
-			finishedAt: Date.now(),
-			child: undefined,
-		});
-		cleanupSubagentPrompt(promptPath, tmpDir);
+		finalize();
 	});
 	child.on("error", (error: Error) => {
 		processError = error;
 		writeLine(`stderr: ${error.message}`);
 	});
+	try {
+		const markerPid = child.pid ?? process.pid;
+		markTaskActive(subagentId, markerPid);
+		markerHeartbeat = setInterval(() => {
+			try {
+				markTaskActive(subagentId, markerPid);
+			} catch {}
+		}, 60_000);
+		markerHeartbeat.unref?.();
+	} catch (error) {
+		processError = error as Error;
+		updateBackground(subagentId, {
+			status: "failed",
+			exitCode: 1,
+			finishedAt: Date.now(),
+		});
+		terminateChild();
+		out.destroy();
+	}
 	return { agentId: subagentId, outputFile, entry };
 }
 
@@ -1222,6 +1293,18 @@ export function createTaskToolDefinition(
 						},
 					],
 					details: { mode: "parallel" as const, results: [] },
+				};
+			}
+
+			if (hasChain && params.chain!.length > MAX_PARALLEL_SUBAGENTS) {
+				return {
+					content: [
+						{
+							type: "text" as const,
+							text: `Task tool: too many chain steps (${params.chain!.length}). Maximum is ${MAX_PARALLEL_SUBAGENTS}.`,
+						},
+					],
+					details: { mode: "chain" as const, results: [] },
 				};
 			}
 
