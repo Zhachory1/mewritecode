@@ -13,9 +13,11 @@
  */
 
 import { type ChildProcess, spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { createWriteStream, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
+import { StringDecoder } from "node:string_decoder";
 import { type Static, Type } from "@sinclair/typebox";
 import {
 	autoCleanupWorktree,
@@ -41,6 +43,8 @@ import {
 import {
 	type BackgroundSubagent,
 	getTaskOutputPath,
+	markTaskActive,
+	markTaskFinished,
 	registerBackground,
 	updateBackground,
 } from "../background-task-registry.js";
@@ -49,6 +53,40 @@ import { DEFAULT_AGENT_TOOL_NAMES } from "./tool-names.js";
 
 const MAX_CONCURRENCY = 4;
 const RESULT_PREVIEW_CHARS = 80;
+const MAX_SUBAGENT_CAPTURE_BYTES = 8 * 1024 * 1024;
+const SUBAGENT_COMPACT_JSON_ENV = "CAVE_SUBAGENT_COMPACT_JSON";
+const SUBAGENT_OUTPUT_TRUNCATION_RECORD = Buffer.from(
+	`${JSON.stringify({ type: "output_truncated", limitBytes: MAX_SUBAGENT_CAPTURE_BYTES })}\n`,
+);
+const MAX_SUBAGENT_RECORD_BYTES = MAX_SUBAGENT_CAPTURE_BYTES - SUBAGENT_OUTPUT_TRUNCATION_RECORD.length;
+
+function appendBoundedTail(chunks: Buffer[], bytes: number, chunk: Buffer): number {
+	chunks.push(Buffer.from(chunk));
+	bytes += chunk.length;
+	while (bytes > MAX_SUBAGENT_CAPTURE_BYTES) {
+		const first = chunks[0]!;
+		const excess = bytes - MAX_SUBAGENT_CAPTURE_BYTES;
+		if (first.length <= excess) {
+			chunks.shift();
+			bytes -= first.length;
+		} else {
+			chunks[0] = first.subarray(excess);
+			bytes -= excess;
+		}
+	}
+	return bytes;
+}
+
+function appendBoundedRecord(chunks: Buffer[], bytes: number, record: Buffer): { bytes: number; truncated: boolean } {
+	chunks.push(record);
+	bytes += record.length;
+	let truncated = false;
+	while (bytes > MAX_SUBAGENT_RECORD_BYTES) {
+		bytes -= chunks.shift()!.length;
+		truncated = true;
+	}
+	return { bytes, truncated };
+}
 
 type SubagentSlotWaiter = {
 	resolve: (release: () => void) => void;
@@ -99,11 +137,11 @@ function acquireSubagentSlot(signal?: AbortSignal): Promise<() => void> {
 	});
 }
 
-function bindAbortToChild(child: ChildProcess, signal?: AbortSignal): void {
-	if (!signal) return;
+function bindAbortToChild(child: ChildProcess, signal?: AbortSignal): () => void {
 	let closed = false;
 	let escalation: NodeJS.Timeout | undefined;
-	const onAbort = () => {
+	const terminate = () => {
+		if (closed || escalation) return;
 		try {
 			child.kill("SIGTERM");
 		} catch {
@@ -122,10 +160,11 @@ function bindAbortToChild(child: ChildProcess, signal?: AbortSignal): void {
 	child.once("close", () => {
 		closed = true;
 		if (escalation) clearTimeout(escalation);
-		signal.removeEventListener("abort", onAbort);
+		signal?.removeEventListener("abort", terminate);
 	});
-	if (signal.aborted) onAbort();
-	else signal.addEventListener("abort", onAbort, { once: true });
+	if (signal?.aborted) terminate();
+	else signal?.addEventListener("abort", terminate, { once: true });
+	return terminate;
 }
 
 /**
@@ -145,7 +184,6 @@ const SUBAGENT_DEPTH_ENV = "CAVE_SUBAGENT_DEPTH";
 const MAX_PARENT_RESULT_CHARS = 20_000;
 const MAX_PARALLEL_PARENT_RESULT_CHARS = 60_000;
 const MIN_PARALLEL_RESULT_CHARS = 4_000;
-let persistedResultCounter = 0;
 
 function currentSubagentDepth(): number {
 	const raw = process.env[SUBAGENT_DEPTH_ENV];
@@ -153,11 +191,17 @@ function currentSubagentDepth(): number {
 	return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
-function persistFullResult(text: string): string {
-	persistedResultCounter += 1;
-	const outputPath = getTaskOutputPath(`foreground-${Date.now().toString(36)}-${persistedResultCounter}`);
-	writeFileSync(outputPath, text, { encoding: "utf8", mode: 0o600 });
-	return outputPath;
+function persistFullResult(text: string): string | undefined {
+	const artifactId = `foreground-${randomUUID()}`;
+	try {
+		const outputPath = getTaskOutputPath(artifactId, true);
+		writeFileSync(outputPath, text, { encoding: "utf8", mode: 0o600 });
+		return outputPath;
+	} catch {
+		return undefined;
+	} finally {
+		markTaskFinished(artifactId);
+	}
 }
 
 function truncateParentResult(text: string, maxChars = MAX_PARENT_RESULT_CHARS): string {
@@ -166,9 +210,10 @@ function truncateParentResult(text: string, maxChars = MAX_PARENT_RESULT_CHARS):
 	const tailChars = maxChars - headChars;
 	const omitted = text.length - headChars - tailChars;
 	const outputPath = persistFullResult(text);
+	const artifact = outputPath ? `; full result saved at ${outputPath}` : "; full result could not be saved";
 	return [
 		text.slice(0, headChars),
-		`\n\n[... ${omitted} chars omitted from subagent result; full result saved at ${outputPath} ...]\n\n`,
+		`\n\n[... ${omitted} chars omitted from subagent result${artifact} ...]\n\n`,
 		text.slice(text.length - tailChars),
 	].join("");
 }
@@ -237,7 +282,10 @@ const TaskSchema = Type.Object({
 	mode: Type.Optional(Type.Union([Type.Literal("plan"), Type.Literal("auto")])),
 	tasks: Type.Optional(Type.Array(TaskItemSchema, { description: "Parallel mode: array of {agent,task}" })),
 	chain: Type.Optional(
-		Type.Array(ChainItemSchema, { description: "Chain mode: sequential {agent,task}, {previous} substituted" }),
+		Type.Array(ChainItemSchema, {
+			description: "Chain mode: sequential {agent,task}, {previous} substituted",
+			maxItems: MAX_PARALLEL_SUBAGENTS,
+		}),
 	),
 });
 
@@ -356,8 +404,9 @@ function writeForegroundOutputArtifacts(
 	stdout: string,
 	stderr: string,
 ): Pick<SpawnResult, "fullOutputPath" | "stdoutPath" | "stderrPath"> {
+	const safeArtifactId = sanitizeId(artifactId);
 	try {
-		const stdoutPath = getTaskOutputPath(sanitizeId(artifactId));
+		const stdoutPath = getTaskOutputPath(safeArtifactId, true);
 		const taskDir = dirname(stdoutPath);
 		const fullOutputPath = join(taskDir, "final.txt");
 		const stderrPath = join(taskDir, "stderr.txt");
@@ -367,6 +416,8 @@ function writeForegroundOutputArtifacts(
 		return { fullOutputPath, stdoutPath, stderrPath };
 	} catch {
 		return {};
+	} finally {
+		markTaskFinished(safeArtifactId);
 	}
 }
 
@@ -444,6 +495,7 @@ function buildChildEnv(opts: SpawnOptions | SpawnBackgroundOptions, childDepth: 
 		...process.env,
 		...(opts.envOverrides ?? {}),
 		[SUBAGENT_DEPTH_ENV]: String(childDepth),
+		[SUBAGENT_COMPACT_JSON_ENV]: "1",
 	};
 	// Strip the parent's approval-mode flag — see doc comment above.
 	delete childEnv.CAVE_APPROVAL_MODE;
@@ -490,8 +542,11 @@ async function spawnSubagentUnchecked(opts: SpawnOptions): Promise<SpawnResult> 
 	const invocation = resolveCaveInvocation(args, opts.caveBin);
 	const spawner = opts.mockSpawn ?? spawn;
 
-	let stdout = "";
-	let stderr = "";
+	const stdoutChunks: Buffer[] = [];
+	const stderrChunks: Buffer[] = [];
+	let stdoutBytes = 0;
+	let stderrBytes = 0;
+	let stdoutTruncated = false;
 	let finalText = "";
 	let agentEnded = false;
 	let completionError: string | undefined;
@@ -509,7 +564,10 @@ async function spawnSubagentUnchecked(opts: SpawnOptions): Promise<SpawnResult> 
 				stdio: ["ignore", "pipe", "pipe"],
 				env: childEnv,
 			});
+			const terminateChild = bindAbortToChild(child, opts.signal);
+			const decoder = new StringDecoder("utf8");
 			let buf = "";
+			let oversizedLine = false;
 			const subagentId = opts.subagentId ?? opts.agent.name;
 			const emitProgress = (phase: SubagentProgressEvent["phase"], detail?: string) => {
 				opts.onProgress?.({
@@ -567,20 +625,53 @@ async function spawnSubagentUnchecked(opts: SpawnOptions): Promise<SpawnResult> 
 					/* ignore non-JSON line */
 				}
 			};
+			const rejectOversizedLine = () => {
+				oversizedLine = true;
+				buf = "";
+				completionError = `Subagent emitted a JSON event larger than ${MAX_SUBAGENT_RECORD_BYTES} bytes`;
+				terminateChild();
+			};
+			const processLine = (line: string): boolean => {
+				const record = Buffer.from(`${line}\n`);
+				if (record.length > MAX_SUBAGENT_RECORD_BYTES) {
+					rejectOversizedLine();
+					return false;
+				}
+				const captured = appendBoundedRecord(stdoutChunks, stdoutBytes, record);
+				stdoutBytes = captured.bytes;
+				stdoutTruncated ||= captured.truncated;
+				flushLine(line);
+				return true;
+			};
+			const consumeStdout = (text: string) => {
+				if (oversizedLine) return;
+				buf += text;
+				let start = 0;
+				let newline = buf.indexOf("\n");
+				while (newline !== -1) {
+					if (!processLine(buf.slice(start, newline))) return;
+					start = newline + 1;
+					newline = buf.indexOf("\n", start);
+				}
+				buf = buf.slice(start);
+				if (Buffer.byteLength(buf, "utf8") > MAX_SUBAGENT_RECORD_BYTES) rejectOversizedLine();
+			};
 			child.stdout?.on("data", (chunk: Buffer) => {
-				const s = chunk.toString("utf-8");
-				stdout += s;
-				buf += s;
-				const lines = buf.split("\n");
-				buf = lines.pop() ?? "";
-				for (const ln of lines) flushLine(ln);
+				consumeStdout(decoder.write(chunk));
 			});
 			child.stderr?.on("data", (chunk: Buffer) => {
-				stderr += chunk.toString("utf-8");
+				stderrBytes = appendBoundedTail(stderrChunks, stderrBytes, chunk);
 			});
+			const onStreamError = (error: Error) => {
+				processError = `Subagent stream error: ${error.message}`;
+				terminateChild();
+			};
+			child.stdout?.on("error", onStreamError);
+			child.stderr?.on("error", onStreamError);
 			child.on("close", (code: number | null, signal: NodeJS.Signals | null) => {
-				if (buf.trim()) flushLine(buf);
-				if (signal) completionError = `Subagent terminated by ${signal}`;
+				consumeStdout(decoder.end());
+				if (buf.trim()) processLine(buf);
+				if (signal && !completionError) completionError = `Subagent terminated by ${signal}`;
 				else if (!agentEnded && !completionError) completionError = "Subagent exited without terminal agent_end";
 				const error = processError ?? completionError;
 				const resolvedCode = error ? 1 : (code ?? 1);
@@ -590,12 +681,16 @@ async function spawnSubagentUnchecked(opts: SpawnOptions): Promise<SpawnResult> 
 			child.on("error", (error: Error) => {
 				processError = `Subagent process error: ${error.message}`;
 			});
-			bindAbortToChild(child, opts.signal);
 		});
 	} finally {
 		cleanupSubagentPrompt(promptPath, tmpDir);
 	}
 
+	const stdout = `${stdoutTruncated ? SUBAGENT_OUTPUT_TRUNCATION_RECORD.toString("utf8") : ""}${Buffer.concat(
+		stdoutChunks,
+		stdoutBytes,
+	).toString("utf8")}`;
+	const stderr = Buffer.concat(stderrChunks, stderrBytes).toString("utf8");
 	const artifacts = writeForegroundOutputArtifacts(
 		opts.artifactId ?? opts.subagentId ?? opts.agent.name,
 		finalText,
@@ -680,9 +775,71 @@ function spawnSubagentBackgroundUnchecked(
 	}
 	args.push(`Task: ${opts.task}`);
 
-	const subagentId = opts.subagentId ?? `${opts.agent.name}-${Date.now().toString(36)}`;
-	const outputFile = getTaskOutputPath(subagentId);
+	const subagentId = opts.subagentId ?? `${opts.agent.name}-${randomUUID()}`;
+	const outputFile = getTaskOutputPath(subagentId, true);
 	const out = createWriteStream(outputFile, { flags: "w", mode: 0o600 });
+	let processError: Error | undefined;
+	let terminateChild: (() => void) | undefined;
+	let markerHeartbeat: NodeJS.Timeout | undefined;
+	let outputFailed = false;
+	let inputRejected = false;
+	const decoder = new StringDecoder("utf8");
+	let buf = "";
+	let outputBytes = 0;
+	let outputTruncated = false;
+	const tailRecords: Buffer[] = [];
+	let tailBytes = 0;
+	const truncateOutput = () => {
+		if (outputTruncated || outputFailed) return;
+		out.write(SUBAGENT_OUTPUT_TRUNCATION_RECORD);
+		outputBytes += SUBAGENT_OUTPUT_TRUNCATION_RECORD.length;
+		outputTruncated = true;
+	};
+	const writeLine = (line: string) => {
+		if (outputFailed) return;
+		const record = Buffer.from(`${line}\n`);
+		if (record.length > MAX_SUBAGENT_RECORD_BYTES) {
+			inputRejected = true;
+			processError = new Error(`Subagent emitted a JSON event larger than ${MAX_SUBAGENT_RECORD_BYTES} bytes`);
+			terminateChild?.();
+			return;
+		}
+		if (outputTruncated) {
+			const captured = appendBoundedRecord(tailRecords, tailBytes, record);
+			tailBytes = captured.bytes;
+			return;
+		}
+		if (outputBytes + record.length + SUBAGENT_OUTPUT_TRUNCATION_RECORD.length > MAX_SUBAGENT_CAPTURE_BYTES) {
+			truncateOutput();
+			const captured = appendBoundedRecord(tailRecords, tailBytes, record);
+			tailBytes = captured.bytes;
+			return;
+		}
+		out.write(record);
+		outputBytes += record.length;
+	};
+	const consumeStdout = (text: string) => {
+		if (inputRejected) return;
+		buf += text;
+		let start = 0;
+		let newline = buf.indexOf("\n");
+		while (newline !== -1) {
+			writeLine(buf.slice(start, newline));
+			if (inputRejected) {
+				buf = "";
+				return;
+			}
+			start = newline + 1;
+			newline = buf.indexOf("\n", start);
+		}
+		buf = buf.slice(start);
+		if (Buffer.byteLength(buf, "utf8") > MAX_SUBAGENT_RECORD_BYTES) {
+			inputRejected = true;
+			buf = "";
+			processError = new Error(`Subagent emitted a JSON event larger than ${MAX_SUBAGENT_RECORD_BYTES} bytes`);
+			terminateChild?.();
+		}
+	};
 
 	const invocation = resolveCaveInvocation(args, opts.caveBin);
 	const childDepth = currentSubagentDepth() + 1;
@@ -703,10 +860,11 @@ function spawnSubagentBackgroundUnchecked(
 		});
 	} catch (error) {
 		out.destroy();
+		markTaskFinished(subagentId);
 		cleanupSubagentPrompt(promptPath, tmpDir);
 		throw error;
 	}
-	let processError: Error | undefined;
+	terminateChild = bindAbortToChild(child, opts.signal);
 	child.once("close", release);
 	child.unref?.();
 
@@ -723,34 +881,104 @@ function spawnSubagentBackgroundUnchecked(
 	};
 	registerBackground(entry);
 
-	child.stdout?.on("data", (chunk: Buffer) => {
-		out.write(chunk);
-	});
-	child.stderr?.on("data", (chunk: Buffer) => {
-		// Forward stderr to the same file with a `stderr:` prefix per line so the
-		// reader can distinguish stream sources without a second file.
-		const text = chunk.toString("utf-8");
-		for (const line of text.split("\n")) {
-			if (line.length > 0) out.write(`stderr: ${line}\n`);
+	let childClose: { code: number | null; signal: NodeJS.Signals | null } | undefined;
+	let outputClosed = false;
+	let finalized = false;
+	const finalize = () => {
+		if (finalized || !childClose || !outputClosed) return;
+		finalized = true;
+		if (markerHeartbeat) clearInterval(markerHeartbeat);
+		if (outputTruncated && !outputFailed) {
+			try {
+				writeFileSync(outputFile, Buffer.concat([SUBAGENT_OUTPUT_TRUNCATION_RECORD, ...tailRecords]), {
+					mode: 0o600,
+				});
+			} catch (error) {
+				processError = error as Error;
+			}
 		}
-	});
-	child.on("close", (code: number | null, signal: NodeJS.Signals | null) => {
-		const exitCode = processError || signal ? 1 : (code ?? 0);
-		out.end();
+		const exitCode = processError || childClose.signal ? 1 : (childClose.code ?? 0);
 		updateBackground(subagentId, {
 			status: exitCode === 0 ? "completed" : "failed",
 			exitCode,
 			finishedAt: Date.now(),
 			child: undefined,
 		});
+		markTaskFinished(subagentId);
 		cleanupSubagentPrompt(promptPath, tmpDir);
+	};
+	out.once("close", () => {
+		outputClosed = true;
+		finalize();
+	});
+	out.on("error", (error: Error) => {
+		outputFailed = true;
+		processError = error;
+		updateBackground(subagentId, {
+			status: "failed",
+			exitCode: 1,
+			finishedAt: Date.now(),
+		});
+		terminateChild?.();
+	});
+	child.stdout?.on("data", (chunk: Buffer) => {
+		consumeStdout(decoder.write(chunk));
+	});
+	child.stderr?.on("data", (chunk: Buffer) => {
+		for (const line of chunk.toString("utf8").split("\n")) {
+			if (line.length > 0) writeLine(`stderr: ${line}`);
+		}
+	});
+	const onStreamError = (error: Error) => {
+		processError = error;
+		updateBackground(subagentId, {
+			status: "failed",
+			exitCode: 1,
+			finishedAt: Date.now(),
+		});
+		terminateChild?.();
+	};
+	child.stdout?.on("error", onStreamError);
+	child.stderr?.on("error", onStreamError);
+	child.on("close", (code: number | null, signal: NodeJS.Signals | null) => {
+		consumeStdout(decoder.end());
+		if (buf) writeLine(buf);
+		childClose = { code, signal };
+		const exitCode = processError || signal ? 1 : (code ?? 0);
+		if (exitCode !== 0) {
+			updateBackground(subagentId, {
+				status: "failed",
+				exitCode,
+				finishedAt: Date.now(),
+				child: undefined,
+			});
+		}
+		if (!out.destroyed && !out.writableEnded) out.end();
+		finalize();
 	});
 	child.on("error", (error: Error) => {
 		processError = error;
-		out.write(`stderr: ${error.message}\n`);
+		writeLine(`stderr: ${error.message}`);
 	});
-	bindAbortToChild(child, opts.signal);
-
+	try {
+		const markerPid = child.pid ?? process.pid;
+		markTaskActive(subagentId, markerPid);
+		markerHeartbeat = setInterval(() => {
+			try {
+				markTaskActive(subagentId, markerPid);
+			} catch {}
+		}, 60_000);
+		markerHeartbeat.unref?.();
+	} catch (error) {
+		processError = error as Error;
+		updateBackground(subagentId, {
+			status: "failed",
+			exitCode: 1,
+			finishedAt: Date.now(),
+		});
+		terminateChild();
+		out.destroy();
+	}
 	return { agentId: subagentId, outputFile, entry };
 }
 
@@ -832,7 +1060,7 @@ async function runOne(
 			error: `Unknown agent "${agentName}".\nAvailable:\n${formatAgentList(loaded)}`,
 		};
 	}
-	const id = sanitizeId(`${agentName}-${Date.now().toString(36)}${options.idSuffix ? `-${options.idSuffix}` : ""}`);
+	const id = sanitizeId(`${agentName}-${randomUUID()}${options.idSuffix ? `-${options.idSuffix}` : ""}`);
 	const wt = await maybeCreateWorktree(found.def, cwdOverride ?? parentCwd, id);
 	const startCwd = wt.cwd;
 
@@ -1065,6 +1293,18 @@ export function createTaskToolDefinition(
 						},
 					],
 					details: { mode: "parallel" as const, results: [] },
+				};
+			}
+
+			if (hasChain && params.chain!.length > MAX_PARALLEL_SUBAGENTS) {
+				return {
+					content: [
+						{
+							type: "text" as const,
+							text: `Task tool: too many chain steps (${params.chain!.length}). Maximum is ${MAX_PARALLEL_SUBAGENTS}.`,
+						},
+					],
+					details: { mode: "chain" as const, results: [] },
 				};
 			}
 
