@@ -24,7 +24,7 @@ import { join } from "node:path";
 import { MAX_PARALLEL_SUBAGENTS } from "@zhachory1/mewrite-agent";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadAgentDefs } from "../src/core/agent-defs/loader.js";
-import { getBackground } from "../src/core/background-task-registry.js";
+import { getBackground, listBackground } from "../src/core/background-task-registry.js";
 import { filterToolsForPlanMode } from "../src/core/chat-modes/plan.js";
 import { codingTools } from "../src/core/tools/index.js";
 import { createTaskToolDefinition, type TaskToolDetails } from "../src/core/tools/task.js";
@@ -237,7 +237,18 @@ beforeEach(() => {
 	);
 });
 
-afterEach(() => {
+afterEach(async () => {
+	const agentDir = process.env[agentDirEnv];
+	if (agentDir) {
+		for (let attempt = 0; attempt < 100; attempt++) {
+			const running = listBackground().some(
+				(entry) => entry.outputFile.startsWith(`${agentDir}/`) && entry.status === "running",
+			);
+			if (!running) break;
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		}
+		await new Promise((resolve) => setTimeout(resolve, 20));
+	}
 	delete process.env[agentDirEnv];
 	if (existsSync(tmpRoot)) rmSync(tmpRoot, { recursive: true, force: true });
 });
