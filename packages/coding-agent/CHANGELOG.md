@@ -2,13 +2,18 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Prevented subagent JSON streams from exhausting the parent Node heap by suppressing cumulative internal update events, bounding per-run captures, and pruning completed task artifacts above 500 runs or 2 GiB ([#241](https://github.com/Zhachory1/mewritecode/issues/241)).
+
+## [1.5.11] - 2026-09-12
+
 ### Changed
 
 - Default CLI sessions and unscoped subagents now expose dedicated `grep`, `find`, and `ls` tools before Bash. `grep` uses ripgrep, `find` uses fd, and Bash remains available as fallback.
 
 ### Fixed
 
-- Prevented subagent JSON streams from exhausting the parent Node heap by suppressing cumulative internal update events, bounding per-run captures, and pruning completed task artifacts above 500 runs or 2 GiB ([#241](https://github.com/Zhachory1/mewritecode/issues/241)).
 - Capped aggregate foreground and background direct child subagent processes at four per Me Write process, preventing concurrent sibling `task`/`agent` calls from bypassing the per-process limit and reducing local resource-exhaustion risk.
 - Reduced file-exploration latency by reusing ripgrep match text when context is not requested, letting fd process ignore files directly without a pre-scan, and avoiding per-entry stats in local directory listings.
 
