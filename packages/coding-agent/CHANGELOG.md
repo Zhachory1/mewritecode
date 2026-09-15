@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.5.12] - 2026-09-15
+
 ### Fixed
 
 - Prevented subagent JSON streams from exhausting the parent Node heap by suppressing cumulative internal update events, bounding per-run captures, and pruning completed task artifacts above 500 runs or 2 GiB ([#241](https://github.com/Zhachory1/mewritecode/issues/241)).
