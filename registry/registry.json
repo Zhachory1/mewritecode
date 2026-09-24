@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "channel": "stable",
-  "publishedAt": "2026-09-09T22:39:42.584Z",
+  "publishedAt": "2026-09-23T18:53:06.137Z",
   "providers": [
     {
       "id": "anthropic",
@@ -262,7 +262,7 @@
       "models": [
         {
           "id": "anthropic/claude-opus-5",
-          "displayName": "Claude Opus 5",
+          "displayName": "Anthropic: Claude Opus 5",
           "contextWindow": 1000000,
           "maxOutputTokens": 128000,
           "inputCostPerMtok": 5,
@@ -321,8 +321,8 @@
           "displayName": "DeepSeek: DeepSeek V4 Pro 0423",
           "contextWindow": 1048576,
           "maxOutputTokens": 384000,
-          "inputCostPerMtok": 0.87,
-          "outputCostPerMtok": 1.74,
+          "inputCostPerMtok": 0.946386,
+          "outputCostPerMtok": 1.892772,
           "capabilities": [
             "tools",
             "cache",
