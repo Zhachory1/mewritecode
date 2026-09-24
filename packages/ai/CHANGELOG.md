@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.5.13] - 2026-09-24
+
+### Changed
+
+- Refreshed the generated model catalog and pricing registry from upstream providers, adding GPT-6 Luna and GPT-6 Sol for OpenAI.
+
 ## [1.5.12] - 2026-09-15
 
 ## [1.5.11] - 2026-09-12
