@@ -76,6 +76,52 @@ function getCellItalic(terminal: VirtualTerminal, row: number, col: number): num
 }
 
 describe("TUI main scroll", () => {
+	it("permits text selection without resetting chat scrollback", async () => {
+		const terminal = new VirtualTerminal(20, 5);
+		const tui = new TUI(terminal);
+		const chat = new TestComponent();
+		const input = new TestComponent();
+		chat.lines = Array.from({ length: 10 }, (_, i) => `Chat ${i + 1}`);
+		input.lines = ["Input"];
+		tui.addChild(chat);
+		tui.addChild(input);
+		tui.setBottomPinnedChildren(1);
+		tui.setMainScroll(true);
+		tui.start();
+		await settle(terminal);
+
+		tui.scrollMainPageUp();
+		await settle(terminal);
+		const scrolledView = terminal.getViewport();
+		assert.strictEqual(terminal.isMouseTrackingEnabled(), true);
+
+		assert.strictEqual(tui.toggleMouseSelection(), true);
+		assert.strictEqual(terminal.isMouseTrackingEnabled(), false);
+		assert.deepStrictEqual(terminal.getViewport(), scrolledView);
+
+		tui.scrollMainPageDown();
+		await settle(terminal);
+		assert.notDeepStrictEqual(terminal.getViewport(), scrolledView);
+		const currentView = terminal.getViewport();
+
+		assert.strictEqual(tui.toggleMouseSelection(), false);
+		assert.strictEqual(terminal.isMouseTrackingEnabled(), true);
+		assert.deepStrictEqual(terminal.getViewport(), currentView);
+		tui.stop();
+	});
+
+	it("keeps selection active if enabled before the UI starts", async () => {
+		const terminal = new VirtualTerminal(20, 5);
+		const tui = new TUI(terminal);
+		tui.setMainScroll(true);
+		assert.strictEqual(tui.toggleMouseSelection(), true);
+		tui.start();
+		assert.strictEqual(terminal.isMouseTrackingEnabled(), false);
+		assert.strictEqual(tui.toggleMouseSelection(), false);
+		assert.strictEqual(terminal.isMouseTrackingEnabled(), true);
+		tui.stop();
+	});
+
 	it("pages main content while keeping bottom-pinned controls visible", async () => {
 		const terminal = new VirtualTerminal(20, 5);
 		const tui = new TUI(terminal);

@@ -262,6 +262,7 @@ export class TUI extends Container {
 	private globalBgFn: ((text: string) => string) | null = null;
 	private bottomPinnedChildren = 0;
 	private mainScrollBuffer: ScrollBuffer | null = null;
+	private mouseSelectionEnabled = false;
 	private started = false;
 
 	// Side panel for column-based layout alongside main content
@@ -338,7 +339,7 @@ export class TUI extends Container {
 	setMainScroll(enabled: boolean): void {
 		this.mainScrollBuffer = enabled ? new ScrollBuffer({ wrap: false }) : null;
 		if (this.started) {
-			if (enabled) this.terminal.enableMouseTracking();
+			if (enabled && !this.mouseSelectionEnabled) this.terminal.enableMouseTracking();
 			else this.terminal.disableMouseTracking();
 			this.requestRender();
 		}
@@ -362,6 +363,19 @@ export class TUI extends Container {
 	scrollMainToTail(): void {
 		this.mainScrollBuffer?.jumpToTail();
 		this.requestRender();
+	}
+
+	/** Mouse reporting intercepts terminal text selection. */
+	toggleMouseSelection(): boolean {
+		this.mouseSelectionEnabled = !this.mouseSelectionEnabled;
+		if (this.started && this.mainScrollBuffer) {
+			if (this.mouseSelectionEnabled) {
+				this.terminal.disableMouseTracking();
+			} else {
+				this.terminal.enableMouseTracking();
+			}
+		}
+		return this.mouseSelectionEnabled;
 	}
 
 	setFocus(component: Component | null): void {
@@ -532,7 +546,7 @@ export class TUI extends Container {
 			(data) => this.handleInput(data),
 			() => this.requestRender(),
 		);
-		if (this.mainScrollBuffer) this.terminal.enableMouseTracking();
+		if (this.mainScrollBuffer && !this.mouseSelectionEnabled) this.terminal.enableMouseTracking();
 		this.terminal.hideCursor();
 		this.queryCellSize();
 		this.requestRender();

@@ -44,6 +44,7 @@ import { ResumeCommand } from "./resume-command.js";
 import { RollbackCommand } from "./rollback-command.js";
 import { SavingsCommand } from "./savings-command.js";
 import { ScopedModelsCommand } from "./scoped-models-command.js";
+import { SelectCommand } from "./select-command.js";
 import { SessionCommand } from "./session-command.js";
 import { SettingsCommand } from "./settings-command.js";
 import { ShareCommand } from "./share-command.js";
@@ -64,6 +65,7 @@ export function createDefaultInteractiveSlashCommands(): InteractiveSlashCommand
 		new ImportCommand(),
 		new ShareCommand(),
 		new CopyCommand(),
+		new SelectCommand(),
 		new NameCommand(),
 		new CwdCommand(),
 		new SessionCommand(),

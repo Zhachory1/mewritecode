@@ -97,7 +97,7 @@ Modifier combinations: `ctrl+shift+x`, `alt+ctrl+x`, `ctrl+shift+alt+x`, `ctrl+1
 | `app.chat.scrollDown` | `shift+pageDown` | Page chat down |
 | `app.chat.scrollToTail` | `shift+end` | Return to newest chat output |
 
-Mouse-wheel and trackpad scrolling also move the main chat. Mouse reporting is active while interactive chat is open, so terminal text selection is unavailable until exit. In tmux, enable mouse forwarding with `set -g mouse on` (persist it in `~/.tmux.conf` to retain it after server restart).
+Mouse-wheel and trackpad scrolling also move the main chat. To copy any displayed output, run `/select`, drag over the text, and use your terminal's Copy shortcut. Run `/select` again to restore mouse-wheel scrolling. While selection is enabled, use `shift+pageUp` and `shift+pageDown` to scroll the chat. In tmux, enable mouse forwarding with `set -g mouse on` (persist it in `~/.tmux.conf` to retain it after server restart).
 
 ### Sessions
 
