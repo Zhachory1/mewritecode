@@ -1156,6 +1156,44 @@ export class TUI extends Container {
 			}
 		}
 
+		// Replaying visible rows on a tmux resize duplicates them in pane history.
+		if (this.nativeScrollback && (widthChanged || heightChanged)) {
+			const pinnedCount = this.bottomPinnedChildren;
+			const viewportTop = Math.max(0, newLines.length - height);
+			let visiblePinned = 0;
+			if (pinnedCount > 0) {
+				const splitAt = this.children.length - pinnedCount;
+				for (let i = splitAt; i < this.children.length; i++) {
+					visiblePinned += this.children[i].render(width).length;
+				}
+				visiblePinned = Math.min(height, visiblePinned);
+			}
+			let buffer = "\x1b[?2026h";
+			if (visiblePinned > 0) {
+				const startIdx = newLines.length - visiblePinned;
+				for (let i = 0; i < visiblePinned; i++) {
+					const screenRow = height - visiblePinned + 1 + i;
+					buffer += `\x1b[${screenRow};1H\x1b[2K${newLines[startIdx + i]}`;
+				}
+			}
+			if (cursorPos) {
+				const screenRow = Math.max(1, Math.min(cursorPos.row - viewportTop + 1, height));
+				buffer += `\x1b[${screenRow};${cursorPos.col + 1}H`;
+			}
+			buffer += "\x1b[?2026l";
+			if (buffer !== "\x1b[?2026h\x1b[?2026l") {
+				this.terminal.write(buffer);
+			}
+			this.cursorRow = Math.max(0, newLines.length - 1);
+			this.hardwareCursorRow = cursorPos?.row ?? this.cursorRow;
+			this.maxLinesRendered = Math.max(this.maxLinesRendered, newLines.length);
+			this.previousViewportTop = Math.max(0, newLines.length - height);
+			this.previousLines = newLines;
+			this.previousWidth = width;
+			this.previousHeight = height;
+			return;
+		}
+
 		// Helper to clear scrollback and viewport and render all new lines
 		const fullRender = (clear: boolean): void => {
 			this.fullRedrawCount += 1;
