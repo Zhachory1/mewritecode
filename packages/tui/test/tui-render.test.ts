@@ -76,8 +76,9 @@ function getCellItalic(terminal: VirtualTerminal, row: number, col: number): num
 }
 
 describe("TUI main scroll", () => {
-	it("permits text selection without resetting chat scrollback", async () => {
-		const terminal = new VirtualTerminal(20, 5);
+	it("keeps chat in native scrollback while the editor stays at the live bottom", async () => {
+		const terminal = new LoggingVirtualTerminal(20, 5);
+		terminal.enterAltScreen = () => assert.fail("Native scrollback must not enter alternate screen");
 		const tui = new TUI(terminal);
 		const chat = new TestComponent();
 		const input = new TestComponent();
@@ -86,40 +87,32 @@ describe("TUI main scroll", () => {
 		tui.addChild(chat);
 		tui.addChild(input);
 		tui.setBottomPinnedChildren(1);
-		tui.setMainScroll(true);
+		tui.setNativeScrollback(true);
 		tui.start();
 		await settle(terminal);
 
-		tui.scrollMainPageUp();
-		await settle(terminal);
-		const scrolledView = terminal.getViewport();
-		assert.strictEqual(terminal.isMouseTrackingEnabled(), true);
-
-		assert.strictEqual(tui.toggleMouseSelection(), true);
 		assert.strictEqual(terminal.isMouseTrackingEnabled(), false);
-		assert.deepStrictEqual(terminal.getViewport(), scrolledView);
+		assert.strictEqual(terminal.getViewport().at(-1), "Input");
+		assert.ok(terminal.getScrollBuffer().includes("Chat 1"));
 
-		tui.scrollMainPageDown();
+		chat.lines.push("Chat 11", "Chat 12");
+		tui.requestRender();
 		await settle(terminal);
-		assert.notDeepStrictEqual(terminal.getViewport(), scrolledView);
-		const currentView = terminal.getViewport();
+		const history = terminal.getScrollBuffer();
+		assert.ok(history.includes("Chat 1"));
+		assert.ok(history.includes("Chat 12"));
+		assert.strictEqual(history.filter((line) => line === "Chat 1").length, 1);
+		assert.strictEqual(terminal.getViewport().at(-1), "Input");
 
-		assert.strictEqual(tui.toggleMouseSelection(), false);
-		assert.strictEqual(terminal.isMouseTrackingEnabled(), true);
-		assert.deepStrictEqual(terminal.getViewport(), currentView);
-		tui.stop();
-	});
+		terminal.resize(20, 6);
+		await settle(terminal);
+		assert.strictEqual(terminal.getScrollBuffer().filter((line) => line === "Chat 1").length, 1);
+		assert.ok(!terminal.getWrites().includes("\x1b[3J"));
 
-	it("keeps selection active if enabled before the UI starts", async () => {
-		const terminal = new VirtualTerminal(20, 5);
-		const tui = new TUI(terminal);
-		tui.setMainScroll(true);
-		assert.strictEqual(tui.toggleMouseSelection(), true);
-		tui.start();
-		assert.strictEqual(terminal.isMouseTrackingEnabled(), false);
-		assert.strictEqual(tui.toggleMouseSelection(), false);
-		assert.strictEqual(terminal.isMouseTrackingEnabled(), true);
 		tui.stop();
+		terminal.write("$ ");
+		await terminal.flush();
+		assert.strictEqual(terminal.getViewport().at(-1), "$ ");
 	});
 
 	it("pages main content while keeping bottom-pinned controls visible", async () => {

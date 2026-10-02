@@ -262,7 +262,7 @@ export class TUI extends Container {
 	private globalBgFn: ((text: string) => string) | null = null;
 	private bottomPinnedChildren = 0;
 	private mainScrollBuffer: ScrollBuffer | null = null;
-	private mouseSelectionEnabled = false;
+	private nativeScrollback = false;
 	private started = false;
 
 	// Side panel for column-based layout alongside main content
@@ -338,11 +338,15 @@ export class TUI extends Container {
 	/** Enable in-app paging for content above bottom-pinned children. */
 	setMainScroll(enabled: boolean): void {
 		this.mainScrollBuffer = enabled ? new ScrollBuffer({ wrap: false }) : null;
-		if (this.started) {
-			if (enabled && !this.mouseSelectionEnabled) this.terminal.enableMouseTracking();
+		if (this.started && !this.nativeScrollback) {
+			if (enabled) this.terminal.enableMouseTracking();
 			else this.terminal.disableMouseTracking();
 			this.requestRender();
 		}
+	}
+
+	setNativeScrollback(enabled: boolean): void {
+		this.nativeScrollback = enabled;
 	}
 
 	scrollMainBy(rows: number): void {
@@ -363,19 +367,6 @@ export class TUI extends Container {
 	scrollMainToTail(): void {
 		this.mainScrollBuffer?.jumpToTail();
 		this.requestRender();
-	}
-
-	/** Mouse reporting intercepts terminal text selection. */
-	toggleMouseSelection(): boolean {
-		this.mouseSelectionEnabled = !this.mouseSelectionEnabled;
-		if (this.started && this.mainScrollBuffer) {
-			if (this.mouseSelectionEnabled) {
-				this.terminal.disableMouseTracking();
-			} else {
-				this.terminal.enableMouseTracking();
-			}
-		}
-		return this.mouseSelectionEnabled;
 	}
 
 	setFocus(component: Component | null): void {
@@ -541,12 +532,16 @@ export class TUI extends Container {
 	start(): void {
 		this.stopped = false;
 		this.started = true;
-		this.terminal.enterAltScreen();
+		if (!this.nativeScrollback) {
+			this.terminal.enterAltScreen();
+		}
 		this.terminal.start(
 			(data) => this.handleInput(data),
 			() => this.requestRender(),
 		);
-		if (this.mainScrollBuffer && !this.mouseSelectionEnabled) this.terminal.enableMouseTracking();
+		if (!this.nativeScrollback && this.mainScrollBuffer) {
+			this.terminal.enableMouseTracking();
+		}
 		this.terminal.hideCursor();
 		this.queryCellSize();
 		this.requestRender();
@@ -576,17 +571,19 @@ export class TUI extends Container {
 	stop(): void {
 		if (this.stopped) return;
 		this.stopped = true;
+		const wasStarted = this.started;
 		this.started = false;
 		if (this.renderTimer) {
 			clearTimeout(this.renderTimer);
 			this.renderTimer = undefined;
 		}
-		// In alt-screen mode the primary buffer is already preserved, so we
-		// don't need to position the cursor below rendered content. The
-		// leaveAltScreen call in terminal.stop() will restore the primary buffer.
 		this.terminal.disableMouseTracking();
 		this.terminal.showCursor();
 		this.terminal.stop();
+		if (this.nativeScrollback && wasStarted) {
+			this.terminal.moveBy(this.terminal.rows);
+			this.terminal.write("\r\n");
+		}
 	}
 
 	requestRender(force = false): void {
@@ -1163,10 +1160,14 @@ export class TUI extends Container {
 		const fullRender = (clear: boolean): void => {
 			this.fullRedrawCount += 1;
 			let buffer = "\x1b[?2026h"; // Begin synchronized output
-			if (clear) buffer += "\x1b[2J\x1b[H\x1b[3J"; // Clear screen, home, then clear scrollback
-			for (let i = 0; i < newLines.length; i++) {
+			if (clear) {
+				buffer += "\x1b[2J\x1b[H";
+				if (!this.nativeScrollback) buffer += "\x1b[3J";
+			}
+			const linesToRender = clear && this.nativeScrollback ? newLines.slice(-height) : newLines;
+			for (let i = 0; i < linesToRender.length; i++) {
 				if (i > 0) buffer += "\r\n";
-				buffer += newLines[i];
+				buffer += linesToRender[i];
 			}
 			buffer += "\x1b[?2026l"; // End synchronized output
 			this.terminal.write(buffer);

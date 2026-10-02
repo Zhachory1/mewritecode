@@ -18,7 +18,6 @@ const SAMPLE_INPUTS: Record<string, string> = {
 	import: "/import session.jsonl",
 	share: "/share",
 	copy: "/copy",
-	select: "/select",
 	name: "/name demo",
 	cwd: "/cwd .",
 	session: "/session",
@@ -62,7 +61,6 @@ const SAMPLE_INPUTS: Record<string, string> = {
 
 function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 	const commandQueue = ["/first", "/second"];
-	let mouseSelectionEnabled = false;
 	return {
 		editor: {
 			setText: (value: string) => {
@@ -75,13 +73,7 @@ function recordingHandlers(calls: string[]): InteractiveSlashCommandContext {
 			setAutocompleteMaxVisible: (value: number) => calls.push(`defaultEditor.setAutocompleteMaxVisible:${value}`),
 		} as never,
 		clearEditor: () => calls.push("clearEditor:"),
-		ui: {
-			requestRender: () => calls.push("requestRender:"),
-			toggleMouseSelection: () => {
-				mouseSelectionEnabled = !mouseSelectionEnabled;
-				return mouseSelectionEnabled;
-			},
-		} as never,
+		ui: { requestRender: () => calls.push("requestRender:") } as never,
 		chatContainer: {
 			addChild: (value: unknown) => calls.push(`chatContainer.addChild:${value?.constructor?.name ?? "unknown"}`),
 			children: [],
@@ -386,19 +378,6 @@ describe("InteractiveSlashCommandRouter", () => {
 		expect(calls.some((call) => call.includes("/btw needs a question"))).toBe(true);
 		expect(calls.some((call) => call.includes("Memory backend unavailable"))).toBe(true);
 		expect(calls.some((call) => call.includes("architect mode: OFF"))).toBe(true);
-	});
-
-	it("toggles terminal text selection for copying displayed output", async () => {
-		const calls: string[] = [];
-		const r = router(calls);
-		expect(await r.handleCommand("/select")).toBe(true);
-		expect(await r.handleCommand("/select")).toBe(true);
-		expect(calls).toEqual([
-			"clearEditor:",
-			"showStatus:Mouse selection enabled: drag to select text; use /select to restore mouse-wheel scrolling.",
-			"clearEditor:",
-			"showStatus:Mouse-wheel scrolling restored.",
-		]);
 	});
 
 	it("clears the editor before reporting that /copy has no assistant message", async () => {
