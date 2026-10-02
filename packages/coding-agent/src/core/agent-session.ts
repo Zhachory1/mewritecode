@@ -2152,6 +2152,7 @@ export class AgentSession {
 		}
 
 		promptTimingMark("session.prompt:agent.prompt:begin");
+		this._scopeBudget?.reset();
 		this._pendingContextEvidence = contextEvidence;
 		try {
 			await this.agent.prompt(messages);

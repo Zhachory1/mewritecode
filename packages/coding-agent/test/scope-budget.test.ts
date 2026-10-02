@@ -48,6 +48,8 @@ describe("ScopeBudget", () => {
 			budget.finish(path, true);
 		}
 		expect(budget.reserve("nine", "edit", { path: "existing-8.ts", edits: [] })).toContain("Scope budget reached");
+		budget.reset();
+		expect(budget.reserve("new-prompt", "edit", { path: "existing-8.ts", edits: [] })).toBeUndefined();
 	});
 
 	it("blocks proposed edits over 300 added lines", () => {
@@ -74,9 +76,15 @@ describe("ScopeBudget", () => {
 		expect(
 			budget.reserve("grow", "edit", { path: "new.ts", edits: [{ oldText: "", newText: "extra\n" }] }),
 		).toContain("Scope budget reached");
-		expect(
-			budget.reserve("shrink", "edit", { path: "new.ts", edits: [{ oldText: "line\n", newText: "" }] }),
-		).toBeUndefined();
+		const shrink = { path: "new.ts", edits: [{ oldText: "line\n".repeat(200), newText: "" }] };
+		expect(budget.reserve("shrink", "edit", shrink)).toBeUndefined();
+		expect(budget.reserve("next", "write", { path: "next.ts", content: "line\n" })).toContain("Scope budget reached");
+		budget.finish("shrink", false);
+		expect(budget.reserve("next", "write", { path: "next.ts", content: "line\n" })).toContain("Scope budget reached");
+		expect(budget.reserve("shrink-again", "edit", shrink)).toBeUndefined();
+		writeFileSync(join(cwd, "new.ts"), "line\n".repeat(100));
+		budget.finish("shrink-again", true);
+		expect(budget.reserve("next", "write", { path: "next.ts", content: "line\n" })).toBeUndefined();
 	});
 
 	it("releases failed calls and counts pending calls", () => {
