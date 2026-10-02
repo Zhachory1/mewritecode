@@ -262,6 +262,7 @@ export class TUI extends Container {
 	private globalBgFn: ((text: string) => string) | null = null;
 	private bottomPinnedChildren = 0;
 	private mainScrollBuffer: ScrollBuffer | null = null;
+	private nativeScrollback = false;
 	private started = false;
 
 	// Side panel for column-based layout alongside main content
@@ -337,11 +338,15 @@ export class TUI extends Container {
 	/** Enable in-app paging for content above bottom-pinned children. */
 	setMainScroll(enabled: boolean): void {
 		this.mainScrollBuffer = enabled ? new ScrollBuffer({ wrap: false }) : null;
-		if (this.started) {
+		if (this.started && !this.nativeScrollback) {
 			if (enabled) this.terminal.enableMouseTracking();
 			else this.terminal.disableMouseTracking();
 			this.requestRender();
 		}
+	}
+
+	setNativeScrollback(enabled: boolean): void {
+		this.nativeScrollback = enabled;
 	}
 
 	scrollMainBy(rows: number): void {
@@ -527,12 +532,16 @@ export class TUI extends Container {
 	start(): void {
 		this.stopped = false;
 		this.started = true;
-		this.terminal.enterAltScreen();
+		if (!this.nativeScrollback) {
+			this.terminal.enterAltScreen();
+		}
 		this.terminal.start(
 			(data) => this.handleInput(data),
 			() => this.requestRender(),
 		);
-		if (this.mainScrollBuffer) this.terminal.enableMouseTracking();
+		if (!this.nativeScrollback && this.mainScrollBuffer) {
+			this.terminal.enableMouseTracking();
+		}
 		this.terminal.hideCursor();
 		this.queryCellSize();
 		this.requestRender();
@@ -562,17 +571,19 @@ export class TUI extends Container {
 	stop(): void {
 		if (this.stopped) return;
 		this.stopped = true;
+		const wasStarted = this.started;
 		this.started = false;
 		if (this.renderTimer) {
 			clearTimeout(this.renderTimer);
 			this.renderTimer = undefined;
 		}
-		// In alt-screen mode the primary buffer is already preserved, so we
-		// don't need to position the cursor below rendered content. The
-		// leaveAltScreen call in terminal.stop() will restore the primary buffer.
 		this.terminal.disableMouseTracking();
 		this.terminal.showCursor();
 		this.terminal.stop();
+		if (this.nativeScrollback && wasStarted) {
+			this.terminal.moveBy(this.terminal.rows);
+			this.terminal.write("\r\n");
+		}
 	}
 
 	requestRender(force = false): void {
@@ -1145,14 +1156,56 @@ export class TUI extends Container {
 			}
 		}
 
+		// Replaying visible rows on a tmux resize duplicates them in pane history.
+		if (this.nativeScrollback && (widthChanged || heightChanged)) {
+			const pinnedCount = this.bottomPinnedChildren;
+			const viewportTop = Math.max(0, newLines.length - height);
+			let visiblePinned = 0;
+			if (pinnedCount > 0) {
+				const splitAt = this.children.length - pinnedCount;
+				for (let i = splitAt; i < this.children.length; i++) {
+					visiblePinned += this.children[i].render(width).length;
+				}
+				visiblePinned = Math.min(height, visiblePinned);
+			}
+			let buffer = "\x1b[?2026h";
+			if (visiblePinned > 0) {
+				const startIdx = newLines.length - visiblePinned;
+				for (let i = 0; i < visiblePinned; i++) {
+					const screenRow = height - visiblePinned + 1 + i;
+					buffer += `\x1b[${screenRow};1H\x1b[2K${newLines[startIdx + i]}`;
+				}
+			}
+			if (cursorPos) {
+				const screenRow = Math.max(1, Math.min(cursorPos.row - viewportTop + 1, height));
+				buffer += `\x1b[${screenRow};${cursorPos.col + 1}H`;
+			}
+			buffer += "\x1b[?2026l";
+			if (buffer !== "\x1b[?2026h\x1b[?2026l") {
+				this.terminal.write(buffer);
+			}
+			this.cursorRow = Math.max(0, newLines.length - 1);
+			this.hardwareCursorRow = cursorPos?.row ?? this.cursorRow;
+			this.maxLinesRendered = Math.max(this.maxLinesRendered, newLines.length);
+			this.previousViewportTop = Math.max(0, newLines.length - height);
+			this.previousLines = newLines;
+			this.previousWidth = width;
+			this.previousHeight = height;
+			return;
+		}
+
 		// Helper to clear scrollback and viewport and render all new lines
 		const fullRender = (clear: boolean): void => {
 			this.fullRedrawCount += 1;
 			let buffer = "\x1b[?2026h"; // Begin synchronized output
-			if (clear) buffer += "\x1b[2J\x1b[H\x1b[3J"; // Clear screen, home, then clear scrollback
-			for (let i = 0; i < newLines.length; i++) {
+			if (clear) {
+				buffer += "\x1b[2J\x1b[H";
+				if (!this.nativeScrollback) buffer += "\x1b[3J";
+			}
+			const linesToRender = clear && this.nativeScrollback ? newLines.slice(-height) : newLines;
+			for (let i = 0; i < linesToRender.length; i++) {
 				if (i > 0) buffer += "\r\n";
-				buffer += newLines[i];
+				buffer += linesToRender[i];
 			}
 			buffer += "\x1b[?2026l"; // End synchronized output
 			this.terminal.write(buffer);

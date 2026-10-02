@@ -91,13 +91,7 @@ Modifier combinations: `ctrl+shift+x`, `alt+ctrl+x`, `ctrl+shift+alt+x`, `ctrl+1
 
 ### Chat Scrollback
 
-| Keybinding id | Default | Description |
-|--------|---------|-------------|
-| `app.chat.scrollUp` | `shift+pageUp` | Page chat up |
-| `app.chat.scrollDown` | `shift+pageDown` | Page chat down |
-| `app.chat.scrollToTail` | `shift+end` | Return to newest chat output |
-
-Mouse-wheel and trackpad scrolling also move the main chat. Mouse reporting is active while interactive chat is open, so terminal text selection is unavailable until exit. In tmux, enable mouse forwarding with `set -g mouse on` (persist it in `~/.tmux.conf` to retain it after server restart).
+Chat is printed to the terminal's normal screen. Scroll with your terminal's mouse wheel, trackpad, or scrollback keys; drag to select and copy displayed text with your terminal's Copy shortcut. The editor and footer remain at the bottom during normal use and scroll away with the rest of the terminal history.
 
 ### Sessions
 
