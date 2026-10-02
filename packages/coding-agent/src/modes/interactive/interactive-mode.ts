@@ -76,8 +76,7 @@ import {
 	type RepomapChatState,
 } from "../../core/slash-commands.js";
 import type { SourceInfo } from "../../core/source-info.js";
-import { getTextOutput } from "../../core/tools/render-utils.js";
-import { type TruncationResult, truncateTail } from "../../core/tools/truncate.js";
+import type { TruncationResult } from "../../core/tools/truncate.js";
 import { dispatchWorkerPrompt, parseWorkerPrompt, WorkerDispatchError } from "../../core/worker-dispatch.js";
 import { getChangelogPath, getNewEntries, parseChangelog } from "../../utils/changelog.js";
 import { extensionForImageMimeType, readClipboardImage } from "../../utils/clipboard-image.js";
@@ -1488,7 +1487,6 @@ export class InteractiveMode {
 		this.streamingMessage = undefined;
 		this.pendingTools.clear();
 		this.currentToolGroup = undefined;
-		this.ui.startNativeHistorySegment();
 		this.renderInitialMessages();
 	}
 
@@ -2689,20 +2687,6 @@ export class InteractiveMode {
 				const component = this.pendingTools.get(event.toolCallId);
 				if (component) {
 					component.updateResult({ ...event.result, isError: event.isError });
-					if (this.ui.hasOffscreenNativeChanges()) {
-						const textOutput = getTextOutput(event.result, false);
-						const truncated = truncateTail(textOutput);
-						const statusLabel = event.isError ? "✗" : "✓";
-						const statusColor = event.isError ? "error" : "success";
-						let finalText = `${theme.fg(statusColor, statusLabel)} ${event.toolName}`;
-						if (truncated.content) {
-							finalText += `\n${truncated.content}`;
-						}
-						if (truncated.truncated) {
-							finalText += `\n${theme.fg("muted", "... output truncated")}`;
-						}
-						this.chatContainer.addChild(new Text(finalText, 1, 0));
-					}
 					this.pendingTools.delete(event.toolCallId);
 					this.ui.requestRender();
 				}
