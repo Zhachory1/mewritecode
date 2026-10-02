@@ -29,8 +29,12 @@ export const PLAN_MODE_BANNER = `[PLAN MODE — read-only]
 You are in plan mode. File-mutation tools (edit, write, task) are not available
 this turn. Explore the code with read/grep/find. If the user or active task
 provides an exact output schema, use that schema instead of the default plan
-format below. Otherwise, produce a written plan under a "Plan:" header as a
-numbered list of concrete operations:
+format below. Otherwise, produce a written plan under a "Plan:" header.
+For non-obvious changes, first briefly compare the smallest viable approach
+with two other plausible approaches. Choose one and state why it best meets
+the task's acceptance criteria and non-goals. If fewer than two meaningful
+alternatives exist, say so rather than inventing them. Skip the comparison
+for one-sentence diffs. Then list concrete operations:
 
   1. <operation> — <file> — <one-line rationale>
   2. <operation> — <file> — <one-line rationale>
