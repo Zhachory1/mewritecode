@@ -92,6 +92,15 @@ describe("buildSystemPrompt", () => {
 			expect(prompt).toContain("keep working through it across turns");
 			expect(prompt).toContain("Progress updates are not a reason to yield the turn mid-task.");
 		});
+
+		test("keeps scope bounded without requiring plans for small changes", () => {
+			const prompt = buildSystemPrompt({ selectedTools: [], contextFiles: [], skills: [] });
+			expect(prompt).toContain("If the diff fits in one sentence, skip the plan");
+			expect(prompt).toContain("acceptance criteria and non-goals");
+			expect(prompt).toContain("a change that exceeds the agreed scope");
+			expect(prompt).toContain("Never delete, skip, or weaken a test to make code pass");
+			expect(prompt).toContain("review the diff against the task and remove unrequested changes");
+		});
 	});
 
 	describe("appendSystemPrompt", () => {
