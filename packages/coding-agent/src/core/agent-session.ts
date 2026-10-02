@@ -112,6 +112,7 @@ import {
 import { buildDefaultCavememHooks } from "./hooks/cavemem-hooks.js";
 import type { HooksConfig } from "./hooks/events.js";
 import { createHooksExtension, HooksManager } from "./hooks/index.js";
+import { ScopeBudget } from "./hooks/scope-budget.js";
 import { resolveMemoryProvider } from "./memory-factory.js";
 import type { BashExecutionMessage, CustomMessage } from "./messages.js";
 import { convertToLlm } from "./messages.js";
@@ -453,6 +454,7 @@ export class AgentSession {
 	private _compression!: CompressionPipeline;
 	// Hooks subsystem (WS4). Rebuilt in `_buildRuntime` from current settings.
 	private _hooksManager: HooksManager | undefined;
+	private _scopeBudget: ScopeBudget | undefined;
 
 	private _resourceLoader: ResourceLoader;
 	private _customTools: ToolDefinition[];
@@ -751,28 +753,31 @@ export class AgentSession {
 			await this._maybeAutoSnapshot(toolCall.name);
 
 			const runner = this._extensionRunner;
-			if (!runner?.hasHandlers("tool_call")) {
-				return undefined;
-			}
-
-			await this._agentEventQueue;
-
-			try {
-				return await runner.emitToolCall({
-					type: "tool_call",
-					toolName: toolCall.name,
-					toolCallId: toolCall.id,
-					input: args as Record<string, unknown>,
-				});
-			} catch (err) {
-				if (err instanceof Error) {
-					throw err;
+			let hookResult: Awaited<ReturnType<ExtensionRunner["emitToolCall"]>>;
+			if (runner?.hasHandlers("tool_call")) {
+				await this._agentEventQueue;
+				try {
+					hookResult = await runner.emitToolCall({
+						type: "tool_call",
+						toolName: toolCall.name,
+						toolCallId: toolCall.id,
+						input: args as Record<string, unknown>,
+					});
+				} catch (err) {
+					if (err instanceof Error) throw err;
+					throw new Error(`Extension failed, blocking execution: ${String(err)}`);
 				}
-				throw new Error(`Extension failed, blocking execution: ${String(err)}`);
 			}
+			if (hookResult?.block) return hookResult;
+			if (toolCall.name === "edit" || toolCall.name === "write") {
+				const reason = this._scopeBudget?.reserve(toolCall.id, toolCall.name, args as Record<string, unknown>);
+				if (reason) return { block: true, reason };
+			}
+			return hookResult;
 		};
 
 		this.agent.afterToolCall = async ({ toolCall, args, result, isError }) => {
+			this._scopeBudget?.finish(toolCall.id, !isError);
 			// Gap 1: track file-touching tool calls for repomap personalization.
 			if (!isError) {
 				this._repomapInjector.updateFromTool(toolCall.name, args);
@@ -2147,6 +2152,7 @@ export class AgentSession {
 		}
 
 		promptTimingMark("session.prompt:agent.prompt:begin");
+		this._scopeBudget?.reset();
 		this._pendingContextEvidence = contextEvidence;
 		try {
 			await this.agent.prompt(messages);
@@ -3668,6 +3674,7 @@ export class AgentSession {
 		// the runner dispatches lifecycle hooks alongside any user extensions.
 		const hooksManager = this._buildHooksManager();
 		this._hooksManager = hooksManager;
+		this._scopeBudget ??= new ScopeBudget(this._cwd);
 		const allExtensions = [...extensionsResult.extensions, createHooksExtension(hooksManager) as any];
 
 		const hasExtensions = allExtensions.length > 0;
@@ -3737,6 +3744,7 @@ export class AgentSession {
 		if (resolved === this._cwd) return resolved;
 
 		this._cwd = resolved;
+		this._scopeBudget = undefined;
 		this.sessionManager.setCwd(resolved);
 		this._repomapInjector = new RepomapInjector({ cwd: this._cwd });
 		this._memoryInjector = new MemoryInjector({
