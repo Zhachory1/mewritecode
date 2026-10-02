@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-10-02
+
+### Breaking Changes
+
+- Replaced in-app chat scrollback and its configurable `app.chat.scrollUp`, `app.chat.scrollDown`, and `app.chat.scrollToTail` bindings with terminal-native scrolling, selection, and copying ([#249](https://github.com/Zhachory1/mewritecode/pull/249)).
+
+### Added
+
+- Added a per-prompt budget for built-in `edit` and `write` calls: eight touched files, four new files, or 300 estimated added lines; successful deletions restore capacity. Use `CAVE_SCOPE_BUDGET=off` for explicitly larger tasks ([#250](https://github.com/Zhachory1/mewritecode/pull/250)).
+
+### Changed
+
+- Default coding guidance bounds nontrivial work with acceptance criteria and non-goals, protects tests, and asks for a scope review of larger diffs ([#250](https://github.com/Zhachory1/mewritecode/pull/250)).
+- Plan mode briefly compares the smallest viable approach with two other plausible approaches before choosing one for non-obvious changes ([#251](https://github.com/Zhachory1/mewritecode/pull/251)).
+
 ## [1.5.13] - 2026-09-24
 
 ## [1.5.12] - 2026-09-15

@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-10-02
+
+### Added
+
+- Added opt-in terminal-native scrollback with `TUI.setNativeScrollback()` for hosts that need selectable output without the alternate screen ([#249](https://github.com/Zhachory1/mewritecode/pull/249)).
+
 ## [1.5.13] - 2026-09-24
 
 ## [1.5.12] - 2026-09-15
