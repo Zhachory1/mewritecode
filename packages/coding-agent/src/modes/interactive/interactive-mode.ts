@@ -674,7 +674,7 @@ export class InteractiveMode {
 		this.ui.addChild(this.actionBar);
 		this.ui.addChild(this.footer);
 		this.ui.setBottomPinnedChildren(6); // widgets + editor + contextMeter + actionBar + footer pinned to bottom
-		this.ui.setMainScroll(true);
+		this.ui.setNativeScrollback(true);
 		this.ui.setFocus(this.editor);
 
 		this.setupKeyHandlers();
@@ -2201,9 +2201,6 @@ export class InteractiveMode {
 		this.defaultEditor.onAction("app.help", () => this.toggleHelpOverlay());
 		this.defaultEditor.onAction("app.message.editQueue", () => this.openQueuedMessagesEditor());
 		this.defaultEditor.onAction("app.tools.shelfExpand", () => this.toggleLastToolShelf());
-		this.defaultEditor.onAction("app.chat.scrollUp", () => this.ui.scrollMainPageUp());
-		this.defaultEditor.onAction("app.chat.scrollDown", () => this.ui.scrollMainPageDown());
-		this.defaultEditor.onAction("app.chat.scrollToTail", () => this.ui.scrollMainToTail());
 
 		this.defaultEditor.onChange = (text: string) => {
 			const wasBashMode = this.isBashMode;

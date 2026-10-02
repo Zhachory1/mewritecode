@@ -1,7 +1,7 @@
 import assert from "node:assert";
 import { describe, it } from "node:test";
 import type { Terminal as XtermTerminalType } from "@xterm/headless";
-import { type Component, TUI } from "../src/tui.js";
+import { type Component, CURSOR_MARKER, TUI } from "../src/tui.js";
 import { VirtualTerminal } from "./virtual-terminal.js";
 
 class TestComponent implements Component {
@@ -76,6 +76,78 @@ function getCellItalic(terminal: VirtualTerminal, row: number, col: number): num
 }
 
 describe("TUI main scroll", () => {
+	it("keeps chat in native scrollback while the editor stays at the live bottom", async () => {
+		const terminal = new LoggingVirtualTerminal(20, 5);
+		terminal.enterAltScreen = () => assert.fail("Native scrollback must not enter alternate screen");
+		const tui = new TUI(terminal);
+		const chat = new TestComponent();
+		const input = new TestComponent();
+		chat.lines = Array.from({ length: 10 }, (_, i) => `Chat ${i + 1}`);
+		input.lines = ["Input"];
+		tui.addChild(chat);
+		tui.addChild(input);
+		tui.setBottomPinnedChildren(1);
+		tui.setNativeScrollback(true);
+		tui.start();
+		await settle(terminal);
+
+		assert.strictEqual(terminal.isMouseTrackingEnabled(), false);
+		assert.strictEqual(terminal.getViewport().at(-1), "Input");
+		assert.ok(terminal.getScrollBuffer().includes("Chat 1"));
+
+		chat.lines.push("Chat 11", "Chat 12");
+		tui.requestRender();
+		await settle(terminal);
+		const history = terminal.getScrollBuffer();
+		assert.ok(history.includes("Chat 1"));
+		assert.ok(history.includes("Chat 12"));
+		assert.strictEqual(history.filter((line) => line === "Chat 1").length, 1);
+		assert.strictEqual(terminal.getViewport().at(-1), "Input");
+
+		terminal.resize(20, 6);
+		await settle(terminal);
+		assert.strictEqual(terminal.getScrollBuffer().filter((line) => line === "Chat 1").length, 1);
+		assert.ok(!terminal.getWrites().includes("\x1b[3J"));
+
+		tui.stop();
+		terminal.write("$ ");
+		await terminal.flush();
+		assert.strictEqual(terminal.getViewport().at(-1), "$ ");
+	});
+
+	it("does not repaint the full primary screen on resize", async () => {
+		const terminal = new LoggingVirtualTerminal(20, 5);
+		const tui = new TUI(terminal);
+		const chat = new TestComponent();
+		const footer = new TestComponent();
+		chat.lines = Array.from({ length: 12 }, (_, i) => `Chat ${i + 1}`);
+		footer.lines = [`Editor ${CURSOR_MARKER}`, "Meter", "Footer"];
+		tui.addChild(chat);
+		tui.addChild(footer);
+		tui.setBottomPinnedChildren(1);
+		tui.setNativeScrollback(true);
+		tui.start();
+		await settle(terminal);
+		terminal.clearWrites();
+
+		terminal.resize(21, 6);
+		await settle(terminal);
+		assert.ok(!terminal.getWrites().includes("\x1b[2J"));
+		assert.strictEqual(terminal.getScrollBuffer().filter((line) => line === "Chat 9").length, 1);
+		assert.strictEqual(terminal.getViewport().at(-3), "Editor ");
+		assert.strictEqual(terminal.getCursorPosition().y, terminal.rows - 3);
+
+		terminal.resize(20, 5);
+		await settle(terminal);
+		chat.lines.push("Chat 13");
+		tui.requestRender();
+		await settle(terminal);
+		assert.ok(!terminal.getWrites().includes("\x1b[2J"));
+		assert.strictEqual(terminal.getScrollBuffer().filter((line) => line === "Chat 9").length, 1);
+		assert.strictEqual(terminal.getViewport().at(-3), "Editor ");
+		tui.stop();
+	});
+
 	it("pages main content while keeping bottom-pinned controls visible", async () => {
 		const terminal = new VirtualTerminal(20, 5);
 		const tui = new TUI(terminal);
