@@ -91,7 +91,7 @@ Modifier combinations: `ctrl+shift+x`, `alt+ctrl+x`, `ctrl+shift+alt+x`, `ctrl+1
 
 ### Chat Scrollback
 
-Chat is printed to the terminal's normal screen. Scroll with your terminal's mouse wheel, trackpad, or scrollback keys; drag to select and copy displayed text with your terminal's Copy shortcut. The editor and footer remain at the bottom during normal use and scroll away with the rest of the terminal history.
+Chat is printed to the terminal's normal screen. Scroll with your terminal's mouse wheel, trackpad, or scrollback keys; drag to select and copy displayed text with your terminal's Copy shortcut. The editor and footer remain at the bottom during normal use and scroll away with the rest of the terminal history. Switching sessions adds the new transcript below the old one; it does not erase terminal scrollback. A completed tool result that changes offscreen is repeated at the live tail for copying.
 
 ### Sessions
 

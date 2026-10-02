@@ -1486,4 +1486,52 @@ export class TUI extends Container {
 			this.terminal.hideCursor();
 		}
 	}
+
+	startNativeHistorySegment(): void {
+		// Terminal scrollback is immutable; append the replacement session as a new segment.
+		if (!this.nativeScrollback || !this.started) return;
+
+		this.terminal.moveBy(this.terminal.rows);
+		this.terminal.write("\r\n");
+
+		this.previousLines = [];
+		this.previousWidth = 0;
+		this.previousHeight = 0;
+		this.previousViewportTop = 0;
+		this.cursorRow = 0;
+		this.hardwareCursorRow = 0;
+		this.maxLinesRendered = 0;
+
+		this.requestRender();
+	}
+
+	hasOffscreenNativeChanges(): boolean {
+		if (!this.nativeScrollback || !this.started || this.previousViewportTop <= 0) {
+			return false;
+		}
+
+		const width = this.terminal.columns;
+		const height = this.terminal.rows;
+
+		let newLines: string[];
+		if (this.sidePanelEntry) {
+			newLines = this.renderWithSidePanel(width, height);
+		} else if (this.bottomPinnedChildren > 0) {
+			newLines = this.renderWithBottomPin(width, height);
+		} else {
+			newLines = this.render(width);
+		}
+
+		newLines = this.applyLineResets(newLines, width);
+
+		for (let i = 0; i < this.previousViewportTop; i++) {
+			const oldLine = i < this.previousLines.length ? this.previousLines[i] : "";
+			const newLine = i < newLines.length ? newLines[i] : "";
+			if (oldLine !== newLine) {
+				return true;
+			}
+		}
+
+		return false;
+	}
 }

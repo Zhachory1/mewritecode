@@ -115,6 +115,60 @@ describe("TUI main scroll", () => {
 		assert.strictEqual(terminal.getViewport().at(-1), "$ ");
 	});
 
+	it("prints a replacement session's full history as a new native segment", async () => {
+		const terminal = new VirtualTerminal(20, 5);
+		const tui = new TUI(terminal);
+		const chat = new TestComponent();
+		const input = new TestComponent();
+		chat.lines = Array.from({ length: 15 }, (_, i) => `Old ${i + 1}`);
+		input.lines = ["Input"];
+		tui.addChild(chat);
+		tui.addChild(input);
+		tui.setBottomPinnedChildren(1);
+		tui.setNativeScrollback(true);
+		tui.start();
+		await settle(terminal);
+
+		chat.lines = Array.from({ length: 15 }, (_, i) => `New ${i + 1}`);
+		tui.startNativeHistorySegment();
+		await settle(terminal);
+		const history = terminal.getScrollBuffer();
+		assert.ok(history.includes("Old 1"));
+		assert.ok(history.includes("New 1"));
+		assert.ok(history.includes("New 15"));
+		assert.strictEqual(terminal.getViewport().at(-1), "Input");
+		tui.stop();
+	});
+
+	it("detects final updates to offscreen native output", async () => {
+		const terminal = new VirtualTerminal(20, 5);
+		const tui = new TUI(terminal);
+		const chat = new TestComponent();
+		const input = new TestComponent();
+		chat.lines = Array.from({ length: 20 }, (_, i) => `Tool ${i + 1}`);
+		input.lines = ["Input"];
+		tui.addChild(chat);
+		tui.addChild(input);
+		tui.setBottomPinnedChildren(1);
+		tui.setNativeScrollback(true);
+		tui.start();
+		await settle(terminal);
+
+		chat.lines[19] = "Visible update";
+		assert.strictEqual(tui.hasOffscreenNativeChanges(), false);
+		tui.requestRender();
+		await settle(terminal);
+
+		chat.lines[0] = "Final tool result";
+		assert.strictEqual(tui.hasOffscreenNativeChanges(), true);
+		chat.lines.push("Final result: done");
+		tui.requestRender();
+		await settle(terminal);
+		assert.ok(terminal.getScrollBuffer().includes("Final result: done"));
+		assert.strictEqual(terminal.getViewport().at(-1), "Input");
+		tui.stop();
+	});
+
 	it("pages main content while keeping bottom-pinned controls visible", async () => {
 		const terminal = new VirtualTerminal(20, 5);
 		const tui = new TUI(terminal);

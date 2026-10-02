@@ -93,6 +93,7 @@ export class TreeCommand extends InteractiveSlashCommand {
 							}
 							context.disposeMountedToolRows();
 							context.chatContainer.clear();
+							context.ui.startNativeHistorySegment();
 							context.renderInitialMessages();
 							if (result.editorText && !context.editor.getText().trim())
 								context.editor.setText(result.editorText);
