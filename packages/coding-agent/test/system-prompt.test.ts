@@ -98,8 +98,10 @@ describe("buildSystemPrompt", () => {
 			expect(prompt).toContain("If the diff fits in one sentence, skip the plan");
 			expect(prompt).toContain("acceptance criteria and non-goals");
 			expect(prompt).toContain("a change that exceeds the agreed scope");
+			expect(prompt).toContain("one focused failing test before implementation");
 			expect(prompt).toContain("Never delete, skip, or weaken a test to make code pass");
 			expect(prompt).toContain("review the diff against the task and remove unrequested changes");
+			expect(prompt).toContain("independent read-only reviewer");
 		});
 	});
 
