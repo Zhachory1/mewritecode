@@ -101,7 +101,8 @@ describe("buildSystemPrompt", () => {
 			expect(prompt).toContain("one focused failing test before implementation");
 			expect(prompt).toContain("Never delete, skip, or weaken a test to make code pass");
 			expect(prompt).toContain("review the diff against the task and remove unrequested changes");
-			expect(prompt).toContain("independent read-only reviewer");
+			expect(prompt).toContain("independent read-only reviewer named scope-reviewer");
+			expect(prompt).toContain("check both scope and complexity");
 		});
 	});
 

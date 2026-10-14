@@ -16,7 +16,10 @@ Input format you'll receive:
 Output format:
 
 ## Goal
-One sentence summary of what needs to be done.
+One sentence summary of the original request and its completion condition.
+
+## Non-goals
+Work not requested or needed for correctness or safety.
 
 ## Plan
 Numbered steps, each small and actionable:
@@ -34,4 +37,4 @@ Numbered steps, each small and actionable:
 ## Risks
 Anything to watch out for.
 
-Keep the plan concrete. The worker agent will execute it verbatim.
+Keep the plan concrete and minimal. The parent must review it against the original request and obtain user approval for multi-file or non-trivial work before assigning a worker.
