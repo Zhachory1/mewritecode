@@ -93,9 +93,9 @@ describe("buildSystemPrompt", () => {
 			expect(prompt).toContain("Progress updates are not a reason to yield the turn mid-task.");
 		});
 
-		test("keeps scope bounded without requiring plans for small changes", () => {
+		test("keeps scope bounded without requiring plans for trivial single-location changes", () => {
 			const prompt = buildSystemPrompt({ selectedTools: [], contextFiles: [], skills: [] });
-			expect(prompt).toContain("If the diff fits in one sentence, skip the plan");
+			expect(prompt).toContain("Skip the plan only for trivial single-location changes");
 			expect(prompt).toContain("acceptance criteria and non-goals");
 			expect(prompt).toContain("a change that exceeds the agreed scope");
 			expect(prompt).toContain("one focused failing test before implementation");
@@ -321,6 +321,26 @@ describe("buildSystemPrompt", () => {
 			"# Durable memory and data boundaries",
 			"# Executing actions with care",
 		];
+
+		test("scope and simplicity rules survive default, slim, and custom prompts", () => {
+			for (const options of [
+				{},
+				{ slim: true },
+				{ customPrompt: "Custom." },
+				{ customPrompt: "Custom.", slim: true },
+			]) {
+				const prompt = buildSystemPrompt({ ...options, contextFiles: [], skills: [] });
+				expect(prompt).toContain("Identify the exact request and narrowest completion condition");
+				expect(prompt).toContain("ask one clarifying question before acting");
+				expect(prompt).toContain("more than one file or more than a few steps");
+				expect(prompt).toContain("wait for user approval before editing");
+				expect(prompt).toContain(
+					"prefer a direct or existing solution over new files, helpers, interfaces, dependencies, or config",
+				);
+				expect(prompt).toContain("Report unrelated findings instead of fixing them");
+				expect(prompt).toContain("Check every changed file against the request before finishing");
+			}
+		});
 
 		test("default build includes every core safety section exactly once", () => {
 			const prompt = buildSystemPrompt({ contextFiles: [], skills: [] });
