@@ -133,8 +133,9 @@ export class Snapshotter {
 			]);
 
 			if (addResult.status !== 0) {
-				// git add can fail gracefully (e.g., empty repo with no files) — treat as empty snapshot
-				// Still attempt the commit below
+				throw new Error(
+					`Shadow git add failed: ${addResult.error?.message || addResult.stderr?.toString().trim() || `exit ${addResult.status}`}`,
+				);
 			}
 
 			const files = listIndexedFiles(this.shadowGitDir, this.projectRoot, indexFile);

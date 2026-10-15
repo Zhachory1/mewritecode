@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.6.2] - 2026-10-15
+
+### Fixed
+
+- Fixed Anthropic OAuth Opus 5.5 400 error handling with client version and adaptive thinking support, and improved checkpoint lock safety by suppressing repeated timeout exceptions.
+
 ## [1.6.1] - 2026-10-15
 
 ## [1.6.0] - 2026-10-02

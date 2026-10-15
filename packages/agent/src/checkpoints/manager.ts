@@ -10,7 +10,7 @@
  *  6. Exposes `rollback(steps, opts)` and `list()` for the CLI.
  *
  * The lock file is ~/.cave/checkpoints/<hash>/lock.  If another process holds
- * it we time-out after 5s and warn rather than deadlock.
+ * it we time out after 5s and skip the checkpoint rather than run unlocked.
  */
 
 import { createHash } from "node:crypto";
@@ -56,8 +56,8 @@ async function acquireLock(lockFile: string): Promise<() => void> {
 					// already removed
 				}
 			};
-		} catch {
-			// Lock held; wait and retry
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
 			await new Promise((r) => setTimeout(r, LOCK_POLL_MS));
 		}
 	}
@@ -71,9 +71,7 @@ async function acquireLock(lockFile: string): Promise<() => void> {
 	} catch {
 		// ignore
 	}
-	// Give up with a no-op release
-	console.warn(`[cave/checkpoints] Lock timeout after ${LOCK_TIMEOUT_MS}ms; proceeding without lock`);
-	return () => {};
+	throw new Error(`Checkpoint lock timeout after ${LOCK_TIMEOUT_MS}ms; snapshot skipped`);
 }
 
 function isProcessAlive(pid: number): boolean {
@@ -90,6 +88,7 @@ export class CheckpointManager {
 	private readonly lockFile: string;
 	private readonly snapshotter: Snapshotter;
 	private readonly index: CheckpointIndex;
+	private autoSnapshotsDisabled = false;
 
 	constructor(
 		readonly projectRoot: string,
@@ -113,10 +112,22 @@ export class CheckpointManager {
 	 * Skips silently for non-mutating tools.
 	 */
 	async preToolSnapshot(tool: string, sessionId: string): Promise<SnapshotResult | null> {
-		if (!isMutatingTool(tool)) return null;
+		if (!isMutatingTool(tool) || this.autoSnapshotsDisabled) return null;
 
-		const reason = toolToReason(tool);
-		return this.takeSnapshot(reason, sessionId);
+		try {
+			return await this.takeSnapshot(toolToReason(tool), sessionId);
+		} catch (error) {
+			if (
+				error instanceof Error &&
+				(error.message.includes("ETIMEDOUT") || error.message.startsWith("Checkpoint lock timeout"))
+			) {
+				this.autoSnapshotsDisabled = true;
+				throw new Error("Auto-checkpoints disabled for this session after a timeout; start in a project repo", {
+					cause: error,
+				});
+			}
+			throw error;
+		}
 	}
 
 	/** Called by /checkpoint <name> slash command. */

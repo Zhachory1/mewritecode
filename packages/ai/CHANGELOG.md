@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.6.2] - 2026-10-15
+
+### Fixed
+
+- Fixed Claude Opus 5.5 Anthropic OAuth requests rejected by the outdated Claude Code version header and unsupported disabled thinking. Reasoning-off now uses adaptive thinking at low effort, without incompatible temperature.
+
 ## [1.6.1] - 2026-10-15
 
 ## [1.6.0] - 2026-10-02

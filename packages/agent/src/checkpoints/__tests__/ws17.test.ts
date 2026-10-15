@@ -17,10 +17,10 @@
  */
 
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CheckpointIndex } from "../index-file.js";
 import { CheckpointManager, repoHash, shadowDirFor } from "../manager.js";
 import { rollbackList } from "../rollback.js";
@@ -175,6 +175,16 @@ describe("CheckpointManager (integration)", () => {
 		expect(headSha).toBe(result?.commit);
 	}, 15_000);
 
+	it("does not record a partial checkpoint when git add fails", async () => {
+		const unreadable = join(projectDir, "unreadable.ts");
+		writeFileSync(unreadable, "export const secret = 1;\n");
+		chmodSync(unreadable, 0o000);
+
+		const mgr = new CheckpointManager(projectDir, tmpHome);
+		await expect(mgr.preToolSnapshot("write", "sess-unreadable")).rejects.toThrow("Shadow git add failed");
+		expect(mgr.getIndex().entries()).toHaveLength(0);
+	}, 15_000);
+
 	it("rollback 1 restores last write", async () => {
 		// Write original content and snapshot
 		const filePath = join(projectDir, "target.ts");
@@ -287,6 +297,28 @@ describe("CheckpointManager (integration)", () => {
 		expect(rb.status).toBe("ok");
 		expect(readFileSync(file, "utf-8").trim()).toBe("v1");
 	}, 25_000);
+
+	it("stops retrying timed-out automatic snapshots but keeps manual checkpoints", async () => {
+		const mgr = new CheckpointManager(projectDir, tmpHome);
+		const snapshot = vi
+			.spyOn(mgr.getSnapshotter(), "snapshot")
+			.mockRejectedValueOnce(new Error("Shadow git add failed: spawnSync git ETIMEDOUT"));
+
+		await expect(mgr.preToolSnapshot("bash", "sess-slow")).rejects.toThrow("Auto-checkpoints disabled");
+		expect(await mgr.preToolSnapshot("bash", "sess-slow")).toBeNull();
+		expect(snapshot).toHaveBeenCalledOnce();
+		await mgr.manualSnapshot("manual", "sess-slow");
+		expect(mgr.getIndex().entries()).toHaveLength(1);
+	}, 15_000);
+
+	it("does not snapshot without a lock held by another live process", async () => {
+		const mgr = new CheckpointManager(projectDir, tmpHome);
+		writeFileSync(join(shadowDirFor(projectDir, tmpHome), "lock"), String(process.pid));
+
+		await expect(mgr.preToolSnapshot("write", "sess-locked")).rejects.toThrow("Auto-checkpoints disabled");
+		expect(await mgr.preToolSnapshot("write", "sess-locked")).toBeNull();
+		expect(mgr.getIndex().entries()).toHaveLength(0);
+	}, 10_000);
 
 	it("lock prevents two concurrent snapshots from racing", async () => {
 		const mgr = new CheckpointManager(projectDir, tmpHome);

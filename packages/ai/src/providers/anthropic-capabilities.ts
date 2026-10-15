@@ -100,6 +100,11 @@ const CAPABILITY_ENTRIES: Array<{
 	providers?: ReadonlyArray<string>;
 	caps: AnthropicModelCapabilities;
 }> = [
+	{
+		match: (id) => id === "claude-opus-5-5",
+		providers: ["anthropic"],
+		caps: { thinkingSchema: "adaptive" },
+	},
 	// Opus 4.7 — adaptive thinking. xhigh -> effort=max on the direct
 	// Anthropic API and Bedrock; not on Copilot (uses separate model ids).
 	{
