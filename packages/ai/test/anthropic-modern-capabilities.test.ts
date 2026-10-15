@@ -60,10 +60,12 @@ function ctx(): Context {
 async function runWith(
 	model: Model<"anthropic-messages">,
 	reasoning?: ThinkingLevel,
+	apiKey = "fake-key",
+	temperature?: number,
 ): Promise<{ params: Record<string, unknown>; headers: Record<string, string> }> {
 	mockState.constructorOpts = undefined;
 	mockState.streamParams = undefined;
-	const s = streamSimple(model, ctx(), { apiKey: "fake-key", reasoning });
+	const s = streamSimple(model, ctx(), { apiKey, reasoning, temperature });
 	for await (const event of s) {
 		if (event.type === "error") break;
 	}
@@ -76,6 +78,37 @@ async function runWith(
 		headers: opts.defaultHeaders as Record<string, string>,
 	};
 }
+
+describe("Anthropic OAuth request headers", () => {
+	it("sends a supported OAuth version and adaptive thinking for Opus 5.5", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => new Response(null, { status: 401 })),
+		);
+		try {
+			const model = getModel("anthropic", "claude-opus-5-5");
+			const { headers, params } = await runWith(model, undefined, "sk-ant-oat-test", 0);
+			expect(params.thinking).toEqual({ type: "adaptive" });
+			expect(params.output_config).toEqual({ effort: "low" });
+			expect(params).not.toHaveProperty("temperature");
+			const withApiKey = await runWith(model, undefined, "sk-ant-test", 0);
+			expect(withApiKey.params.thinking).toEqual({ type: "adaptive" });
+			expect(withApiKey.params).not.toHaveProperty("temperature");
+			const withReasoning = await runWith(model, "medium", "sk-ant-oat-test");
+			expect(withReasoning.params.thinking).toEqual({ type: "adaptive" });
+			expect(withReasoning.params.output_config).toEqual({ effort: "medium" });
+			const version = headers["user-agent"]
+				?.match(/^claude-cli\/(\d+)\.(\d+)\.(\d+)$/)
+				?.slice(1)
+				.map(Number);
+			expect(version).toBeDefined();
+			const [major, minor, patch] = version!;
+			expect(major > 2 || (major === 2 && (minor > 1 || (minor === 1 && patch >= 280)))).toBe(true);
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
+});
 
 // ============================================================================
 // Static fallback table — conservative defaults

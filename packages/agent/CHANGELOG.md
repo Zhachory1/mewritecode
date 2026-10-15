@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.6.2] - 2026-10-15
+
+### Fixed
+
+- Checkpoints no longer run without a lock or record partial snapshots after a Git failure. Repeated timed-out automatic snapshots stop for that session; manual checkpoints remain available.
+
 ## [1.6.1] - 2026-10-15
 
 ## [1.6.0] - 2026-10-02

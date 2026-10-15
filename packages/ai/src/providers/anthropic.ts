@@ -64,7 +64,7 @@ function getCacheControl(
 }
 
 // Stealth mode: Mimic Claude Code's tool naming exactly
-const claudeCodeVersion = "2.1.75";
+const claudeCodeVersion = "2.1.287";
 
 // Claude Code 2.x tool names (canonical casing)
 // Source: https://cchistory.mariozechner.at/data/prompts-2.1.11.md
@@ -656,8 +656,10 @@ function buildParams(
 		];
 	}
 
+	// Opus 5.5 rejects disabled thinking; reasoning-off uses adaptive with low effort.
+	const requiresAdaptiveThinking = model.provider === "anthropic" && model.id === "claude-opus-5-5";
 	// Temperature is incompatible with extended thinking (adaptive or budget-based).
-	if (options?.temperature !== undefined && !options?.thinkingEnabled) {
+	if (options?.temperature !== undefined && !options?.thinkingEnabled && !requiresAdaptiveThinking) {
 		params.temperature = options.temperature;
 	}
 
@@ -676,18 +678,18 @@ function buildParams(
 	// Configure thinking mode: adaptive (Opus 4.6 and Sonnet 4.6),
 	// budget-based (older models), or explicitly disabled.
 	if (model.reasoning) {
-		if (options?.thinkingEnabled) {
+		if (options?.thinkingEnabled || requiresAdaptiveThinking) {
 			if (supportsAdaptiveThinking(model.id, model.provider)) {
 				// Adaptive thinking: Claude decides when and how much to think
 				params.thinking = { type: "adaptive" };
-				if (options.effort) {
-					params.output_config = { effort: options.effort };
+				if (options?.effort || (requiresAdaptiveThinking && !options?.thinkingEnabled)) {
+					params.output_config = { effort: options?.effort ?? "low" };
 				}
 			} else {
 				// Budget-based thinking for older models
 				params.thinking = {
 					type: "enabled",
-					budget_tokens: options.thinkingBudgetTokens || 1024,
+					budget_tokens: options?.thinkingBudgetTokens || 1024,
 				};
 			}
 		} else if (options?.thinkingEnabled === false) {
