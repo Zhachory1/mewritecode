@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "channel": "stable",
-  "publishedAt": "2026-09-23T18:53:06.137Z",
+  "publishedAt": "2026-10-19T12:31:04.608Z",
   "providers": [
     {
       "id": "anthropic",
@@ -69,7 +69,7 @@
         {
           "id": "claude-sonnet-4-5",
           "displayName": "Claude Sonnet 4.5 (latest)",
-          "contextWindow": 1000000,
+          "contextWindow": 200000,
           "maxOutputTokens": 64000,
           "inputCostPerMtok": 3,
           "outputCostPerMtok": 15,
@@ -321,8 +321,8 @@
           "displayName": "DeepSeek: DeepSeek V4 Pro 0423",
           "contextWindow": 1048576,
           "maxOutputTokens": 384000,
-          "inputCostPerMtok": 0.946386,
-          "outputCostPerMtok": 1.892772,
+          "inputCostPerMtok": 0.9552599999999999,
+          "outputCostPerMtok": 1.9105199999999998,
           "capabilities": [
             "tools",
             "cache",
@@ -347,19 +347,21 @@
           "outputCostPerMtok": 1.5,
           "capabilities": [
             "tools",
-            "vision"
+            "vision",
+            "cache"
           ]
         },
         {
           "id": "mistral-small-latest",
           "displayName": "Mistral Small (latest)",
-          "contextWindow": 256000,
+          "contextWindow": 262144,
           "maxOutputTokens": 256000,
           "inputCostPerMtok": 0.15,
           "outputCostPerMtok": 0.6,
           "capabilities": [
             "tools",
             "vision",
+            "cache",
             "reasoning"
           ]
         },
@@ -371,7 +373,8 @@
           "inputCostPerMtok": 0.3,
           "outputCostPerMtok": 0.9,
           "capabilities": [
-            "tools"
+            "tools",
+            "cache"
           ]
         }
       ]
