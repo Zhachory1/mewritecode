@@ -59,3 +59,8 @@ TODO.md
 # kept out of git — CSV+JSON top-level files are committed for audit)
 /research/results/honest-bench-*/
 /research/results/honest-bench-full-*.log
+
+# Desktop build outputs
+packages/desktop/editor-bundle.js
+packages/desktop/assets/
+packages/coding-agent/desktop/
