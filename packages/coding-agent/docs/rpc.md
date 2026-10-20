@@ -185,7 +185,12 @@ Response:
     "autoCompactionEnabled": true,
     "messageCount": 5,
     "pendingMessageCount": 0,
-    "rpcCapabilities": {"promptCompletion": true, "projectSessions": true, "sessionModelSwitch": true}
+    "rpcCapabilities": {
+      "promptCompletion": true,
+      "projectSessions": true,
+      "sessionModelSwitch": true,
+      "approvalDialog": {"version": 1, "dangerPolicyVersion": "danger-policy-v1", "maxPayloadBytes": 8192, "decisions": ["once", "deny"]}
+    }
   }
 }
 ```
@@ -444,7 +449,7 @@ Response:
 
 #### bash
 
-Execute a shell command and add output to conversation context.
+Execute a shell command and add output to conversation context. Rejected while approval mode is enabled; guarded shell commands must come from the model tool path.
 
 ```json
 {"type": "bash", "command": "ls -la"}
@@ -974,6 +979,30 @@ Emitted when an extension throws an error.
   "error": "Error message..."
 }
 ```
+
+## Approval Dialog Protocol
+
+Approval mode (`--approval` or the `approvalMode` setting) is a human-review speed bump, not a sandbox. In RPC mode, guarded tool calls (`write`, `exec`, `destructive` tiers) deny until a client negotiates the exact capability advertised in `get_state.rpcCapabilities.approvalDialog`:
+
+```json
+{"id":"cap-1","type":"client_capabilities","approvalDialog":{"version":1,"dangerPolicyVersion":"danger-policy-v1","maxPayloadBytes":8192,"decisions":["once","deny"]}}
+```
+
+The response data is `{"approvalDialog": true}` on an exact match, otherwise `false`. A negotiated client then receives:
+
+```json
+{"type":"approval_request","id":"uuid","version":1,"dangerPolicyVersion":"danger-policy-v1","toolName":"bash","tier":"exec","argumentsJson":"{\"command\":\"echo hello\"}","decisions":["once","deny"],"timeoutMs":120000}
+```
+
+`argumentsJson` is complete JSON with sorted keys; invisible characters (controls, bidi controls, default-ignorable code points, non-space whitespace) are escaped as `\uXXXX`. Arguments over 8192 UTF-8 bytes, or not representable as JSON, deny without a request. Treat the field as sensitive.
+
+Reply once with the matching `id`:
+
+```json
+{"type":"approval_response","id":"uuid","version":1,"dangerPolicyVersion":"danger-policy-v1","decision":"once"}
+```
+
+Only `once` allows the call. Anything else denies: `deny`, other decisions, version mismatch, a late reply, the 120-second timeout, `abort`, session replacement, or shutdown. When the runtime settles a request first, it emits `{"type":"approval_closed","id":"uuid","reason":"timeout"}` so the client can dismiss the dialog.
 
 ## Extension UI Protocol
 
