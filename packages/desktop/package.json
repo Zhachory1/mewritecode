@@ -7,6 +7,7 @@
 	},
 	"main": "main.cjs",
 	"scripts": {
+		"clean": "shx rm -rf editor-bundle.js assets",
 		"build:editor": "node ../../scripts/build-desktop-editor.mjs",
 		"prestart": "npm run build:editor",
 		"start": "electron .",
