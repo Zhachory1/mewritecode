@@ -672,13 +672,12 @@ export async function main(args: string[]) {
 		process.env.CAVE_APPROVAL_MODE = "1";
 	}
 	let appMode = resolveAppMode(parsed, process.stdin.isTTY);
-	// LOW-5: --approval needs an interactive TTY to show the approval dialog. In
-	// headless/print/json/rpc mode there is no approval channel, so the gate
-	// denies-by-default → every write/exec call fails. Warn loudly instead of
-	// failing opaquely in CI. (Don't refuse to start; just warn.)
-	if (parsed.approval && appMode !== "interactive") {
+	// LOW-5: --approval needs an approval channel. Print/json mode have none, so the
+	// gate denies-by-default; RPC denies until a client negotiates one. Warn instead
+	// of failing opaquely in CI. (Don't refuse to start; just warn.)
+	if (parsed.approval && appMode !== "interactive" && appMode !== "rpc") {
 		process.stderr.write(
-			"warning: --approval has no effect in non-interactive mode — all write/exec calls will be denied\n",
+			"warning: --approval has no effect in this non-interactive mode — all write/exec calls will be denied\n",
 		);
 	}
 	const shouldTakeOverStdout = appMode !== "interactive";

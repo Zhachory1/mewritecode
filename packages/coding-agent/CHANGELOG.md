@@ -8,6 +8,7 @@
 - Added `mewrite desktop`, an Electron desktop app shipped in the npm package; Electron installs once into `~/.mewrite/agent/desktop` on first launch.
 - Added RPC `list_project_sessions` command and `rpcCapabilities.projectSessions` in `get_state`.
 - Added RPC `set_session_model` command to switch a session's model without changing defaults, and `rpcCapabilities.sessionModelSwitch`.
+- Added a fail-closed RPC approval channel (`client_capabilities`, `approval_request`, `approval_response`, `approval_closed`) so RPC clients can review guarded tool calls in approval mode. Direct RPC `bash` is rejected while approval mode is on.
 
 ## [1.6.2] - 2026-10-15
 
