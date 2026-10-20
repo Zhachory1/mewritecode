@@ -11,6 +11,7 @@ import type { SessionStats } from "../../core/agent-session.js";
 import type { BashResult } from "../../core/bash-executor.js";
 import type { CompactionResult } from "../../core/compaction/index.js";
 import type { SourceInfo } from "../../core/source-info.js";
+import type { ApprovalDialogCapability } from "./rpc-approval.js";
 
 // ============================================================================
 // RPC Commands (stdin)
@@ -26,6 +27,7 @@ export type RpcCommand =
 
 	// State
 	| { id?: string; type: "get_state" }
+	| { id?: string; type: "client_capabilities"; approvalDialog?: unknown }
 	| { id?: string; type: "list_project_sessions" }
 
 	// Model
@@ -102,7 +104,12 @@ export interface RpcSessionState {
 	autoCompactionEnabled: boolean;
 	messageCount: number;
 	pendingMessageCount: number;
-	rpcCapabilities?: { promptCompletion: boolean; projectSessions?: boolean; sessionModelSwitch?: boolean };
+	rpcCapabilities?: {
+		promptCompletion: boolean;
+		projectSessions?: boolean;
+		sessionModelSwitch?: boolean;
+		approvalDialog?: ApprovalDialogCapability;
+	};
 }
 
 export interface RpcProjectSession {
@@ -130,6 +137,13 @@ export type RpcResponse =
 
 	// State
 	| { id?: string; type: "response"; command: "get_state"; success: true; data: RpcSessionState }
+	| {
+			id?: string;
+			type: "response";
+			command: "client_capabilities";
+			success: true;
+			data: { approvalDialog: boolean };
+	  }
 	| {
 			id?: string;
 			type: "response";
