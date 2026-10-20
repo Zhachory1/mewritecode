@@ -54,7 +54,6 @@ class Rpc {
 				if (!this.pending.delete(id)) return;
 				reject(new Error(`Agent command timed out: ${type}`));
 			}, timeoutMs) : undefined;
-			timeout?.unref?.();
 			this.pending.set(id, { resolve, reject, timeout });
 			try {
 				this.child.stdin.write(`${JSON.stringify({ id, type, ...data })}\n`);
