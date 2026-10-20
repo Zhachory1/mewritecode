@@ -70,7 +70,16 @@ async function setup(t) {
 			ipcMain: { handle: (name, handler) => handlers.set(name, handler), on: (name, handler) => handlers.set(name, handler) },
 		};
 		if (name === "node:child_process" && parent.filename.endsWith("/desktop/main.cjs")) return {
-			spawn: () => { const proc = child(); children.push(proc); return proc; },
+			spawn: (binary) => {
+				// Non-macOS opens new windows by spawning this executable and waiting for "spawn".
+				if (binary === process.execPath) {
+					const instance = new EventEmitter();
+					instance.unref = () => {};
+					setImmediate(() => instance.emit("spawn"));
+					return instance;
+				}
+				const proc = child(); children.push(proc); return proc;
+			},
 			execFile: (_command, args, _options, callback) => callback(null, `${args[1]}\n`),
 		};
 		return original.call(this, name, parent, isMain);
