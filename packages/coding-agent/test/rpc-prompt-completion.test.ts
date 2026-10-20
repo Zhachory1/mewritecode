@@ -14,6 +14,7 @@ let emit;
 let ui;
 const session = {
 	bindExtensions: async (bindings) => { ui = bindings.uiContext; },
+	setApprovalCallback: () => {},
 	subscribe: (handler) => { emit = handler; return () => {}; },
 	messages: [],
 	sessionId: "fixture",

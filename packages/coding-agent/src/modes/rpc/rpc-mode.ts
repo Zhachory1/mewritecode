@@ -22,6 +22,7 @@ import { takeOverStdout, writeRawStdout } from "../../core/output-guard.js";
 import { SessionManager } from "../../core/session-manager.js";
 import { type Theme, theme } from "../interactive/theme/theme.js";
 import { attachJsonlLineReader, serializeJsonLine } from "./jsonl.js";
+import { APPROVAL_DIALOG_CAPABILITY, RpcApprovalChannel } from "./rpc-approval.js";
 import type {
 	RpcCommand,
 	RpcExtensionUIRequest,
@@ -67,6 +68,8 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 	const error = (id: string | undefined, command: string, message: string): RpcResponse => {
 		return { id, type: "response", command, success: false, error: message };
 	};
+
+	const approvalChannel = new RpcApprovalChannel(output);
 
 	// Pending extension UI requests waiting for response
 	const pendingExtensionRequests = new Map<
@@ -335,6 +338,7 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 		unsubscribe = session.subscribe((event) => {
 			output(event);
 		});
+		session.setApprovalCallback(approvalChannel.bind());
 	};
 
 	await rebindSession();
@@ -377,6 +381,7 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 			}
 
 			case "abort": {
+				approvalChannel.denyAll("aborted");
 				await session.abort();
 				return success(id, "abort");
 			}
@@ -408,9 +413,20 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 					autoCompactionEnabled: session.autoCompactionEnabled,
 					messageCount: session.messages.length,
 					pendingMessageCount: session.pendingMessageCount,
-					rpcCapabilities: { promptCompletion: true, projectSessions: true, sessionModelSwitch: true },
+					rpcCapabilities: {
+						promptCompletion: true,
+						projectSessions: true,
+						sessionModelSwitch: true,
+						approvalDialog: APPROVAL_DIALOG_CAPABILITY,
+					},
 				};
 				return success(id, "get_state", state);
+			}
+
+			case "client_capabilities": {
+				return success(id, "client_capabilities", {
+					approvalDialog: approvalChannel.negotiate(command.approvalDialog),
+				});
 			}
 
 			case "list_project_sessions": {
@@ -536,6 +552,9 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 			// =================================================================
 
 			case "bash": {
+				if (session.approvalMode) {
+					return error(id, "bash", "Direct RPC bash is disabled while approval mode is enabled");
+				}
 				const result = await session.executeBash(command.command);
 				return success(id, "bash", result);
 			}
@@ -653,6 +672,7 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 	let detachInput = () => {};
 
 	async function shutdown(): Promise<never> {
+		approvalChannel.close();
 		unsubscribe?.();
 		await runtimeHost.dispose();
 		detachInput();
@@ -677,6 +697,11 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 					`Failed to parse command: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
 				),
 			);
+			return;
+		}
+
+		if (typeof parsed === "object" && parsed !== null && "type" in parsed && parsed.type === "approval_response") {
+			approvalChannel.handleResponse(parsed as { id?: unknown });
 			return;
 		}
 

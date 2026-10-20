@@ -941,6 +941,8 @@ export class AgentSession {
 	 */
 	setApprovalCallback(cb: RequestApprovalFn | undefined): void {
 		this._requestApproval = cb;
+		// "Allow for session" grants belong to the provider that issued them.
+		this._sessionApprovedTools.clear();
 	}
 
 	/** True when approval mode is enabled (setting or CAVE_APPROVAL_MODE env). */

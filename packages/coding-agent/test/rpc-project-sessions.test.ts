@@ -29,6 +29,7 @@ const session = {
 	sessionId: "fixture",
 	messages: [],
 	bindExtensions: async () => {},
+	setApprovalCallback: () => {},
 	subscribe: () => () => {},
 };
 await runRpcMode({ session, dispose: async () => {} });
