@@ -1,0 +1,26 @@
+const { contextBridge, ipcRenderer } = require("electron");
+
+contextBridge.exposeInMainWorld("mewrite", {
+	pickProject: () => ipcRenderer.invoke("pick-project"),
+	activateAgent: (id) => ipcRenderer.invoke("activate-agent", id),
+	closeAgent: (id) => ipcRenderer.invoke("close-agent", id),
+	openProjectFile: () => ipcRenderer.invoke("open-project-file"),
+	saveProjectFile: (token, content) => ipcRenderer.invoke("save-project-file", token, content),
+	setEditorDirty: (token, dirty) => ipcRenderer.sendSync("set-editor-dirty", token, dirty),
+	setComposerDirty: (dirty, agentId) => ipcRenderer.sendSync("composer-dirty", dirty, agentId),
+	listSessions: () => ipcRenderer.invoke("list-sessions"),
+	switchSession: (token) => ipcRenderer.invoke("switch-session", token),
+	newChat: () => ipcRenderer.invoke("new-chat"),
+	openExternal: (href) => ipcRenderer.invoke("open-external", href),
+	command: (type, data, desktopAgentId) => ipcRenderer.invoke("agent-command", type, data, desktopAgentId),
+	setApprovalMode: (enabled) => ipcRenderer.invoke("set-approval-mode", enabled),
+	getMcpServers: () => ipcRenderer.invoke("get-mcp-servers"),
+	getSkills: () => ipcRenderer.invoke("get-skills"),
+	setSkillEnabled: (input) => ipcRenderer.invoke("set-skill-enabled", input),
+	saveMcpServer: (input) => ipcRenderer.invoke("mcp-settings", "save_mcp_server", input),
+	removeMcpServer: (input) => ipcRenderer.invoke("mcp-settings", "remove_mcp_server", input),
+	setDefaultModel: (provider, modelId) => ipcRenderer.invoke("set-default-model", provider, modelId),
+	approvalReply: (desktopAgentId, token, decision) => ipcRenderer.invoke("approval-reply", desktopAgentId, token, decision),
+	reply: (response) => ipcRenderer.invoke("extension-reply", response),
+	onEvent: (callback) => ipcRenderer.on("agent-event", (_event, data) => callback(data)),
+});
