@@ -185,7 +185,7 @@ Response:
     "autoCompactionEnabled": true,
     "messageCount": 5,
     "pendingMessageCount": 0,
-    "rpcCapabilities": {"promptCompletion": true}
+    "rpcCapabilities": {"promptCompletion": true, "projectSessions": true}
   }
 }
 ```
@@ -211,6 +211,16 @@ Response:
 ```
 
 Messages are `AgentMessage` objects (see [Message Types](#message-types)).
+
+#### list_project_sessions
+
+List persisted conversations for the active working directory, most recent first. Sessions started in another `cwd` are excluded; a new chat appears once it is persisted.
+
+```json
+{"type": "list_project_sessions"}
+```
+
+Response data: `{"sessions": [{"path": "/path/to/session.jsonl", "id": "abc123", "name": "Feature work", "firstMessage": "Help with this", "created": "2026-10-07T12:00:00.000Z", "modified": "2026-10-07T12:10:00.000Z", "messageCount": 4}]}`. `name` and `firstMessage` are truncated to 120 and 160 characters. Pass `path` to `switch_session`. Requires `rpcCapabilities.projectSessions`.
 
 ### Model
 

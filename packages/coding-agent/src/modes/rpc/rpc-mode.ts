@@ -19,6 +19,7 @@ import type {
 	ExtensionWidgetOptions,
 } from "../../core/extensions/index.js";
 import { takeOverStdout, writeRawStdout } from "../../core/output-guard.js";
+import { SessionManager } from "../../core/session-manager.js";
 import { type Theme, theme } from "../interactive/theme/theme.js";
 import { attachJsonlLineReader, serializeJsonLine } from "./jsonl.js";
 import type {
@@ -407,9 +408,29 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 					autoCompactionEnabled: session.autoCompactionEnabled,
 					messageCount: session.messages.length,
 					pendingMessageCount: session.pendingMessageCount,
-					rpcCapabilities: { promptCompletion: true },
+					rpcCapabilities: { promptCompletion: true, projectSessions: true },
 				};
 				return success(id, "get_state", state);
+			}
+
+			case "list_project_sessions": {
+				const target = session;
+				const cwd = target.cwd;
+				const sessions = await SessionManager.list(cwd, target.sessionManager.getSessionDir());
+				if (session !== target) return error(id, "list_project_sessions", "Session changed during listing");
+				return success(id, "list_project_sessions", {
+					sessions: sessions
+						.filter((item) => item.cwd === cwd)
+						.map(({ path, id, name, created, modified, messageCount, firstMessage }) => ({
+							path,
+							id,
+							name: name?.slice(0, 120),
+							created: created.toISOString(),
+							modified: modified.toISOString(),
+							messageCount,
+							firstMessage: firstMessage.slice(0, 160),
+						})),
+				});
 			}
 
 			// =================================================================
