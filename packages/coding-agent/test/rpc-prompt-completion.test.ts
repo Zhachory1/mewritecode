@@ -77,7 +77,7 @@ describe("RPC prompt completion", () => {
 		const complete = (id: string) => (r: RpcRecord) => r.type === "prompt_complete" && r.id === id;
 
 		send({ id: "state", type: "get_state" });
-		expect((await until((r) => r.id === "state")).data.rpcCapabilities).toEqual({ promptCompletion: true });
+		expect((await until((r) => r.id === "state")).data.rpcCapabilities).toMatchObject({ promptCompletion: true });
 
 		send({ id: "simple", type: "prompt", message: "/simple" });
 		await until(complete("simple"));
