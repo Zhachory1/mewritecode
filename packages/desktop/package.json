@@ -1,0 +1,27 @@
+{
+	"name": "mewrite-desktop",
+	"version": "0.0.1",
+	"private": true,
+	"engines": {
+		"node": ">=22.12.0"
+	},
+	"main": "main.cjs",
+	"scripts": {
+		"build:editor": "node ../../scripts/build-desktop-editor.mjs",
+		"prestart": "npm run build:editor",
+		"start": "electron .",
+		"test": "node --test test/*.test.cjs"
+	},
+	"devDependencies": {
+		"electron": "^44.6.0",
+		"marked": "15.0.12",
+		"esbuild": "^0.28.2"
+	},
+	"dependencies": {
+		"@codemirror/lang-go": "^6.0.1",
+		"@codemirror/lang-javascript": "^6.2.5",
+		"@codemirror/lang-python": "^6.2.1",
+		"@codemirror/state": "^6.7.6",
+		"codemirror": "^6.0.2"
+	}
+}
