@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; object-src 'none'">
+	<title>Me Write Code</title>
+	<script src="theme.js"></script>
+	<link rel="stylesheet" href="style.css">
+	<script src="markdown.js" defer></script>
+	<script src="editor-bundle.js" defer></script>
+	<script src="renderer.js" defer></script>
+</head>
+<body>
+	<header>
+		<div class="brand">Me Write <span>Code</span></div>
+		<button id="recent-toggle" type="button" aria-controls="recent-sidebar" aria-expanded="true" aria-label="Toggle recent sidebar" title="Toggle recent sidebar"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="3" width="16" height="14" rx="2"/><path d="M7 3v14"/></svg></button>
+		<div class="project"><button id="project" type="button">Project</button><span id="cwd">No project selected</span></div>
+		<span id="status" class="sr-only" role="status" title="Choose a project">Choose a project</span>
+		<button id="panel-toggle" type="button" aria-controls="context-panel" aria-expanded="true" aria-label="Toggle details sidebar" title="Toggle details sidebar"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="3" width="16" height="14" rx="2"/><path d="M13 3v14"/></svg></button>
+	</header>
+	<div id="workspace">
+		<aside id="recent-sidebar" aria-labelledby="recent-title">
+			<div class="sidebar-heading"><h2 id="recent-title">Recent</h2><button id="sidebar-new" type="button" disabled>New chat</button></div>
+			<p id="recent-status" role="status">Choose a project to see conversations.</p>
+			<div id="recent-list" aria-label="Recent conversations"></div>
+			<button id="sessions" type="button" disabled>All chats</button>
+		</aside>
+		<main>
+			<div id="conversation" role="log" aria-label="Conversation" aria-live="polite">
+				<div id="welcome"><h1>Your code, in conversation.</h1><p>Choose a project to continue its most recent Me Write Code chat.</p></div>
+			</div>
+			<p id="tool-activity-status" class="sr-only" role="status"></p>
+			<form id="composer">
+				<p id="composer-warning" role="alert" hidden></p>
+				<label for="prompt" class="sr-only">Message Me Write Code</label>
+				<textarea id="prompt" rows="3" placeholder="Ask Me Write Code…" disabled></textarea>
+				<div id="command-menu" role="group" aria-label="Slash commands" hidden></div>
+				<div class="composer-footer"><div><label class="model-picker" for="model-select">Model <select id="model-select" disabled><option>Choose project</option></select></label><button id="stop" type="button" hidden>Stop</button><button id="send" type="submit" disabled>Send</button></div></div>
+			</form>
+			<p class="approval-note"><span id="slash-note">Choose a project to use slash commands.</span> <span id="model-note">Choose a project to switch models.</span> When Review guarded actions is on in Settings, Me Write Code asks here before risky actions.</p>
+		</main>
+		<div id="panel-resizer" role="separator" tabindex="0" aria-label="Resize details panel" aria-orientation="vertical" aria-valuemin="220" aria-valuemax="420" aria-valuenow="320"></div>
+		<aside id="context-panel" aria-labelledby="panel-title">
+			<div class="panel-heading"><h2 id="panel-title">Details</h2><button id="panel-close" type="button" aria-label="Collapse details panel">Collapse</button></div>
+			<nav class="panel-tabs" aria-label="Details views">
+				<button id="panel-tab-progress" type="button" aria-pressed="true">Progress</button>
+				<button id="panel-tab-context" type="button" aria-pressed="false">Context</button>
+				<button id="panel-tab-tools" type="button" aria-pressed="false">Tools</button>
+				<button id="panel-tab-docs" type="button" aria-pressed="false">Docs</button>
+				<button id="panel-tab-files" type="button" aria-pressed="false">Files</button>
+			</nav>
+			<section id="panel-view-progress" class="panel-view" aria-label="Progress"><p id="panel-progress-empty" class="panel-empty">No live activity yet.</p><div id="panel-progress-list"></div></section>
+			<section id="panel-view-context" class="panel-view" aria-label="Context" hidden><p id="panel-context-empty" class="panel-empty">No context references observed.</p><div id="panel-context-list"></div></section>
+			<section id="panel-view-tools" class="panel-view" aria-label="Tools" hidden><p id="panel-tools-empty" class="panel-empty">No tool activity yet.</p><div id="panel-tools-list"></div></section>
+			<section id="panel-view-docs" class="panel-view" aria-label="Docs" hidden><p id="panel-docs-empty" class="panel-empty">No document references observed.</p><div id="panel-docs-list"></div></section>
+			<section id="panel-view-files" class="panel-view" aria-label="Project file editor" hidden><div class="file-toolbar"><button id="file-open" type="button" disabled>Open file</button><button id="file-save" type="button" disabled>Save</button></div><p id="file-name">No file open</p><p id="file-status" aria-live="polite">Open a project text file to edit it.</p><div id="file-host"></div></section>
+		</aside>
+	</div>
+	<section id="settings-view" aria-labelledby="settings-title" hidden>
+		<div class="settings-shell">
+			<div class="settings-sticky">
+				<div class="settings-heading"><button id="settings-back" type="button" aria-label="Back to chat" title="Back to chat"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 4 6 10l6 6M6 10h10"/></svg></button><h1 id="settings-title">Settings</h1></div>
+				<nav class="settings-toc" aria-label="Settings sections">
+					<a href="#settings-appearance">Appearance</a>
+					<a href="#settings-default-model">Default model</a>
+					<a href="#settings-approval">Agent approval</a>
+					<a href="#settings-skills">Skills</a>
+					<a href="#settings-mcp">MCP servers</a>
+				</nav>
+			</div>
+			<p>Me Write Code settings use runtime-owned configuration. Appearance is local to this desktop app.</p>
+			<fieldset id="settings-appearance" class="theme-setting" tabindex="-1"><legend>Appearance</legend><label><input id="theme-system" type="radio" name="theme" value="system"> System</label><label><input id="theme-light" type="radio" name="theme" value="light"> Light</label><label><input id="theme-dark" type="radio" name="theme" value="dark"> Dark</label></fieldset>
+			<fieldset id="settings-default-model" class="default-model-setting" tabindex="-1"><legend>Default model</legend><label for="default-model-select">New conversations</label><select id="default-model-select" disabled><option>Choose a project</option></select><p id="default-model-note">Choose a project to view available models.</p></fieldset>
+			<fieldset id="settings-approval" class="approval-setting" tabindex="-1"><legend>Agent approval</legend><label><input id="approval-mode-toggle" type="checkbox" disabled> Review guarded actions</label><p id="approval-mode-note">Choose a project to view the effective setting. Approval mode helps prevent accidents; it is not a sandbox.</p></fieldset>
+			<fieldset id="settings-skills" class="skills-setting" tabindex="-1"><legend>Skills</legend><p id="skills-note" aria-live="polite">Choose a project to view skills.</p><div id="skills-list"></div></fieldset>
+			<fieldset id="settings-mcp" class="mcp-setting" tabindex="-1"><legend>MCP servers</legend><p id="mcp-note">Choose a project to view configured servers.</p><div id="mcp-list"></div><button id="mcp-add" type="button" disabled>Add server</button><div id="mcp-editor" hidden><label>Scope <select id="mcp-scope"><option value="project">Project</option><option value="user">User</option></select></label><label>Name <input id="mcp-name" maxlength="100"></label><label>Command <input id="mcp-command" maxlength="4096"></label><label>Arguments, one per line <textarea id="mcp-args" rows="3"></textarea></label><div><button id="mcp-cancel" type="button">Cancel</button><button id="mcp-save" type="button">Save</button></div></div></fieldset>
+		</div>
+	</section>
+	<dialog id="extension-dialog" aria-labelledby="dialog-title"><h2 id="dialog-title"></h2><p id="dialog-message"></p><div id="dialog-content"></div><div id="dialog-buttons"></div></dialog>
+	<dialog id="sessions-dialog" aria-labelledby="sessions-title"><h2 id="sessions-title">Conversations</h2><p id="sessions-error" role="status"></p><div id="sessions-list" role="group" aria-label="Saved conversations"></div><div class="dialog-actions"><button id="sessions-close" type="button">Close</button></div></dialog>
+</body>
+</html>

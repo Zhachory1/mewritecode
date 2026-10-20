@@ -5,6 +5,7 @@
 ### Added
 
 - Added RPC `prompt_complete` event, correlated by request `id`, and `rpcCapabilities.promptCompletion` in `get_state`.
+- Added `mewrite desktop`, an Electron desktop app shipped in the npm package; Electron installs once into `~/.mewrite/agent/desktop` on first launch.
 
 ## [1.6.2] - 2026-10-15
 
