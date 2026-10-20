@@ -74,6 +74,8 @@ Response:
 
 The `images` field is optional. Each image uses `ImageContent` format: `{"type": "image", "data": "base64-encoded-data", "mimeType": "image/png"}`.
 
+The success response acknowledges receipt, not completion. Once the prompt settles, RPC emits `{"type":"prompt_complete","id":"req-1"}`, including for extension commands that start no agent turn. An asynchronous failure instead emits a second `response` with `success: false` and the same `id`. For prompts queued with `streamingBehavior`, completion means the queue request settled, not that the queued turn ran.
+
 #### steer
 
 Queue a steering message while the agent is running. It is delivered after the current assistant turn finishes executing its tool calls, before the next LLM call. Skill commands and prompt templates are expanded. Extension commands are not allowed (use `prompt` instead).
@@ -182,12 +184,13 @@ Response:
     "sessionName": "my-feature-work",
     "autoCompactionEnabled": true,
     "messageCount": 5,
-    "pendingMessageCount": 0
+    "pendingMessageCount": 0,
+    "rpcCapabilities": {"promptCompletion": true}
   }
 }
 ```
 
-The `model` field is a full [Model](#model) object or `null`. The `sessionName` field is the display name set via `set_session_name`, or omitted if not set.
+The `model` field is a full [Model](#model) object or `null`. The `sessionName` field is the display name set via `set_session_name`, or omitted if not set. Clients should check `rpcCapabilities` before relying on capability-gated commands and events; older runtimes omit it.
 
 #### get_messages
 
@@ -709,7 +712,7 @@ Each command has:
 
 ## Events
 
-Events are streamed to stdout as JSON lines during agent operation. Events do NOT include an `id` field (only responses do).
+Events are streamed to stdout as JSON lines during agent operation. Agent events do not include an `id`; `prompt_complete` carries the original prompt request `id`.
 
 ### Event Types
 
@@ -717,6 +720,7 @@ Events are streamed to stdout as JSON lines during agent operation. Events do NO
 |-------|-------------|
 | `agent_start` | Agent begins processing |
 | `agent_end` | Agent completes (includes all generated messages) |
+| `prompt_complete` | The prompt call settled, including extension-only commands |
 | `turn_start` | New turn begins |
 | `turn_end` | Turn completes (includes assistant message and tool results) |
 | `message_start` | Message begins |

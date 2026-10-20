@@ -357,7 +357,11 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 						streamingBehavior: command.streamingBehavior,
 						source: "rpc",
 					})
-					.catch((e) => output(error(id, "prompt", e.message)));
+					// Terminal output must follow the acknowledgement, even when the prompt settles synchronously.
+					.then(
+						() => setImmediate(() => output({ type: "prompt_complete", id })),
+						(e) => setImmediate(() => output(error(id, "prompt", e.message))),
+					);
 				return success(id, "prompt");
 			}
 
@@ -403,6 +407,7 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 					autoCompactionEnabled: session.autoCompactionEnabled,
 					messageCount: session.messages.length,
 					pendingMessageCount: session.pendingMessageCount,
+					rpcCapabilities: { promptCompletion: true },
 				};
 				return success(id, "get_state", state);
 			}
