@@ -408,7 +408,7 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 					autoCompactionEnabled: session.autoCompactionEnabled,
 					messageCount: session.messages.length,
 					pendingMessageCount: session.pendingMessageCount,
-					rpcCapabilities: { promptCompletion: true, projectSessions: true },
+					rpcCapabilities: { promptCompletion: true, projectSessions: true, sessionModelSwitch: true },
 				};
 				return success(id, "get_state", state);
 			}
@@ -437,14 +437,26 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 			// Model
 			// =================================================================
 
-			case "set_model": {
-				const models = await session.modelRegistry.getAvailable();
+			case "set_model":
+			case "set_session_model": {
+				const sessionOnly = command.type === "set_session_model";
+				const target = session;
+				const busy = () =>
+					target.isStreaming || target.isRetrying || target.isCompacting || target.pendingMessageCount > 0;
+				if (sessionOnly && busy()) return error(id, command.type, "Cannot switch models while the agent is busy");
+				const models = await target.modelRegistry.getAvailable();
 				const model = models.find((m) => m.provider === command.provider && m.id === command.modelId);
 				if (!model) {
-					return error(id, "set_model", `Model not found: ${command.provider}/${command.modelId}`);
+					return error(id, command.type, `Model not found: ${command.provider}/${command.modelId}`);
 				}
-				await session.setModel(model);
-				return success(id, "set_model", model);
+				if (sessionOnly) {
+					await target.waitForPendingEvents();
+					if (target !== session || busy()) {
+						return error(id, command.type, "Session changed or became busy while selecting model");
+					}
+				}
+				await target.setModel(model, !sessionOnly);
+				return success(id, command.type, model);
 			}
 
 			case "cycle_model": {

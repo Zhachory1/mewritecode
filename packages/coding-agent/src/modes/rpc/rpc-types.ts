@@ -30,6 +30,7 @@ export type RpcCommand =
 
 	// Model
 	| { id?: string; type: "set_model"; provider: string; modelId: string }
+	| { id?: string; type: "set_session_model"; provider: string; modelId: string }
 	| { id?: string; type: "cycle_model" }
 	| { id?: string; type: "get_available_models" }
 
@@ -101,7 +102,7 @@ export interface RpcSessionState {
 	autoCompactionEnabled: boolean;
 	messageCount: number;
 	pendingMessageCount: number;
-	rpcCapabilities?: { promptCompletion: boolean; projectSessions?: boolean };
+	rpcCapabilities?: { promptCompletion: boolean; projectSessions?: boolean; sessionModelSwitch?: boolean };
 }
 
 export interface RpcProjectSession {
@@ -141,7 +142,7 @@ export type RpcResponse =
 	| {
 			id?: string;
 			type: "response";
-			command: "set_model";
+			command: "set_model" | "set_session_model";
 			success: true;
 			data: Model<any>;
 	  }

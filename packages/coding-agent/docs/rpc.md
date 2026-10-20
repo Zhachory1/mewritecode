@@ -185,7 +185,7 @@ Response:
     "autoCompactionEnabled": true,
     "messageCount": 5,
     "pendingMessageCount": 0,
-    "rpcCapabilities": {"promptCompletion": true, "projectSessions": true}
+    "rpcCapabilities": {"promptCompletion": true, "projectSessions": true, "sessionModelSwitch": true}
   }
 }
 ```
@@ -241,6 +241,16 @@ Response contains the full [Model](#model) object:
   "data": {...}
 }
 ```
+
+#### set_session_model
+
+Switch the current session's model without changing the default model or thinking level for future sessions. The selection is recorded in the session. Rejects unknown or unauthenticated models and refuses while the agent is streaming, retrying, compacting, or has queued messages. Requires `rpcCapabilities.sessionModelSwitch`.
+
+```json
+{"type": "set_session_model", "provider": "anthropic", "modelId": "claude-sonnet-4-20250514"}
+```
+
+Response contains the selected [Model](#model), like `set_model`.
 
 #### cycle_model
 
