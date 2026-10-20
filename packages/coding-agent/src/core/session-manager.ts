@@ -558,7 +558,7 @@ async function buildSessionInfo(filePath: string): Promise<SessionInfo | null> {
 
 		if (entries.length === 0) return null;
 		const header = entries[0];
-		if (header.type !== "session") return null;
+		if (header.type !== "session" || typeof header.id !== "string") return null;
 
 		const stats = await stat(filePath);
 		let messageCount = 0;
