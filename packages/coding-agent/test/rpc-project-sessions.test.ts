@@ -79,7 +79,10 @@ describe("RPC list_project_sessions", () => {
 			throw new Error(`RPC response timed out: ${stderr}`);
 		};
 
-		expect((await request("state", "get_state")).data.rpcCapabilities.projectSessions).toBe(true);
+		expect((await request("state", "get_state")).data.rpcCapabilities).toMatchObject({
+			projectSessions: true,
+			sessionModelSwitch: true,
+		});
 		const result = await request("list", "list_project_sessions");
 		expect(result.success).toBe(true);
 		expect(result.data.sessions).toHaveLength(1);
