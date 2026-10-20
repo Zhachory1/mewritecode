@@ -13,6 +13,7 @@ import chalk from "chalk";
 import { handleAgentsCommand } from "./cli/agents.js";
 import { type Args, type Mode, parseArgs, printHelp } from "./cli/args.js";
 import { handleAttachCommand } from "./cli/attach.js";
+import { handleDesktopCommand } from "./cli/desktop.js";
 import { handleDiagnosticsCommand } from "./cli/diagnostics-cli.js";
 import { runDoctor } from "./cli/doctor.js";
 import { handleExecCommand } from "./cli/exec.js";
@@ -559,6 +560,9 @@ export async function main(args: string[]) {
 	if (args[0] === "login") {
 		const code = await runLogin(args.slice(1));
 		process.exit(code);
+	}
+	if (await handleDesktopCommand(args)) {
+		return;
 	}
 	if (await handleDiagnosticsCommand(args)) {
 		return;

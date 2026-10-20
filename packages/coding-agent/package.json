@@ -27,6 +27,7 @@
 	},
 	"files": [
 		"dist",
+		"desktop",
 		"scripts",
 		"docs",
 		"examples",
@@ -53,6 +54,7 @@
 		"bench:offline": "vitest run test/benchmarks/compression-layers.test.ts test/benchmarks/compression-roi.test.ts test/benchmarks/mewrite-token-savings.test.ts",
 		"bench:replay": "vitest run test/benchmarks/session-replay.test.ts",
 		"bench:live": "vitest run test/benchmarks/live-ab.test.ts",
+		"prepack": "node ../../scripts/prepare-desktop-app.mjs",
 		"prepublishOnly": "npm run clean && npm run build"
 	},
 	"dependencies": {
