@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.6.3] - 2026-10-21
+
 ### Added
 
 - Added RPC `prompt_complete` event, correlated by request `id`, and `rpcCapabilities.promptCompletion` in `get_state`.
