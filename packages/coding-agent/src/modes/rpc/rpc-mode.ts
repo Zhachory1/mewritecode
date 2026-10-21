@@ -435,6 +435,15 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 				if (typeof command.enabled !== "boolean") {
 					return error(id, "set_approval_mode", "enabled must be a boolean");
 				}
+				// RPC peers can turn the review gate on but not off: disabling it would also
+				// unblock direct RPC bash. Turn it off with /approval in the TUI or in settings.
+				if (!command.enabled && session.approvalMode) {
+					return error(
+						id,
+						"set_approval_mode",
+						"Approval mode can only be turned off with /approval or in settings, not over RPC",
+					);
+				}
 				if (
 					session.isStreaming ||
 					session.isRetrying ||
