@@ -10,6 +10,7 @@ import type { ImageContent, Model } from "@zhachory1/mewrite-ai";
 import type { SessionStats } from "../../core/agent-session.js";
 import type { BashResult } from "../../core/bash-executor.js";
 import type { CompactionResult } from "../../core/compaction/index.js";
+import type { SkillInventory } from "../../core/skills-settings.js";
 import type { SourceInfo } from "../../core/source-info.js";
 import type { ApprovalDialogCapability } from "./rpc-approval.js";
 
@@ -29,6 +30,15 @@ export type RpcCommand =
 	| { id?: string; type: "get_state" }
 	| { id?: string; type: "client_capabilities"; approvalDialog?: unknown }
 	| { id?: string; type: "set_approval_mode"; enabled: boolean }
+	| { id?: string; type: "get_skills" }
+	| {
+			id?: string;
+			type: "set_skill_enabled";
+			skillId: string;
+			revision: string;
+			scope: "user" | "project";
+			enabled: boolean;
+	  }
 	| { id?: string; type: "list_project_sessions" }
 
 	// Model
@@ -111,6 +121,7 @@ export interface RpcSessionState {
 		projectSessions?: boolean;
 		sessionModelSwitch?: boolean;
 		approvalModeControl?: boolean;
+		skillsSettingsControl?: boolean;
 		approvalDialog?: ApprovalDialogCapability;
 	};
 }
@@ -148,6 +159,14 @@ export type RpcResponse =
 			data: { approvalDialog: boolean };
 	  }
 	| { id?: string; type: "response"; command: "set_approval_mode"; success: true; data: { enabled: boolean } }
+	| { id?: string; type: "response"; command: "get_skills"; success: true; data: SkillInventory }
+	| {
+			id?: string;
+			type: "response";
+			command: "set_skill_enabled";
+			success: true;
+			data: { appliesTo: "next-session" };
+	  }
 	| {
 			id?: string;
 			type: "response";

@@ -190,6 +190,7 @@ Response:
       "projectSessions": true,
       "sessionModelSwitch": true,
       "approvalModeControl": true,
+      "skillsSettingsControl": true,
       "approvalDialog": {"version": 1, "dangerPolicyVersion": "danger-policy-v1", "maxPayloadBytes": 8192, "decisions": ["once", "deny"]}
     }
   }
@@ -990,6 +991,18 @@ Turn approval mode on or off and save it to global settings. `get_state.approval
 ```
 
 Response data: `{"enabled": true}`.
+
+#### get_skills / set_skill_enabled
+
+List local skills and enable or disable them for new sessions. Requires `rpcCapabilities.skillsSettingsControl`.
+
+`get_skills` returns `{"skills": [{"id", "name", "source", "scope", "enabled", "editable", "status"}], "revision": "<sha256>"}`. Package-provided skills are listed with `editable: false`.
+
+```json
+{"type": "set_skill_enabled", "skillId": "<id>", "revision": "<sha256>", "scope": "project", "enabled": false}
+```
+
+Disabling adds a `-<path>` entry to the `skills` setting of the skill's scope; enabling removes it. A skill disabled by some other pattern can't be enabled here. The edit fails with "refresh and retry" if either scope's `skills` setting changed since `get_skills`. Returns `{"appliesTo": "next-session"}`.
 
 ## Approval Dialog Protocol
 
