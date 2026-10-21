@@ -190,6 +190,7 @@ Response:
       "projectSessions": true,
       "sessionModelSwitch": true,
       "approvalModeControl": true,
+      "mcpSettingsControl": true,
       "approvalDialog": {"version": 1, "dangerPolicyVersion": "danger-policy-v1", "maxPayloadBytes": 8192, "decisions": ["once", "deny"]}
     }
   }
@@ -990,6 +991,19 @@ Turn approval mode on or off and save it to global settings. `get_state.approval
 ```
 
 Response data: `{"enabled": true}`.
+
+#### get_mcp_servers / save_mcp_server / remove_mcp_server
+
+Manage MCP servers in the writable project and user `mcp.json` files. Requires `rpcCapabilities.mcpSettingsControl`. Changes apply to new sessions.
+
+`get_mcp_servers` returns `{"servers": [...], "revisions": {"project": "<sha256>", "user": "<sha256>"}, "errors": [...]}`. Each server has `name`, `owner` (`"project"`, `"user"`, or `"other"` for read-only sources), `transport`, `editable`, `removable`, and `hasArguments`; commands, arguments, and secrets are not returned.
+
+```json
+{"type": "save_mcp_server", "scope": "project", "revision": "<sha256>", "name": "docs", "transport": "stdio", "command": "npx", "args": ["-y", "docs-mcp"]}
+{"type": "remove_mcp_server", "scope": "project", "revision": "<sha256>", "name": "docs"}
+```
+
+Pass the `revision` for that scope from the last `get_mcp_servers`; the edit fails with "MCP config changed; refresh and retry" if the file changed since. `save_mcp_server` accepts `previousName` to rename. Only stdio servers without advanced fields (env, cwd, auth, ...) can be edited; only stdio servers can be removed. Both return `{"appliesTo": "next-session"}`.
 
 ## Approval Dialog Protocol
 
