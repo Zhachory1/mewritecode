@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added RPC `set_approval_mode` command, `approvalMode` in `get_state`, and `rpcCapabilities.approvalModeControl`.
+
 ## [1.6.3] - 2026-10-21
 
 ### Added

@@ -189,6 +189,7 @@ Response:
       "promptCompletion": true,
       "projectSessions": true,
       "sessionModelSwitch": true,
+      "approvalModeControl": true,
       "approvalDialog": {"version": 1, "dangerPolicyVersion": "danger-policy-v1", "maxPayloadBytes": 8192, "decisions": ["once", "deny"]}
     }
   }
@@ -979,6 +980,16 @@ Emitted when an extension throws an error.
   "error": "Error message..."
 }
 ```
+
+#### set_approval_mode
+
+Turn approval mode on or off and save it to global settings. `get_state.approvalMode` reports the effective value; a project-level `approvalMode` setting still overrides the global one, so check the returned `enabled`. Rejected while the agent is streaming, retrying, compacting, running bash, or has queued messages. Requires `rpcCapabilities.approvalModeControl`.
+
+```json
+{"type": "set_approval_mode", "enabled": true}
+```
+
+Response data: `{"enabled": true}`.
 
 ## Approval Dialog Protocol
 

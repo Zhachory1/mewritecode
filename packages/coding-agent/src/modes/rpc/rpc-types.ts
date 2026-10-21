@@ -28,6 +28,7 @@ export type RpcCommand =
 	// State
 	| { id?: string; type: "get_state" }
 	| { id?: string; type: "client_capabilities"; approvalDialog?: unknown }
+	| { id?: string; type: "set_approval_mode"; enabled: boolean }
 	| { id?: string; type: "list_project_sessions" }
 
 	// Model
@@ -101,6 +102,7 @@ export interface RpcSessionState {
 	sessionFile?: string;
 	sessionId: string;
 	sessionName?: string;
+	approvalMode?: boolean;
 	autoCompactionEnabled: boolean;
 	messageCount: number;
 	pendingMessageCount: number;
@@ -108,6 +110,7 @@ export interface RpcSessionState {
 		promptCompletion: boolean;
 		projectSessions?: boolean;
 		sessionModelSwitch?: boolean;
+		approvalModeControl?: boolean;
 		approvalDialog?: ApprovalDialogCapability;
 	};
 }
@@ -144,6 +147,7 @@ export type RpcResponse =
 			success: true;
 			data: { approvalDialog: boolean };
 	  }
+	| { id?: string; type: "response"; command: "set_approval_mode"; success: true; data: { enabled: boolean } }
 	| {
 			id?: string;
 			type: "response";

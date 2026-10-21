@@ -410,6 +410,7 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 					sessionFile: session.sessionFile,
 					sessionId: session.sessionId,
 					sessionName: session.sessionName,
+					approvalMode: session.approvalMode,
 					autoCompactionEnabled: session.autoCompactionEnabled,
 					messageCount: session.messages.length,
 					pendingMessageCount: session.pendingMessageCount,
@@ -417,6 +418,7 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 						promptCompletion: true,
 						projectSessions: true,
 						sessionModelSwitch: true,
+						approvalModeControl: true,
 						approvalDialog: APPROVAL_DIALOG_CAPABILITY,
 					},
 				};
@@ -427,6 +429,32 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 				return success(id, "client_capabilities", {
 					approvalDialog: approvalChannel.negotiate(command.approvalDialog),
 				});
+			}
+
+			case "set_approval_mode": {
+				if (typeof command.enabled !== "boolean") {
+					return error(id, "set_approval_mode", "enabled must be a boolean");
+				}
+				if (
+					session.isStreaming ||
+					session.isRetrying ||
+					session.isCompacting ||
+					session.isBashRunning ||
+					session.pendingMessageCount > 0
+				) {
+					return error(id, "set_approval_mode", "Cannot change approval mode while the agent is busy");
+				}
+				session.setApprovalMode(command.enabled);
+				await session.settingsManager.flush();
+				const failures = session.settingsManager.drainErrors();
+				if (failures.length > 0) {
+					return error(
+						id,
+						"set_approval_mode",
+						`Failed to save approval mode: ${failures.map((f) => f.error.message).join("; ")}`,
+					);
+				}
+				return success(id, "set_approval_mode", { enabled: session.approvalMode });
 			}
 
 			case "list_project_sessions": {
