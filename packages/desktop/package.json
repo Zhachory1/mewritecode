@@ -1,6 +1,6 @@
 {
 	"name": "mewrite-desktop",
-	"version": "0.0.1",
+	"version": "1.6.2",
 	"private": true,
 	"engines": {
 		"node": ">=22.12.0"
