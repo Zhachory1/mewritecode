@@ -190,6 +190,7 @@ Response:
       "projectSessions": true,
       "sessionModelSwitch": true,
       "approvalModeControl": true,
+      "defaultModelControl": true,
       "approvalDialog": {"version": 1, "dangerPolicyVersion": "danger-policy-v1", "maxPayloadBytes": 8192, "decisions": ["once", "deny"]}
     }
   }
@@ -257,6 +258,16 @@ Switch the current session's model without changing the default model or thinkin
 ```
 
 Response contains the selected [Model](#model), like `set_model`.
+
+#### get_default_models / set_default_model
+
+`get_default_models` lists models that can be saved as the default for new sessions (authenticated models, same as `get_available_models`). `set_default_model` saves one to global settings without changing the current session's model, and returns the [Model](#model).
+
+```json
+{"type": "set_default_model", "provider": "anthropic", "modelId": "claude-sonnet-4-20250514"}
+```
+
+`get_state` reports the effective `defaultModel` (`{"provider", "id"}`, omitted if unset) and `defaultModelScope`: `"project"` when project settings set a default, which overrides the global one. Requires `rpcCapabilities.defaultModelControl`.
 
 #### cycle_model
 

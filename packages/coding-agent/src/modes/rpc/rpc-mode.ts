@@ -343,6 +343,20 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 
 	await rebindSession();
 
+	// Effective default model for new sessions and whether project settings override the global one.
+	const defaultModelState = () => {
+		const settings = session.settingsManager;
+		const provider = settings.getDefaultProvider();
+		const modelId = settings.getDefaultModel();
+		const project = settings.getProjectSettings();
+		return {
+			defaultModel: provider && modelId ? { provider, id: modelId } : undefined,
+			defaultModelScope: (project.defaultProvider || project.defaultModel ? "project" : "global") as
+				| "project"
+				| "global",
+		};
+	};
+
 	// Handle a single command
 	const handleCommand = async (command: RpcCommand): Promise<RpcResponse> => {
 		const id = command.id;
@@ -411,6 +425,7 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 					sessionId: session.sessionId,
 					sessionName: session.sessionName,
 					approvalMode: session.approvalMode,
+					...defaultModelState(),
 					autoCompactionEnabled: session.autoCompactionEnabled,
 					messageCount: session.messages.length,
 					pendingMessageCount: session.pendingMessageCount,
@@ -419,6 +434,7 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 						projectSessions: true,
 						sessionModelSwitch: true,
 						approvalModeControl: true,
+						defaultModelControl: true,
 						approvalDialog: APPROVAL_DIALOG_CAPABILITY,
 					},
 				};
@@ -514,6 +530,32 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 			case "get_available_models": {
 				const models = await session.modelRegistry.getAvailable();
 				return success(id, "get_available_models", { models });
+			}
+
+			case "get_default_models": {
+				const models = await session.modelRegistry.getAvailable();
+				return success(id, "get_default_models", { models });
+			}
+
+			case "set_default_model": {
+				const target = session;
+				const models = await target.modelRegistry.getAvailable();
+				const model = models.find((m) => m.provider === command.provider && m.id === command.modelId);
+				if (!model) {
+					return error(id, "set_default_model", `Model not found: ${command.provider}/${command.modelId}`);
+				}
+				if (target !== session) return error(id, "set_default_model", "Session changed while selecting model");
+				target.settingsManager.setDefaultModelAndProvider(model.provider, model.id);
+				await target.settingsManager.flush();
+				const failures = target.settingsManager.drainErrors();
+				if (failures.length > 0) {
+					return error(
+						id,
+						"set_default_model",
+						`Failed to save default model: ${failures.map((f) => f.error.message).join("; ")}`,
+					);
+				}
+				return success(id, "set_default_model", model);
 			}
 
 			// =================================================================
