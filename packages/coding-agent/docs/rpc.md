@@ -983,7 +983,7 @@ Emitted when an extension throws an error.
 
 #### set_approval_mode
 
-Turn approval mode on or off and save it to global settings. `get_state.approvalMode` reports the effective value; a project-level `approvalMode` setting still overrides the global one, so check the returned `enabled`. Rejected while the agent is streaming, retrying, compacting, running bash, or has queued messages. Requires `rpcCapabilities.approvalModeControl`.
+Turn approval mode on and save it to global settings. Turning it off over RPC is rejected while it is on, because that would also unblock direct RPC `bash`; use `/approval off` in the TUI or edit settings instead. `enabled: false` succeeds only when approval mode is already off. `get_state.approvalMode` reports the effective value; a project-level `approvalMode` setting still overrides the global one, so check the returned `enabled`. Rejected while the agent is streaming, retrying, compacting, running bash, or has queued messages. Requires `rpcCapabilities.approvalModeControl`.
 
 ```json
 {"type": "set_approval_mode", "enabled": true}

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed RPC `set_approval_mode` allowing any RPC client to turn approval mode off, which also unblocked direct RPC `bash`. RPC can now only turn it on.
+
 ### Added
 
 - Added RPC `set_approval_mode` command, `approvalMode` in `get_state`, and `rpcCapabilities.approvalModeControl`.
