@@ -1005,6 +1005,8 @@ Manage MCP servers in the writable project and user `mcp.json` files. Requires `
 
 Pass the `revision` for that scope from the last `get_mcp_servers`; the edit fails with "MCP config changed; refresh and retry" if the file changed since. `save_mcp_server` accepts `previousName` to rename. Only stdio servers without advanced fields (env, cwd, auth, ...) can be edited; only stdio servers can be removed. Both return `{"appliesTo": "next-session"}`.
 
+The revision check guards against edits from a stale view within this app: it is not a cross-process lock. If another process (or another instance of this app) writes the same file in the brief window between the revision check and the rename, that write can still be silently overwritten; there is no mechanism to serialize writes with external tools.
+
 ## Approval Dialog Protocol
 
 Approval mode (`--approval` or the `approvalMode` setting) is a human-review speed bump, not a sandbox. In RPC mode, guarded tool calls (`write`, `exec`, `destructive` tiers) deny until a client negotiates the exact capability advertised in `get_state.rpcCapabilities.approvalDialog`:
