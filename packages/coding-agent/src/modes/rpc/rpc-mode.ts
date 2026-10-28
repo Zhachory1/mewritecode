@@ -18,6 +18,7 @@ import type {
 	ExtensionUIDialogOptions,
 	ExtensionWidgetOptions,
 } from "../../core/extensions/index.js";
+import { getMcpServers, removeMcpServer, saveMcpServer } from "../../core/mcp-settings.js";
 import { takeOverStdout, writeRawStdout } from "../../core/output-guard.js";
 import { SessionManager } from "../../core/session-manager.js";
 import { type Theme, theme } from "../interactive/theme/theme.js";
@@ -419,6 +420,7 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 						projectSessions: true,
 						sessionModelSwitch: true,
 						approvalModeControl: true,
+						mcpSettingsControl: true,
 						approvalDialog: APPROVAL_DIALOG_CAPABILITY,
 					},
 				};
@@ -455,6 +457,22 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 					);
 				}
 				return success(id, "set_approval_mode", { enabled: session.approvalMode });
+			}
+
+			case "get_mcp_servers": {
+				return success(id, "get_mcp_servers", getMcpServers(session.cwd));
+			}
+
+			case "save_mcp_server":
+			case "remove_mcp_server": {
+				if (session.isStreaming || session.isCompacting || session.pendingMessageCount > 0) {
+					return error(id, command.type, "Cannot change MCP settings while the agent is busy");
+				}
+				const result =
+					command.type === "save_mcp_server"
+						? saveMcpServer(command, session.cwd)
+						: removeMcpServer(command, session.cwd);
+				return success(id, command.type, result);
 			}
 
 			case "list_project_sessions": {

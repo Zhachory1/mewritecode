@@ -4,6 +4,10 @@
 
 ### Added
 
+- Added RPC `get_mcp_servers`, `save_mcp_server`, and `remove_mcp_server` commands and `rpcCapabilities.mcpSettingsControl` for editing stdio MCP servers in project and user `mcp.json`.
+
+### Added
+
 - Added RPC `set_approval_mode` command, `approvalMode` in `get_state`, and `rpcCapabilities.approvalModeControl`.
 
 ## [1.6.3] - 2026-10-21
