@@ -23,6 +23,7 @@ import type { AgentMessage } from "@zhachory1/mewrite-agent";
 import { memory as memoryNs } from "@zhachory1/mewrite-agent";
 import { composeStartupPrelude } from "./memory-bridge.js";
 import { type MemoryFactorySettings, resolveMemoryProvider } from "./memory-factory.js";
+import { RelevanceGate } from "./relevance-gate.js";
 
 type MemoryProviderInstance = memoryNs.MemoryProvider;
 
@@ -49,9 +50,10 @@ export class MemoryInjector {
 	private _provider: MemoryProviderInstance | undefined;
 	private _providerInit: Promise<MemoryProviderInstance | undefined> | undefined;
 	private _enabled = true;
-	private _recallCache: { hash: string; rendered: string } | undefined;
+	private _recallCache: { hash: string; rendered: string; score: number } | undefined;
 	private _recallBuildPromise: Promise<void> | undefined;
 	private _preludeInjected = false;
+	private readonly _relevanceGate = new RelevanceGate();
 
 	constructor(opts: MemoryInjectorOptions) {
 		this._cwd = opts.cwd;
@@ -166,7 +168,10 @@ export class MemoryInjector {
 		});
 	}
 
-	private async _renderRecall(provider: MemoryProviderInstance, query: string): Promise<string | undefined> {
+	private async _renderRecall(
+		provider: MemoryProviderInstance,
+		query: string,
+	): Promise<{ rendered: string; score: number } | undefined> {
 		const hits = await this._withTimeout(provider.search(query, { limit: 5 }), this._timeoutMs, []);
 		if (!hits || hits.length === 0) return undefined;
 		const ids = hits.map((h) => h.id).filter((id) => Number.isFinite(id) && id >= 0);
@@ -185,10 +190,13 @@ export class MemoryInjector {
 			})
 			.filter((r) => r.includes("—"));
 		if (rows.length === 0) return undefined;
-		return rows.join("\n");
+		// Providers that don't report a score (e.g. FilesProvider substring match)
+		// count as maximally relevant — they only return hits on an exact match.
+		const score = Math.max(...hits.map((h) => h.score ?? 1));
+		return { rendered: rows.join("\n"), score };
 	}
 
-	private async _getOrBuildRecall(query: string): Promise<string | undefined> {
+	private async _getOrBuildRecall(query: string): Promise<{ rendered: string; score: number } | undefined> {
 		if (!query) return undefined;
 		const provider = await this.getProvider();
 		if (!provider) return undefined;
@@ -196,25 +204,25 @@ export class MemoryInjector {
 		if (!available) return undefined;
 
 		const hash = this._hash(query);
-		if (this._recallCache?.hash === hash) return this._recallCache.rendered;
+		if (this._recallCache?.hash === hash) return this._recallCache.rendered ? this._recallCache : undefined;
 
 		if (this._recallBuildPromise) {
 			await this._recallBuildPromise;
-			if (this._recallCache?.hash === hash) return this._recallCache.rendered;
+			if (this._recallCache?.hash === hash) return this._recallCache.rendered ? this._recallCache : undefined;
 		}
 
 		const buildPromise = (async () => {
 			try {
-				const rendered = await this._renderRecall(provider, query);
-				if (rendered) {
-					this._recallCache = { hash, rendered };
+				const result = await this._renderRecall(provider, query);
+				if (result) {
+					this._recallCache = { hash, rendered: result.rendered, score: result.score };
 				} else {
-					this._recallCache = { hash, rendered: "" };
+					this._recallCache = { hash, rendered: "", score: 0 };
 				}
 			} catch (err) {
 				const message = err instanceof Error ? err.message : String(err);
 				console.warn(`[cave/memory] recall failed: ${message}`);
-				this._recallCache = { hash, rendered: "" };
+				this._recallCache = { hash, rendered: "", score: 0 };
 			}
 		})();
 		this._recallBuildPromise = buildPromise;
@@ -223,7 +231,7 @@ export class MemoryInjector {
 		} finally {
 			this._recallBuildPromise = undefined;
 		}
-		return this._recallCache?.rendered || undefined;
+		return this._recallCache?.rendered ? this._recallCache : undefined;
 	}
 
 	/**
@@ -240,7 +248,8 @@ export class MemoryInjector {
 		if (!this._enabled || !this._retrievalEnabled) return messages;
 
 		const query = this._query(messages);
-		const rendered = await this._getOrBuildRecall(query);
+		const recall = await this._getOrBuildRecall(query);
+		const inject = recall && this._relevanceGate.shouldInject(recall.score);
 		const blocks: AgentMessage[] = [];
 
 		// First-turn prelude: project-local MEMORY.md + a kickoff cavemem search
@@ -260,11 +269,11 @@ export class MemoryInjector {
 			}
 		}
 
-		if (rendered) {
+		if (inject) {
 			blocks.push({
 				role: "custom",
 				customType: "memory-recall",
-				content: `<memory-recall>\nTop hits from prior mewrite sessions and saved facts. Search seeded by current chat-state (no extra LLM call).\n\n${rendered}\n</memory-recall>`,
+				content: `<memory-recall>\nTop hits from prior mewrite sessions and saved facts. Search seeded by current chat-state (no extra LLM call).\n\n${recall.rendered}\n</memory-recall>`,
 				display: false,
 				timestamp: Date.now(),
 			});
