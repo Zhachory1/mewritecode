@@ -12,6 +12,7 @@
  */
 
 import * as crypto from "node:crypto";
+import { getAgentDir } from "../../config.js";
 import type { AgentSessionRuntime } from "../../core/agent-session-runtime.js";
 import type {
 	ExtensionUIContext,
@@ -21,6 +22,7 @@ import type {
 import { getMcpServers, removeMcpServer, saveMcpServer } from "../../core/mcp-settings.js";
 import { takeOverStdout, writeRawStdout } from "../../core/output-guard.js";
 import { SessionManager } from "../../core/session-manager.js";
+import { getSkillInventory, setSkillEnabled } from "../../core/skills-settings.js";
 import { type Theme, theme } from "../interactive/theme/theme.js";
 import { attachJsonlLineReader, serializeJsonLine } from "./jsonl.js";
 import { APPROVAL_DIALOG_CAPABILITY, RpcApprovalChannel } from "./rpc-approval.js";
@@ -420,6 +422,7 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 						projectSessions: true,
 						sessionModelSwitch: true,
 						approvalModeControl: true,
+						skillsSettingsControl: true,
 						mcpSettingsControl: true,
 						approvalDialog: APPROVAL_DIALOG_CAPABILITY,
 					},
@@ -457,6 +460,22 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 					);
 				}
 				return success(id, "set_approval_mode", { enabled: session.approvalMode });
+			}
+
+			case "get_skills": {
+				return success(
+					id,
+					"get_skills",
+					await getSkillInventory(session.settingsManager, session.cwd, getAgentDir()),
+				);
+			}
+
+			case "set_skill_enabled": {
+				if (session.isStreaming || session.isCompacting || session.pendingMessageCount > 0) {
+					return error(id, "set_skill_enabled", "Cannot change skills while the agent is busy");
+				}
+				const result = await setSkillEnabled(command, session.settingsManager, session.cwd, getAgentDir());
+				return success(id, "set_skill_enabled", result);
 			}
 
 			case "get_mcp_servers": {
