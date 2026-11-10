@@ -14,14 +14,16 @@
 
 import { basename, resolve } from "node:path";
 import type { AgentMessage } from "@zhachory1/mewrite-agent";
+import { RelevanceGate } from "./relevance-gate.js";
 
 export class RepomapInjector {
 	private readonly _cwd: string;
 	private _enabled = true;
 	private _addedFiles = new Set<string>();
 	private _mentionedFiles = new Set<string>();
-	private _cache: { hash: string; rendered: string } | undefined;
+	private _cache: { hash: string; rendered: string; score: number } | undefined;
 	private _buildPromise: Promise<void> | undefined;
+	private readonly _relevanceGate = new RelevanceGate();
 
 	constructor(opts: { cwd: string }) {
 		this._cwd = opts.cwd;
@@ -83,14 +85,14 @@ export class RepomapInjector {
 		return `${added}::${mentioned}`;
 	}
 
-	private async _getOrBuild(): Promise<string | undefined> {
+	private async _getOrBuild(): Promise<{ rendered: string; score: number } | undefined> {
 		const hash = this._hash();
-		if (this._cache?.hash === hash) return this._cache.rendered;
+		if (this._cache?.hash === hash) return this._cache;
 
 		// Single-flight: if a build is already in progress, wait for it.
 		if (this._buildPromise) {
 			await this._buildPromise;
-			if (this._cache?.hash === hash) return this._cache.rendered;
+			if (this._cache?.hash === hash) return this._cache;
 		}
 
 		const buildPromise = this._build(hash);
@@ -99,13 +101,14 @@ export class RepomapInjector {
 			() => undefined,
 		);
 		try {
-			return await buildPromise;
+			await buildPromise;
+			return this._cache?.hash === hash ? this._cache : undefined;
 		} finally {
 			this._buildPromise = undefined;
 		}
 	}
 
-	private async _build(hash: string): Promise<string | undefined> {
+	private async _build(hash: string): Promise<void> {
 		try {
 			const { collectSourceFiles } = await import("./slash-commands/repomap.js");
 			const { repomap: repomapNs } = await import("@zhachory1/mewrite-agent");
@@ -113,8 +116,8 @@ export class RepomapInjector {
 
 			const files = collectSourceFiles(this._cwd);
 			if (files.length === 0) {
-				this._cache = { hash, rendered: "" };
-				return "";
+				this._cache = { hash, rendered: "", score: 0 };
+				return;
 			}
 			const tokenBudget = dynamicMapTokens({ hasFilesInChat: this._addedFiles.size > 0 });
 			const result = await buildRepomap({
@@ -126,12 +129,14 @@ export class RepomapInjector {
 					mentionedFiles: [...this._mentionedFiles],
 				},
 			});
-			this._cache = { hash, rendered: result.rendered };
-			return result.rendered;
+			// Top-ranked symbol's PageRank score stands in for "how relevant is this
+			// map to the current chat-state" — personalization weights (added/
+			// mentioned files) push it up when the map is actually on-topic.
+			const score = result.selected[0]?.score ?? 0;
+			this._cache = { hash, rendered: result.rendered, score };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err);
 			console.warn(`[cave/repomap] build failed: ${message}`);
-			return undefined;
 		}
 	}
 
@@ -155,9 +160,11 @@ export class RepomapInjector {
 			}
 		}
 
-		const rendered = await this._getOrBuild();
-		if (!rendered) return messages;
+		const built = await this._getOrBuild();
+		if (!built?.rendered) return messages;
+		if (!this._relevanceGate.shouldInject(built.score)) return messages;
 
+		const { rendered } = built;
 		const repomapMessage: AgentMessage = {
 			role: "custom",
 			customType: "repomap",
