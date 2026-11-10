@@ -14,6 +14,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { runRpcMode } from ${src("modes/rpc/rpc-mode.ts")};
 import { SessionManager } from ${src("core/session-manager.ts")};
+import { SettingsManager } from ${src("core/settings-manager.ts")};
 const root = process.env.SESSION_TEST_ROOT;
 const dir = join(root, "sessions");
 for (const [project, name] of [["alpha", "Feature A"], ["beta", "Feature B"]]) {
@@ -24,6 +25,7 @@ for (const [project, name] of [["alpha", "Feature A"], ["beta", "Feature B"]]) {
 }
 writeFileSync(join(dir, "bad.jsonl"), JSON.stringify({ type: "session", cwd: join(root, "alpha"), timestamp: new Date().toISOString() }) + "\\n");
 const session = {
+	settingsManager: SettingsManager.inMemory(),
 	cwd: join(root, "alpha"),
 	sessionManager: SessionManager.create(join(root, "alpha"), dir),
 	sessionId: "fixture",

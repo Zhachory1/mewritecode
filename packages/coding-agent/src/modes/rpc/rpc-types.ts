@@ -40,6 +40,8 @@ export type RpcCommand =
 	| { id?: string; type: "set_session_model"; provider: string; modelId: string }
 	| { id?: string; type: "cycle_model" }
 	| { id?: string; type: "get_available_models" }
+	| { id?: string; type: "get_default_models" }
+	| { id?: string; type: "set_default_model"; provider: string; modelId: string }
 
 	// Thinking
 	| { id?: string; type: "set_thinking_level"; level: ThinkingLevel }
@@ -107,6 +109,8 @@ export interface RpcSessionState {
 	sessionId: string;
 	sessionName?: string;
 	approvalMode?: boolean;
+	defaultModel?: { provider: string; id: string };
+	defaultModelScope?: "global" | "project";
 	autoCompactionEnabled: boolean;
 	messageCount: number;
 	pendingMessageCount: number;
@@ -115,6 +119,7 @@ export interface RpcSessionState {
 		projectSessions?: boolean;
 		sessionModelSwitch?: boolean;
 		approvalModeControl?: boolean;
+		defaultModelControl?: boolean;
 		mcpSettingsControl?: boolean;
 		approvalDialog?: ApprovalDialogCapability;
 	};
@@ -153,6 +158,8 @@ export type RpcResponse =
 			data: { approvalDialog: boolean };
 	  }
 	| { id?: string; type: "response"; command: "set_approval_mode"; success: true; data: { enabled: boolean } }
+	| { id?: string; type: "response"; command: "get_default_models"; success: true; data: { models: Model<any>[] } }
+	| { id?: string; type: "response"; command: "set_default_model"; success: true; data: Model<any> }
 	| { id?: string; type: "response"; command: "get_mcp_servers"; success: true; data: McpServerInventory }
 	| {
 			id?: string;

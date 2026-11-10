@@ -12,6 +12,10 @@
 
 ### Added
 
+- Added RPC `get_default_models` and `set_default_model` commands, `defaultModel` and `defaultModelScope` in `get_state`, and `rpcCapabilities.defaultModelControl`.
+
+### Added
+
 - Added RPC `set_approval_mode` command, `approvalMode` in `get_state`, and `rpcCapabilities.approvalModeControl`.
 
 ### Fixed

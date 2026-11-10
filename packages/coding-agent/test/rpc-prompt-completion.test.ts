@@ -6,13 +6,16 @@ import { afterEach, describe, expect, it } from "vitest";
 
 const packageDir = join(dirname(fileURLToPath(import.meta.url)), "..");
 const rpcMode = pathToFileURL(join(packageDir, "src/modes/rpc/rpc-mode.ts")).href;
+const settingsManager = pathToFileURL(join(packageDir, "src/core/settings-manager.ts")).href;
 
 // Minimal runtime host: prompts are scripted by message text, no provider involved.
 const fixture = `
 import { runRpcMode } from ${JSON.stringify(rpcMode)};
+import { SettingsManager } from ${JSON.stringify(settingsManager)};
 let emit;
 let ui;
 const session = {
+	settingsManager: SettingsManager.inMemory(),
 	bindExtensions: async (bindings) => { ui = bindings.uiContext; },
 	setApprovalCallback: () => {},
 	subscribe: (handler) => { emit = handler; return () => {}; },
