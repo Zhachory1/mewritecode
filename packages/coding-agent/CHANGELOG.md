@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed RPC `set_approval_mode` allowing any RPC client to turn approval mode off, which also unblocked direct RPC `bash`. RPC can now only turn it on.
+
 ## [1.6.5] - 2026-11-09
 
 ## [1.6.4] - 2026-11-09
