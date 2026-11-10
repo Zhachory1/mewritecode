@@ -10,6 +10,7 @@ import type { ImageContent, Model } from "@zhachory1/mewrite-ai";
 import type { SessionStats } from "../../core/agent-session.js";
 import type { BashResult } from "../../core/bash-executor.js";
 import type { CompactionResult } from "../../core/compaction/index.js";
+import type { McpServerInventory, SaveMcpServerInput } from "../../core/mcp-settings.js";
 import type { SourceInfo } from "../../core/source-info.js";
 import type { ApprovalDialogCapability } from "./rpc-approval.js";
 
@@ -29,6 +30,9 @@ export type RpcCommand =
 	| { id?: string; type: "get_state" }
 	| { id?: string; type: "client_capabilities"; approvalDialog?: unknown }
 	| { id?: string; type: "set_approval_mode"; enabled: boolean }
+	| { id?: string; type: "get_mcp_servers" }
+	| ({ id?: string; type: "save_mcp_server" } & SaveMcpServerInput)
+	| { id?: string; type: "remove_mcp_server"; scope: "project" | "user"; revision: string; name: string }
 	| { id?: string; type: "list_project_sessions" }
 
 	// Model
@@ -111,6 +115,7 @@ export interface RpcSessionState {
 		projectSessions?: boolean;
 		sessionModelSwitch?: boolean;
 		approvalModeControl?: boolean;
+		mcpSettingsControl?: boolean;
 		approvalDialog?: ApprovalDialogCapability;
 	};
 }
@@ -148,6 +153,14 @@ export type RpcResponse =
 			data: { approvalDialog: boolean };
 	  }
 	| { id?: string; type: "response"; command: "set_approval_mode"; success: true; data: { enabled: boolean } }
+	| { id?: string; type: "response"; command: "get_mcp_servers"; success: true; data: McpServerInventory }
+	| {
+			id?: string;
+			type: "response";
+			command: "save_mcp_server" | "remove_mcp_server";
+			success: true;
+			data: { appliesTo: "next-session" };
+	  }
 	| {
 			id?: string;
 			type: "response";
