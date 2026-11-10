@@ -19,6 +19,7 @@ import type {
 	ExtensionUIDialogOptions,
 	ExtensionWidgetOptions,
 } from "../../core/extensions/index.js";
+import { getMcpServers, removeMcpServer, saveMcpServer } from "../../core/mcp-settings.js";
 import { takeOverStdout, writeRawStdout } from "../../core/output-guard.js";
 import { SessionManager } from "../../core/session-manager.js";
 import { getSkillInventory, setSkillEnabled } from "../../core/skills-settings.js";
@@ -422,6 +423,7 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 						sessionModelSwitch: true,
 						approvalModeControl: true,
 						skillsSettingsControl: true,
+						mcpSettingsControl: true,
 						approvalDialog: APPROVAL_DIALOG_CAPABILITY,
 					},
 				};
@@ -474,6 +476,22 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 				}
 				const result = await setSkillEnabled(command, session.settingsManager, session.cwd, getAgentDir());
 				return success(id, "set_skill_enabled", result);
+			}
+
+			case "get_mcp_servers": {
+				return success(id, "get_mcp_servers", getMcpServers(session.cwd));
+			}
+
+			case "save_mcp_server":
+			case "remove_mcp_server": {
+				if (session.isStreaming || session.isCompacting || session.pendingMessageCount > 0) {
+					return error(id, command.type, "Cannot change MCP settings while the agent is busy");
+				}
+				const result =
+					command.type === "save_mcp_server"
+						? saveMcpServer(command, session.cwd)
+						: removeMcpServer(command, session.cwd);
+				return success(id, command.type, result);
 			}
 
 			case "list_project_sessions": {
